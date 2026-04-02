@@ -8,6 +8,7 @@ import Markdown from 'react-native-markdown-display';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
+import { getCompiledSpec } from '../../lib/personas/compiler';
 import {
   detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle,
   buildFrameworkContext, EmotionalState,
@@ -158,16 +159,18 @@ export default function SolChat() {
     }
 
     const variant = await getVariant();
-    let systemPrompt: string;
+    let basePrompt: string;
     if (variant === 'public') {
-      systemPrompt = resolvePrompt(SOL_PUBLIC_SYSTEM_PROMPT, userName);
+      basePrompt = resolvePrompt(SOL_PUBLIC_SYSTEM_PROMPT, userName);
     } else if (persona === 'veyra') {
-      systemPrompt = resolvePrompt(VEYRA_SYSTEM_PROMPT, userName);
+      basePrompt = resolvePrompt(VEYRA_SYSTEM_PROMPT, userName);
     } else if (persona === 'aura-prime') {
-      systemPrompt = resolvePrompt(AURA_PRIME_SYSTEM_PROMPT, userName);
+      basePrompt = resolvePrompt(AURA_PRIME_SYSTEM_PROMPT, userName);
     } else {
-      systemPrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
+      basePrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
     }
+    // Prepend compiled persona spec — constitutional constraints as structured data
+    const systemPrompt = `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${basePrompt}`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
