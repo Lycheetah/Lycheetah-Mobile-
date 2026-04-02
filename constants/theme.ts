@@ -5,9 +5,11 @@ export const SOL_THEME = {
   primaryDim: '#A0691A',
   veyra: '#4A9EFF',        // steel blue — Veyra
   auraPrime: '#9B59B6',   // deep violet — Aura Prime
+  headmaster: '#E8C76A',  // old gold — The Headmaster (deeper than Sol's bright gold)
   veyraGlyph: '◈',
   solGlyph: '⊚',
   auraPrimeGlyph: '✦',
+  headmasterGlyph: '𝔏',
   text: '#F0EDE8',
   textMuted: '#888888',
   border: '#2A2A2A',

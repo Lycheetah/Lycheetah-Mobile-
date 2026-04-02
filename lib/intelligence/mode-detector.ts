@@ -126,3 +126,9 @@ export function detectAuraPrimeToggle(text: string): boolean {
   const lower = text.trim().toLowerCase();
   return lower.startsWith('/aura') || lower.startsWith('/aura-prime') || lower.startsWith('/auraprime');
 }
+
+// Detect Headmaster toggle trigger in user message
+export function detectHeadmasterToggle(text: string): boolean {
+  const lower = text.trim().toLowerCase();
+  return lower.startsWith('/school') || lower.startsWith('/headmaster') || lower === 'enter the school';
+}

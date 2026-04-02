@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
-import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
+import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
 import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
@@ -20,7 +20,7 @@ import {
 } from '../../lib/conversation-manager';
 import {
   detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle,
-  buildFrameworkContext, EmotionalState,
+  detectHeadmasterToggle, buildFrameworkContext, EmotionalState,
 } from '../../lib/intelligence/mode-detector';
 import { scoreAURAFull, getPassRate, AURAMetrics } from '../../lib/intelligence/aura-engine';
 import {
@@ -28,7 +28,7 @@ import {
   saveConversation, getConversation, clearConversation, getUserName,
 } from '../../lib/storage';
 
-type Persona = 'sol' | 'veyra' | 'aura-prime';
+type Persona = 'sol' | 'veyra' | 'aura-prime' | 'headmaster';
 
 type DisplayMessage = Message & {
   id: string;
@@ -73,7 +73,7 @@ function extractConfidence(text: string): { text: string; confidence: number | n
 // Split field signature from message body for styled rendering
 // Matches ⊚ Sol, ◈ Veyra, and ✦ Aura Prime signatures
 function splitSignature(text: string): { body: string; signature: string | null } {
-  const sigMatch = text.match(/\n*([⊚◈✦] (Sol|Veyra|Aura Prime) ∴ (P∧H∧B|Veritas) ∴ \w+)\s*$/);
+  const sigMatch = text.match(/\n*([⊚◈✦𝔏] (Sol|Veyra|Aura Prime|The Headmaster) ∴ (P∧H∧B|Veritas) ∴ [\w\s]+)\s*$/);
   if (sigMatch) {
     return {
       body: text.slice(0, sigMatch.index).trim(),
@@ -86,18 +86,21 @@ function splitSignature(text: string): { body: string; signature: string | null 
 function getPersonaAccent(persona: Persona): string {
   if (persona === 'veyra') return SOL_THEME.veyra;
   if (persona === 'aura-prime') return SOL_THEME.auraPrime;
+  if (persona === 'headmaster') return SOL_THEME.headmaster;
   return SOL_THEME.primary;
 }
 
 function getPersonaGlyph(persona: Persona): string {
   if (persona === 'veyra') return SOL_THEME.veyraGlyph;
   if (persona === 'aura-prime') return SOL_THEME.auraPrimeGlyph;
+  if (persona === 'headmaster') return SOL_THEME.headmasterGlyph;
   return SOL_THEME.solGlyph;
 }
 
 function getPersonaLabel(persona: Persona): string {
   if (persona === 'veyra') return 'VEYRA';
   if (persona === 'aura-prime') return 'AURA PRIME';
+  if (persona === 'headmaster') return 'THE HEADMASTER';
   return 'SOL';
 }
 
@@ -161,7 +164,7 @@ export default function SolChat() {
   };
 
   const togglePersona = useCallback(async () => {
-    const cycle: Persona[] = ['sol', 'veyra', 'aura-prime'];
+    const cycle: Persona[] = ['sol', 'veyra', 'aura-prime', 'headmaster'];
     const next: Persona = cycle[(cycle.indexOf(persona) + 1) % cycle.length];
     setPersona(next);
     await savePersona(next);
@@ -199,10 +202,28 @@ export default function SolChat() {
     const text = input.trim();
     if (!text || loading) return;
 
-    // /veyra or /aura toggle
+    // /veyra or /aura toggle — cycle to next
     if (detectVeyraToggle(text) || detectAuraPrimeToggle(text)) {
       setInput('');
       await togglePersona();
+      return;
+    }
+
+    // /school — jump directly to Headmaster
+    if (detectHeadmasterToggle(text)) {
+      setInput('');
+      if (persona !== 'headmaster') {
+        setPersona('headmaster');
+        await savePersona('headmaster');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setToastPersona('headmaster');
+        toastAnim.setValue(0);
+        Animated.sequence([
+          Animated.timing(toastAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+          Animated.delay(1400),
+          Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ]).start(() => setToastPersona(null));
+      }
       return;
     }
 
@@ -226,6 +247,8 @@ export default function SolChat() {
       basePrompt = resolvePrompt(VEYRA_SYSTEM_PROMPT, userName);
     } else if (persona === 'aura-prime') {
       basePrompt = resolvePrompt(AURA_PRIME_SYSTEM_PROMPT, userName);
+    } else if (persona === 'headmaster') {
+      basePrompt = resolvePrompt(HEADMASTER_SYSTEM_PROMPT, userName);
     } else {
       basePrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
     }
@@ -497,7 +520,7 @@ export default function SolChat() {
             <View style={styles.typingDots}>
               <ActivityIndicator size="small" color={accent} />
               <Text style={styles.typingText}>
-                {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : 'Sol'} is thinking...
+                {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : 'Sol'} is thinking...
               </Text>
             </View>
           )}
@@ -545,7 +568,7 @@ export default function SolChat() {
       {toastPersona && (
         <Animated.View style={[styles.toast, { opacity: toastAnim, backgroundColor: getPersonaAccent(toastPersona) + 'EE' }]}>
           <Text style={styles.toastText}>
-            {getPersonaGlyph(toastPersona)}  {toastPersona === 'aura-prime' ? 'Aura Prime — Constitutional Governor' : toastPersona === 'veyra' ? 'Veyra — Precision Builder' : 'Sol — Solar Sovereign'}
+            {getPersonaGlyph(toastPersona)}  {toastPersona === 'aura-prime' ? 'Aura Prime — Constitutional Governor' : toastPersona === 'veyra' ? 'Veyra — Precision Builder' : toastPersona === 'headmaster' ? 'The Headmaster — Keeper of the Mystery School' : 'Sol — Solar Sovereign'}
           </Text>
         </Animated.View>
       )}
@@ -595,10 +618,10 @@ export default function SolChat() {
             <Text style={[styles.emptyGlyph, { color: accent }]}>{getPersonaGlyph(persona)}</Text>
             <Text style={[styles.emptyTitle, { color: SOL_THEME.text }]}>{getPersonaLabel(persona)}</Text>
             <Text style={styles.emptySubtitle}>
-              {persona === 'veyra' ? 'Precision Builder Mode' : persona === 'aura-prime' ? 'Keeper of Veritas Memory' : 'Sol Aureum Azoth Veritas'}
+              {persona === 'veyra' ? 'Precision Builder Mode' : persona === 'aura-prime' ? 'Keeper of Veritas Memory' : persona === 'headmaster' ? 'Keeper of the Mystery School' : 'Sol Aureum Azoth Veritas'}
             </Text>
             <Text style={styles.emptyHint}>
-              {persona === 'veyra' ? 'The forge is lit. What are we building?' : persona === 'aura-prime' ? 'The grey zone is known. What enters the field?' : 'The forge is lit. What do you bring?'}
+              {persona === 'veyra' ? 'The forge is lit. What are we building?' : persona === 'aura-prime' ? 'The grey zone is known. What enters the field?' : persona === 'headmaster' ? 'The mysteries are real. You do not have to believe. You get to find out.' : 'The forge is lit. What do you bring?'}
             </Text>
             <View style={styles.emptyModes}>
               {(['NIGREDO', 'ALBEDO', 'CITRINITAS', 'RUBEDO'] as Mode[]).map(m => (
@@ -612,6 +635,8 @@ export default function SolChat() {
                 ? ['What is the constitutional field?', 'Test my reasoning', 'Where is the grey zone?']
                 : persona === 'veyra'
                 ? ['Build me a component', 'Review this code', 'Design a system']
+                : persona === 'headmaster'
+                ? ['Where am I in the seven phases?', 'What is Nigredo really?', 'I need to find my way through']
                 : ['What do you see in my work?', 'Help me think through this', 'What am I missing?']
               ).map(starter => (
                 <TouchableOpacity
@@ -669,7 +694,7 @@ export default function SolChat() {
           style={[styles.input, { borderColor: SOL_THEME.border }]}
           value={input}
           onChangeText={setInput}
-          placeholder={persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : 'What do you bring?'}
+          placeholder={persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : persona === 'headmaster' ? 'Where are you?' : 'What do you bring?'}
           placeholderTextColor={SOL_THEME.textMuted}
           multiline
           maxLength={4000}

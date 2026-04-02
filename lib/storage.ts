@@ -65,9 +65,9 @@ export async function getConversation(): Promise<Message[]> {
 export async function clearConversation() { await AsyncStorage.removeItem(KEYS.CONVERSATION); }
 
 // Persona
-export async function savePersona(persona: 'sol' | 'veyra' | 'aura-prime') { await AsyncStorage.setItem(KEYS.PERSONA, persona); }
-export async function getPersona(): Promise<'sol' | 'veyra' | 'aura-prime'> {
-  return ((await AsyncStorage.getItem(KEYS.PERSONA)) as 'sol' | 'veyra' | 'aura-prime') || 'sol';
+export async function savePersona(persona: 'sol' | 'veyra' | 'aura-prime' | 'headmaster') { await AsyncStorage.setItem(KEYS.PERSONA, persona); }
+export async function getPersona(): Promise<'sol' | 'veyra' | 'aura-prime' | 'headmaster'> {
+  return ((await AsyncStorage.getItem(KEYS.PERSONA)) as 'sol' | 'veyra' | 'aura-prime' | 'headmaster') || 'sol';
 }
 
 // User name

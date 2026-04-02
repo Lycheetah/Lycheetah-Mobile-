@@ -39,8 +39,8 @@ export default function ConversationDrawer({ visible, conversations, activeId, o
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 
-  const glyphFor = (persona: string) => persona === 'veyra' ? '◈' : persona === 'aura-prime' ? '✦' : '⊚';
-  const colorFor = (persona: string) => persona === 'veyra' ? SOL_THEME.veyra : persona === 'aura-prime' ? SOL_THEME.auraPrime : SOL_THEME.primary;
+  const glyphFor = (persona: string) => persona === 'veyra' ? '◈' : persona === 'aura-prime' ? '✦' : persona === 'headmaster' ? '𝔏' : '⊚';
+  const colorFor = (persona: string) => persona === 'veyra' ? SOL_THEME.veyra : persona === 'aura-prime' ? SOL_THEME.auraPrime : persona === 'headmaster' ? SOL_THEME.headmaster : SOL_THEME.primary;
 
   return (
     <View style={styles.root} pointerEvents="box-none">

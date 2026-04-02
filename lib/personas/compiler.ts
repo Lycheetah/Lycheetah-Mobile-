@@ -2,11 +2,13 @@ import { PersonaSpec } from './types';
 import { SolSpec } from './sol';
 import { VeyraSpec } from './veyra';
 import { AuraPrimeSpec } from './aura-prime';
+import { HeadmasterSpec } from './headmaster';
 
 export const PERSONA_SPECS: Record<string, PersonaSpec> = {
   sol: SolSpec,
   veyra: VeyraSpec,
   'aura-prime': AuraPrimeSpec,
+  headmaster: HeadmasterSpec as unknown as PersonaSpec,
 };
 
 // Compiles a PersonaSpec into a structured system prompt header.
