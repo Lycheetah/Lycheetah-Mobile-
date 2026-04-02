@@ -11,6 +11,11 @@ import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
 import { getCompiledSpec } from '../../lib/personas/compiler';
+import ConversationDrawer from '../../components/ConversationDrawer';
+import {
+  saveConversation as saveConv, loadConversation, listConversations,
+  deleteConversation, createNewConversation, autoTitle, ConversationMeta,
+} from '../../lib/conversation-manager';
 import {
   detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle,
   buildFrameworkContext, EmotionalState,
@@ -105,17 +110,22 @@ export default function SolChat() {
   const [userName, setUserName] = useState('');
   const [conversationPassRates, setConversationPassRates] = useState<number[]>([]);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
+  const [expandedAura, setExpandedAura] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [conversations, setConversations] = useState<ConversationMeta[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [toastPersona, setToastPersona] = useState<Persona | null>(null);
+  const toastAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    Promise.all([getConversation(), getPersona(), getUserName()]).then(([saved, savedPersona, name]) => {
-      if (saved.length > 0) {
-        const display = saved.map((m, i) => ({ ...m, id: String(i) }));
-        setMessages(display);
-      }
-      setPersona(savedPersona);
-      setUserName(name);
-    });
+    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getModel()])
+      .then(([saved, savedPersona, name, convList, model]) => {
+        if (saved.length > 0) setMessages(saved.map((m, i) => ({ ...m, id: String(i) })));
+        setPersona(savedPersona as Persona);
+        setUserName(name);
+        setConversations(convList);
+      });
   }, []);
 
   const handleClear = () => {
@@ -137,7 +147,15 @@ export default function SolChat() {
     const next: Persona = cycle[(cycle.indexOf(persona) + 1) % cycle.length];
     setPersona(next);
     await savePersona(next);
-  }, [persona]);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setToastPersona(next);
+    toastAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(toastAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1400),
+      Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setToastPersona(null));
+  }, [persona, toastAnim]);
 
   const pickImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -267,6 +285,23 @@ export default function SolChat() {
       setMessages(finalMessages);
       setStreamingText('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Save to conversation manager
+      const model = await getModel();
+      const convId = activeConvId || `${Date.now()}_init`;
+      const title = autoTitle(finalMessages.map(m => ({ role: m.role, content: m.content })));
+      const avgAura = finalMessages.filter(m => m.aura).reduce((a, m) => a + (m.aura?.composite || 0), 0) /
+        Math.max(1, finalMessages.filter(m => m.aura).length);
+      const conv = {
+        id: convId, title, persona, model,
+        createdAt: Date.now(), updatedAt: Date.now(),
+        messageCount: finalMessages.length,
+        auraComposite: Math.round(avgAura),
+        messages: finalMessages.map(({ role, content }) => ({ role, content })),
+      };
+      await saveConv(conv);
+      if (!activeConvId) setActiveConvId(convId);
+      setConversations(await listConversations());
       saveConversation(finalMessages.map(({ role, content }) => ({ role, content })));
     } catch (err: any) {
       const msg = err?.message || String(err) || 'Unknown error';
@@ -334,41 +369,76 @@ export default function SolChat() {
                 <Text style={[styles.signatureText, { color: accent }]}>{signature}</Text>
               </View>
             )}
-            {/* AURA row — tri-axial metrics + invariants */}
+            {/* AURA row — tap to expand audit trail */}
             {!isUser && aura && (
-              <View style={[styles.auraBlock, { borderTopColor: accent + '22' }]}>
-                {/* Score summary */}
-                <View style={styles.auraTopRow}>
-                  <Text style={[styles.auraScore, { color: aura.passed === aura.total ? accent : SOL_THEME.textMuted }]}>
-                    AURA {aura.passed}/{aura.total} · {aura.composite}%
-                  </Text>
-                </View>
-                {/* Tri-axial row */}
-                <View style={styles.triAxialRow}>
-                  {[
-                    { label: 'TES', result: aura.TES, fmt: (v: number) => v.toFixed(2) },
-                    { label: 'VTR', result: aura.VTR, fmt: (v: number) => v.toFixed(1) },
-                    { label: 'PAI', result: aura.PAI, fmt: (v: number) => v.toFixed(2) },
-                  ].map(({ label, result, fmt }) => (
-                    <View key={label} style={styles.triAxialItem}>
-                      <Text style={[styles.triAxialLabel, { color: statusColor(result.status, accent) }]}>
-                        {statusIcon(result.status)} {label}
+              <TouchableOpacity
+                onPress={() => {
+                  setExpandedAura(expandedAura === item.id ? null : item.id);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.auraBlock, { borderTopColor: accent + '22' }]}>
+                  <View style={styles.auraTopRow}>
+                    <Text style={[styles.auraScore, { color: aura.passed === aura.total ? accent : SOL_THEME.textMuted }]}>
+                      AURA {aura.passed}/{aura.total} · {aura.composite}%
+                    </Text>
+                    <Text style={[styles.auraExpand, { color: SOL_THEME.textMuted }]}>
+                      {expandedAura === item.id ? '▲' : '▼'}
+                    </Text>
+                  </View>
+                  <View style={styles.triAxialRow}>
+                    {[
+                      { label: 'TES', result: aura.TES, fmt: (v: number) => v.toFixed(2) },
+                      { label: 'VTR', result: aura.VTR, fmt: (v: number) => v.toFixed(1) },
+                      { label: 'PAI', result: aura.PAI, fmt: (v: number) => v.toFixed(2) },
+                    ].map(({ label, result, fmt }) => (
+                      <View key={label} style={styles.triAxialItem}>
+                        <Text style={[styles.triAxialLabel, { color: statusColor(result.status, accent) }]}>
+                          {statusIcon(result.status)} {label}
+                        </Text>
+                        <Text style={[styles.triAxialValue, { color: statusColor(result.status, accent) }]}>
+                          {fmt(result.score)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Collapsed: dot row */}
+                  {expandedAura !== item.id && (
+                    <View style={styles.invariantRow}>
+                      {invEntries.map(([name, passed]) => (
+                        <Text key={name} style={[styles.invariantDot, { color: passed ? accent : SOL_THEME.error }]}>
+                          {passed ? '·' : '✗'} {name}
+                        </Text>
+                      ))}
+                    </View>
+                  )}
+
+                  {/* Expanded: full audit trail */}
+                  {expandedAura === item.id && aura.audit && (
+                    <View style={styles.auditTrail}>
+                      <Text style={[styles.auditTitle, { color: accent }]}>CONSTITUTIONAL AUDIT</Text>
+                      {(Object.entries(aura.audit.invariants) as [string, any][]).map(([name, record]) => (
+                        <View key={name} style={styles.auditItem}>
+                          <Text style={[styles.auditItemName, { color: record.passed ? accent : SOL_THEME.error }]}>
+                            {record.passed ? '✓' : '✗'} {name}
+                          </Text>
+                          <Text style={styles.auditItemReason}>{record.reason}</Text>
+                          <Text style={styles.auditItemEvidence}>↳ {record.evidence}</Text>
+                        </View>
+                      ))}
+                      <Text style={[styles.auditTitle, { color: accent, marginTop: 8 }]}>METRIC INPUTS</Text>
+                      <Text style={styles.auditItemEvidence}>
+                        TES: H={aura.audit.TES.inputs.H_output} drift={aura.audit.TES.inputs.drift} hedges={aura.audit.TES.inputs.hedge_count}
                       </Text>
-                      <Text style={[styles.triAxialValue, { color: statusColor(result.status, accent) }]}>
-                        {fmt(result.score)}
+                      <Text style={styles.auditItemEvidence}>
+                        PAI: {String(aura.audit.PAI.inputs.formula)}
                       </Text>
                     </View>
-                  ))}
+                  )}
                 </View>
-                {/* Invariant dots */}
-                <View style={styles.invariantRow}>
-                  {invEntries.map(([name, passed]) => (
-                    <Text key={name} style={[styles.invariantDot, { color: passed ? accent : SOL_THEME.error }]}>
-                      {passed ? '·' : '✗'} {name}
-                    </Text>
-                  ))}
-                </View>
-              </View>
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -414,6 +484,43 @@ export default function SolChat() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       enabled={Platform.OS === 'ios'}
     >
+      <ConversationDrawer
+        visible={drawerOpen}
+        conversations={conversations}
+        activeId={activeConvId}
+        onClose={() => setDrawerOpen(false)}
+        onNew={() => {
+          setMessages([]); setActiveConvId(null);
+          setCurrentMode('ALBEDO'); setConversationPassRates([]);
+          clearConversation(); setDrawerOpen(false);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }}
+        onSelect={async (id) => {
+          const conv = await loadConversation(id);
+          if (conv) {
+            setMessages(conv.messages.map((m, i) => ({ ...m, id: String(i) })));
+            setActiveConvId(id);
+            setCurrentMode('ALBEDO'); setConversationPassRates([]);
+          }
+        }}
+        onDelete={async (id) => {
+          await deleteConversation(id);
+          setConversations(await listConversations());
+          if (id === activeConvId) {
+            setMessages([]); setActiveConvId(null); clearConversation();
+          }
+        }}
+      />
+
+      {/* Persona toast */}
+      {toastPersona && (
+        <Animated.View style={[styles.toast, { opacity: toastAnim, backgroundColor: getPersonaAccent(toastPersona) + 'EE' }]}>
+          <Text style={styles.toastText}>
+            {getPersonaGlyph(toastPersona)}  {toastPersona === 'aura-prime' ? 'Aura Prime — Constitutional Governor' : toastPersona === 'veyra' ? 'Veyra — Precision Builder' : 'Sol — Solar Sovereign'}
+          </Text>
+        </Animated.View>
+      )}
+
       {/* Mode + persona header */}
       <View style={[styles.modeHeader, { borderLeftColor: isNRMActive ? SOL_THEME.error : accent }]}>
         <View style={styles.modeHeaderLeft}>
@@ -431,6 +538,9 @@ export default function SolChat() {
           <Text style={styles.modeDesc} numberOfLines={1}>{MODE_DESCRIPTIONS[currentMode]}</Text>
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => { setDrawerOpen(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.clearButton}>
+            <Text style={[styles.clearText, { fontSize: 18 }]}>☰</Text>
+          </TouchableOpacity>
           {/* Persona toggle */}
           <TouchableOpacity onPress={togglePersona} style={[styles.personaToggle, { borderColor: accent + '66' }]}>
             <Text style={[styles.personaToggleText, { color: accent }]}>
@@ -856,6 +966,25 @@ const styles = StyleSheet.create({
   },
   pendingImageRemoveText: { fontSize: 10, color: SOL_THEME.text },
   pendingImageLabel: { fontSize: 12, fontWeight: '600' },
+  // Toast
+  toast: {
+    position: 'absolute', top: 60, alignSelf: 'center',
+    borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10,
+    zIndex: 100,
+  },
+  toastText: { color: '#000', fontWeight: '700', fontSize: 13, letterSpacing: 0.5 },
+  // AURA expand
+  auraExpand: { fontSize: 8, marginLeft: 'auto' as any },
+  // Audit trail
+  auditTrail: { marginTop: 8, gap: 6 },
+  auditTitle: {
+    fontSize: 8, fontWeight: '700', letterSpacing: 1.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  auditItem: { gap: 2 },
+  auditItemName: { fontSize: 9, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
+  auditItemReason: { fontSize: 9, color: SOL_THEME.textMuted, paddingLeft: 12 },
+  auditItemEvidence: { fontSize: 8, color: SOL_THEME.textMuted, paddingLeft: 12, fontStyle: 'italic' },
   // Conversation starters
   starterChips: {
     flexDirection: 'row',
