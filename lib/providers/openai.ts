@@ -24,7 +24,18 @@ export const OpenAIProvider: AIProvider = {
         model,
         max_tokens: 2048,
         stream: !!onChunk,
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages.map(m => ({
+            role: m.role,
+            content: m.image
+              ? [
+                  { type: 'image_url', image_url: { url: `data:${m.image.mimeType};base64,${m.image.base64}` } },
+                  { type: 'text', text: m.content },
+                ]
+              : m.content,
+          })),
+        ],
       }),
     });
 

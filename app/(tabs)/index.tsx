@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator,
-  StyleSheet, Alert, Clipboard,
+  StyleSheet, Alert, Clipboard, Share, Image, Animated,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
@@ -27,6 +29,7 @@ type DisplayMessage = Message & {
   aura?: AURAMetrics;
   isNRM?: boolean;
   persona?: Persona;
+  imageUri?: string; // local URI for display
 };
 
 // Strip framework context echo if the model repeated the injected prefix back
@@ -101,6 +104,7 @@ export default function SolChat() {
   const [persona, setPersona] = useState<Persona>('sol');
   const [userName, setUserName] = useState('');
   const [conversationPassRates, setConversationPassRates] = useState<number[]>([]);
+  const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
@@ -134,6 +138,26 @@ export default function SolChat() {
     setPersona(next);
     await savePersona(next);
   }, [persona]);
+
+  const pickImage = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow photo access to share images with Sol.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.7,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const mimeType = asset.mimeType?.includes('png') ? 'image/png' : 'image/jpeg';
+      setPendingImage({ uri: asset.uri, base64: asset.base64 || '', mimeType: mimeType as any });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, []);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -182,6 +206,8 @@ export default function SolChat() {
 
     const frameworkContext = buildFrameworkContext(detectedMode, detectedEWS, nrmActive, persona);
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
     const userMsg: DisplayMessage = {
       id: Date.now().toString(),
       role: 'user',
@@ -189,11 +215,14 @@ export default function SolChat() {
       mode: detectedMode,
       isNRM: nrmActive,
       persona,
+      image: pendingImage ? { base64: pendingImage.base64, mimeType: pendingImage.mimeType } : undefined,
+      imageUri: pendingImage?.uri,
     };
 
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
+    setPendingImage(null);
     setLoading(true);
     setStreamingText('');
 
@@ -237,6 +266,7 @@ export default function SolChat() {
       const finalMessages = [...updatedMessages, assistantMsg];
       setMessages(finalMessages);
       setStreamingText('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       saveConversation(finalMessages.map(({ role, content }) => ({ role, content })));
     } catch (err: any) {
       const msg = err?.message || String(err) || 'Unknown error';
@@ -253,9 +283,14 @@ export default function SolChat() {
     }
   }, [messages, streamingText]);
 
-  const handleLongPress = (content: string) => {
-    Clipboard.setString(content);
-    Alert.alert('Copied', 'Message copied to clipboard.');
+  const handleLongPress = (content: string, isAssistant: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const options = ['Copy', isAssistant ? 'Share Response' : null, 'Cancel'].filter(Boolean) as string[];
+    Alert.alert('Message', undefined, [
+      { text: 'Copy', onPress: () => { Clipboard.setString(content); } },
+      ...(isAssistant ? [{ text: 'Share', onPress: () => Share.share({ message: content, title: 'Sol Response' }) }] : []),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const renderMessage = ({ item }: { item: DisplayMessage }) => {
@@ -270,7 +305,7 @@ export default function SolChat() {
 
     return (
       <TouchableOpacity
-        onLongPress={() => handleLongPress(item.content)}
+        onLongPress={() => handleLongPress(item.content, !isUser)}
         activeOpacity={0.9}
         delayLongPress={500}
       >
@@ -285,6 +320,9 @@ export default function SolChat() {
           ]}>
             {item.isNRM && !isUser && (
               <Text style={styles.nrmTag}>⚠ NRM ACTIVE</Text>
+            )}
+            {item.imageUri && (
+              <Image source={{ uri: item.imageUri }} style={styles.messageImage} resizeMode="cover" />
             )}
             {isUser ? (
               <Text selectable style={[styles.messageText, styles.userText]}>{body}</Text>
@@ -430,10 +468,37 @@ export default function SolChat() {
                 </View>
               ))}
             </View>
+            <View style={styles.starterChips}>
+              {(persona === 'aura-prime'
+                ? ['What is the constitutional field?', 'Test my reasoning', 'Where is the grey zone?']
+                : persona === 'veyra'
+                ? ['Build me a component', 'Review this code', 'Design a system']
+                : ['What do you see in my work?', 'Help me think through this', 'What am I missing?']
+              ).map(starter => (
+                <TouchableOpacity
+                  key={starter}
+                  style={[styles.starterChip, { borderColor: accent + '55' }]}
+                  onPress={() => { setInput(starter); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                >
+                  <Text style={[styles.starterChipText, { color: accent }]}>{starter}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         }
         ListFooterComponent={renderTypingIndicator}
       />
+
+      {/* Pending image preview */}
+      {pendingImage && (
+        <View style={styles.pendingImageRow}>
+          <Image source={{ uri: pendingImage.uri }} style={styles.pendingImageThumb} resizeMode="cover" />
+          <TouchableOpacity onPress={() => setPendingImage(null)} style={styles.pendingImageRemove}>
+            <Text style={styles.pendingImageRemoveText}>✕</Text>
+          </TouchableOpacity>
+          <Text style={[styles.pendingImageLabel, { color: accent }]}>Image attached</Text>
+        </View>
+      )}
 
       {/* Input row */}
       <View style={[styles.inputRow, { borderTopColor: SOL_THEME.border }]}>
@@ -449,6 +514,9 @@ export default function SolChat() {
           blurOnSubmit={false}
           onSubmitEditing={send}
         />
+        <TouchableOpacity onPress={pickImage} style={styles.imageButton}>
+          <Text style={[styles.imageButtonText, { color: pendingImage ? accent : SOL_THEME.textMuted }]}>⊕</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sendButton, { backgroundColor: accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
           onPress={send}
@@ -755,5 +823,56 @@ const styles = StyleSheet.create({
     color: SOL_THEME.background,
     fontSize: 20,
     fontWeight: '700',
+  },
+  // Image
+  messageImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  imageButton: {
+    width: 36,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageButtonText: { fontSize: 22, fontWeight: '300' },
+  pendingImageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: SOL_THEME.surface,
+    borderTopWidth: 1,
+    borderTopColor: SOL_THEME.border,
+    gap: 10,
+  },
+  pendingImageThumb: { width: 44, height: 44, borderRadius: 8 },
+  pendingImageRemove: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: SOL_THEME.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pendingImageRemoveText: { fontSize: 10, color: SOL_THEME.text },
+  pendingImageLabel: { fontSize: 12, fontWeight: '600' },
+  // Conversation starters
+  starterChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  starterChip: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  starterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });

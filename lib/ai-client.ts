@@ -1,9 +1,15 @@
 // Multi-provider AI client — unified interface
 // Backed by provider registry: Gemini, Anthropic, OpenAI, DeepSeek, Kimi
 
+export type MessageImage = {
+  base64: string;
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+};
+
 export type Message = {
   role: 'user' | 'assistant';
   content: string;
+  image?: MessageImage; // optional image attachment (vision models)
 };
 
 export type Provider = 'gemini' | 'anthropic' | 'openai' | 'deepseek' | 'kimi';

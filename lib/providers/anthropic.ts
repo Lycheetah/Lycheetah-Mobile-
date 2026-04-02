@@ -20,7 +20,18 @@ export const AnthropicProvider: AIProvider = {
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({ model, max_tokens: 2048, system: systemPrompt, messages, stream: !!onChunk }),
+      body: JSON.stringify({
+        model, max_tokens: 2048, system: systemPrompt, stream: !!onChunk,
+        messages: messages.map(m => ({
+          role: m.role,
+          content: m.image
+            ? [
+                { type: 'image', source: { type: 'base64', media_type: m.image.mimeType, data: m.image.base64 } },
+                { type: 'text', text: m.content },
+              ]
+            : m.content,
+        })),
+      }),
     });
 
     if (!res.ok) {

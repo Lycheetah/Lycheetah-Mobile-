@@ -14,10 +14,14 @@ export const GeminiProvider: AIProvider = {
   ],
   async send(messages, systemPrompt, apiKey, model, onChunk) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    const contents = messages.map(m => {
+      const parts: any[] = [];
+      if (m.image) {
+        parts.push({ inlineData: { mimeType: m.image.mimeType, data: m.image.base64 } });
+      }
+      parts.push({ text: m.content });
+      return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+    });
 
     const res = await fetch(url, {
       method: 'POST',
