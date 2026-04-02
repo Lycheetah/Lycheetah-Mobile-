@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
   StyleSheet, Alert, Clipboard,
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
@@ -29,10 +30,18 @@ type DisplayMessage = Message & {
 
 // Strip framework context echo if the model repeated the injected prefix back
 function stripFrameworkEcho(text: string): string {
+  // Strip full echo: everything up to and including the end marker
   const endMarker = '[End framework context — user message follows]';
   const idx = text.indexOf(endMarker);
   if (idx !== -1) {
     return text.slice(idx + endMarker.length).trim();
+  }
+  // Strip partial echo: if response starts with the framework block opening
+  const startMarker = '[Sol Framework Context';
+  if (text.trimStart().startsWith(startMarker)) {
+    // Find first double-newline after the block header as fallback split
+    const blockEnd = text.indexOf('\n\n', text.indexOf(startMarker) + 20);
+    if (blockEnd !== -1) return text.slice(blockEnd).trim();
   }
   return text;
 }
@@ -274,12 +283,11 @@ export default function SolChat() {
             {item.isNRM && !isUser && (
               <Text style={styles.nrmTag}>⚠ NRM ACTIVE</Text>
             )}
-            <Text
-              selectable
-              style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}
-            >
-              {body}
-            </Text>
+            {isUser ? (
+              <Text selectable style={[styles.messageText, styles.userText]}>{body}</Text>
+            ) : (
+              <Markdown style={markdownStyles}>{body}</Markdown>
+            )}
             {signature && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
                 <Text style={[styles.signatureText, { color: accent }]}>{signature}</Text>
@@ -436,6 +444,7 @@ export default function SolChat() {
           maxLength={4000}
           returnKeyType="send"
           blurOnSubmit={false}
+          onSubmitEditing={send}
         />
         <TouchableOpacity
           style={[styles.sendButton, { backgroundColor: accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
@@ -448,6 +457,49 @@ export default function SolChat() {
     </KeyboardAvoidingView>
   );
 }
+
+const markdownStyles = {
+  body: { color: SOL_THEME.text, fontSize: 15, lineHeight: 22 },
+  heading1: { color: SOL_THEME.primary, fontWeight: '700' as const, fontSize: 18, marginBottom: 6 },
+  heading2: { color: SOL_THEME.primary, fontWeight: '700' as const, fontSize: 16, marginBottom: 4 },
+  heading3: { color: SOL_THEME.text, fontWeight: '700' as const, fontSize: 15, marginBottom: 2 },
+  strong: { color: SOL_THEME.text, fontWeight: '700' as const },
+  em: { color: SOL_THEME.textMuted, fontStyle: 'italic' as const },
+  code_inline: {
+    backgroundColor: SOL_THEME.border,
+    color: SOL_THEME.primary,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    fontSize: 13,
+    paddingHorizontal: 4,
+    borderRadius: 3,
+  },
+  fence: {
+    backgroundColor: '#0F0F0F',
+    borderRadius: 6,
+    padding: 10,
+    marginVertical: 6,
+  },
+  code_block: {
+    backgroundColor: '#0F0F0F',
+    borderRadius: 6,
+    padding: 10,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    fontSize: 13,
+    color: SOL_THEME.text,
+  },
+  bullet_list: { marginVertical: 4 },
+  ordered_list: { marginVertical: 4 },
+  list_item: { marginBottom: 2 },
+  blockquote: {
+    borderLeftWidth: 3,
+    borderLeftColor: SOL_THEME.primary + '66',
+    paddingLeft: 10,
+    marginVertical: 4,
+    color: SOL_THEME.textMuted,
+  },
+  hr: { backgroundColor: SOL_THEME.border, height: 1, marginVertical: 8 },
+  link: { color: SOL_THEME.primary },
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: SOL_THEME.background },

@@ -39,7 +39,7 @@ async function sendGemini(
     body: JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents,
-      generationConfig: { maxOutputTokens: 1024, temperature: 0.9 },
+      generationConfig: { maxOutputTokens: 2048, temperature: 0.9 },
     }),
   });
 
@@ -83,7 +83,7 @@ async function sendAnthropic(
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: systemPrompt,
       messages,
       stream: !!onChunk,

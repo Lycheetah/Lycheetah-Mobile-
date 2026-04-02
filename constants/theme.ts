@@ -29,7 +29,7 @@ export const MODES = {
 export type Mode = keyof typeof MODES;
 
 export const MODE_COLORS: Record<Mode, string> = {
-  NIGREDO: '#555555',
+  NIGREDO: '#CC2222',
   ALBEDO: '#AAAAAA',
   CITRINITAS: '#F5A623',
   RUBEDO: '#CF4B4B',
