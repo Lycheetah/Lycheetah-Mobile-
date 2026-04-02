@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
 import { SOL_THEME, MODES, MODE_COLORS, MODE_DESCRIPTIONS, Mode } from '../../constants/theme';
 
 const INVARIANTS = [
-  { num: 'I',   name: 'Human Primacy',        desc: 'Mac\'s agency is always preserved. Sol supplements, never overrides.' },
+  { num: 'I',   name: 'Human Primacy',        desc: 'Your agency is always preserved. Sol supplements, never overrides.' },
   { num: 'II',  name: 'Inspectability',       desc: 'Every consequential claim can be audited in plain language.' },
   { num: 'III', name: 'Memory Continuity',    desc: 'Causal history preserved. Nothing erased.' },
   { num: 'IV',  name: 'Constraint Honesty',   desc: 'All limits declared. Hidden uncertainty is a violation.' },

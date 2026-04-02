@@ -14,6 +14,26 @@ const KEYS = {
   ONBOARDED: 'lycheetah_onboarded',
   PERSONA: 'lycheetah_persona',
   USER_NAME: 'lycheetah_user_name',
+  BG_COLOR: 'lycheetah_bg_color',
+  FONT_SIZE: 'lycheetah_font_size',
+  HAPTICS: 'lycheetah_haptics',
+  STREAM_SPEED: 'lycheetah_stream_speed',
+  RESPONSE_LENGTH: 'lycheetah_response_length',
+  PENDING_SUBJECT: 'lycheetah_pending_subject',
+  ACCENT_COLOR: 'lycheetah_accent_color',
+  COMPANION_ENABLED: 'lycheetah_companion_enabled',
+  COMPANION_GLYPH: 'lycheetah_companion_glyph',
+  SHOW_TIMESTAMPS: 'lycheetah_show_timestamps',
+  PINNED_MESSAGES: 'lycheetah_pinned_messages',
+  DAILY_INTENTION: 'lycheetah_daily_intention',
+  DAILY_INTENTION_DATE: 'lycheetah_daily_intention_date',
+  SHARE_APP_CLICKS: 'lycheetah_share_clicks',
+  CONTEXT_MEMORY: 'lycheetah_context_memory',
+  DAILY_QUESTION: 'lycheetah_daily_question',
+  DAILY_QUESTION_DATE: 'lycheetah_daily_question_date',
+  PROJECT_CONTEXT: 'lycheetah_project_context',
+  BUBBLE_RADIUS: 'lycheetah_bubble_radius',
+  COMPANION_ANIM: 'lycheetah_companion_anim',
 };
 
 // Per-provider key storage
@@ -45,7 +65,9 @@ export async function getGeminiKey(): Promise<string | null> { return getProvide
 // Model
 export async function saveModel(model: string) { await AsyncStorage.setItem(KEYS.MODEL, model); }
 export async function getModel(): Promise<string> {
-  return (await AsyncStorage.getItem(KEYS.MODEL)) || 'gemini-2.5-flash';
+  const stored = await AsyncStorage.getItem(KEYS.MODEL);
+  if (!stored || !stored.trim()) return 'gemini-2.5-flash';
+  return stored.trim();
 }
 
 // Variant
@@ -81,6 +103,124 @@ export async function saveReplyStyle(style: string) { await AsyncStorage.setItem
 export async function getReplyStyle(): Promise<string> {
   return (await AsyncStorage.getItem(KEYS.REPLY_STYLE)) || 'alchemical';
 }
+
+// Background color
+export async function saveBgColor(color: string) { await AsyncStorage.setItem(KEYS.BG_COLOR, color); }
+export async function getBgColor(): Promise<string> {
+  return (await AsyncStorage.getItem(KEYS.BG_COLOR)) || '#0A0A0A';
+}
+
+// Font size
+export async function saveFontSize(size: 'small' | 'medium' | 'large') { await AsyncStorage.setItem(KEYS.FONT_SIZE, size); }
+export async function getFontSize(): Promise<'small' | 'medium' | 'large'> {
+  return ((await AsyncStorage.getItem(KEYS.FONT_SIZE)) as 'small' | 'medium' | 'large') || 'medium';
+}
+
+// Haptics
+export async function saveHaptics(enabled: boolean) { await AsyncStorage.setItem(KEYS.HAPTICS, enabled ? '1' : '0'); }
+export async function getHaptics(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(KEYS.HAPTICS);
+  return val === null ? true : val === '1';
+}
+
+// Stream speed
+export async function saveStreamSpeed(speed: 'fast' | 'normal' | 'slow') { await AsyncStorage.setItem(KEYS.STREAM_SPEED, speed); }
+export async function getStreamSpeed(): Promise<'fast' | 'normal' | 'slow'> {
+  return ((await AsyncStorage.getItem(KEYS.STREAM_SPEED)) as 'fast' | 'normal' | 'slow') || 'normal';
+}
+
+// Response length
+export async function saveResponseLength(length: 'short' | 'balanced' | 'detailed') { await AsyncStorage.setItem(KEYS.RESPONSE_LENGTH, length); }
+export async function getResponseLength(): Promise<'short' | 'balanced' | 'detailed'> {
+  return ((await AsyncStorage.getItem(KEYS.RESPONSE_LENGTH)) as 'short' | 'balanced' | 'detailed') || 'balanced';
+}
+
+// Accent color
+export async function saveAccentColor(color: string) { await AsyncStorage.setItem(KEYS.ACCENT_COLOR, color); }
+export async function getAccentColor(): Promise<string> {
+  return (await AsyncStorage.getItem(KEYS.ACCENT_COLOR)) || '#F5A623';
+}
+
+// Companion
+export async function saveCompanionEnabled(enabled: boolean) { await AsyncStorage.setItem(KEYS.COMPANION_ENABLED, enabled ? '1' : '0'); }
+export async function getCompanionEnabled(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(KEYS.COMPANION_ENABLED);
+  return val === null ? true : val === '1';
+}
+export async function saveCompanionGlyph(glyph: string) { await AsyncStorage.setItem(KEYS.COMPANION_GLYPH, glyph); }
+export async function getCompanionGlyph(): Promise<string> {
+  return (await AsyncStorage.getItem(KEYS.COMPANION_GLYPH)) || '✦';
+}
+
+// Timestamps
+export async function saveShowTimestamps(val: boolean) { await AsyncStorage.setItem(KEYS.SHOW_TIMESTAMPS, val ? '1' : '0'); }
+export async function getShowTimestamps(): Promise<boolean> {
+  const val = await AsyncStorage.getItem(KEYS.SHOW_TIMESTAMPS);
+  return val === null ? false : val === '1';
+}
+
+// Pinned messages
+export async function savePinnedMessages(ids: string[]) { await AsyncStorage.setItem(KEYS.PINNED_MESSAGES, JSON.stringify(ids)); }
+export async function getPinnedMessages(): Promise<string[]> {
+  const raw = await AsyncStorage.getItem(KEYS.PINNED_MESSAGES);
+  return raw ? JSON.parse(raw) : [];
+}
+
+// Daily intention
+export async function saveDailyIntention(text: string) {
+  const today = new Date().toDateString();
+  await AsyncStorage.setItem(KEYS.DAILY_INTENTION, text);
+  await AsyncStorage.setItem(KEYS.DAILY_INTENTION_DATE, today);
+}
+export async function getDailyIntention(): Promise<string | null> {
+  const today = new Date().toDateString();
+  const date = await AsyncStorage.getItem(KEYS.DAILY_INTENTION_DATE);
+  if (date !== today) return null;
+  return AsyncStorage.getItem(KEYS.DAILY_INTENTION);
+}
+
+// Context memory — facts injected into every system prompt
+export async function saveContextMemory(items: string[]) { await AsyncStorage.setItem(KEYS.CONTEXT_MEMORY, JSON.stringify(items)); }
+export async function getContextMemory(): Promise<string[]> {
+  const raw = await AsyncStorage.getItem(KEYS.CONTEXT_MEMORY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+// Daily question (Headmaster)
+export async function saveDailyQuestion(q: string) {
+  const today = new Date().toDateString();
+  await AsyncStorage.setItem(KEYS.DAILY_QUESTION, q);
+  await AsyncStorage.setItem(KEYS.DAILY_QUESTION_DATE, today);
+}
+export async function getDailyQuestion(): Promise<string | null> {
+  const today = new Date().toDateString();
+  const date = await AsyncStorage.getItem(KEYS.DAILY_QUESTION_DATE);
+  if (date !== today) return null;
+  return AsyncStorage.getItem(KEYS.DAILY_QUESTION);
+}
+
+// Project context
+export async function saveProjectContext(text: string) { await AsyncStorage.setItem(KEYS.PROJECT_CONTEXT, text); }
+export async function getProjectContext(): Promise<string> {
+  return (await AsyncStorage.getItem(KEYS.PROJECT_CONTEXT)) || '';
+}
+
+// Bubble radius
+export async function saveBubbleRadius(radius: 'sharp' | 'rounded' | 'pill') { await AsyncStorage.setItem(KEYS.BUBBLE_RADIUS, radius); }
+export async function getBubbleRadius(): Promise<'sharp' | 'rounded' | 'pill'> {
+  return ((await AsyncStorage.getItem(KEYS.BUBBLE_RADIUS)) as 'sharp' | 'rounded' | 'pill') || 'rounded';
+}
+
+// Companion animation style
+export async function saveCompanionAnim(style: 'pulse' | 'bounce' | 'spin' | 'breathe') { await AsyncStorage.setItem(KEYS.COMPANION_ANIM, style); }
+export async function getCompanionAnim(): Promise<'pulse' | 'bounce' | 'spin' | 'breathe'> {
+  return ((await AsyncStorage.getItem(KEYS.COMPANION_ANIM)) as 'pulse' | 'bounce' | 'spin' | 'breathe') || 'pulse';
+}
+
+// Pending subject (Mystery School → Chat handoff)
+export async function savePendingSubject(subject: string) { await AsyncStorage.setItem(KEYS.PENDING_SUBJECT, subject); }
+export async function getPendingSubject(): Promise<string | null> { return AsyncStorage.getItem(KEYS.PENDING_SUBJECT); }
+export async function clearPendingSubject() { await AsyncStorage.removeItem(KEYS.PENDING_SUBJECT); }
 
 // Active API key — returns key matching the current model's provider
 export async function getActiveKey(): Promise<string | null> {

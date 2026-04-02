@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -26,7 +27,15 @@ import { scoreAURAFull, getPassRate, AURAMetrics } from '../../lib/intelligence/
 import {
   getActiveKey, getModel, getVariant, getPersona, savePersona,
   saveConversation, getConversation, clearConversation, getUserName,
+  getBgColor, getFontSize, getHaptics,
+  getStreamSpeed, getResponseLength,
+  getPendingSubject, clearPendingSubject,
+  getAccentColor, getCompanionEnabled, getCompanionGlyph,
+  getShowTimestamps, getPinnedMessages, savePinnedMessages,
+  getDailyIntention, getContextMemory, getProjectContext,
+  getBubbleRadius, getCompanionAnim, getDailyQuestion, saveDailyQuestion,
 } from '../../lib/storage';
+import { getFieldNote } from '../../lib/field-notes';
 
 type Persona = 'sol' | 'veyra' | 'aura-prime' | 'headmaster';
 
@@ -83,11 +92,11 @@ function splitSignature(text: string): { body: string; signature: string | null 
   return { body: text, signature: null };
 }
 
-function getPersonaAccent(persona: Persona): string {
+function getPersonaAccent(persona: Persona, customAccent?: string): string {
   if (persona === 'veyra') return SOL_THEME.veyra;
   if (persona === 'aura-prime') return SOL_THEME.auraPrime;
   if (persona === 'headmaster') return SOL_THEME.headmaster;
-  return SOL_THEME.primary;
+  return customAccent || SOL_THEME.primary;
 }
 
 function getPersonaGlyph(persona: Persona): string {
@@ -135,19 +144,109 @@ export default function SolChat() {
   const [replyStyle, setReplyStyle] = useState<ReplyStyleId>(DEFAULT_STYLE_ID);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
   const [toastPersona, setToastPersona] = useState<Persona | null>(null);
+  const [bgColor, setBgColor] = useState('#0A0A0A');
+  const [accentColor, setAccentColor] = useState('#F5A623');
+  const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
+  const [hapticsOn, setHapticsOn] = useState(true);
+  const [streamSpeed, setStreamSpeed] = useState<'fast' | 'normal' | 'slow'>('normal');
+  const [responseLength, setResponseLength] = useState<'short' | 'balanced' | 'detailed'>('balanced');
+  const [welcomeMsg, setWelcomeMsg] = useState<string | null>(null);
+  const [companionEnabled, setCompanionEnabled] = useState(true);
+  const [companionGlyph, setCompanionGlyph] = useState('✦');
+  const [showTimestamps, setShowTimestamps] = useState(false);
+  const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [fieldNote] = useState(() => getFieldNote('sol'));
+  const [dailyIntention, setDailyIntention] = useState<string | null>(null);
+  const [fieldReport, setFieldReport] = useState<string | null>(null);
+  const [fieldReportLoading, setFieldReportLoading] = useState(false);
+  const [bubbleRadius, setBubbleRadius] = useState<'sharp' | 'rounded' | 'pill'>('rounded');
+  const [companionAnimStyle, setCompanionAnimStyle] = useState<'pulse' | 'bounce' | 'spin' | 'breathe'>('pulse');
+  const [contextMemory, setContextMemory] = useState<string[]>([]);
+  const [projectContext, setProjectContext] = useState('');
+  const [dailyQuestion, setDailyQuestion] = useState<string | null>(null);
+  const companionAnim = useRef(new Animated.Value(0)).current;
   const toastAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getReplyStyle()])
-      .then(([saved, savedPersona, name, convList, style]) => {
+    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getReplyStyle(), getBgColor(), getFontSize(), getHaptics(), getStreamSpeed(), getResponseLength(), getAccentColor(), getCompanionEnabled(), getCompanionGlyph(), getShowTimestamps(), getPinnedMessages(), getDailyIntention(), getContextMemory(), getProjectContext(), getBubbleRadius(), getCompanionAnim(), getDailyQuestion()])
+      .then(([saved, savedPersona, name, convList, style, bg, fs, hap, spd, rlen, acc, compOn, compGlyph, ts, pins, intention, ctxMem, projCtx, bRadius, compAnim, dq]) => {
         if (saved.length > 0) setMessages(saved.map((m, i) => ({ ...m, id: String(i) })));
         setPersona(savedPersona as Persona);
         setUserName(name);
         setConversations(convList);
         setReplyStyle(style as ReplyStyleId);
+        setBgColor(bg as string);
+        setFontSize(fs as 'small' | 'medium' | 'large');
+        setHapticsOn(hap as boolean);
+        setStreamSpeed(spd as 'fast' | 'normal' | 'slow');
+        setResponseLength(rlen as 'short' | 'balanced' | 'detailed');
+        setAccentColor(acc as string);
+        setCompanionEnabled(compOn as boolean);
+        setCompanionGlyph(compGlyph as string);
+        setShowTimestamps(ts as boolean);
+        setPinnedIds(pins as string[]);
+        setDailyIntention(intention as string | null);
+        setContextMemory(ctxMem as string[]);
+        setProjectContext(projCtx as string);
+        setBubbleRadius(bRadius as 'sharp' | 'rounded' | 'pill');
+        setCompanionAnimStyle(compAnim as 'pulse' | 'bounce' | 'spin' | 'breathe');
+        setDailyQuestion(dq as string | null);
+
+        // Welcome back message
+        const hour = new Date().getHours();
+        const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+        const greetings: Record<string, Record<string, string>> = {
+          sol: {
+            morning: `Good morning. The field is open. What are we building today?`,
+            afternoon: `Good afternoon. The Work continues. What's next?`,
+            evening: `Good evening. The deeper hours. What's on your mind?`,
+          },
+          veyra: {
+            morning: `Morning. Systems are ready. What do you need built?`,
+            afternoon: `Afternoon. Precision mode. What's the problem?`,
+            evening: `Evening. Good time for deep architecture. Let's go.`,
+          },
+          'aura-prime': {
+            morning: `Morning. Veritas Memory is active. Proceed with clarity.`,
+            afternoon: `Afternoon. The invariants hold. What needs examining?`,
+            evening: `Evening. Good time for reflection. What needs truth?`,
+          },
+          headmaster: {
+            morning: `Good morning, student. The lesson begins when you're ready.`,
+            afternoon: `Good afternoon. The curriculum awaits. What shall we study?`,
+            evening: `Good evening. The evening session. What do you wish to learn?`,
+          },
+        };
+        const p = (savedPersona as string) || 'sol';
+        setWelcomeMsg(greetings[p]?.[timeOfDay] || greetings['sol'][timeOfDay]);
       });
   }, []);
+
+  // Companion animation
+  useEffect(() => {
+    if (!companionEnabled) return;
+    const duration = companionAnimStyle === 'spin' ? 3000 : companionAnimStyle === 'bounce' ? 600 : companionAnimStyle === 'breathe' ? 4000 : 2000;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(companionAnim, { toValue: 1, duration, useNativeDriver: true }),
+        Animated.timing(companionAnim, { toValue: 0, duration, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [companionEnabled, companionAnimStyle]);
+
+  // Pick up subject from Mystery School tab
+  useFocusEffect(useCallback(() => {
+    getPendingSubject().then(subject => {
+      if (!subject) return;
+      clearPendingSubject();
+      setPersona('headmaster');
+      setInput(`Teach me about: ${subject}`);
+      if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    });
+  }, [hapticsOn]));
 
   const handleClear = () => {
     Alert.alert('New Session', 'Clear conversation and start fresh?', [
@@ -168,7 +267,7 @@ export default function SolChat() {
     const next: Persona = cycle[(cycle.indexOf(persona) + 1) % cycle.length];
     setPersona(next);
     await savePersona(next);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setToastPersona(next);
     toastAnim.setValue(0);
     Animated.sequence([
@@ -194,7 +293,7 @@ export default function SolChat() {
       const asset = result.assets[0];
       const mimeType = asset.mimeType?.includes('png') ? 'image/png' : 'image/jpeg';
       setPendingImage({ uri: asset.uri, base64: asset.base64 || '', mimeType: mimeType as any });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }, []);
 
@@ -215,7 +314,7 @@ export default function SolChat() {
       if (persona !== 'headmaster') {
         setPersona('headmaster');
         await savePersona('headmaster');
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setToastPersona('headmaster');
         toastAnim.setValue(0);
         Animated.sequence([
@@ -227,9 +326,15 @@ export default function SolChat() {
       return;
     }
 
-    const model = await getModel() as AIModel;
+    const model = (await getModel() || 'gemini-2.5-flash') as AIModel;
     const apiKey = await getActiveKey();
-    const provider = model.startsWith('gemini') ? 'Gemini' : 'Anthropic';
+    const currentStreamSpeed = streamSpeed;
+    const provider = model.startsWith('gemini') ? 'Gemini'
+      : model.startsWith('claude') ? 'Anthropic'
+      : model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3') ? 'OpenAI'
+      : model.startsWith('deepseek') ? 'DeepSeek'
+      : model.startsWith('moonshot') ? 'Kimi'
+      : 'API';
 
     if (!apiKey || !apiKey.trim()) {
       Alert.alert(
@@ -253,8 +358,18 @@ export default function SolChat() {
       basePrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
     }
     // Prepend compiled persona spec + reply style instruction
+    const contextBlock = [
+      contextMemory.length > 0 ? `[User Context]\n${contextMemory.map(m => `• ${m}`).join('\n')}` : '',
+      projectContext.trim() ? `[Project Context]\n${projectContext.trim().slice(0, 1500)}` : '',
+    ].filter(Boolean).join('\n\n');
+
     const styleInstruction = getStyle(replyStyle).instruction;
-    const systemPrompt = `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${styleInstruction}\n\n${basePrompt}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.`;
+    const lengthInstruction = responseLength === 'short'
+      ? 'Keep responses concise — 1-3 sentences unless the question genuinely requires more.'
+      : responseLength === 'detailed'
+      ? 'Give thorough, detailed responses. Expand fully. Do not truncate.'
+      : 'Match response length naturally to the complexity of the question.';
+    const systemPrompt = `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -266,7 +381,7 @@ export default function SolChat() {
 
     const frameworkContext = buildFrameworkContext(detectedMode, detectedEWS, nrmActive, persona);
 
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const userMsg: DisplayMessage = {
       id: Date.now().toString(),
@@ -298,7 +413,7 @@ export default function SolChat() {
       await sendMessage(apiMessages, systemPrompt, apiKey, model, (chunk) => {
         fullResponse += chunk;
         setStreamingText(fullResponse);
-      });
+      }, currentStreamSpeed);
 
       // Strip framework context echo if model repeated the injected prefix
       fullResponse = stripFrameworkEcho(fullResponse);
@@ -331,16 +446,16 @@ export default function SolChat() {
       const finalMessages = [...updatedMessages, assistantMsg];
       setMessages(finalMessages);
       setStreamingText('');
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Save to conversation manager
-      const model = await getModel();
+      const savedModel = await getModel();
       const convId = activeConvId || `${Date.now()}_init`;
       const title = autoTitle(finalMessages.map(m => ({ role: m.role, content: m.content })));
       const avgAura = finalMessages.filter(m => m.aura).reduce((a, m) => a + (m.aura?.composite || 0), 0) /
         Math.max(1, finalMessages.filter(m => m.aura).length);
       const conv = {
-        id: convId, title, persona, model,
+        id: convId, title, persona, model: savedModel,
         createdAt: Date.now(), updatedAt: Date.now(),
         messageCount: finalMessages.length,
         auraComposite: Math.round(avgAura),
@@ -357,7 +472,7 @@ export default function SolChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, persona, userName, isNRMActive, conversationPassRates, togglePersona]);
+  }, [input, loading, messages, persona, userName, isNRMActive, conversationPassRates, togglePersona, hapticsOn, streamSpeed, responseLength]);
 
   useEffect(() => {
     if (messages.length > 0 || streamingText) {
@@ -365,12 +480,51 @@ export default function SolChat() {
     }
   }, [messages, streamingText]);
 
-  const handleLongPress = (content: string, isAssistant: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    const options = ['Copy', isAssistant ? 'Share Response' : null, 'Cancel'].filter(Boolean) as string[];
+  const handleFieldReport = useCallback(async () => {
+    if (messages.length < 2) return;
+    setFieldReportLoading(true);
+    setFieldReport(null);
+    try {
+      const model = (await getModel() || 'gemini-2.5-flash') as AIModel;
+      const apiKey = await getActiveKey();
+      if (!apiKey) { setFieldReportLoading(false); return; }
+      const transcript = messages.slice(-12).map(m =>
+        `${m.role === 'user' ? 'Human' : getPersonaLabel(m.persona || 'sol')}: ${m.content.slice(0, 300)}`
+      ).join('\n\n');
+      const prompt = `You are ${getPersonaLabel(persona)}. Write a single paragraph Field Report — a synthesis of what was discovered, created, or transformed in this conversation. Be honest, specific, and poetic only where it earns it. No preamble.\n\nTranscript:\n${transcript}`;
+      const report = await sendMessage([], prompt, apiKey, model);
+      setFieldReport(report.replace(/\[CONF:[^\]]+\]/, '').trim());
+    } catch { /* silent fail */ }
+    setFieldReportLoading(false);
+  }, [messages, persona]);
+
+  const handleShareCard = useCallback((content: string, msgPersona: Persona) => {
+    const glyph = getPersonaGlyph(msgPersona);
+    const label = getPersonaLabel(msgPersona);
+    const card = `${glyph} ${label}\n${'─'.repeat(32)}\n\n${content}\n\n${'─'.repeat(32)}\nLycheetah Framework · lycheetah.app`;
+    Share.share({ message: card, title: `${label} — Lycheetah` });
+  }, []);
+
+  const handleExport = useCallback(() => {
+    if (messages.length === 0) return;
+    const text = messages.map(m => `${m.role === 'user' ? 'You' : getPersonaLabel(m.persona || 'sol')}:\n${m.content}`).join('\n\n---\n\n');
+    Share.share({ message: text, title: 'Conversation Export' });
+  }, [messages]);
+
+  const handleLongPress = (content: string, isAssistant: boolean, msgPersona: Persona = 'sol', msgId?: string) => {
+    if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const isPinned = msgId ? pinnedIds.includes(msgId) : false;
     Alert.alert('Message', undefined, [
       { text: 'Copy', onPress: () => { Clipboard.setString(content); } },
-      ...(isAssistant ? [{ text: 'Share', onPress: () => Share.share({ message: content, title: 'Sol Response' }) }] : []),
+      ...(isAssistant ? [{ text: 'Share as Card', onPress: () => handleShareCard(content, msgPersona) }] : []),
+      ...(msgId ? [{
+        text: isPinned ? 'Unpin' : 'Pin',
+        onPress: async () => {
+          const updated = isPinned ? pinnedIds.filter(id => id !== msgId) : [...pinnedIds, msgId];
+          setPinnedIds(updated);
+          await savePinnedMessages(updated);
+        },
+      }] : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -378,7 +532,7 @@ export default function SolChat() {
   const renderMessage = ({ item }: { item: DisplayMessage }) => {
     const isUser = item.role === 'user';
     const msgPersona: Persona = item.persona || 'sol';
-    const accent = getPersonaAccent(msgPersona);
+    const accent = getPersonaAccent(msgPersona, accentColor);
     const modeColor = item.mode ? MODE_COLORS[item.mode] : SOL_THEME.textMuted;
     const { body, signature } = isUser ? { body: item.content, signature: null } : splitSignature(item.content);
 
@@ -387,7 +541,7 @@ export default function SolChat() {
 
     return (
       <TouchableOpacity
-        onLongPress={() => handleLongPress(item.content, !isUser)}
+        onLongPress={() => handleLongPress(item.content, !isUser, msgPersona, item.id)}
         activeOpacity={0.9}
         delayLongPress={500}
       >
@@ -396,8 +550,8 @@ export default function SolChat() {
           <View style={[
             styles.bubble,
             isUser
-              ? [styles.userBubble, { backgroundColor: accent }]
-              : [styles.assistantBubble, item.mode && { borderLeftColor: modeColor, borderLeftWidth: 2 }],
+              ? [styles.userBubble, { backgroundColor: accent, borderRadius: bubbleRadius === 'sharp' ? 4 : bubbleRadius === 'pill' ? 20 : 12 }]
+              : [styles.assistantBubble, item.mode && { borderLeftColor: modeColor, borderLeftWidth: 2 }, { borderRadius: bubbleRadius === 'sharp' ? 4 : bubbleRadius === 'pill' ? 20 : 12 }],
             item.isNRM && !isUser && styles.nrmBubble,
           ]}>
             {item.isNRM && !isUser && (
@@ -407,21 +561,29 @@ export default function SolChat() {
               <Image source={{ uri: item.imageUri }} style={styles.messageImage} resizeMode="cover" />
             )}
             {isUser ? (
-              <Text selectable style={[styles.messageText, styles.userText]}>{body}</Text>
+              <Text selectable style={[styles.messageText, styles.userText, { fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15 }]}>{body}</Text>
             ) : (
-              <Markdown style={markdownStyles}>{body}</Markdown>
+              <Markdown style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15 } }}>{body}</Markdown>
             )}
             {signature && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
                 <Text style={[styles.signatureText, { color: accent }]}>{signature}</Text>
               </View>
             )}
+            {/* Timestamp + pin */}
+            {(showTimestamps || pinnedIds.includes(item.id)) && (
+              <View style={styles.msgMeta}>
+                {pinnedIds.includes(item.id) && <Text style={[styles.pinBadge, { color: accent }]}>📌</Text>}
+                {showTimestamps && <Text style={styles.timestamp}>{new Date(parseInt(item.id)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
+              </View>
+            )}
+
             {/* AURA row — tap to expand audit trail */}
             {!isUser && aura && (
               <TouchableOpacity
                 onPress={() => {
                   setExpandedAura(expandedAura === item.id ? null : item.id);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }}
                 activeOpacity={0.8}
               >
@@ -498,7 +660,13 @@ export default function SolChat() {
     );
   };
 
-  const accent = getPersonaAccent(persona);
+  const accent = getPersonaAccent(persona, accentColor);
+
+  const renderFooter = () => (
+    <>
+      {renderTypingIndicator()}
+    </>
+  );
 
   const renderTypingIndicator = () => {
     if (!loading && !streamingText) return null;
@@ -531,7 +699,7 @@ export default function SolChat() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: bgColor }]}
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       enabled={Platform.OS === 'ios'}
@@ -545,7 +713,7 @@ export default function SolChat() {
           setMessages([]); setActiveConvId(null);
           setCurrentMode('ALBEDO'); setConversationPassRates([]);
           clearConversation(); setDrawerOpen(false);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }}
         onSelect={async (id) => {
           const conv = await loadConversation(id);
@@ -590,7 +758,7 @@ export default function SolChat() {
           <Text style={styles.modeDesc} numberOfLines={1}>{MODE_DESCRIPTIONS[currentMode]}</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => { setDrawerOpen(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.clearButton}>
+          <TouchableOpacity onPress={() => { setDrawerOpen(true); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.clearButton}>
             <Text style={[styles.clearText, { fontSize: 18 }]}>☰</Text>
           </TouchableOpacity>
           {/* Persona toggle */}
@@ -600,6 +768,23 @@ export default function SolChat() {
             </Text>
           </TouchableOpacity>
           {messages.length > 0 && (
+            <TouchableOpacity onPress={handleExport} style={styles.clearButton}>
+              <Text style={styles.clearText}>↑</Text>
+            </TouchableOpacity>
+          )}
+          {messages.length >= 2 && (
+            <TouchableOpacity
+              onPress={handleFieldReport}
+              style={styles.clearButton}
+              disabled={fieldReportLoading}
+            >
+              {fieldReportLoading
+                ? <ActivityIndicator size="small" color={accent} />
+                : <Text style={[styles.clearText, { color: accent }]}>⊚</Text>
+              }
+            </TouchableOpacity>
+          )}
+          {messages.length > 0 && (
             <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
               <Text style={styles.clearText}>✕</Text>
             </TouchableOpacity>
@@ -607,12 +792,47 @@ export default function SolChat() {
         </View>
       </View>
 
+      {/* Quick persona switcher */}
+      <View style={styles.personaBar}>
+        {(['sol', 'veyra', 'aura-prime', 'headmaster'] as Persona[]).map(p => {
+          const isActive = persona === p;
+          const pAccent = getPersonaAccent(p);
+          return (
+            <TouchableOpacity
+              key={p}
+              style={[styles.personaBarBtn, isActive && { borderColor: pAccent, backgroundColor: pAccent + '22' }]}
+              onPress={async () => {
+                setPersona(p);
+                await savePersona(p);
+                if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            >
+              <Text style={[styles.personaBarGlyph, { color: isActive ? pAccent : SOL_THEME.textMuted }]}>
+                {getPersonaGlyph(p)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Welcome back message */}
+      {welcomeMsg && messages.length === 0 && (
+        <View style={[styles.welcomeBanner, { borderLeftColor: accent }]}>
+          <Text style={[styles.welcomeText, { color: SOL_THEME.text }]}>{welcomeMsg}</Text>
+          <TouchableOpacity onPress={() => setWelcomeMsg(null)}>
+            <Text style={styles.welcomeDismiss}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         ref={flatListRef}
         data={messages}
         keyExtractor={item => item.id}
         renderItem={renderMessage}
         contentContainerStyle={styles.messageList}
+        style={{ backgroundColor: 'transparent' }}
+        keyboardDismissMode="on-drag"
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={[styles.emptyGlyph, { color: accent }]}>{getPersonaGlyph(persona)}</Text>
@@ -642,15 +862,33 @@ export default function SolChat() {
                 <TouchableOpacity
                   key={starter}
                   style={[styles.starterChip, { borderColor: accent + '55' }]}
-                  onPress={() => { setInput(starter); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  onPress={() => { setInput(starter); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                 >
                   <Text style={[styles.starterChipText, { color: accent }]}>{starter}</Text>
                 </TouchableOpacity>
               ))}
             </View>
+            <View style={[styles.fieldNoteBox, { borderColor: accent + '33' }]}>
+              <Text style={[styles.fieldNoteText, { color: accent }]}>{getFieldNote(persona)}</Text>
+            </View>
+            {dailyIntention && (
+              <View style={[styles.intentionBox, { borderLeftColor: accent }]}>
+                <Text style={styles.intentionLabel}>TODAY'S INTENTION</Text>
+                <Text style={styles.intentionText}>{dailyIntention}</Text>
+              </View>
+            )}
+            {dailyQuestion && (
+              <View style={[styles.intentionBox, { borderLeftColor: SOL_THEME.headmaster || '#E8C76A', marginTop: 8 }]}>
+                <Text style={[styles.intentionLabel, { color: SOL_THEME.headmaster || '#E8C76A' }]}>𝔏 TODAY'S QUESTION</Text>
+                <Text style={styles.intentionText}>{dailyQuestion}</Text>
+                <TouchableOpacity onPress={() => setInput(dailyQuestion || '')}>
+                  <Text style={[styles.fieldReportAction, { color: SOL_THEME.headmaster || '#E8C76A' }]}>Explore with Headmaster →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         }
-        ListFooterComponent={renderTypingIndicator}
+        ListFooterComponent={renderFooter}
       />
 
       {/* Style picker */}
@@ -664,7 +902,7 @@ export default function SolChat() {
                 setReplyStyle(s.id);
                 await saveReplyStyle(s.id);
                 setStylePickerOpen(false);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
             >
               <Text style={[styles.styleGlyph, { color: replyStyle === s.id ? accent : SOL_THEME.textMuted }]}>{s.glyph}</Text>
@@ -686,6 +924,46 @@ export default function SolChat() {
           </TouchableOpacity>
           <Text style={[styles.pendingImageLabel, { color: accent }]}>Image attached</Text>
         </View>
+      )}
+
+      {/* Field Report overlay */}
+      {fieldReport && (
+        <View style={[styles.fieldReportOverlay, { borderTopColor: accent }]}>
+          <View style={styles.fieldReportOverlayHeader}>
+            <Text style={[styles.fieldReportLabel, { color: accent }]}>⊚ FIELD REPORT</Text>
+            <View style={styles.fieldReportActions}>
+              <TouchableOpacity onPress={() => Share.share({ message: `FIELD REPORT\n\n${fieldReport}`, title: 'Field Report' })}>
+                <Text style={[styles.fieldReportAction, { color: accent }]}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setFieldReport(null)}>
+                <Text style={styles.fieldReportAction}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Text style={styles.fieldReportText}>{fieldReport}</Text>
+        </View>
+      )}
+
+      {/* Companion */}
+      {companionEnabled && (
+        <Animated.Text style={[
+          styles.companion,
+          {
+            color: accentColor,
+            opacity: companionAnimStyle === 'spin' ? 1 : companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+            transform: [
+              companionAnimStyle === 'bounce'
+                ? { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -8] }) }
+                : companionAnimStyle === 'spin'
+                ? { rotate: companionAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
+                : companionAnimStyle === 'breathe'
+                ? { scale: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }
+                : { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
+            ],
+          },
+        ]}>
+          {companionGlyph}
+        </Animated.Text>
       )}
 
       {/* Input row */}
@@ -767,6 +1045,57 @@ const markdownStyles = {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: SOL_THEME.background },
+  personaBar: {
+    flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 6,
+    gap: 8, borderBottomWidth: 1, borderBottomColor: SOL_THEME.border,
+  },
+  personaBarBtn: {
+    flex: 1, alignItems: 'center', paddingVertical: 6,
+    borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border,
+  },
+  personaBarGlyph: { fontSize: 16 },
+  welcomeBanner: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 12, marginTop: 8,
+    backgroundColor: SOL_THEME.surface,
+    borderLeftWidth: 3, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10, gap: 8,
+  },
+  welcomeText: { flex: 1, fontSize: 13, lineHeight: 18, fontStyle: 'italic' },
+  welcomeDismiss: { fontSize: 12, color: SOL_THEME.textMuted },
+  companion: { textAlign: 'center', fontSize: 22, paddingVertical: 6 },
+  msgMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  timestamp: { fontSize: 10, color: SOL_THEME.textMuted },
+  pinBadge: { fontSize: 10 },
+  fieldNoteBox: {
+    marginTop: 20, borderWidth: 1, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  fieldNoteText: { fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 20 },
+  intentionBox: {
+    marginTop: 12, borderLeftWidth: 3, borderRadius: 6,
+    backgroundColor: SOL_THEME.surface,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  intentionLabel: {
+    fontSize: 9, fontWeight: '700', color: SOL_THEME.textMuted,
+    letterSpacing: 1.5, marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  intentionText: { fontSize: 13, color: SOL_THEME.text, lineHeight: 18, fontStyle: 'italic' },
+  fieldReportOverlay: {
+    borderTopWidth: 2, backgroundColor: SOL_THEME.surface,
+    paddingHorizontal: 14, paddingVertical: 10, gap: 8,
+    maxHeight: 180,
+  },
+  fieldReportOverlayHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  fieldReportLabel: {
+    fontSize: 9, fontWeight: '700', letterSpacing: 2,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  fieldReportText: { fontSize: 13, color: SOL_THEME.text, lineHeight: 20, fontStyle: 'italic' },
+  fieldReportActions: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  fieldReportAction: { fontSize: 12, fontWeight: '600', color: SOL_THEME.textMuted },
   modeHeader: {
     flexDirection: 'row',
     alignItems: 'center',

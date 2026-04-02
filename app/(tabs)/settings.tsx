@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Switch, Platform, Linking,
+  StyleSheet, Alert, Platform, Linking, Share,
 } from 'react-native';
 import { SOL_THEME } from '../../constants/theme';
 import { AIModel } from '../../lib/ai-client';
@@ -12,6 +12,9 @@ import {
   saveVariant, getVariant,
   saveUserName, getUserName,
   clearConversation,
+  saveContextMemory, getContextMemory,
+  saveProjectContext, getProjectContext,
+  getAccentColor,
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
@@ -21,19 +24,28 @@ export default function SettingsScreen() {
   const [isPrivate, setIsPrivate] = useState(true);
   const [userName, setUserName] = useState('');
   const [expandedProvider, setExpandedProvider] = useState<string | null>('gemini');
+  const [accentColor, setAccentColor] = useState('#F5A623');
+  const [contextMemory, setContextMemory] = useState<string[]>([]);
+  const [newMemoryItem, setNewMemoryItem] = useState('');
+  const [projectContext, setProjectContext] = useState('');
 
   useEffect(() => {
-    getModel().then(m => setModel(m));
+    getModel().then(m => {
+      const resolved = m || 'gemini-2.5-flash';
+      setModel(resolved);
+      if (!m) saveModel(resolved);
+    });
     getVariant().then(v => setIsPrivate(v === 'private'));
     getUserName().then(n => setUserName(n));
-    // Load all provider keys
+    getAccentColor().then(c => setAccentColor(c));
+    getContextMemory().then(m => setContextMemory(m));
+    getProjectContext().then(p => setProjectContext(p));
     Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
       .then(results => {
         const keys: Record<string, string> = {};
         results.forEach(r => { keys[r.id] = r.key; });
         setProviderKeys(keys);
         setSavedKeys({ ...keys });
-        // Auto-expand first provider with a saved key
         const first = results.find(r => r.key);
         if (first) setExpandedProvider(first.id);
       });
@@ -111,7 +123,6 @@ export default function SettingsScreen() {
 
         return (
           <View key={provider.id} style={styles.providerCard}>
-            {/* Provider header — tap to expand */}
             <TouchableOpacity
               style={styles.providerHeader}
               onPress={() => setExpandedProvider(isExpanded ? null : provider.id)}
@@ -133,7 +144,6 @@ export default function SettingsScreen() {
 
             {isExpanded && (
               <View style={styles.providerBody}>
-                {/* Key input */}
                 <Text style={styles.keyLabel}>API KEY</Text>
                 <View style={styles.keyRow}>
                   <TextInput
@@ -158,8 +168,6 @@ export default function SettingsScreen() {
                     ✓ Key saved ({savedKey.slice(0, 10)}...)
                   </Text>
                 )}
-
-                {/* Models */}
                 <Text style={styles.keyLabel}>MODELS</Text>
                 {providerModels.map(m => (
                   <TouchableOpacity
@@ -180,27 +188,96 @@ export default function SettingsScreen() {
         );
       })}
 
+      {/* CONTEXT MEMORY */}
+      <Text style={styles.sectionTitle}>CONTEXT MEMORY</Text>
+      <Text style={styles.sectionNote}>Facts injected silently into every conversation. Sol always knows.</Text>
+      {contextMemory.map((item, i) => (
+        <View key={i} style={styles.memoryItem}>
+          <Text style={styles.memoryText} numberOfLines={1}>{item}</Text>
+          <TouchableOpacity onPress={async () => {
+            const updated = contextMemory.filter((_, j) => j !== i);
+            setContextMemory(updated);
+            await saveContextMemory(updated);
+          }}>
+            <Text style={styles.memoryRemove}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      {contextMemory.length < 8 && (
+        <View style={styles.keyRow}>
+          <TextInput
+            style={styles.keyInput}
+            value={newMemoryItem}
+            onChangeText={setNewMemoryItem}
+            placeholder="e.g. I'm building a mobile app in React Native"
+            placeholderTextColor={SOL_THEME.textMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: accentColor }]}
+            onPress={async () => {
+              if (!newMemoryItem.trim()) return;
+              const updated = [...contextMemory, newMemoryItem.trim()];
+              setContextMemory(updated);
+              setNewMemoryItem('');
+              await saveContextMemory(updated);
+            }}
+          >
+            <Text style={styles.saveButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* PROJECT CONTEXT */}
+      <Text style={styles.sectionTitle}>PROJECT CONTEXT</Text>
+      <Text style={styles.sectionNote}>Paste notes, code, or context. Sol draws from this in every response.</Text>
+      <TextInput
+        style={styles.projectContextInput}
+        value={projectContext}
+        onChangeText={setProjectContext}
+        onEndEditing={() => saveProjectContext(projectContext)}
+        placeholder="Paste your project notes, architecture, goals, anything Sol should know..."
+        placeholderTextColor={SOL_THEME.textMuted}
+        multiline
+        numberOfLines={5}
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      {projectContext.length > 0 && (
+        <Text style={styles.contextCount}>{projectContext.length} chars · auto-saved on exit</Text>
+      )}
+
       {/* VARIANT */}
       <Text style={styles.sectionTitle}>VARIANT</Text>
-      <View style={styles.variantRow}>
+      <TouchableOpacity
+        style={styles.variantRow}
+        onPress={() => handleVariantToggle(!isPrivate)}
+        activeOpacity={0.8}
+      >
         <View style={styles.variantText}>
           <Text style={styles.variantLabel}>{isPrivate ? 'Sol (Private)' : 'Lycheetah (Public)'}</Text>
           <Text style={styles.variantNote}>
             {isPrivate ? 'Full Sol Protocol — your personal build' : 'Public Lycheetah variant — shareable'}
           </Text>
         </View>
-        <Switch
-          value={isPrivate}
-          onValueChange={handleVariantToggle}
-          trackColor={{ false: SOL_THEME.border, true: SOL_THEME.primary }}
-          thumbColor={SOL_THEME.text}
-        />
-      </View>
+        <Text style={[styles.variantToggle, { color: accentColor }]}>{isPrivate ? '◉' : '○'}</Text>
+      </TouchableOpacity>
 
       {/* HISTORY */}
       <Text style={styles.sectionTitle}>HISTORY</Text>
       <TouchableOpacity style={styles.dangerButton} onPress={handleClearHistory}>
         <Text style={styles.dangerText}>Clear Conversation History</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.shareAppButton}
+        onPress={() => Share.share({
+          message: 'Lycheetah Mobile — free AI chat with Gemini, Claude, DeepSeek and more. Built different.\nhttps://github.com/Lycheetah/Lycheetah-Mobile-',
+          title: 'Lycheetah Mobile',
+        })}
+      >
+        <Text style={styles.shareAppText}>Share This App</Text>
       </TouchableOpacity>
 
       <View style={styles.footer}>
@@ -209,6 +286,7 @@ export default function SettingsScreen() {
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
+        <Text style={styles.footerVersion}>v2.0.0</Text>
       </View>
     </ScrollView>
   );
@@ -218,13 +296,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: SOL_THEME.background },
   content: { padding: 16, paddingBottom: 48 },
   freeBanner: {
-    backgroundColor: '#4A9EFF18',
-    borderWidth: 1,
-    borderColor: '#4A9EFF55',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-    marginTop: 8,
+    backgroundColor: '#4A9EFF18', borderWidth: 1, borderColor: '#4A9EFF55',
+    borderRadius: 10, padding: 14, marginBottom: 8, marginTop: 8,
   },
   freeBannerTitle: {
     fontSize: 11, fontWeight: '700', color: '#4A9EFF',
@@ -246,25 +319,18 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
   keyInput: {
-    flex: 1, backgroundColor: SOL_THEME.background,
-    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
-    color: SOL_THEME.text, fontSize: 14,
-    borderWidth: 1, borderColor: SOL_THEME.border,
+    flex: 1, backgroundColor: SOL_THEME.background, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10, color: SOL_THEME.text,
+    fontSize: 14, borderWidth: 1, borderColor: SOL_THEME.border,
   },
   saveButton: { borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
   saveButtonText: { color: SOL_THEME.background, fontWeight: '700', fontSize: 14 },
   keyStatus: { fontSize: 12, marginBottom: 4 },
-  // Provider cards
   providerCard: {
-    backgroundColor: SOL_THEME.surface,
-    borderRadius: 10, marginBottom: 8,
-    borderWidth: 1, borderColor: SOL_THEME.border,
-    overflow: 'hidden',
+    backgroundColor: SOL_THEME.surface, borderRadius: 10, marginBottom: 8,
+    borderWidth: 1, borderColor: SOL_THEME.border, overflow: 'hidden',
   },
-  providerHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    padding: 14, gap: 10,
-  },
+  providerHeader: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
   providerDot: { width: 10, height: 10, borderRadius: 5 },
   providerHeaderText: { flex: 1 },
   providerName: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
@@ -275,9 +341,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: SOL_THEME.border,
   },
   modelOption: {
-    flexDirection: 'row', backgroundColor: SOL_THEME.background,
-    borderRadius: 8, padding: 12, marginBottom: 6,
-    alignItems: 'center', borderWidth: 1, borderColor: SOL_THEME.border,
+    flexDirection: 'row', backgroundColor: SOL_THEME.background, borderRadius: 8,
+    padding: 12, marginBottom: 6, alignItems: 'center',
+    borderWidth: 1, borderColor: SOL_THEME.border,
   },
   modelSelected: { borderColor: SOL_THEME.primary },
   modelLeft: { flex: 1 },
@@ -291,13 +357,34 @@ const styles = StyleSheet.create({
   variantText: { flex: 1 },
   variantLabel: { fontSize: 15, fontWeight: '600', color: SOL_THEME.text, marginBottom: 2 },
   variantNote: { fontSize: 12, color: SOL_THEME.textMuted },
+  variantToggle: { fontSize: 22 },
   dangerButton: {
     backgroundColor: SOL_THEME.surface, borderRadius: 8, padding: 12,
     borderWidth: 1, borderColor: SOL_THEME.error, alignItems: 'center',
   },
   dangerText: { color: SOL_THEME.error, fontSize: 14, fontWeight: '600' },
-  footer: { marginTop: 40, alignItems: 'center', gap: 4 },
+  shareAppButton: {
+    marginTop: 24, backgroundColor: SOL_THEME.surface, borderRadius: 8, padding: 14,
+    borderWidth: 1, borderColor: SOL_THEME.primary, alignItems: 'center',
+  },
+  shareAppText: { color: SOL_THEME.primary, fontSize: 14, fontWeight: '700' },
+  footer: { marginTop: 20, alignItems: 'center', gap: 4 },
   footerText: { fontSize: 14, color: SOL_THEME.primary, fontWeight: '600' },
   footerLink: { fontSize: 12, color: '#4A9EFF' },
   footerSub: { fontSize: 11, color: SOL_THEME.textMuted, textAlign: 'center' },
+  footerVersion: { fontSize: 10, color: SOL_THEME.textMuted, marginTop: 2 },
+  memoryItem: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: SOL_THEME.surface,
+    borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border,
+    paddingHorizontal: 12, paddingVertical: 8, marginBottom: 6, gap: 8,
+  },
+  memoryText: { flex: 1, fontSize: 13, color: SOL_THEME.text },
+  memoryRemove: { fontSize: 12, color: SOL_THEME.textMuted },
+  projectContextInput: {
+    backgroundColor: SOL_THEME.surface, borderRadius: 8,
+    borderWidth: 1, borderColor: SOL_THEME.border,
+    padding: 12, color: SOL_THEME.text, fontSize: 13,
+    minHeight: 100, textAlignVertical: 'top', marginBottom: 4,
+  },
+  contextCount: { fontSize: 11, color: SOL_THEME.textMuted, marginBottom: 8 },
 });

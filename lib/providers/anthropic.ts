@@ -12,7 +12,7 @@ export const AnthropicProvider: AIProvider = {
     { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet', tier: 'paid', note: 'PAID · Balanced · Recommended' },
     { id: 'claude-opus-4-6',           label: 'Claude Opus',   tier: 'paid', note: 'PAID · Deepest · Most capable' },
   ],
-  async send(messages, systemPrompt, apiKey, model, onChunk) {
+  async send(messages, systemPrompt, apiKey, model, onChunk, _streamSpeed = 'normal') {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {

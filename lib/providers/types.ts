@@ -22,5 +22,6 @@ export interface AIProvider {
     apiKey: string,
     model: string,
     onChunk?: (text: string) => void,
+    streamSpeed?: 'fast' | 'normal' | 'slow',
   ): Promise<string>;
 }

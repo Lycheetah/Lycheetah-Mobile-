@@ -11,7 +11,7 @@ export const DeepSeekProvider: AIProvider = {
     { id: 'deepseek-chat',     label: 'DeepSeek Chat',     tier: 'freemium', note: 'FREE CREDITS · Fast · Best value' },
     { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner', tier: 'freemium', note: 'FREE CREDITS · R1 · Deep reasoning' },
   ],
-  async send(messages, systemPrompt, apiKey, model, onChunk) {
+  async send(messages, systemPrompt, apiKey, model, onChunk, _streamSpeed = 'normal') {
     const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
       headers: {

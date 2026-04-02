@@ -12,7 +12,7 @@ export const GeminiProvider: AIProvider = {
     { id: 'gemini-2.5-flash-lite',         label: 'Gemini 2.5 Flash Lite', tier: 'free', note: 'FREE · Fastest · High volume' },
     { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', tier: 'free', note: 'FREE · Preview · Newest' },
   ],
-  async send(messages, systemPrompt, apiKey, model, onChunk) {
+  async send(messages, systemPrompt, apiKey, model, onChunk, streamSpeed = 'normal') {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
     const contents = messages.map(m => {
       const parts: any[] = [];
@@ -40,10 +40,11 @@ export const GeminiProvider: AIProvider = {
     if (!text) throw new Error('Gemini returned empty response');
 
     if (onChunk) {
+      const delay = streamSpeed === 'fast' ? 6 : streamSpeed === 'slow' ? 40 : 18;
       const words = text.split(' ');
       for (const word of words) {
         onChunk(word + ' ');
-        await new Promise(r => setTimeout(r, 18));
+        await new Promise(r => setTimeout(r, delay));
       }
     }
     return text;

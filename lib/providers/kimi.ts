@@ -11,7 +11,7 @@ export const KimiProvider: AIProvider = {
     { id: 'moonshot-v1-8k',  label: 'Kimi 8K',  tier: 'paid', note: 'PAID · Fast · Short context' },
     { id: 'moonshot-v1-32k', label: 'Kimi 32K', tier: 'paid', note: 'PAID · Long context · Recommended' },
   ],
-  async send(messages, systemPrompt, apiKey, model, onChunk) {
+  async send(messages, systemPrompt, apiKey, model, onChunk, _streamSpeed = 'normal') {
     const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
       method: 'POST',
       headers: {

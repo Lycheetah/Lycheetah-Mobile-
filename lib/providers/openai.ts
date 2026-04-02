@@ -13,7 +13,7 @@ export const OpenAIProvider: AIProvider = {
     { id: 'gpt-4.1-mini', label: 'GPT-4.1 Mini', tier: 'paid', note: 'PAID · Latest mini · Recommended' },
     { id: 'gpt-4.1-nano', label: 'GPT-4.1 Nano', tier: 'paid', note: 'PAID · Lightest · High speed' },
   ],
-  async send(messages, systemPrompt, apiKey, model, onChunk) {
+  async send(messages, systemPrompt, apiKey, model, onChunk, _streamSpeed = 'normal') {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {

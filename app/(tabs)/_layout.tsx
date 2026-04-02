@@ -62,6 +62,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="school"
+        options={{
+          title: 'MYSTERY SCHOOL',
+          tabBarLabel: 'School',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="customize"
+        options={{
+          title: 'CUSTOMIZE',
+          tabBarLabel: 'Style',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="◈" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: 'SETTINGS',

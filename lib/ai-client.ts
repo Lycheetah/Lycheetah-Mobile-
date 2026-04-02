@@ -35,11 +35,12 @@ export async function sendMessage(
   apiKey: string,
   model: AIModel,
   onChunk?: (text: string) => void,
+  streamSpeed: 'fast' | 'normal' | 'slow' = 'normal',
 ): Promise<string> {
   if (!apiKey || !apiKey.trim()) throw new Error('No API key provided');
   if (!model) throw new Error('No model selected');
 
   const { getProviderForModel } = await import('./providers/registry');
   const provider = getProviderForModel(model);
-  return provider.send(messages, systemPrompt, apiKey.trim(), model, onChunk);
+  return provider.send(messages, systemPrompt, apiKey.trim(), model, onChunk, streamSpeed);
 }
