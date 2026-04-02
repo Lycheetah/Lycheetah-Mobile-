@@ -5,41 +5,38 @@ import {
 } from 'react-native';
 import { SOL_THEME } from '../../constants/theme';
 import { AIModel } from '../../lib/ai-client';
+import { PROVIDERS } from '../../lib/providers/registry';
 import {
-  saveAnthropicKey, getAnthropicKey,
-  saveGeminiKey, getGeminiKey,
+  saveProviderKey, getProviderKey,
   saveModel, getModel,
   saveVariant, getVariant,
   saveUserName, getUserName,
   clearConversation,
 } from '../../lib/storage';
 
-type ModelOption = { id: AIModel; label: string; provider: 'gemini' | 'anthropic'; note: string };
-
-const MODELS: ModelOption[] = [
-  { id: 'gemini-2.5-flash',              provider: 'gemini', label: 'Gemini 2.5 Flash',      note: 'FREE · Recommended · Start here' },
-  { id: 'gemini-2.5-flash-lite',         provider: 'gemini', label: 'Gemini 2.5 Flash Lite', note: 'FREE · Fastest · High volume' },
-  { id: 'gemini-3.1-flash-lite-preview', provider: 'gemini', label: 'Gemini 3.1 Flash Lite',  note: 'FREE · Preview · Newest' },
-  { id: 'claude-haiku-4-5-20251001', provider: 'anthropic', label: 'Claude Haiku',    note: 'PAID · Fastest Claude · ~$0.003/msg' },
-  { id: 'claude-sonnet-4-6',       provider: 'anthropic', label: 'Claude Sonnet',     note: 'PAID · Balanced · Recommended' },
-  { id: 'claude-opus-4-6',         provider: 'anthropic', label: 'Claude Opus',       note: 'PAID · Deepest · Most expensive' },
-];
-
 export default function SettingsScreen() {
-  const [anthropicKey, setAnthropicKey] = useState('');
-  const [geminiKey, setGeminiKey] = useState('');
-  const [savedAnthropicKey, setSavedAnthropicKey] = useState('');
-  const [savedGeminiKey, setSavedGeminiKey] = useState('');
-  const [model, setModel] = useState<AIModel>('gemini-2.5-flash');
+  const [providerKeys, setProviderKeys] = useState<Record<string, string>>({});
+  const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
+  const [model, setModel] = useState<string>('gemini-2.5-flash');
   const [isPrivate, setIsPrivate] = useState(true);
   const [userName, setUserName] = useState('');
+  const [expandedProvider, setExpandedProvider] = useState<string | null>('gemini');
 
   useEffect(() => {
-    getAnthropicKey().then(k => { if (k) { setSavedAnthropicKey(k); setAnthropicKey(k); } });
-    getGeminiKey().then(k => { if (k) { setSavedGeminiKey(k); setGeminiKey(k); } });
-    getModel().then(m => setModel(m as AIModel));
+    getModel().then(m => setModel(m));
     getVariant().then(v => setIsPrivate(v === 'private'));
     getUserName().then(n => setUserName(n));
+    // Load all provider keys
+    Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
+      .then(results => {
+        const keys: Record<string, string> = {};
+        results.forEach(r => { keys[r.id] = r.key; });
+        setProviderKeys(keys);
+        setSavedKeys({ ...keys });
+        // Auto-expand first provider with a saved key
+        const first = results.find(r => r.key);
+        if (first) setExpandedProvider(first.id);
+      });
   }, []);
 
   const handleSaveName = async () => {
@@ -47,23 +44,17 @@ export default function SettingsScreen() {
     Alert.alert('Saved', `Sol will call you ${userName.trim() || 'friend'}.`);
   };
 
-  const handleSaveGemini = async () => {
-    if (!geminiKey.trim()) return;
-    await saveGeminiKey(geminiKey.trim());
-    setSavedGeminiKey(geminiKey.trim());
-    Alert.alert('Saved', 'Gemini API key saved.');
+  const handleSaveKey = async (providerId: string) => {
+    const key = providerKeys[providerId]?.trim();
+    if (!key) return;
+    await saveProviderKey(providerId, key);
+    setSavedKeys(prev => ({ ...prev, [providerId]: key }));
+    Alert.alert('Saved', `${PROVIDERS.find(p => p.id === providerId)?.label} key saved.`);
   };
 
-  const handleSaveAnthropic = async () => {
-    if (!anthropicKey.trim()) return;
-    await saveAnthropicKey(anthropicKey.trim());
-    setSavedAnthropicKey(anthropicKey.trim());
-    Alert.alert('Saved', 'Anthropic API key saved.');
-  };
-
-  const handleModelSelect = async (m: AIModel) => {
-    setModel(m);
-    await saveModel(m);
+  const handleModelSelect = async (modelId: string) => {
+    setModel(modelId);
+    await saveModel(modelId);
   };
 
   const handleVariantToggle = async (val: boolean) => {
@@ -99,92 +90,97 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* FREE TIER */}
+      {/* FREE TIER BANNER */}
       <View style={styles.freeBanner}>
         <Text style={styles.freeBannerTitle}>★ START FREE</Text>
-        <Text style={styles.freeBannerBody}>
-          Gemini API is free via Google AI Studio.{'\n'}
-          No credit card required.
-        </Text>
+        <Text style={styles.freeBannerBody}>Gemini is free via Google AI Studio. DeepSeek gives free credits on signup.</Text>
         <TouchableOpacity onPress={() => Linking.openURL('https://aistudio.google.com/apikey')}>
-          <Text style={styles.freeBannerLink}>Get your free key → aistudio.google.com</Text>
+          <Text style={styles.freeBannerLink}>Get Gemini key → aistudio.google.com</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>GEMINI API KEY (FREE)</Text>
-      <View style={styles.keyRow}>
-        <TextInput
-          style={styles.keyInput}
-          value={geminiKey}
-          onChangeText={setGeminiKey}
-          placeholder="AIza..."
-          placeholderTextColor={SOL_THEME.textMuted}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#4A9EFF' }]} onPress={handleSaveGemini}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.keyStatus}>
-        {savedGeminiKey ? `✓ Gemini key saved (${savedGeminiKey.slice(0, 8)}...)` : 'No Gemini key — add one above for free access'}
-      </Text>
+      {/* PROVIDERS */}
+      <Text style={styles.sectionTitle}>API KEYS & MODELS</Text>
 
-      <Text style={styles.sectionTitle}>ANTHROPIC API KEY (PAID)</Text>
-      <Text style={styles.sectionNote}>console.anthropic.com — Claude Haiku ~$0.003/message</Text>
-      <View style={styles.keyRow}>
-        <TextInput
-          style={styles.keyInput}
-          value={anthropicKey}
-          onChangeText={setAnthropicKey}
-          placeholder="sk-ant-..."
-          placeholderTextColor={SOL_THEME.textMuted}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <TouchableOpacity style={[styles.saveButton, { backgroundColor: SOL_THEME.primary }]} onPress={handleSaveAnthropic}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={styles.keyStatus}>
-        {savedAnthropicKey ? `✓ Anthropic key saved (${savedAnthropicKey.slice(0, 12)}...)` : 'No Anthropic key'}
-      </Text>
+      {PROVIDERS.map(provider => {
+        const isExpanded = expandedProvider === provider.id;
+        const savedKey = savedKeys[provider.id];
+        const hasKey = !!savedKey;
+        const providerModels = provider.models;
+        const activeModel = providerModels.find(m => m.id === model);
 
-      <Text style={styles.sectionTitle}>MODEL</Text>
-      <Text style={styles.sectionNote}>Key is auto-selected based on model provider.</Text>
+        return (
+          <View key={provider.id} style={styles.providerCard}>
+            {/* Provider header — tap to expand */}
+            <TouchableOpacity
+              style={styles.providerHeader}
+              onPress={() => setExpandedProvider(isExpanded ? null : provider.id)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.providerDot, { backgroundColor: provider.color }]} />
+              <View style={styles.providerHeaderText}>
+                <Text style={[styles.providerName, { color: hasKey ? provider.color : SOL_THEME.textMuted }]}>
+                  {provider.label}
+                </Text>
+                <Text style={styles.providerStatus}>
+                  {hasKey
+                    ? activeModel ? `● ${activeModel.label}` : `● ${savedKey.slice(0, 10)}...`
+                    : provider.keyHint}
+                </Text>
+              </View>
+              <Text style={styles.expandIcon}>{isExpanded ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
 
-      <Text style={styles.providerLabel}>FREE — GEMINI</Text>
-      {MODELS.filter(m => m.provider === 'gemini').map(m => (
-        <TouchableOpacity
-          key={m.id}
-          style={[styles.modelOption, model === m.id && styles.modelSelected]}
-          onPress={() => handleModelSelect(m.id)}
-        >
-          <View style={styles.modelLeft}>
-            <Text style={[styles.modelLabel, model === m.id && styles.modelLabelActive]}>{m.label}</Text>
-            <Text style={styles.modelNote}>{m.note}</Text>
+            {isExpanded && (
+              <View style={styles.providerBody}>
+                {/* Key input */}
+                <Text style={styles.keyLabel}>API KEY</Text>
+                <View style={styles.keyRow}>
+                  <TextInput
+                    style={styles.keyInput}
+                    value={providerKeys[provider.id] || ''}
+                    onChangeText={val => setProviderKeys(prev => ({ ...prev, [provider.id]: val }))}
+                    placeholder={provider.keyPlaceholder}
+                    placeholderTextColor={SOL_THEME.textMuted}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveButton, { backgroundColor: provider.color }]}
+                    onPress={() => handleSaveKey(provider.id)}
+                  >
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+                {hasKey && (
+                  <Text style={[styles.keyStatus, { color: provider.color }]}>
+                    ✓ Key saved ({savedKey.slice(0, 10)}...)
+                  </Text>
+                )}
+
+                {/* Models */}
+                <Text style={styles.keyLabel}>MODELS</Text>
+                {providerModels.map(m => (
+                  <TouchableOpacity
+                    key={m.id}
+                    style={[styles.modelOption, model === m.id && [styles.modelSelected, { borderColor: provider.color }]]}
+                    onPress={() => handleModelSelect(m.id)}
+                  >
+                    <View style={styles.modelLeft}>
+                      <Text style={[styles.modelLabel, model === m.id && { color: SOL_THEME.text }]}>{m.label}</Text>
+                      <Text style={styles.modelNote}>{m.note}</Text>
+                    </View>
+                    {model === m.id && <Text style={[styles.checkmark, { color: provider.color }]}>✓</Text>}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
-          {model === m.id && <Text style={[styles.checkmark, { color: '#4A9EFF' }]}>✓</Text>}
-        </TouchableOpacity>
-      ))}
+        );
+      })}
 
-      <Text style={[styles.providerLabel, { marginTop: 12 }]}>PAID — CLAUDE</Text>
-      {MODELS.filter(m => m.provider === 'anthropic').map(m => (
-        <TouchableOpacity
-          key={m.id}
-          style={[styles.modelOption, model === m.id && styles.modelSelected]}
-          onPress={() => handleModelSelect(m.id)}
-        >
-          <View style={styles.modelLeft}>
-            <Text style={[styles.modelLabel, model === m.id && styles.modelLabelActive]}>{m.label}</Text>
-            <Text style={styles.modelNote}>{m.note}</Text>
-          </View>
-          {model === m.id && <Text style={[styles.checkmark, { color: SOL_THEME.primary }]}>✓</Text>}
-        </TouchableOpacity>
-      ))}
-
+      {/* VARIANT */}
       <Text style={styles.sectionTitle}>VARIANT</Text>
       <View style={styles.variantRow}>
         <View style={styles.variantText}>
@@ -201,6 +197,7 @@ export default function SettingsScreen() {
         />
       </View>
 
+      {/* HISTORY */}
       <Text style={styles.sectionTitle}>HISTORY</Text>
       <TouchableOpacity style={styles.dangerButton} onPress={handleClearHistory}>
         <Text style={styles.dangerText}>Clear Conversation History</Text>
@@ -208,8 +205,8 @@ export default function SettingsScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Lycheetah Framework — Open Source</Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://github.com/Lycheetah/Lycheetah-Framework')}>
-          <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Framework</Text>
+        <TouchableOpacity onPress={() => Linking.openURL('https://github.com/Lycheetah/Lycheetah-Mobile-')}>
+          <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
       </View>
@@ -230,95 +227,73 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   freeBannerTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#4A9EFF',
-    letterSpacing: 2,
-    marginBottom: 6,
+    fontSize: 11, fontWeight: '700', color: '#4A9EFF',
+    letterSpacing: 2, marginBottom: 6,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
-  freeBannerBody: {
-    fontSize: 13,
-    color: SOL_THEME.text,
-    lineHeight: 20,
-    marginBottom: 6,
-  },
-  freeBannerLink: {
-    fontSize: 13,
-    color: '#4A9EFF',
-    fontWeight: '600',
-  },
+  freeBannerBody: { fontSize: 13, color: SOL_THEME.text, lineHeight: 20, marginBottom: 6 },
+  freeBannerLink: { fontSize: 13, color: '#4A9EFF', fontWeight: '600' },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: SOL_THEME.primary,
-    letterSpacing: 2,
-    marginTop: 24,
-    marginBottom: 8,
+    fontSize: 11, fontWeight: '700', color: SOL_THEME.primary,
+    letterSpacing: 2, marginTop: 24, marginBottom: 8,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
   sectionNote: { fontSize: 13, color: SOL_THEME.textMuted, marginBottom: 8 },
   keyRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
-  keyInput: {
-    flex: 1,
-    backgroundColor: SOL_THEME.surface,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: SOL_THEME.text,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: SOL_THEME.border,
-  },
-  saveButton: {
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    justifyContent: 'center',
-  },
-  saveButtonText: { color: SOL_THEME.background, fontWeight: '700', fontSize: 14 },
-  keyStatus: { fontSize: 12, color: SOL_THEME.textMuted, marginBottom: 4 },
-  providerLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: SOL_THEME.textMuted,
-    letterSpacing: 2,
-    marginBottom: 6,
+  keyLabel: {
+    fontSize: 10, fontWeight: '700', color: SOL_THEME.textMuted,
+    letterSpacing: 1.5, marginBottom: 6, marginTop: 10,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
-  modelOption: {
-    flexDirection: 'row',
+  keyInput: {
+    flex: 1, backgroundColor: SOL_THEME.background,
+    borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+    color: SOL_THEME.text, fontSize: 14,
+    borderWidth: 1, borderColor: SOL_THEME.border,
+  },
+  saveButton: { borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' },
+  saveButtonText: { color: SOL_THEME.background, fontWeight: '700', fontSize: 14 },
+  keyStatus: { fontSize: 12, marginBottom: 4 },
+  // Provider cards
+  providerCard: {
     backgroundColor: SOL_THEME.surface,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 6,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: SOL_THEME.border,
+    borderRadius: 10, marginBottom: 8,
+    borderWidth: 1, borderColor: SOL_THEME.border,
+    overflow: 'hidden',
+  },
+  providerHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    padding: 14, gap: 10,
+  },
+  providerDot: { width: 10, height: 10, borderRadius: 5 },
+  providerHeaderText: { flex: 1 },
+  providerName: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
+  providerStatus: { fontSize: 12, color: SOL_THEME.textMuted },
+  expandIcon: { fontSize: 10, color: SOL_THEME.textMuted },
+  providerBody: {
+    paddingHorizontal: 14, paddingBottom: 14,
+    borderTopWidth: 1, borderTopColor: SOL_THEME.border,
+  },
+  modelOption: {
+    flexDirection: 'row', backgroundColor: SOL_THEME.background,
+    borderRadius: 8, padding: 12, marginBottom: 6,
+    alignItems: 'center', borderWidth: 1, borderColor: SOL_THEME.border,
   },
   modelSelected: { borderColor: SOL_THEME.primary },
   modelLeft: { flex: 1 },
-  modelLabel: { fontSize: 15, fontWeight: '600', color: SOL_THEME.textMuted, marginBottom: 2 },
-  modelLabelActive: { color: SOL_THEME.text },
+  modelLabel: { fontSize: 14, fontWeight: '600', color: SOL_THEME.textMuted, marginBottom: 2 },
   modelNote: { fontSize: 12, color: SOL_THEME.textMuted },
   checkmark: { fontSize: 16, fontWeight: '700' },
   variantRow: {
-    flexDirection: 'row',
-    backgroundColor: SOL_THEME.surface,
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    gap: 12,
+    flexDirection: 'row', backgroundColor: SOL_THEME.surface,
+    borderRadius: 8, padding: 12, alignItems: 'center', gap: 12,
   },
   variantText: { flex: 1 },
   variantLabel: { fontSize: 15, fontWeight: '600', color: SOL_THEME.text, marginBottom: 2 },
   variantNote: { fontSize: 12, color: SOL_THEME.textMuted },
   dangerButton: {
-    backgroundColor: SOL_THEME.surface,
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: SOL_THEME.error,
-    alignItems: 'center',
+    backgroundColor: SOL_THEME.surface, borderRadius: 8, padding: 12,
+    borderWidth: 1, borderColor: SOL_THEME.error, alignItems: 'center',
   },
   dangerText: { color: SOL_THEME.error, fontSize: 14, fontWeight: '600' },
   footer: { marginTop: 40, alignItems: 'center', gap: 4 },

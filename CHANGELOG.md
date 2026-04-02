@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.2.0] — 2026-04-02
+
+### Added
+- 5-provider registry: Gemini, Anthropic, OpenAI, DeepSeek, Kimi
+- Per-provider key storage (`saveProviderKey` / `getProviderKey`)
+- Collapsible provider cards in Settings — tap to expand, shows model list + key input
+- DeepSeek R1 (deepseek-reasoner) — free credits on signup
+- OpenAI GPT-4o / 4o-mini / 4.1-mini / 4.1-nano
+- Kimi 8K / 32K (Moonshot)
+- `updates/` folder with X post templates and running log
+
+### Changed
+- `ai-client.ts` backed by provider registry pattern
+- Settings redesigned — provider cards replace flat key list
+
+---
+
 ## [1.1.0] — 2026-04-02
 
 ### Added

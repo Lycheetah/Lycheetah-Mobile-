@@ -4,6 +4,9 @@ import { Message } from './ai-client';
 const KEYS = {
   ANTHROPIC_KEY: 'lycheetah_anthropic_key',
   GEMINI_KEY: 'lycheetah_gemini_key',
+  OPENAI_KEY: 'lycheetah_openai_key',
+  DEEPSEEK_KEY: 'lycheetah_deepseek_key',
+  KIMI_KEY: 'lycheetah_kimi_key',
   MODEL: 'lycheetah_model',
   VARIANT: 'lycheetah_variant',
   CONVERSATION: 'lycheetah_conversation',
@@ -12,13 +15,31 @@ const KEYS = {
   USER_NAME: 'lycheetah_user_name',
 };
 
-// Anthropic
-export async function saveAnthropicKey(key: string) { await AsyncStorage.setItem(KEYS.ANTHROPIC_KEY, key); }
-export async function getAnthropicKey(): Promise<string | null> { return AsyncStorage.getItem(KEYS.ANTHROPIC_KEY); }
+// Per-provider key storage
+const PROVIDER_KEY_MAP: Record<string, string> = {
+  gemini: KEYS.GEMINI_KEY,
+  anthropic: KEYS.ANTHROPIC_KEY,
+  openai: KEYS.OPENAI_KEY,
+  deepseek: KEYS.DEEPSEEK_KEY,
+  kimi: KEYS.KIMI_KEY,
+};
 
-// Gemini
-export async function saveGeminiKey(key: string) { await AsyncStorage.setItem(KEYS.GEMINI_KEY, key); }
-export async function getGeminiKey(): Promise<string | null> { return AsyncStorage.getItem(KEYS.GEMINI_KEY); }
+export async function saveProviderKey(provider: string, key: string) {
+  const storageKey = PROVIDER_KEY_MAP[provider];
+  if (storageKey) await AsyncStorage.setItem(storageKey, key);
+}
+
+export async function getProviderKey(provider: string): Promise<string | null> {
+  const storageKey = PROVIDER_KEY_MAP[provider];
+  if (!storageKey) return null;
+  return AsyncStorage.getItem(storageKey);
+}
+
+// Legacy helpers (kept for backward compat)
+export async function saveAnthropicKey(key: string) { await saveProviderKey('anthropic', key); }
+export async function getAnthropicKey(): Promise<string | null> { return getProviderKey('anthropic'); }
+export async function saveGeminiKey(key: string) { await saveProviderKey('gemini', key); }
+export async function getGeminiKey(): Promise<string | null> { return getProviderKey('gemini'); }
 
 // Model
 export async function saveModel(model: string) { await AsyncStorage.setItem(KEYS.MODEL, model); }
@@ -54,9 +75,10 @@ export async function getUserName(): Promise<string> {
   return (await AsyncStorage.getItem(KEYS.USER_NAME)) || '';
 }
 
-// Active API key — returns whichever key matches the current model
+// Active API key — returns key matching the current model's provider
 export async function getActiveKey(): Promise<string | null> {
   const model = await getModel();
-  if (model.startsWith('gemini')) return getGeminiKey();
-  return getAnthropicKey();
+  const { getProviderFromModel } = await import('./ai-client');
+  const provider = getProviderFromModel(model as any);
+  return getProviderKey(provider);
 }
