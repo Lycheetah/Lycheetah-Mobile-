@@ -79,6 +79,22 @@ The [Lycheetah Framework](https://github.com/Lycheetah/CODEX_AURA_PRIME) — 1,4
 
 ---
 
+## Two Layers — Be Clear About What Each Does
+
+**Philosophical / mathematical layer** (the Codex)
+The 10 frameworks (CASCADE, AURA, LAMAGUE, etc.), the mathematical foundations (Banach-style invariants, thermodynamic framing, cross-tradition convergence), the 1,402 pages of development. This is serious theoretical work.
+
+**Runtime layer** (this app, v1.2.0)
+Structured system prompt injection + lightweight heuristic scoring. The constitutional behaviour comes primarily from the system prompt. The AURA scoring is a string-pattern approximation of the framework's concepts — not a formal implementation.
+
+The gap between these two layers is real and documented. Read:
+- [SCORING.md](./SCORING.md) — exactly what the runtime computes, formula by formula
+- [KNOWN_LIMITATIONS.md](./KNOWN_LIMITATIONS.md) — what isn't implemented yet and the path to closing the gap
+
+This is v1.0 → v1.2 of a hardening process. The demo works. The rigorous implementation is the work ahead.
+
+---
+
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md)
