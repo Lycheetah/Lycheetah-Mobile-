@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from './ai-client';
 
 const KEYS = {
+  REPLY_STYLE: 'lycheetah_reply_style',
   ANTHROPIC_KEY: 'lycheetah_anthropic_key',
   GEMINI_KEY: 'lycheetah_gemini_key',
   OPENAI_KEY: 'lycheetah_openai_key',
@@ -73,6 +74,12 @@ export async function getPersona(): Promise<'sol' | 'veyra' | 'aura-prime'> {
 export async function saveUserName(name: string) { await AsyncStorage.setItem(KEYS.USER_NAME, name); }
 export async function getUserName(): Promise<string> {
   return (await AsyncStorage.getItem(KEYS.USER_NAME)) || '';
+}
+
+// Reply style
+export async function saveReplyStyle(style: string) { await AsyncStorage.setItem(KEYS.REPLY_STYLE, style); }
+export async function getReplyStyle(): Promise<string> {
+  return (await AsyncStorage.getItem(KEYS.REPLY_STYLE)) || 'alchemical';
 }
 
 // Active API key — returns key matching the current model's provider

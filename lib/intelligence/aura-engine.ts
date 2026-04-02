@@ -188,9 +188,9 @@ function metricStatus(score: number, threshold: number): MetricStatus {
 // TES = 1 / (1 + H_output + D)
 // H_output = hedging density proxy
 // D = drift = 1 - avg(conversation pass rates) — 0 when all prior responses passed
-function computeTES(t: string, conversationPassRates: number[]): TriAxialResult {
+function computeTES(t: string, conversationPassRates: number[], overrideEntropy?: number): TriAxialResult {
   const TES_THRESHOLD = 0.70;
-  const H = estimateOutputEntropy(t);
+  const H = overrideEntropy !== undefined ? overrideEntropy : estimateOutputEntropy(t);
   const avgPassRate = conversationPassRates.length > 0
     ? conversationPassRates.reduce((a, b) => a + b, 0) / conversationPassRates.length
     : 1.0; // no history = assume fully anchored
@@ -273,6 +273,7 @@ function computeComposite(
 export function scoreAURAFull(
   responseText: string,
   conversationPassRates: number[] = [],
+  modelConfidence?: number, // self-reported by model via [CONF:X] — improves TES accuracy
 ): AURAMetrics {
   const invariants = {} as AURAInvariantScores;
   const auditInvariants = {} as AURAInvariantAudit;
@@ -288,7 +289,9 @@ export function scoreAURAFull(
   const total = INVARIANT_TESTS.length;
   const violationCount = total - passed;
 
-  const TES = computeTES(responseText, conversationPassRates);
+  // If model reported its own confidence, use that as H_output proxy (inverted: high conf = low entropy)
+  const overrideEntropy = modelConfidence !== undefined ? (1 - modelConfidence) * 0.5 : undefined;
+  const TES = computeTES(responseText, conversationPassRates, overrideEntropy);
   const VTR = computeVTR(responseText);
   const PAI = computePAI(violationCount);
   const composite = computeComposite(passed, total, TES, VTR, PAI);

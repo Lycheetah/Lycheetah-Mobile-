@@ -11,6 +11,8 @@ import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
 import { getCompiledSpec } from '../../lib/personas/compiler';
+import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
+import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
 import ConversationDrawer from '../../components/ConversationDrawer';
 import {
   saveConversation as saveConv, loadConversation, listConversations,
@@ -34,7 +36,8 @@ type DisplayMessage = Message & {
   aura?: AURAMetrics;
   isNRM?: boolean;
   persona?: Persona;
-  imageUri?: string; // local URI for display
+  imageUri?: string;
+  modelConfidence?: number; // self-reported by model via [CONF:X]
 };
 
 // Strip framework context echo if the model repeated the injected prefix back
@@ -53,6 +56,18 @@ function stripFrameworkEcho(text: string): string {
     if (blockEnd !== -1) return text.slice(blockEnd).trim();
   }
   return text;
+}
+
+// Extract model self-reported confidence and strip from display
+function extractConfidence(text: string): { text: string; confidence: number | null } {
+  const match = text.match(/\[CONF:(0\.\d+|1\.0|0|1)\]\s*$/m);
+  if (match) {
+    return {
+      text: text.replace(match[0], '').trimEnd(),
+      confidence: parseFloat(match[1]),
+    };
+  }
+  return { text, confidence: null };
 }
 
 // Split field signature from message body for styled rendering
@@ -114,17 +129,20 @@ export default function SolChat() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [replyStyle, setReplyStyle] = useState<ReplyStyleId>(DEFAULT_STYLE_ID);
+  const [stylePickerOpen, setStylePickerOpen] = useState(false);
   const [toastPersona, setToastPersona] = useState<Persona | null>(null);
   const toastAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getModel()])
-      .then(([saved, savedPersona, name, convList, model]) => {
+    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getReplyStyle()])
+      .then(([saved, savedPersona, name, convList, style]) => {
         if (saved.length > 0) setMessages(saved.map((m, i) => ({ ...m, id: String(i) })));
         setPersona(savedPersona as Persona);
         setUserName(name);
         setConversations(convList);
+        setReplyStyle(style as ReplyStyleId);
       });
   }, []);
 
@@ -211,8 +229,9 @@ export default function SolChat() {
     } else {
       basePrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
     }
-    // Prepend compiled persona spec — constitutional constraints as structured data
-    const systemPrompt = `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${basePrompt}`;
+    // Prepend compiled persona spec + reply style instruction
+    const styleInstruction = getStyle(replyStyle).instruction;
+    const systemPrompt = `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${styleInstruction}\n\n${basePrompt}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -261,8 +280,12 @@ export default function SolChat() {
       // Strip framework context echo if model repeated the injected prefix
       fullResponse = stripFrameworkEcho(fullResponse);
 
-      // AURA scoring with canonical TES/VTR/PAI formulas
-      const auraMetrics = scoreAURAFull(fullResponse, conversationPassRates);
+      // Extract model self-reported confidence
+      const { text: cleanResponse, confidence } = extractConfidence(fullResponse);
+      fullResponse = cleanResponse;
+
+      // AURA scoring — pass model confidence to improve TES accuracy
+      const auraMetrics = scoreAURAFull(fullResponse, conversationPassRates, confidence ?? undefined);
       const passRate = getPassRate(auraMetrics);
       const newPassRates = [...conversationPassRates, passRate];
       setConversationPassRates(newPassRates);
@@ -278,6 +301,7 @@ export default function SolChat() {
         content: fullResponse,
         mode: detectedMode,
         aura: auraMetrics,
+        modelConfidence: confidence ?? undefined,
         persona,
       };
 
@@ -350,7 +374,7 @@ export default function SolChat() {
             styles.bubble,
             isUser
               ? [styles.userBubble, { backgroundColor: accent }]
-              : styles.assistantBubble,
+              : [styles.assistantBubble, item.mode && { borderLeftColor: modeColor, borderLeftWidth: 2 }],
             item.isNRM && !isUser && styles.nrmBubble,
           ]}>
             {item.isNRM && !isUser && (
@@ -435,6 +459,11 @@ export default function SolChat() {
                       <Text style={styles.auditItemEvidence}>
                         PAI: {String(aura.audit.PAI.inputs.formula)}
                       </Text>
+                      {item.modelConfidence !== undefined && (
+                        <Text style={styles.auditItemEvidence}>
+                          Model self-confidence: {(item.modelConfidence * 100).toFixed(0)}% (used for TES)
+                        </Text>
+                      )}
                     </View>
                   )}
                 </View>
@@ -599,6 +628,30 @@ export default function SolChat() {
         ListFooterComponent={renderTypingIndicator}
       />
 
+      {/* Style picker */}
+      {stylePickerOpen && (
+        <View style={styles.stylePicker}>
+          {REPLY_STYLES.map(s => (
+            <TouchableOpacity
+              key={s.id}
+              style={[styles.styleOption, replyStyle === s.id && [styles.styleOptionActive, { borderColor: accent }]]}
+              onPress={async () => {
+                setReplyStyle(s.id);
+                await saveReplyStyle(s.id);
+                setStylePickerOpen(false);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+            >
+              <Text style={[styles.styleGlyph, { color: replyStyle === s.id ? accent : SOL_THEME.textMuted }]}>{s.glyph}</Text>
+              <View style={styles.styleText}>
+                <Text style={[styles.styleLabel, { color: replyStyle === s.id ? accent : SOL_THEME.text }]}>{s.label}</Text>
+                <Text style={styles.styleTagline}>{s.tagline}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {/* Pending image preview */}
       {pendingImage && (
         <View style={styles.pendingImageRow}>
@@ -626,6 +679,11 @@ export default function SolChat() {
         />
         <TouchableOpacity onPress={pickImage} style={styles.imageButton}>
           <Text style={[styles.imageButtonText, { color: pendingImage ? accent : SOL_THEME.textMuted }]}>⊕</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setStylePickerOpen(v => !v)} style={styles.imageButton}>
+          <Text style={[styles.styleToggleText, { color: stylePickerOpen ? accent : SOL_THEME.textMuted }]}>
+            {getStyle(replyStyle).glyph}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sendButton, { backgroundColor: accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
@@ -966,6 +1024,23 @@ const styles = StyleSheet.create({
   },
   pendingImageRemoveText: { fontSize: 10, color: SOL_THEME.text },
   pendingImageLabel: { fontSize: 12, fontWeight: '600' },
+  // Style picker
+  stylePicker: {
+    backgroundColor: SOL_THEME.surface,
+    borderTopWidth: 1, borderTopColor: SOL_THEME.border,
+    paddingVertical: 8,
+  },
+  styleOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderLeftWidth: 2, borderLeftColor: 'transparent',
+  },
+  styleOptionActive: { backgroundColor: SOL_THEME.background },
+  styleGlyph: { fontSize: 16, width: 24, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
+  styleText: { flex: 1 },
+  styleLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
+  styleTagline: { fontSize: 11, color: SOL_THEME.textMuted, marginTop: 1 },
+  styleToggleText: { fontSize: 15, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
   // Toast
   toast: {
     position: 'absolute', top: 60, alignSelf: 'center',
