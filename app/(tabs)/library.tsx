@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Platform,
@@ -9,7 +9,7 @@ import { SOL_THEME } from '../../constants/theme';
 import { getAccentColor, getActiveKey, getModel } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
 import { CascadeResult, CascadeLayer } from '../../lib/cascade-score';
-import { shareEntry } from '../../lib/supabase';
+import { shareEntry, fetchSharedFeed, SharedEntry } from '../../lib/supabase';
 
 const CASCADE_PROMPT = `You are the CASCADE scoring engine, built on Mackenzie Clark's CASCADE framework.
 
@@ -168,7 +168,10 @@ export default function LibraryScreen() {
   const [scoring, setScoring] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
   const [library, setLibrary] = useState<LibraryEntry[]>([]);
-  const [view, setView] = useState<'cascade' | 'lamague' | 'library'>('cascade');
+  const [view, setView] = useState<'cascade' | 'lamague' | 'library' | 'community'>('cascade');
+  const [feed, setFeed] = useState<SharedEntry[]>([]);
+  const [feedLoading, setFeedLoading] = useState(false);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<LibraryEntry | null>(null);
   const [lamagueSym, setLamagueSym] = useState<string | null>(null);
   const [activeFolder, setActiveFolder] = useState<string>('ALL');
@@ -182,6 +185,17 @@ export default function LibraryScreen() {
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, []));
+
+  useEffect(() => {
+    if (view === 'community' && feed.length === 0 && !feedLoading) {
+      setFeedLoading(true);
+      fetchSharedFeed(50).then(({ data, error }) => {
+        setFeed(data);
+        setFeedError(error ?? null);
+        setFeedLoading(false);
+      }).catch(() => setFeedLoading(false));
+    }
+  }, [view]);
 
   const handleScore = async () => {
     if (!inputText.trim() || scoring) return;
@@ -353,8 +367,8 @@ export default function LibraryScreen() {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabs}>
-        {([['cascade', 'CASCADE'], ['lamague', 'LAMAGUE'], ['library', `SAVED (${library.length})`]] as const).map(([t, label]) => (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ flexDirection: 'row' }}>
+        {([['cascade', 'CASCADE'], ['lamague', 'LAMAGUE'], ['library', `SAVED (${library.length})`], ['community', 'FIELD']] as const).map(([t, label]) => (
           <TouchableOpacity
             key={t}
             style={[styles.tab, view === t && { borderBottomColor: accentColor, borderBottomWidth: 2 }]}
@@ -363,7 +377,7 @@ export default function LibraryScreen() {
             <Text style={[styles.tabText, view === t && { color: accentColor }]}>{label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {/* CASCADE VIEW */}
       {view === 'cascade' && !selectedEntry && (
@@ -509,6 +523,66 @@ export default function LibraryScreen() {
         </>
       )}
 
+      {/* COMMUNITY FEED */}
+      {view === 'community' && !selectedEntry && (
+        <>
+          <Text style={[styles.label, { color: accentColor }]}>THE FIELD — SHARED CASCADE ENTRIES</Text>
+          <Text style={styles.note}>What others are scoring. Tap to see full breakdown.</Text>
+          <TouchableOpacity
+            style={[styles.reorganizeBtn, { borderColor: accentColor }]}
+            onPress={async () => {
+              setFeedLoading(true);
+              setFeedError(null);
+              const { data, error } = await fetchSharedFeed(50);
+              setFeed(data);
+              setFeedError(error);
+              setFeedLoading(false);
+            }}
+          >
+            <Text style={[styles.reorganizeBtnText, { color: accentColor }]}>
+              {feedLoading ? 'Loading...' : '⟳ Refresh Field'}
+            </Text>
+          </TouchableOpacity>
+          {feedError && <Text style={styles.errorText}>{feedError}</Text>}
+          {feed.length === 0 && !feedLoading ? (
+            <Text style={styles.emptyNote}>
+              {feedError ? '' : 'Tap Refresh to load the field.\nBe the first — share a CASCADE result.'}
+            </Text>
+          ) : (
+            feed.map(entry => (
+              <View key={entry.id} style={styles.libraryCard}>
+                <View style={styles.libraryTop}>
+                  <Text style={[styles.libraryTitle, { color: accentColor }]} numberOfLines={1}>{entry.title}</Text>
+                  <Text style={[styles.libraryPi, { color: piColor(entry.truth_pressure, accentColor) }]}>
+                    Π {entry.truth_pressure.toFixed(2)}
+                  </Text>
+                </View>
+                <Text style={styles.librarySub}>{entry.dominant_layer} · {entry.word_count}w · S:{entry.coherence}%</Text>
+                <View style={styles.feedBars}>
+                  {[
+                    { label: 'AX', val: entry.axiom_score },
+                    { label: 'FN', val: entry.foundation_score },
+                    { label: 'TH', val: entry.theory_score },
+                    { label: 'ED', val: entry.edge_score },
+                    { label: 'CH', val: entry.chaos_score },
+                  ].map(b => (
+                    <View key={b.label} style={styles.feedBarItem}>
+                      <View style={styles.feedBarTrack}>
+                        <View style={[styles.feedBarFill, { height: `${Math.max(3, b.val)}%`, backgroundColor: accentColor + '99' }]} />
+                      </View>
+                      <Text style={styles.feedBarLabel}>{b.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                {entry.created_at && (
+                  <Text style={styles.libraryDate}>{new Date(entry.created_at).toLocaleDateString()}</Text>
+                )}
+              </View>
+            ))
+          )}
+        </>
+      )}
+
       {/* ENTRY DETAIL */}
       {selectedEntry && (
         <>
@@ -551,8 +625,8 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
   headerSub: { fontSize: 12, color: SOL_THEME.textMuted, marginTop: 4 },
-  tabs: { flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: SOL_THEME.border },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 10 },
+  tabs: { marginBottom: 20, borderBottomWidth: 1, borderBottomColor: SOL_THEME.border },
+  tab: { alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16 },
   tabText: {
     fontSize: 10, fontWeight: '700', color: SOL_THEME.textMuted, letterSpacing: 1,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
@@ -679,6 +753,11 @@ const styles = StyleSheet.create({
   textPreview: { fontSize: 13, color: SOL_THEME.textMuted, lineHeight: 20 },
   deleteBtn: { borderRadius: 8, borderWidth: 1, padding: 12, alignItems: 'center' },
   deleteBtnText: { fontWeight: '600', fontSize: 14 },
+  feedBars: { flexDirection: 'row', gap: 6, height: 40, alignItems: 'flex-end', marginVertical: 8 },
+  feedBarItem: { flex: 1, alignItems: 'center', gap: 3 },
+  feedBarTrack: { width: '100%', height: 32, justifyContent: 'flex-end', backgroundColor: SOL_THEME.border, borderRadius: 3, overflow: 'hidden' },
+  feedBarFill: { width: '100%', borderRadius: 3 },
+  feedBarLabel: { fontSize: 8, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' },
   shareBtn: { borderRadius: 8, borderWidth: 1, padding: 12, alignItems: 'center', marginBottom: 8 },
   shareBtnText: { fontWeight: '700', fontSize: 14 },
   shareMsg: { fontSize: 12, textAlign: 'center', marginBottom: 10 },

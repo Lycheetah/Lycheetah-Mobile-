@@ -6,14 +6,52 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { SOL_THEME } from '../../constants/theme';
-import { getAccentColor } from '../../lib/storage';
+import { getAccentColor, getActiveKey, getModel } from '../../lib/storage';
+import { sendMessage, AIModel } from '../../lib/ai-client';
 
 const KEYS = {
   INTENTION: 'sanctum_intention',
   REFLECTION: 'sanctum_reflection',
   JOURNAL: 'sanctum_journal',
   VAULT: 'sanctum_vault',
+  PHASE: 'sanctum_phase',
+  AURA: 'sanctum_aura',
+  LQ_HISTORY: 'sanctum_lq_history',
 };
+
+type LQPoint = { date: string; lq: number; stage: string };
+
+const PHASES = [
+  { id: 'CENTER',    glyph: '●',    name: 'CENTER',    desc: 'Establish presence. Ground in reality.' },
+  { id: 'FLOW',      glyph: '↻',    name: 'FLOW',      desc: 'Regulate movement. Find rhythm.' },
+  { id: 'INSIGHT',   glyph: 'Ψ',    name: 'INSIGHT',   desc: 'Perceive truth. Gain clarity.' },
+  { id: 'RISE',      glyph: 'Φ↑',   name: 'RISE',      desc: 'Activate will. Take directed action.' },
+  { id: 'LIGHT',     glyph: '☀',    name: 'LIGHT',     desc: 'Illuminate understanding. Share wisdom.' },
+  { id: 'INTEGRITY', glyph: '|●◌|', name: 'INTEGRITY', desc: 'Enforce boundaries. Maintain alignment.' },
+  { id: 'SYNTHESIS', glyph: '⟁',    name: 'SYNTHESIS', desc: 'Reintegrate and evolve. Complete cycle.' },
+];
+
+function getLQ(tes: number, vtr: number, pai: number): number {
+  if (!tes || !vtr || !pai) return 0;
+  return parseFloat(Math.pow(tes * Math.min(vtr / 1.5, 1) * pai, 1 / 3).toFixed(3));
+}
+
+function getStage(lq: number): string {
+  if (lq >= 0.95) return 'AVATAR';
+  if (lq >= 0.90) return 'HIEROPHANT';
+  if (lq >= 0.80) return 'MASTER';
+  if (lq >= 0.65) return 'ADEPT';
+  return 'NEOPHYTE';
+}
+
+function getStateGlyph(tes: number, vtr: number, pai: number): string {
+  if (!tes && !vtr && !pai) return '∅';
+  if (tes > 0 && tes < 0.4) return 'Ψ ↯ Ao';
+  if (vtr >= 1.5 && pai >= 0.8) return 'Φ↑ → Ψ_inv';
+  if (pai > 0 && pai < 0.6) return 'Ψ → Ao';
+  if (tes >= 0.8) return '● Ψ_inv';
+  return 'Ao → Φ↑';
+}
 
 type JournalEntry = { id: string; date: string; text: string };
 type VaultEntry = { id: string; text: string; date: string };
@@ -35,20 +73,38 @@ export default function SanctumScreen() {
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [vaultInput, setVaultInput] = useState('');
   const [vault, setVault] = useState<VaultEntry[]>([]);
-  const [section, setSection] = useState<'today' | 'journal' | 'vault'>('today');
+  const [section, setSection] = useState<'today' | 'journal' | 'vault' | 'field'>('today');
+  const [phase, setPhase] = useState<string>('CENTER');
+  const [tes, setTes] = useState(0);
+  const [vtr, setVtr] = useState(0);
+  const [pai, setPai] = useState(0);
+  const [auraSaved, setAuraSaved] = useState(false);
+  const [lqHistory, setLqHistory] = useState<LQPoint[]>([]);
+  const [fieldReflection, setFieldReflection] = useState<string>('');
+  const [reflectionLoading, setReflectionLoading] = useState(false);
 
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
-    const [int, ref, jRaw, vRaw] = await Promise.all([
+    const [int, ref, jRaw, vRaw, phaseRaw, auraRaw] = await Promise.all([
       AsyncStorage.getItem(`${KEYS.INTENTION}_${todayKey()}`),
       AsyncStorage.getItem(`${KEYS.REFLECTION}_${todayKey()}`),
       AsyncStorage.getItem(KEYS.JOURNAL),
       AsyncStorage.getItem(KEYS.VAULT),
+      AsyncStorage.getItem(KEYS.PHASE),
+      AsyncStorage.getItem(`${KEYS.AURA}_${todayKey()}`),
     ]);
     if (int) { setIntention(int); setSavedIntention(int); }
     if (ref) { setReflection(ref); setSavedReflection(ref); }
     setJournal(jRaw ? JSON.parse(jRaw) : []);
     setVault(vRaw ? JSON.parse(vRaw) : []);
+    if (phaseRaw) setPhase(phaseRaw);
+    if (auraRaw) {
+      const a = JSON.parse(auraRaw);
+      setTes(a.tes ?? 0); setVtr(a.vtr ?? 0); setPai(a.pai ?? 0);
+      setAuraSaved(true);
+    }
+    const histRaw = await AsyncStorage.getItem(KEYS.LQ_HISTORY);
+    setLqHistory(histRaw ? JSON.parse(histRaw) : []);
   }, []);
 
   useEffect(() => { load(); }, []);
@@ -64,6 +120,46 @@ export default function SanctumScreen() {
     if (!reflection.trim()) return;
     await AsyncStorage.setItem(`${KEYS.REFLECTION}_${todayKey()}`, reflection.trim());
     setSavedReflection(reflection.trim());
+  };
+
+  const savePhase = async (p: string) => {
+    setPhase(p);
+    await AsyncStorage.setItem(KEYS.PHASE, p);
+  };
+
+  const saveAura = async () => {
+    if (!tes || !vtr || !pai) return;
+    const today = todayKey();
+    await AsyncStorage.setItem(`${KEYS.AURA}_${today}`, JSON.stringify({ tes, vtr, pai }));
+    // Update LQ history
+    const lq = getLQ(tes, vtr, pai);
+    const stage = getStage(lq);
+    const point: LQPoint = { date: today, lq, stage };
+    const existing = lqHistory.filter(p => p.date !== today);
+    const updated = [...existing, point].slice(-90); // keep 90 days
+    setLqHistory(updated);
+    await AsyncStorage.setItem(KEYS.LQ_HISTORY, JSON.stringify(updated));
+    setAuraSaved(true);
+    // AI field reflection
+    setReflectionLoading(true);
+    setFieldReflection('');
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (apiKey) {
+        const activePhase = PHASES.find(p => p.id === phase);
+        const prompt = `Field state: Phase=${phase} (${activePhase?.desc ?? ''}), TES=${tes}, VTR=${vtr}, PAI=${pai}, Light Quotient=${lq.toFixed(3)}, Stage=${stage}. One honest sentence reflecting what this state means for today. No preamble, no sign-off.`;
+        const result = await sendMessage(
+          [{ role: 'user', content: prompt }],
+          'You are Sol. 2-3 sentences maximum. Honest, direct, no preamble, no sign-off. Respond to what this field state actually means for the human today.',
+          apiKey, (model || 'gemini-2.5-flash') as AIModel,
+          undefined, 'fast', 512, 0.7,
+        );
+        setFieldReflection(result.text.replace(/\[CONF:[^\]]+\]/, '').trim());
+      }
+    } catch (e: any) {
+      setFieldReflection(`(${e?.message ?? 'reflection unavailable'})`);
+    }
+    setReflectionLoading(false);
   };
 
   const addJournalEntry = async () => {
@@ -114,14 +210,14 @@ export default function SanctumScreen() {
 
       {/* Section tabs */}
       <View style={styles.sectionTabs}>
-        {(['today', 'journal', 'vault'] as const).map(s => (
+        {(['today', 'journal', 'vault', 'field'] as const).map(s => (
           <TouchableOpacity
             key={s}
             style={[styles.sectionTab, section === s && { borderBottomColor: accentColor, borderBottomWidth: 2 }]}
             onPress={() => setSection(s)}
           >
             <Text style={[styles.sectionTabText, section === s && { color: accentColor }]}>
-              {s === 'today' ? 'TODAY' : s === 'journal' ? 'JOURNAL' : 'VAULT'}
+              {s === 'today' ? 'TODAY' : s === 'journal' ? 'JOURNAL' : s === 'vault' ? 'VAULT' : 'FIELD'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -261,6 +357,149 @@ export default function SanctumScreen() {
         </>
       )}
 
+      {/* FIELD */}
+      {section === 'field' && (() => {
+        const lq = getLQ(tes, vtr, pai);
+        const stage = getStage(lq);
+        const glyph = getStateGlyph(tes, vtr, pai);
+        return (
+          <>
+            {/* Phase selector */}
+            <Text style={[styles.label, { color: accentColor }]}>AWARENESS PHASE</Text>
+            <Text style={styles.note}>Which phase are you currently in?</Text>
+            {PHASES.map(p => (
+              <TouchableOpacity
+                key={p.id}
+                style={[styles.phaseRow, phase === p.id && { borderColor: accentColor, backgroundColor: accentColor + '15' }]}
+                onPress={() => savePhase(p.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.phaseGlyph, { color: phase === p.id ? accentColor : SOL_THEME.textMuted }]}>{p.glyph}</Text>
+                <View style={styles.phaseText}>
+                  <Text style={[styles.phaseName, { color: phase === p.id ? accentColor : SOL_THEME.text }]}>{p.name}</Text>
+                  {phase === p.id && <Text style={styles.phaseDesc}>{p.desc}</Text>}
+                </View>
+                {phase === p.id && <Text style={[styles.phaseCheck, { color: accentColor }]}>●</Text>}
+              </TouchableOpacity>
+            ))}
+
+            <View style={styles.divider} />
+
+            {/* AURA self-rating */}
+            <Text style={[styles.label, { color: accentColor }]}>AURA FIELD CHECK</Text>
+            <Text style={styles.note}>Rate your current state. Five points each.</Text>
+
+            {[
+              {
+                label: 'TES',
+                sub: 'Trust / Epistemic Stability',
+                question: 'Did I act from my values today — or from fear, habit, or pressure?',
+                anchors: ['fully reactive', 'mostly reactive', 'mixed', 'mostly sovereign', 'fully sovereign'],
+                val: tes, set: setTes, levels: [0.2, 0.4, 0.6, 0.8, 1.0],
+              },
+              {
+                label: 'VTR',
+                sub: 'Value-to-Reality Ratio',
+                question: 'Did I put more into the world today than I took from it?',
+                anchors: ['pure extraction', 'took more than gave', 'even exchange', 'net creator', 'high output'],
+                val: vtr, set: setVtr, levels: [0.5, 1.0, 1.5, 2.0, 2.5],
+              },
+              {
+                label: 'PAI',
+                sub: 'Purpose Alignment Index',
+                question: 'Was my energy today aimed at what actually matters?',
+                anchors: ['completely scattered', 'mostly scattered', 'partial focus', 'mostly aligned', 'laser-locked'],
+                val: pai, set: setPai, levels: [0.2, 0.4, 0.6, 0.8, 1.0],
+              },
+            ].map(metric => (
+              <View key={metric.label} style={styles.metricBlock}>
+                <View style={styles.metricHeader}>
+                  <Text style={[styles.metricLabel, { color: accentColor }]}>{metric.label}</Text>
+                  <Text style={styles.metricSub}>{metric.sub}</Text>
+                  <Text style={[styles.metricVal, { color: accentColor }]}>{metric.val > 0 ? metric.val.toFixed(2) : '—'}</Text>
+                </View>
+                <Text style={styles.metricQuestion}>{metric.question}</Text>
+                <View style={styles.dotsRow}>
+                  {metric.levels.map((v, i) => (
+                    <TouchableOpacity
+                      key={v}
+                      style={[styles.dotWrap]}
+                      onPress={() => { metric.set(v); setAuraSaved(false); }}
+                    >
+                      <View style={[styles.dot, metric.val >= v && { backgroundColor: accentColor }]} />
+                      <Text style={[styles.dotLabel, metric.val >= v && { color: accentColor }]}>{metric.anchors[i]}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: accentColor, opacity: (tes && vtr && pai) ? 1 : 0.4 }]}
+              onPress={saveAura}
+              disabled={!tes || !vtr || !pai}
+            >
+              <Text style={styles.saveBtnText}>{auraSaved ? '✔ Field Recorded' : 'Record Field State'}</Text>
+            </TouchableOpacity>
+
+            {/* Light Quotient */}
+            {lq > 0 && (
+              <View style={[styles.lqCard, { borderColor: accentColor + '44' }]}>
+                <Text style={[styles.lqStage, { color: accentColor }]}>{stage}</Text>
+                <Text style={[styles.lqValue, { color: accentColor }]}>{lq.toFixed(3)}</Text>
+                <Text style={styles.lqLabel}>LIGHT QUOTIENT</Text>
+                <View style={styles.lqBarTrack}>
+                  <View style={[styles.lqBarFill, { width: `${Math.round(lq * 100)}%`, backgroundColor: accentColor }]} />
+                </View>
+                <Text style={[styles.lqGlyph, { color: accentColor }]}>{glyph}</Text>
+              </View>
+            )}
+
+            {/* AI Field Reflection */}
+            {(fieldReflection || reflectionLoading) && (
+              <View style={[styles.reflectionCard, { borderColor: accentColor + '33' }]}>
+                <Text style={[styles.reflectionLabel, { color: accentColor }]}>FIELD REFLECTION</Text>
+                <Text style={styles.reflectionText}>
+                  {reflectionLoading ? '...' : fieldReflection}
+                </Text>
+              </View>
+            )}
+
+            {/* LQ History Chart */}
+            {lqHistory.length > 1 && (
+              <>
+                <Text style={[styles.label, { color: accentColor, marginTop: 20 }]}>SOVEREIGN TRAJECTORY</Text>
+                <Text style={styles.note}>{lqHistory.length} days tracked</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartScroll}>
+                  {lqHistory.slice(-30).map(point => {
+                    const isToday = point.date === todayKey();
+                    const barH = Math.max(4, Math.round(point.lq * 80));
+                    const col = isToday ? accentColor
+                      : point.stage === 'AVATAR' || point.stage === 'HIEROPHANT' ? accentColor + 'AA'
+                      : point.stage === 'MASTER' ? '#4A9EFF88'
+                      : point.stage === 'ADEPT' ? '#F5A62388'
+                      : '#55555588';
+                    return (
+                      <View key={point.date} style={styles.chartBarWrap}>
+                        <Text style={[styles.chartLQLabel, { color: isToday ? accentColor : SOL_THEME.textMuted }]}>
+                          {point.lq.toFixed(2)}
+                        </Text>
+                        <View style={styles.chartBarTrack}>
+                          <View style={[styles.chartBarFill, { height: barH, backgroundColor: col }]} />
+                        </View>
+                        <Text style={[styles.chartDateLabel, isToday && { color: accentColor }]}>
+                          {point.date.slice(5)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+          </>
+        );
+      })()}
+
     </ScrollView>
   );
 }
@@ -335,4 +574,88 @@ const styles = StyleSheet.create({
   vaultText: { fontSize: 15, color: SOL_THEME.text, lineHeight: 22, marginBottom: 8 },
   vaultMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   vaultDate: { fontSize: 11, color: SOL_THEME.textMuted },
+  // FIELD
+  phaseRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 12, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border,
+    marginBottom: 6,
+  },
+  phaseGlyph: {
+    fontSize: 18, width: 32, textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  phaseText: { flex: 1 },
+  phaseName: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 1.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  phaseDesc: { fontSize: 12, color: SOL_THEME.textMuted, marginTop: 2 },
+  phaseCheck: { fontSize: 10 },
+  metricBlock: { marginBottom: 14 },
+  metricHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  metricLabel: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 1.5, width: 36,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  metricSub: { flex: 1, fontSize: 12, color: SOL_THEME.textMuted },
+  metricVal: { fontSize: 14, fontWeight: '700' },
+  metricQuestion: {
+    fontSize: 13, color: SOL_THEME.text, lineHeight: 19,
+    marginBottom: 10, fontStyle: 'italic',
+  },
+  dotsRow: { flexDirection: 'row', gap: 6 },
+  dotWrap: { flex: 1, alignItems: 'center', gap: 5 },
+  dot: {
+    width: 28, height: 28, borderRadius: 14,
+    borderWidth: 1, borderColor: SOL_THEME.border,
+    backgroundColor: SOL_THEME.surface,
+  },
+  dotLabel: {
+    fontSize: 9, color: SOL_THEME.textMuted, textAlign: 'center', lineHeight: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  lqCard: {
+    borderWidth: 1, borderRadius: 12, padding: 20,
+    alignItems: 'center', backgroundColor: SOL_THEME.surface, marginTop: 8,
+  },
+  lqStage: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 3, marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  lqValue: { fontSize: 42, fontWeight: '700', marginBottom: 4 },
+  lqLabel: {
+    fontSize: 10, color: SOL_THEME.textMuted, letterSpacing: 2, marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  lqBarTrack: {
+    width: '100%', height: 4, backgroundColor: SOL_THEME.border,
+    borderRadius: 2, overflow: 'hidden', marginBottom: 14,
+  },
+  lqBarFill: { height: 4, borderRadius: 2 },
+  lqGlyph: {
+    fontSize: 15, fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  reflectionCard: {
+    borderWidth: 1, borderRadius: 10, padding: 14, marginTop: 10,
+    backgroundColor: SOL_THEME.surface,
+  },
+  reflectionLabel: {
+    fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  reflectionText: {
+    fontSize: 14, color: SOL_THEME.text, lineHeight: 22, fontStyle: 'italic',
+  },
+  chartScroll: { marginTop: 8 },
+  chartBarWrap: { alignItems: 'center', marginRight: 8, width: 36 },
+  chartLQLabel: { fontSize: 8, marginBottom: 4 },
+  chartBarTrack: {
+    width: 28, height: 80, justifyContent: 'flex-end',
+    backgroundColor: SOL_THEME.border, borderRadius: 4, overflow: 'hidden',
+  },
+  chartBarFill: { width: '100%', borderRadius: 4 },
+  chartDateLabel: {
+    fontSize: 8, color: SOL_THEME.textMuted, marginTop: 4, textAlign: 'center',
+  },
 });

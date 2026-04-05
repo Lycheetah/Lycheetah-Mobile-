@@ -8,6 +8,7 @@ import {
 import Markdown from 'react-native-markdown-display';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
@@ -180,6 +181,7 @@ export default function SolChat() {
   const [bubbleGlow, setBubbleGlow] = useState(false);
   const [showSignatures, setShowSignatures] = useState(true);
   const [showTokenBadge, setShowTokenBadge] = useState(true);
+  const [sanctumField, setSanctumField] = useState<string>('');
   const companionAnim = useRef(new Animated.Value(0)).current;
   const toastAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
@@ -266,6 +268,37 @@ export default function SolChat() {
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
+    // Load Sanctum field state so Sol knows where Mac is
+    const todayKey = new Date().toISOString().split('T')[0];
+    Promise.all([
+      AsyncStorage.getItem('sanctum_phase'),
+      AsyncStorage.getItem(`sanctum_aura_${todayKey}`),
+    ]).then(([phase, auraRaw]) => {
+      if (!phase && !auraRaw) { setSanctumField(''); return; }
+      const phaseLabels: Record<string, string> = {
+        CENTER: '● CENTER — Establish presence, ground in reality',
+        FLOW: '↻ FLOW — Regulate movement, find rhythm',
+        INSIGHT: 'Ψ INSIGHT — Perceive truth, gain clarity',
+        RISE: 'Φ↑ RISE — Activate will, take directed action',
+        LIGHT: '☀ LIGHT — Illuminate understanding, share wisdom',
+        INTEGRITY: '|●◌| INTEGRITY — Enforce boundaries, maintain alignment',
+        SYNTHESIS: '⟁ SYNTHESIS — Reintegrate and evolve, complete cycle',
+      };
+      const lines: string[] = ['[Sanctum Field State]'];
+      if (phase) lines.push(`Phase: ${phaseLabels[phase] ?? phase}`);
+      if (auraRaw) {
+        const a = JSON.parse(auraRaw);
+        const lq = (a.tes && a.vtr && a.pai)
+          ? Math.pow(a.tes * Math.min(a.vtr / 1.5, 1) * a.pai, 1 / 3)
+          : 0;
+        const stage = lq >= 0.95 ? 'AVATAR' : lq >= 0.90 ? 'HIEROPHANT' : lq >= 0.80 ? 'MASTER' : lq >= 0.65 ? 'ADEPT' : 'NEOPHYTE';
+        if (a.tes) lines.push(`TES (groundedness): ${a.tes.toFixed(2)}`);
+        if (a.vtr) lines.push(`VTR (value output): ${a.vtr.toFixed(2)}`);
+        if (a.pai) lines.push(`PAI (purpose alignment): ${a.pai.toFixed(2)}`);
+        if (lq > 0) lines.push(`Light Quotient: ${lq.toFixed(3)} — ${stage}`);
+      }
+      setSanctumField(lines.join('\n'));
+    }).catch(() => {});
     // Reload appearance prefs so style tab changes take effect immediately
     getFontFamily().then(f => setFontFamily(f));
     getBubbleGlow().then(v => setBubbleGlow(v));
@@ -394,6 +427,7 @@ export default function SolChat() {
     }
     // Prepend compiled persona spec + reply style instruction
     const contextBlock = [
+      sanctumField.trim() ? sanctumField.trim() : '',
       contextMemory.length > 0 ? `[User Context]\n${contextMemory.map(m => `• ${m}`).join('\n')}` : '',
       projectContext.trim() ? `[Project Context]\n${projectContext.trim().slice(0, 1500)}` : '',
     ].filter(Boolean).join('\n\n');
