@@ -34,6 +34,13 @@ const KEYS = {
   PROJECT_CONTEXT: 'lycheetah_project_context',
   BUBBLE_RADIUS: 'lycheetah_bubble_radius',
   COMPANION_ANIM: 'lycheetah_companion_anim',
+  TOKEN_BUDGET: 'lycheetah_token_budget',
+  TEMPERATURE: 'lycheetah_temperature',
+  BRAVE_KEY: 'lycheetah_brave_key',
+  FONT_FAMILY: 'lycheetah_font_family',
+  BUBBLE_GLOW: 'lycheetah_bubble_glow',
+  SHOW_SIGNATURES: 'lycheetah_show_signatures',
+  SHOW_TOKEN_BADGE: 'lycheetah_show_token_badge',
 };
 
 // Per-provider key storage
@@ -221,6 +228,55 @@ export async function getCompanionAnim(): Promise<'pulse' | 'bounce' | 'spin' | 
 export async function savePendingSubject(subject: string) { await AsyncStorage.setItem(KEYS.PENDING_SUBJECT, subject); }
 export async function getPendingSubject(): Promise<string | null> { return AsyncStorage.getItem(KEYS.PENDING_SUBJECT); }
 export async function clearPendingSubject() { await AsyncStorage.removeItem(KEYS.PENDING_SUBJECT); }
+
+// Token budget (max output tokens per response)
+export async function saveTokenBudget(budget: number) { await AsyncStorage.setItem(KEYS.TOKEN_BUDGET, String(budget)); }
+export async function getTokenBudget(): Promise<number> {
+  const val = await AsyncStorage.getItem(KEYS.TOKEN_BUDGET);
+  const parsed = val ? parseInt(val, 10) : 4096;
+  return isNaN(parsed) || parsed < 1 ? 4096 : parsed;
+}
+
+// Temperature (0.0 = precise, 1.0 = creative)
+export async function saveTemperature(temp: number) { await AsyncStorage.setItem(KEYS.TEMPERATURE, String(temp)); }
+export async function getTemperature(): Promise<number> {
+  const val = await AsyncStorage.getItem(KEYS.TEMPERATURE);
+  return val ? parseFloat(val) : 0.9;
+}
+
+// Brave Search API key (for web search tool)
+export async function saveBraveKey(key: string) { await AsyncStorage.setItem(KEYS.BRAVE_KEY, key); }
+export async function getBraveKey(): Promise<string> {
+  return (await AsyncStorage.getItem(KEYS.BRAVE_KEY)) || '';
+}
+
+// Font family
+export async function saveFontFamily(f: string) { await AsyncStorage.setItem(KEYS.FONT_FAMILY, f); }
+export async function getFontFamily(): Promise<'system' | 'mono' | 'serif'> {
+  const v = await AsyncStorage.getItem(KEYS.FONT_FAMILY);
+  return (v as 'system' | 'mono' | 'serif') || 'system';
+}
+
+// Bubble glow
+export async function saveBubbleGlow(v: boolean) { await AsyncStorage.setItem(KEYS.BUBBLE_GLOW, JSON.stringify(v)); }
+export async function getBubbleGlow(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(KEYS.BUBBLE_GLOW);
+  return v !== null ? JSON.parse(v) : false;
+}
+
+// Show/hide signatures (⊚ Sol ∴ P∧H∧B)
+export async function saveShowSignatures(v: boolean) { await AsyncStorage.setItem(KEYS.SHOW_SIGNATURES, JSON.stringify(v)); }
+export async function getShowSignatures(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(KEYS.SHOW_SIGNATURES);
+  return v !== null ? JSON.parse(v) : true;
+}
+
+// Show/hide token badge
+export async function saveShowTokenBadge(v: boolean) { await AsyncStorage.setItem(KEYS.SHOW_TOKEN_BADGE, JSON.stringify(v)); }
+export async function getShowTokenBadge(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(KEYS.SHOW_TOKEN_BADGE);
+  return v !== null ? JSON.parse(v) : true;
+}
 
 // Active API key — returns key matching the current model's provider
 export async function getActiveKey(): Promise<string | null> {

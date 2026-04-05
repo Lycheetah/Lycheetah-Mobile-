@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.1.0] — 2026-04-03
+
+### Changed
+- Token limit raised to 8192 across all providers (Anthropic, OpenAI, DeepSeek, Kimi) — longer, richer responses
+- Context memory cap raised from 8 → 12 items
+- Project context now saves on navigate-away (was only saving on keyboard dismiss)
+
+---
+
 ## [1.2.0] — 2026-04-02
 
 ### Added

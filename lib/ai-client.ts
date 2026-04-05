@@ -6,10 +6,24 @@ export type MessageImage = {
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
 };
 
+export type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
+export type ResponseTimings = {
+  timeToFirstToken: number; // ms
+  totalTime: number;        // ms
+};
+
 export type Message = {
   role: 'user' | 'assistant';
   content: string;
-  image?: MessageImage; // optional image attachment (vision models)
+  image?: MessageImage;
+  tokenUsage?: TokenUsage;
+  timings?: ResponseTimings;
+  model?: string; // which model produced this message
 };
 
 export type Provider = 'gemini' | 'anthropic' | 'openai' | 'deepseek' | 'kimi';
@@ -29,6 +43,12 @@ export function getProviderFromModel(model: AIModel): Provider {
   return 'gemini';
 }
 
+export type SendResult = {
+  text: string;
+  tokenUsage?: TokenUsage;
+  timings?: ResponseTimings;
+};
+
 export async function sendMessage(
   messages: Message[],
   systemPrompt: string,
@@ -36,11 +56,32 @@ export async function sendMessage(
   model: AIModel,
   onChunk?: (text: string) => void,
   streamSpeed: 'fast' | 'normal' | 'slow' = 'normal',
-): Promise<string> {
+  tokenBudget: number = 4096,
+  temperature: number = 0.9,
+): Promise<SendResult> {
   if (!apiKey || !apiKey.trim()) throw new Error('No API key provided');
   if (!model) throw new Error('No model selected');
 
   const { getProviderForModel } = await import('./providers/registry');
   const provider = getProviderForModel(model);
-  return provider.send(messages, systemPrompt, apiKey.trim(), model, onChunk, streamSpeed);
+
+  let capturedUsage: TokenUsage | undefined;
+  let capturedTimings: ResponseTimings | undefined;
+
+  const text = await provider.send(
+    messages,
+    systemPrompt,
+    apiKey.trim(),
+    model,
+    onChunk,
+    streamSpeed,
+    (usage, timings) => {
+      capturedUsage = usage;
+      capturedTimings = timings;
+    },
+    tokenBudget,
+    temperature,
+  );
+
+  return { text, tokenUsage: capturedUsage, timings: capturedTimings };
 }

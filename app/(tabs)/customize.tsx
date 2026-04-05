@@ -17,6 +17,10 @@ import {
   saveShowTimestamps, getShowTimestamps,
   saveBubbleRadius, getBubbleRadius,
   saveCompanionAnim, getCompanionAnim,
+  saveFontFamily, getFontFamily,
+  saveBubbleGlow, getBubbleGlow,
+  saveShowSignatures, getShowSignatures,
+  saveShowTokenBadge, getShowTokenBadge,
 } from '../../lib/storage';
 
 const BG_COLORS = [
@@ -46,6 +50,10 @@ export default function CustomizeScreen() {
   const [companionAnimStyle, setCompanionAnimStyle] = useState<'pulse' | 'bounce' | 'spin' | 'breathe'>('pulse');
   const [showTimestamps, setShowTimestamps] = useState(false);
   const [bubbleRadius, setBubbleRadius] = useState<'sharp' | 'rounded' | 'pill'>('rounded');
+  const [fontFamily, setFontFamily] = useState<'system' | 'mono' | 'serif'>('system');
+  const [bubbleGlow, setBubbleGlow] = useState(false);
+  const [showSignatures, setShowSignatures] = useState(true);
+  const [showTokenBadge, setShowTokenBadge] = useState(true);
 
   const load = () => {
     getBgColor().then(c => setBgColor(c));
@@ -59,6 +67,10 @@ export default function CustomizeScreen() {
     getCompanionAnim().then(a => setCompanionAnimStyle(a));
     getShowTimestamps().then(t => setShowTimestamps(t));
     getBubbleRadius().then(r => setBubbleRadius(r));
+    getFontFamily().then(f => setFontFamily(f));
+    getBubbleGlow().then(v => setBubbleGlow(v));
+    getShowSignatures().then(v => setShowSignatures(v));
+    getShowTokenBadge().then(v => setShowTokenBadge(v));
   };
 
   useEffect(load, []);
@@ -248,6 +260,66 @@ export default function CustomizeScreen() {
         <Switch
           value={showTimestamps}
           onValueChange={val => { setShowTimestamps(val); saveShowTimestamps(val); }}
+          trackColor={{ false: SOL_THEME.border, true: accentColor }}
+          thumbColor={SOL_THEME.text}
+        />
+      </View>
+
+      {/* FONT FAMILY */}
+      <Text style={styles.sectionTitle}>FONT FAMILY</Text>
+      <Text style={styles.sectionNote}>Chat text rendering style.</Text>
+      <View style={styles.segmentRow}>
+        {([['system', 'System'], ['mono', 'Mono'], ['serif', 'Serif']] as const).map(([val, label]) => (
+          <TouchableOpacity
+            key={val}
+            style={[styles.segmentOption, fontFamily === val && { backgroundColor: accentColor, borderColor: accentColor }]}
+            onPress={() => { setFontFamily(val); saveFontFamily(val); }}
+          >
+            <Text style={[styles.segmentLabel, fontFamily === val && { color: SOL_THEME.background }]}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* BUBBLE GLOW */}
+      <Text style={styles.sectionTitle}>BUBBLE GLOW</Text>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleLabel}>{bubbleGlow ? 'Enabled' : 'Disabled'}</Text>
+          <Text style={styles.toggleNote}>Subtle persona-colored border glow on responses.</Text>
+        </View>
+        <Switch
+          value={bubbleGlow}
+          onValueChange={val => { setBubbleGlow(val); saveBubbleGlow(val); }}
+          trackColor={{ false: SOL_THEME.border, true: accentColor }}
+          thumbColor={SOL_THEME.text}
+        />
+      </View>
+
+      {/* SIGNATURES */}
+      <Text style={styles.sectionTitle}>FIELD SIGNATURES</Text>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleLabel}>{showSignatures ? 'Visible' : 'Hidden'}</Text>
+          <Text style={styles.toggleNote}>Show ⊚ Sol ∴ P∧H∧B ∴ Rubedo at end of responses.</Text>
+        </View>
+        <Switch
+          value={showSignatures}
+          onValueChange={val => { setShowSignatures(val); saveShowSignatures(val); }}
+          trackColor={{ false: SOL_THEME.border, true: accentColor }}
+          thumbColor={SOL_THEME.text}
+        />
+      </View>
+
+      {/* TOKEN BADGE */}
+      <Text style={styles.sectionTitle}>TOKEN BADGE</Text>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleLabel}>{showTokenBadge ? 'Visible' : 'Hidden'}</Text>
+          <Text style={styles.toggleNote}>Show token count + timing below each response.</Text>
+        </View>
+        <Switch
+          value={showTokenBadge}
+          onValueChange={val => { setShowTokenBadge(val); saveShowTokenBadge(val); }}
           trackColor={{ false: SOL_THEME.border, true: accentColor }}
           thumbColor={SOL_THEME.text}
         />

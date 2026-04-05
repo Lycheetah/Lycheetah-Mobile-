@@ -15,6 +15,9 @@ import {
   saveContextMemory, getContextMemory,
   saveProjectContext, getProjectContext,
   getAccentColor,
+  getTokenBudget, saveTokenBudget,
+  getTemperature, saveTemperature,
+  getBraveKey, saveBraveKey,
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
@@ -28,6 +31,10 @@ export default function SettingsScreen() {
   const [contextMemory, setContextMemory] = useState<string[]>([]);
   const [newMemoryItem, setNewMemoryItem] = useState('');
   const [projectContext, setProjectContext] = useState('');
+  const [tokenBudget, setTokenBudgetState] = useState(4096);
+  const [temperature, setTemperatureState] = useState(0.9);
+  const [braveKey, setBraveKeyState] = useState('');
+  const [braveKeySaved, setBraveKeySaved] = useState(false);
 
   useEffect(() => {
     getModel().then(m => {
@@ -40,6 +47,9 @@ export default function SettingsScreen() {
     getAccentColor().then(c => setAccentColor(c));
     getContextMemory().then(m => setContextMemory(m));
     getProjectContext().then(p => setProjectContext(p));
+    getTokenBudget().then(t => setTokenBudgetState(t));
+    getTemperature().then(t => setTemperatureState(t));
+    getBraveKey().then(k => { if (k) { setBraveKeyState(k); setBraveKeySaved(true); } });
     Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
       .then(results => {
         const keys: Record<string, string> = {};
@@ -203,7 +213,7 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       ))}
-      {contextMemory.length < 8 && (
+      {contextMemory.length < 12 && (
         <View style={styles.keyRow}>
           <TextInput
             style={styles.keyInput}
@@ -236,7 +246,7 @@ export default function SettingsScreen() {
         style={styles.projectContextInput}
         value={projectContext}
         onChangeText={setProjectContext}
-        onEndEditing={() => saveProjectContext(projectContext)}
+        onBlur={() => saveProjectContext(projectContext)}
         placeholder="Paste your project notes, architecture, goals, anything Sol should know..."
         placeholderTextColor={SOL_THEME.textMuted}
         multiline
@@ -247,6 +257,73 @@ export default function SettingsScreen() {
       {projectContext.length > 0 && (
         <Text style={styles.contextCount}>{projectContext.length} chars · auto-saved on exit</Text>
       )}
+
+      {/* TOKEN BUDGET */}
+      <Text style={styles.sectionTitle}>TOKEN BUDGET</Text>
+      <Text style={styles.sectionNote}>Max tokens per response. Higher = longer answers, more API cost.</Text>
+      <View style={styles.segmentRow}>
+        {[1024, 2048, 4096, 8192, 16384].map(val => (
+          <TouchableOpacity
+            key={val}
+            style={[styles.segmentBtn, tokenBudget === val && [styles.segmentBtnActive, { borderColor: accentColor }]]}
+            onPress={async () => { setTokenBudgetState(val); await saveTokenBudget(val); }}
+          >
+            <Text style={[styles.segmentLabel, tokenBudget === val && { color: accentColor }]}>
+              {val >= 1024 ? `${val / 1024}k` : val}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* TEMPERATURE */}
+      <Text style={styles.sectionTitle}>TEMPERATURE</Text>
+      <Text style={styles.sectionNote}>Controls creativity. Lower = precise and focused. Higher = creative and varied.</Text>
+      <View style={styles.segmentRow}>
+        {[0.3, 0.6, 0.9, 1.2, 1.5].map(val => (
+          <TouchableOpacity
+            key={val}
+            style={[styles.segmentBtn, temperature === val && [styles.segmentBtnActive, { borderColor: accentColor }]]}
+            onPress={async () => { setTemperatureState(val); await saveTemperature(val); }}
+          >
+            <Text style={[styles.segmentLabel, temperature === val && { color: accentColor }]}>{val}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Text style={styles.tempHint}>
+        {temperature <= 0.3 ? 'Precise · factual · deterministic' :
+         temperature <= 0.6 ? 'Focused · reliable · coherent' :
+         temperature <= 0.9 ? 'Balanced · natural · recommended' :
+         temperature <= 1.2 ? 'Creative · varied · expressive' :
+         'Wild · experimental · unpredictable'}
+      </Text>
+
+      {/* TOOL KEYS */}
+      <Text style={styles.sectionTitle}>TOOL KEYS</Text>
+      <Text style={styles.sectionNote}>Power the web search tool. Brave Search gives 2000 free queries/month.</Text>
+      <View style={styles.keyRow}>
+        <TextInput
+          style={styles.keyInput}
+          value={braveKey}
+          onChangeText={setBraveKeyState}
+          placeholder="Brave Search API key (BSA...)"
+          placeholderTextColor={SOL_THEME.textMuted}
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: accentColor }]}
+          onPress={async () => {
+            await saveBraveKey(braveKey.trim());
+            setBraveKeySaved(true);
+            Alert.alert('Saved', 'Brave Search key saved. Use /search in chat.');
+          }}
+        >
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+      </View>
+      {braveKeySaved && <Text style={[styles.keyStatus, { color: accentColor }]}>✓ Web search active · /search query in chat</Text>}
+      <Text style={styles.sectionNote}>Calculator: built-in · no key needed. URL Reader: built-in · no key needed.</Text>
 
       {/* VARIANT */}
       <Text style={styles.sectionTitle}>VARIANT</Text>
@@ -286,7 +363,7 @@ export default function SettingsScreen() {
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v2.0.0</Text>
+        <Text style={styles.footerVersion}>v2.1.0</Text>
       </View>
     </ScrollView>
   );
@@ -387,4 +464,12 @@ const styles = StyleSheet.create({
     minHeight: 100, textAlignVertical: 'top', marginBottom: 4,
   },
   contextCount: { fontSize: 11, color: SOL_THEME.textMuted, marginBottom: 8 },
+  segmentRow: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  segmentBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center',
+    backgroundColor: SOL_THEME.surface, borderWidth: 1, borderColor: SOL_THEME.border,
+  },
+  segmentBtnActive: { borderWidth: 1.5 },
+  segmentLabel: { fontSize: 13, fontWeight: '600', color: SOL_THEME.textMuted },
+  tempHint: { fontSize: 12, color: SOL_THEME.textMuted, marginBottom: 4, marginTop: 2 },
 });

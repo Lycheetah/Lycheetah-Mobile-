@@ -1,14 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
+  View, Text, TextInput, TouchableOpacity, FlatList, ScrollView,
   KeyboardAvoidingView, Platform, ActivityIndicator,
   StyleSheet, Alert, Clipboard, Share, Image, Animated,
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
-import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS } from '../../constants/theme';
+import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
 import { getCompiledSpec } from '../../lib/personas/compiler';
@@ -17,7 +17,7 @@ import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
 import ConversationDrawer from '../../components/ConversationDrawer';
 import {
   saveConversation as saveConv, loadConversation, listConversations,
-  deleteConversation, createNewConversation, autoTitle, ConversationMeta,
+  deleteConversation, renameConversation, createNewConversation, autoTitle, ConversationMeta,
 } from '../../lib/conversation-manager';
 import {
   detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle,
@@ -34,8 +34,14 @@ import {
   getShowTimestamps, getPinnedMessages, savePinnedMessages,
   getDailyIntention, getContextMemory, getProjectContext,
   getBubbleRadius, getCompanionAnim, getDailyQuestion, saveDailyQuestion,
+  getTokenBudget, getTemperature,
+  getBraveKey,
+  getFontFamily, getBubbleGlow, getShowSignatures, getShowTokenBadge,
 } from '../../lib/storage';
 import { getFieldNote } from '../../lib/field-notes';
+import { calculate, detectCalcIntent } from '../../lib/tools/calculator';
+import { readURL, detectURLIntent } from '../../lib/tools/url-reader';
+import { webSearch, formatSearchResults, detectSearchIntent } from '../../lib/tools/web-search';
 
 type Persona = 'sol' | 'veyra' | 'aura-prime' | 'headmaster';
 
@@ -164,34 +170,55 @@ export default function SolChat() {
   const [contextMemory, setContextMemory] = useState<string[]>([]);
   const [projectContext, setProjectContext] = useState('');
   const [dailyQuestion, setDailyQuestion] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareModel, setCompareModel] = useState<AIModel>('gemini-2.5-flash');
+  const [comparePickerOpen, setComparePickerOpen] = useState(false);
+  const [tokenBudget, setTokenBudget] = useState(4096);
+  const [temperature, setTemperature] = useState(0.9);
+  const [braveKey, setBraveKey] = useState('');
+  const [fontFamily, setFontFamily] = useState<'system' | 'mono' | 'serif'>('system');
+  const [bubbleGlow, setBubbleGlow] = useState(false);
+  const [showSignatures, setShowSignatures] = useState(true);
+  const [showTokenBadge, setShowTokenBadge] = useState(true);
   const companionAnim = useRef(new Animated.Value(0)).current;
   const toastAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getReplyStyle(), getBgColor(), getFontSize(), getHaptics(), getStreamSpeed(), getResponseLength(), getAccentColor(), getCompanionEnabled(), getCompanionGlyph(), getShowTimestamps(), getPinnedMessages(), getDailyIntention(), getContextMemory(), getProjectContext(), getBubbleRadius(), getCompanionAnim(), getDailyQuestion()])
-      .then(([saved, savedPersona, name, convList, style, bg, fs, hap, spd, rlen, acc, compOn, compGlyph, ts, pins, intention, ctxMem, projCtx, bRadius, compAnim, dq]) => {
+    // Load app state immediately — don't block on welcome thread
+    // Remove welcome thread if it exists (deprecated feature)
+    deleteConversation('welcome_thread').catch(() => {});
+
+    Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getReplyStyle(), getBgColor(), getFontSize(), getHaptics(), getStreamSpeed(), getResponseLength(), getAccentColor(), getCompanionEnabled(), getCompanionGlyph(), getShowTimestamps(), getPinnedMessages(), getDailyIntention(), getContextMemory(), getProjectContext(), getBubbleRadius(), getCompanionAnim(), getDailyQuestion(), getTokenBudget(), getTemperature(), getBraveKey(), getFontFamily(), getBubbleGlow(), getShowSignatures(), getShowTokenBadge()])
+      .then(([saved, savedPersona, name, convList, style, bg, fs, hap, spd, rlen, acc, compOn, compGlyph, ts, pins, intention, ctxMem, projCtx, bRadius, compAnim, dq, tb, temp, bKey, ff, glow, sigs, badge]) => {
         if (saved.length > 0) setMessages(saved.map((m, i) => ({ ...m, id: String(i) })));
         setPersona(savedPersona as Persona);
         setUserName(name);
         setConversations(convList);
-        setReplyStyle(style as ReplyStyleId);
-        setBgColor(bg as string);
-        setFontSize(fs as 'small' | 'medium' | 'large');
-        setHapticsOn(hap as boolean);
-        setStreamSpeed(spd as 'fast' | 'normal' | 'slow');
-        setResponseLength(rlen as 'short' | 'balanced' | 'detailed');
-        setAccentColor(acc as string);
-        setCompanionEnabled(compOn as boolean);
-        setCompanionGlyph(compGlyph as string);
-        setShowTimestamps(ts as boolean);
-        setPinnedIds(pins as string[]);
-        setDailyIntention(intention as string | null);
-        setContextMemory(ctxMem as string[]);
-        setProjectContext(projCtx as string);
-        setBubbleRadius(bRadius as 'sharp' | 'rounded' | 'pill');
-        setCompanionAnimStyle(compAnim as 'pulse' | 'bounce' | 'spin' | 'breathe');
-        setDailyQuestion(dq as string | null);
+            setReplyStyle(style as ReplyStyleId);
+            setBgColor(bg as string);
+            setFontSize(fs as 'small' | 'medium' | 'large');
+            setHapticsOn(hap as boolean);
+            setStreamSpeed(spd as 'fast' | 'normal' | 'slow');
+            setResponseLength(rlen as 'short' | 'balanced' | 'detailed');
+            setAccentColor(acc as string);
+            setCompanionEnabled(compOn as boolean);
+            setCompanionGlyph(compGlyph as string);
+            setShowTimestamps(ts as boolean);
+            setPinnedIds(pins as string[]);
+            setDailyIntention(intention as string | null);
+            setContextMemory(ctxMem as string[]);
+            setProjectContext(projCtx as string);
+            setBubbleRadius(bRadius as 'sharp' | 'rounded' | 'pill');
+            setCompanionAnimStyle(compAnim as 'pulse' | 'bounce' | 'spin' | 'breathe');
+            setDailyQuestion(dq as string | null);
+            setTokenBudget(tb as number);
+            setTemperature(temp as number);
+            setBraveKey(bKey as string);
+            setFontFamily(ff as 'system' | 'mono' | 'serif');
+            setBubbleGlow(glow as boolean);
+            setShowSignatures(sigs as boolean);
+            setShowTokenBadge(badge as boolean);
 
         // Welcome back message
         const hour = new Date().getHours();
@@ -239,6 +266,14 @@ export default function SolChat() {
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
+    // Reload appearance prefs so style tab changes take effect immediately
+    getFontFamily().then(f => setFontFamily(f));
+    getBubbleGlow().then(v => setBubbleGlow(v));
+    getShowSignatures().then(v => setShowSignatures(v));
+    getShowTokenBadge().then(v => setShowTokenBadge(v));
+    getAccentColor().then(c => setAccentColor(c));
+    getBubbleRadius().then(r => setBubbleRadius(r));
+    getFontSize().then(s => setFontSize(s));
     getPendingSubject().then(subject => {
       if (!subject) return;
       clearPendingSubject();
@@ -379,6 +414,30 @@ export default function SolChat() {
     setCurrentEWS(detectedEWS);
     setIsNRMActive(nrmActive);
 
+    // Tool detection — run before sending to AI
+    let toolContext = '';
+    const calcExpr = detectCalcIntent(text);
+    if (calcExpr) {
+      const result = calculate(calcExpr);
+      toolContext = result.ok
+        ? `[Calculator] ${calcExpr} = ${result.result}`
+        : `[Calculator error] ${result.error}`;
+    }
+    const urlTarget = detectURLIntent(text);
+    if (!toolContext && urlTarget) {
+      setLoading(true);
+      const result = await readURL(urlTarget);
+      toolContext = result.ok
+        ? `[URL Content: ${result.title || urlTarget}]\n${result.content.slice(0, 3000)}`
+        : `[URL error: ${result.error}]`;
+    }
+    const searchQuery = detectSearchIntent(text);
+    if (!toolContext && searchQuery) {
+      setLoading(true);
+      const result = await webSearch(searchQuery, braveKey);
+      toolContext = formatSearchResults(result);
+    }
+
     const frameworkContext = buildFrameworkContext(detectedMode, detectedEWS, nrmActive, persona);
 
     if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -403,17 +462,23 @@ export default function SolChat() {
 
     const apiMessages: Message[] = updatedMessages.map((m, i) => {
       if (i === updatedMessages.length - 1 && m.role === 'user') {
-        return { role: m.role, content: `${frameworkContext}\n\n${m.content}` };
+        const toolPrefix = toolContext ? `${toolContext}\n\n` : '';
+        return { role: m.role, content: `${toolPrefix}${frameworkContext}\n\n${m.content}`, image: m.image };
       }
-      return { role: m.role, content: m.content };
+      return { role: m.role, content: m.content, image: m.image };
     });
 
     try {
       let fullResponse = '';
-      await sendMessage(apiMessages, systemPrompt, apiKey, model, (chunk) => {
+      let lastRender = 0;
+      const sendResult = await sendMessage(apiMessages, systemPrompt, apiKey, model, (chunk) => {
         fullResponse += chunk;
-        setStreamingText(fullResponse);
-      }, currentStreamSpeed);
+        const now = Date.now();
+        if (now - lastRender > 16) { // batch renders to ~60fps
+          lastRender = now;
+          setStreamingText(fullResponse);
+        }
+      }, currentStreamSpeed, tokenBudget, temperature);
 
       // Strip framework context echo if model repeated the injected prefix
       fullResponse = stripFrameworkEcho(fullResponse);
@@ -441,6 +506,9 @@ export default function SolChat() {
         aura: auraMetrics,
         modelConfidence: confidence ?? undefined,
         persona,
+        tokenUsage: sendResult.tokenUsage,
+        timings: sendResult.timings,
+        model,
       };
 
       const finalMessages = [...updatedMessages, assistantMsg];
@@ -474,6 +542,64 @@ export default function SolChat() {
     }
   }, [input, loading, messages, persona, userName, isNRMActive, conversationPassRates, togglePersona, hapticsOn, streamSpeed, responseLength]);
 
+  // Compare mode: send same prompt to primary model AND compareModel, show both
+  const sendCompare = useCallback(async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setLoading(true);
+    setInput('');
+
+    const primaryModel = (await getModel() || 'gemini-2.5-flash') as AIModel;
+    const apiKey = await getActiveKey();
+    if (!apiKey) { setLoading(false); Alert.alert('No API key', 'Add a key in Settings.'); return; }
+
+    const basePrompt = persona === 'veyra' ? VEYRA_SYSTEM_PROMPT : persona === 'aura-prime' ? AURA_PRIME_SYSTEM_PROMPT : persona === 'headmaster' ? HEADMASTER_SYSTEM_PROMPT : SOL_SYSTEM_PROMPT;
+    const systemPrompt = resolvePrompt(basePrompt, userName);
+    const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
+
+    const userMsg: DisplayMessage = {
+      id: Date.now().toString(), role: 'user', content: text, persona,
+    };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+
+    try {
+      // Fire both in parallel
+      const [resultA, resultB] = await Promise.all([
+        sendMessage(apiMessages.concat([{ role: 'user', content: text }]), systemPrompt, apiKey, primaryModel, undefined, streamSpeed, tokenBudget, temperature),
+        sendMessage(apiMessages.concat([{ role: 'user', content: text }]), systemPrompt, apiKey, compareModel, undefined, streamSpeed, tokenBudget, temperature).catch(e => ({ text: `Error: ${e.message}`, tokenUsage: undefined, timings: undefined })),
+      ]);
+
+      const modelLabel = (m: AIModel) => m.split('-').slice(0, 3).join('-');
+      const makeCompareMsg = (result: any, model: AIModel, idOffset: number): DisplayMessage => {
+        const content = typeof result === 'string' ? result : result.text;
+        const aura = scoreAURAFull(stripFrameworkEcho(content), conversationPassRates);
+        return {
+          id: (Date.now() + idOffset).toString(),
+          role: 'assistant',
+          content: `◈ **Compare · ${modelLabel(model)}**\n\n${stripFrameworkEcho(typeof result === 'string' ? result : result.text)}`,
+          mode: 'ALBEDO' as Mode,
+          aura,
+          persona,
+          tokenUsage: result.tokenUsage,
+          timings: result.timings,
+          model,
+        };
+      };
+
+      const msgA = makeCompareMsg(resultA, primaryModel, 1);
+      const msgB = makeCompareMsg(resultB, compareModel, 2);
+
+      setMessages([...updatedMessages, msgA, msgB]);
+      setStreamingText('');
+      if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert('Compare Error', err?.message || 'Unknown error');
+    } finally {
+      setLoading(false);
+    }
+  }, [input, loading, messages, persona, userName, compareModel, conversationPassRates, hapticsOn, streamSpeed]);
+
   useEffect(() => {
     if (messages.length > 0 || streamingText) {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -492,31 +618,40 @@ export default function SolChat() {
         `${m.role === 'user' ? 'Human' : getPersonaLabel(m.persona || 'sol')}: ${m.content.slice(0, 300)}`
       ).join('\n\n');
       const prompt = `You are ${getPersonaLabel(persona)}. Write a single paragraph Field Report — a synthesis of what was discovered, created, or transformed in this conversation. Be honest, specific, and poetic only where it earns it. No preamble.\n\nTranscript:\n${transcript}`;
-      const report = await sendMessage([], prompt, apiKey, model);
-      setFieldReport(report.replace(/\[CONF:[^\]]+\]/, '').trim());
+      const reportResult = await sendMessage([], prompt, apiKey, model);
+      setFieldReport(reportResult.text.replace(/\[CONF:[^\]]+\]/, '').trim());
     } catch { /* silent fail */ }
     setFieldReportLoading(false);
   }, [messages, persona]);
 
-  const handleShareCard = useCallback((content: string, msgPersona: Persona) => {
+  const handleShareCard = useCallback((content: string, msgPersona: Persona, aura?: AURAMetrics, tokenUsage?: any, timings?: any) => {
     const glyph = getPersonaGlyph(msgPersona);
     const label = getPersonaLabel(msgPersona);
-    const card = `${glyph} ${label}\n${'─'.repeat(32)}\n\n${content}\n\n${'─'.repeat(32)}\nLycheetah Framework · lycheetah.app`;
+    const auraLine = aura ? `\nAURA ${aura.passed}/${aura.total} · ${aura.composite}% · TES ${aura.TES.score.toFixed(2)} · VTR ${aura.VTR.score.toFixed(1)} · PAI ${aura.PAI.score.toFixed(2)}` : '';
+    const tokenLine = tokenUsage ? `\n${tokenUsage.totalTokens} tokens${timings ? ` · ${(timings.totalTime / 1000).toFixed(1)}s` : ''}` : '';
+    const card = `${glyph} ${label}${auraLine}${tokenLine}\n${'─'.repeat(36)}\n\n${content}\n\n${'─'.repeat(36)}\nLycheetah Framework · Built on Sol Protocol v3.1`;
     Share.share({ message: card, title: `${label} — Lycheetah` });
   }, []);
 
   const handleExport = useCallback(() => {
     if (messages.length === 0) return;
-    const text = messages.map(m => `${m.role === 'user' ? 'You' : getPersonaLabel(m.persona || 'sol')}:\n${m.content}`).join('\n\n---\n\n');
-    Share.share({ message: text, title: 'Conversation Export' });
+    const header = `⊚ CONVERSATION EXPORT\nLycheetah Framework · Sol Protocol v3.1\n${'═'.repeat(40)}\n\n`;
+    const body = messages.map(m => {
+      const who = m.role === 'user' ? 'You' : `${getPersonaGlyph(m.persona || 'sol')} ${getPersonaLabel(m.persona || 'sol')}`;
+      const auraLine = m.aura ? `[AURA ${m.aura.passed}/${m.aura.total} · ${m.aura.composite}%]` : '';
+      const tokenLine = m.tokenUsage ? `[${m.tokenUsage.totalTokens} tokens${m.timings ? ` · ${(m.timings.totalTime / 1000).toFixed(1)}s` : ''}]` : '';
+      const meta = [auraLine, tokenLine].filter(Boolean).join(' ');
+      return `${who}${meta ? ' ' + meta : ''}:\n${m.content}`;
+    }).join('\n\n─────\n\n');
+    Share.share({ message: header + body, title: 'Lycheetah Conversation' });
   }, [messages]);
 
-  const handleLongPress = (content: string, isAssistant: boolean, msgPersona: Persona = 'sol', msgId?: string) => {
+  const handleLongPress = (content: string, isAssistant: boolean, msgPersona: Persona = 'sol', msgId?: string, aura?: AURAMetrics, tokenUsage?: any, timings?: any) => {
     if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     const isPinned = msgId ? pinnedIds.includes(msgId) : false;
     Alert.alert('Message', undefined, [
       { text: 'Copy', onPress: () => { Clipboard.setString(content); } },
-      ...(isAssistant ? [{ text: 'Share as Card', onPress: () => handleShareCard(content, msgPersona) }] : []),
+      ...(isAssistant ? [{ text: 'Share as Card', onPress: () => handleShareCard(content, msgPersona, aura, tokenUsage, timings) }] : []),
       ...(msgId ? [{
         text: isPinned ? 'Unpin' : 'Pin',
         onPress: async () => {
@@ -540,18 +675,13 @@ export default function SolChat() {
     const invEntries = aura ? Object.entries(aura.invariants) : [];
 
     return (
-      <TouchableOpacity
-        onLongPress={() => handleLongPress(item.content, !isUser, msgPersona, item.id)}
-        activeOpacity={0.9}
-        delayLongPress={500}
-      >
-        <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
+      <View style={[styles.messageRow, isUser ? styles.userRow : styles.assistantRow]}>
           {!isUser && <View style={[styles.modeBar, { backgroundColor: modeColor }]} />}
           <View style={[
             styles.bubble,
             isUser
               ? [styles.userBubble, { backgroundColor: accent, borderRadius: bubbleRadius === 'sharp' ? 4 : bubbleRadius === 'pill' ? 20 : 12 }]
-              : [styles.assistantBubble, item.mode && { borderLeftColor: modeColor, borderLeftWidth: 2 }, { borderRadius: bubbleRadius === 'sharp' ? 4 : bubbleRadius === 'pill' ? 20 : 12 }],
+              : [styles.assistantBubble, { backgroundColor: world.surface, borderColor: bubbleGlow ? accent + '66' : world.border, borderWidth: bubbleGlow ? 1.5 : 1 }, item.mode && { borderLeftColor: modeColor, borderLeftWidth: 2 }, { borderRadius: bubbleRadius === 'sharp' ? 4 : bubbleRadius === 'pill' ? 20 : 12 }],
             item.isNRM && !isUser && styles.nrmBubble,
           ]}>
             {item.isNRM && !isUser && (
@@ -561,13 +691,13 @@ export default function SolChat() {
               <Image source={{ uri: item.imageUri }} style={styles.messageImage} resizeMode="cover" />
             )}
             {isUser ? (
-              <Text selectable style={[styles.messageText, styles.userText, { fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15 }]}>{body}</Text>
+              <Text selectable style={[styles.messageText, styles.userText, { fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined }]}>{body}</Text>
             ) : (
-              <Markdown style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15 } }}>{body}</Markdown>
+              <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } }}>{body}</Markdown>
             )}
-            {signature && (
+            {signature && showSignatures && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
-                <Text style={[styles.signatureText, { color: accent }]}>{signature}</Text>
+                <Text selectable style={[styles.signatureText, { color: accent }]}>{signature}</Text>
               </View>
             )}
             {/* Timestamp + pin */}
@@ -575,6 +705,17 @@ export default function SolChat() {
               <View style={styles.msgMeta}>
                 {pinnedIds.includes(item.id) && <Text style={[styles.pinBadge, { color: accent }]}>📌</Text>}
                 {showTimestamps && <Text style={styles.timestamp}>{new Date(parseInt(item.id)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>}
+              </View>
+            )}
+
+            {/* Token + timing badge */}
+            {!isUser && item.tokenUsage && showTokenBadge && (
+              <View style={styles.tokenBadge}>
+                <Text style={styles.tokenBadgeText}>
+                  {item.tokenUsage.totalTokens.toLocaleString()} tokens
+                  {item.timings ? ` · ${(item.timings.totalTime / 1000).toFixed(1)}s` : ''}
+                  {item.model ? ` · ${item.model.split('-').slice(0, 2).join('-')}` : ''}
+                </Text>
               </View>
             )}
 
@@ -656,7 +797,6 @@ export default function SolChat() {
             )}
           </View>
         </View>
-      </TouchableOpacity>
     );
   };
 
@@ -674,7 +814,7 @@ export default function SolChat() {
     return (
       <View style={styles.messageRow}>
         <View style={[styles.modeBar, { backgroundColor: MODE_COLORS[currentMode] }]} />
-        <View style={styles.assistantBubble}>
+        <View style={[styles.assistantBubble, { backgroundColor: world.surface, borderColor: world.border }]}>
           {streamingText ? (
             <>
               <Text style={styles.assistantText}>{body}</Text>
@@ -697,9 +837,11 @@ export default function SolChat() {
     );
   };
 
+  const world = PERSONA_WORLDS[persona] ?? PERSONA_WORLDS.sol;
+
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: bgColor }]}
+      style={[styles.container, { backgroundColor: world.background }]}
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       enabled={Platform.OS === 'ios'}
@@ -729,6 +871,10 @@ export default function SolChat() {
           if (id === activeConvId) {
             setMessages([]); setActiveConvId(null); clearConversation();
           }
+        }}
+        onRename={async (id, newTitle) => {
+          await renameConversation(id, newTitle);
+          setConversations(await listConversations());
         }}
       />
 
@@ -833,6 +979,11 @@ export default function SolChat() {
         contentContainerStyle={styles.messageList}
         style={{ backgroundColor: 'transparent' }}
         keyboardDismissMode="on-drag"
+        removeClippedSubviews={true}
+        windowSize={8}
+        maxToRenderPerBatch={6}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={12}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={[styles.emptyGlyph, { color: accent }]}>{getPersonaGlyph(persona)}</Text>
@@ -893,22 +1044,43 @@ export default function SolChat() {
 
       {/* Style picker */}
       {stylePickerOpen && (
-        <View style={styles.stylePicker}>
-          {REPLY_STYLES.map(s => (
+        <View style={[styles.stylePicker, { maxHeight: 280 }]}>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {REPLY_STYLES.map(s => (
+              <TouchableOpacity
+                key={s.id}
+                style={[styles.styleOption, replyStyle === s.id && [styles.styleOptionActive, { borderColor: accent }]]}
+                onPress={async () => {
+                  setReplyStyle(s.id);
+                  await saveReplyStyle(s.id);
+                  setStylePickerOpen(false);
+                  if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <Text style={[styles.styleGlyph, { color: replyStyle === s.id ? accent : SOL_THEME.textMuted }]}>{s.glyph}</Text>
+                <View style={styles.styleText}>
+                  <Text style={[styles.styleLabel, { color: replyStyle === s.id ? accent : SOL_THEME.text }]}>{s.label}</Text>
+                  <Text style={styles.styleTagline}>{s.tagline}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Compare model picker */}
+      {compareMode && (
+        <View style={[styles.stylePicker, { borderTopColor: SOL_THEME.veyra + '66' }]}>
+          <Text style={[styles.styleLabel, { color: SOL_THEME.veyra, marginBottom: 8, paddingHorizontal: 4 }]}>⇌ COMPARE WITH</Text>
+          {(['gemini-2.5-flash', 'claude-haiku-4-5-20251001', 'claude-sonnet-4-6', 'gpt-4o-mini', 'deepseek-chat'] as AIModel[]).map(m => (
             <TouchableOpacity
-              key={s.id}
-              style={[styles.styleOption, replyStyle === s.id && [styles.styleOptionActive, { borderColor: accent }]]}
-              onPress={async () => {
-                setReplyStyle(s.id);
-                await saveReplyStyle(s.id);
-                setStylePickerOpen(false);
-                if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
+              key={m}
+              style={[styles.styleOption, compareModel === m && [styles.styleOptionActive, { borderColor: SOL_THEME.veyra }]]}
+              onPress={() => { setCompareModel(m); }}
             >
-              <Text style={[styles.styleGlyph, { color: replyStyle === s.id ? accent : SOL_THEME.textMuted }]}>{s.glyph}</Text>
+              <Text style={[styles.styleGlyph, { color: compareModel === m ? SOL_THEME.veyra : SOL_THEME.textMuted }]}>◈</Text>
               <View style={styles.styleText}>
-                <Text style={[styles.styleLabel, { color: replyStyle === s.id ? accent : SOL_THEME.text }]}>{s.label}</Text>
-                <Text style={styles.styleTagline}>{s.tagline}</Text>
+                <Text style={[styles.styleLabel, { color: compareModel === m ? SOL_THEME.veyra : SOL_THEME.text }]}>{m.split('-').slice(0, 3).join('-')}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -966,10 +1138,9 @@ export default function SolChat() {
         </Animated.Text>
       )}
 
-      {/* Input row */}
-      <View style={[styles.inputRow, { borderTopColor: SOL_THEME.border }]}>
+      <View style={[styles.inputRow, { borderTopColor: world.border, backgroundColor: world.surface }]}>
         <TextInput
-          style={[styles.input, { borderColor: SOL_THEME.border }]}
+          style={[styles.input, { borderColor: world.border, backgroundColor: world.background }]}
           value={input}
           onChangeText={setInput}
           placeholder={persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : persona === 'headmaster' ? 'Where are you?' : 'What do you bring?'}
@@ -988,12 +1159,19 @@ export default function SolChat() {
             {getStyle(replyStyle).glyph}
           </Text>
         </TouchableOpacity>
+        {/* Compare mode toggle */}
         <TouchableOpacity
-          style={[styles.sendButton, { backgroundColor: accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
-          onPress={send}
+          style={styles.imageButton}
+          onPress={() => { setCompareMode(v => !v); setComparePickerOpen(false); }}
+        >
+          <Text style={[styles.imageButtonText, { color: compareMode ? accent : SOL_THEME.textMuted }]}>⇌</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.sendButton, { backgroundColor: compareMode ? SOL_THEME.veyra : accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
+          onPress={compareMode ? sendCompare : send}
           disabled={!input.trim() || loading}
         >
-          <Text style={styles.sendText}>↑</Text>
+          <Text style={styles.sendText}>{compareMode ? '⇌' : '↑'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -1210,6 +1388,40 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
     letterSpacing: 0.5,
+  },
+  // Help channel banner
+  helpBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: SOL_THEME.surface,
+    borderTopWidth: 1,
+    borderTopColor: SOL_THEME.border,
+  },
+  helpBannerText: {
+    fontSize: 11,
+    color: SOL_THEME.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    letterSpacing: 0.5,
+  },
+  helpBannerAction: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  // Token badge
+  tokenBadge: {
+    marginTop: 6,
+    paddingTop: 5,
+    borderTopWidth: 1,
+    borderTopColor: SOL_THEME.border,
+  },
+  tokenBadgeText: {
+    fontSize: 10,
+    color: SOL_THEME.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    letterSpacing: 0.3,
   },
   // AURA display
   auraBlock: {

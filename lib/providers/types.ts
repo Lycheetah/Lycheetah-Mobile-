@@ -9,6 +9,17 @@ export type ModelOption = {
   note: string;
 };
 
+export type TokenUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+};
+
+export type ResponseTimings = {
+  timeToFirstToken: number; // ms
+  totalTime: number;        // ms
+};
+
 export interface AIProvider {
   id: string;
   label: string;
@@ -23,5 +34,8 @@ export interface AIProvider {
     model: string,
     onChunk?: (text: string) => void,
     streamSpeed?: 'fast' | 'normal' | 'slow',
+    onUsage?: (usage: TokenUsage, timings: ResponseTimings) => void,
+    tokenBudget?: number,
+    temperature?: number,
   ): Promise<string>;
 }

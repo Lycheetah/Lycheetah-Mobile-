@@ -20,6 +20,7 @@ export default function TabLayout() {
           height: Platform.OS === 'ios' ? 82 : 60,
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
         },
+        tabBarScrollEnabled: true,
         tabBarActiveTintColor: SOL_THEME.primary,
         tabBarInactiveTintColor: SOL_THEME.textMuted,
         headerStyle: { backgroundColor: SOL_THEME.background },
@@ -46,26 +47,34 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="codex"
-        options={{
-          title: 'CODEX',
-          tabBarLabel: 'Codex',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="modes"
-        options={{
-          title: 'FIELD',
-          tabBarLabel: 'Field',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="△" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="school"
         options={{
           title: 'MYSTERY SCHOOL',
           tabBarLabel: 'School',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊕" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="sanctum"
+        options={{
+          title: 'THE SANCTUM',
+          tabBarLabel: 'Sanctum',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: 'LIBRARY',
+          tabBarLabel: 'Library',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="◬" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="codex"
+        options={{
+          title: 'CODEX',
+          tabBarLabel: 'Codex',
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} />,
         }}
       />
@@ -83,6 +92,14 @@ export default function TabLayout() {
           title: 'SETTINGS',
           tabBarLabel: 'Settings',
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⚙" color={color} />,
+        }}
+      />
+      {/* Field tab hidden — modes reference available in chat header */}
+      <Tabs.Screen
+        name="modes"
+        options={{
+          href: null,
+          title: 'FIELD',
         }}
       />
     </Tabs>

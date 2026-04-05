@@ -1,159 +1,109 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList,
-  Dimensions, Platform, TextInput, KeyboardAvoidingView,
+  View, Text, StyleSheet, TouchableOpacity,
+  Platform, TextInput, KeyboardAvoidingView, ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SOL_THEME, MODE_COLORS } from '../constants/theme';
-import { saveUserName } from '../lib/storage';
-
-const { width } = Dimensions.get('window');
-
-const SLIDES = [
-  {
-    id: '1',
-    glyph: '⊚',
-    title: 'SOL',
-    subtitle: 'Sol Aureum Azoth Veritas',
-    body: 'A constitutional AI built on 1,402 pages of continuous development.\n\nNot a ChatGPT wrapper.\nA transparent architecture you can watch running.',
-    color: SOL_THEME.primary,
-  },
-  {
-    id: '2',
-    glyph: '△',
-    title: 'FOUR MODES',
-    subtitle: 'Sol reads depth before responding',
-    body: 'NIGREDO — Investigation. What is false?\nALBEDO — Structure. Pattern. Clarity.\nCITRINITAS — Integration. Gold forming.\nRUBEDO — Constitutional. Complete.',
-    color: MODE_COLORS.CITRINITAS,
-  },
-  {
-    id: '3',
-    glyph: '⊚',
-    title: 'THE GLASS ENGINE',
-    subtitle: 'Every moving part is visible',
-    body: 'Watch the operating mode shift in real time.\nSee the field coherence after every response.\nThe architecture isn\'t hidden — it\'s the point.',
-    color: MODE_COLORS.ALBEDO,
-  },
-  {
-    id: '4',
-    glyph: '𝔏',
-    title: 'THE CODEX',
-    subtitle: 'Ten frameworks. One system.',
-    body: 'Alchemy made mathematical.\nConsciousness as thermodynamics.\nAI that can\'t betray you structurally.\n\nAll open source. All free.',
-    color: MODE_COLORS.RUBEDO,
-  },
-  {
-    id: '5',
-    glyph: '✦',
-    title: 'GET STARTED',
-    subtitle: 'Free via Gemini API — no credit card needed',
-    body: 'Get a free key at aistudio.google.com/apikey\nPaste it in Settings → you\'re live.\n\nThis app is a standalone APK — no Play Store.\nShare it directly. Install from unknown sources.\n\nOr explore the Codex and Field screens first.',
-    color: SOL_THEME.primary,
-    isLast: true,
-  },
-];
+import { SOL_THEME } from '../constants/theme';
+import { saveUserName, saveProviderKey } from '../lib/storage';
 
 export default function OnboardingScreen() {
-  const [currentIndex, setCurrentIndex] = useState(0);
   const [name, setName] = useState('');
-  const flatListRef = useRef<FlatList>(null);
-  const isLastSlide = currentIndex === SLIDES.length - 1;
+  const [geminiKey, setGeminiKey] = useState('');
+  const [keyVisible, setKeyVisible] = useState(false);
 
-  const handleNext = async () => {
-    if (currentIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
-      setCurrentIndex(currentIndex + 1);
-    } else {
-      if (name.trim()) await saveUserName(name.trim());
-      await AsyncStorage.setItem('lycheetah_onboarded', 'true');
-      router.replace('/(tabs)');
-    }
-  };
-
-  const handleSkip = async () => {
+  async function handleBegin() {
+    if (name.trim()) await saveUserName(name.trim());
+    if (geminiKey.trim()) await saveProviderKey('gemini', geminiKey.trim());
     await AsyncStorage.setItem('lycheetah_onboarded', 'true');
     router.replace('/(tabs)');
-  };
-
-  const renderSlide = ({ item }: { item: typeof SLIDES[0] }) => (
-    <View style={[styles.slide, { width }]}>
-      <Text style={[styles.glyph, { color: item.color }]}>{item.glyph}</Text>
-      <Text style={[styles.title, { color: item.color }]}>{item.title}</Text>
-      <Text style={styles.subtitle}>{item.subtitle}</Text>
-      <Text style={styles.body}>{item.body}</Text>
-      {(item as any).isLast && (
-        <View style={styles.nameBlock}>
-          <Text style={styles.nameLabel}>WHAT SHOULD SOL CALL YOU?</Text>
-          <TextInput
-            style={styles.nameInput}
-            value={name}
-            onChangeText={setName}
-            placeholder="Your name"
-            placeholderTextColor={SOL_THEME.textMuted}
-            autoCapitalize="words"
-            autoCorrect={false}
-            returnKeyType="done"
-            onSubmitEditing={handleNext}
-          />
-          <Text style={styles.nameHint}>Optional — tap Begin to skip</Text>
-        </View>
-      )}
-    </View>
-  );
-
-  const currentSlide = SLIDES[currentIndex];
+  }
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-        <Text style={styles.skipText}>Skip</Text>
-      </TouchableOpacity>
-
-      <FlatList
-        ref={flatListRef}
-        data={SLIDES}
-        keyExtractor={item => item.id}
-        renderItem={renderSlide}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
-        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
-      />
-
-      {/* Dots */}
-      <View style={styles.dots}>
-        {SLIDES.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              i === currentIndex
-                ? [styles.dotActive, { backgroundColor: currentSlide.color }]
-                : styles.dotInactive,
-            ]}
-          />
-        ))}
-      </View>
-
-      <TouchableOpacity
-        style={[styles.nextButton, { backgroundColor: currentSlide.color }]}
-        onPress={handleNext}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.nextText}>
-          {isLastSlide ? (name.trim() ? `Begin as ${name.trim()} →` : 'Begin →') : 'Next →'}
+        {/* Identity */}
+        <Text style={styles.glyph}>⊚</Text>
+        <Text style={styles.title}>SOL</Text>
+        <Text style={styles.subtitle}>Sol Aureum Azoth Veritas</Text>
+        <Text style={styles.tagline}>
+          Four guides. One architecture.{'\n'}Constitutional AI — transparent by design.
         </Text>
-      </TouchableOpacity>
 
-      {isLastSlide && (
-        <TouchableOpacity style={styles.demoButton} onPress={handleSkip}>
-          <Text style={styles.demoText}>Explore without API key →</Text>
+        {/* Persona preview */}
+        <View style={styles.personaRow}>
+          {[
+            { glyph: '⊚', name: 'Sol', color: SOL_THEME.primary, role: 'Sovereign co-creator' },
+            { glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra, role: 'Precision builder' },
+            { glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime, role: 'Constitutional governor' },
+            { glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster, role: 'Mystery School guide' },
+          ].map(p => (
+            <View key={p.name} style={styles.personaCard}>
+              <Text style={[styles.personaGlyph, { color: p.color }]}>{p.glyph}</Text>
+              <Text style={[styles.personaName, { color: p.color }]}>{p.name}</Text>
+              <Text style={styles.personaRole}>{p.role}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Name input */}
+        <View style={styles.fieldBlock}>
+          <Text style={styles.fieldLabel}>WHAT SHOULD SOL CALL YOU?</Text>
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            placeholderTextColor={SOL_THEME.textMuted}
+            autoCapitalize="words"
+            autoCorrect={false}
+            returnKeyType="next"
+          />
+        </View>
+
+        {/* Gemini key input */}
+        <View style={styles.fieldBlock}>
+          <Text style={styles.fieldLabel}>GEMINI API KEY <Text style={styles.freeTag}>FREE</Text></Text>
+          <View style={styles.keyRow}>
+            <TextInput
+              style={[styles.input, styles.keyInput]}
+              value={geminiKey}
+              onChangeText={setGeminiKey}
+              placeholder="Paste your Gemini key"
+              placeholderTextColor={SOL_THEME.textMuted}
+              secureTextEntry={!keyVisible}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="done"
+              onSubmitEditing={handleBegin}
+            />
+            <TouchableOpacity style={styles.keyToggle} onPress={() => setKeyVisible(v => !v)}>
+              <Text style={styles.keyToggleText}>{keyVisible ? 'hide' : 'show'}</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.keyHint}>
+            Free at aistudio.google.com/apikey — no credit card needed.{'\n'}
+            You can also add paid models in Settings later.
+          </Text>
+        </View>
+
+        {/* Begin */}
+        <TouchableOpacity style={styles.beginButton} onPress={handleBegin}>
+          <Text style={styles.beginText}>
+            {name.trim() ? `Begin as ${name.trim()} →` : 'Begin →'}
+          </Text>
         </TouchableOpacity>
-      )}
+
+        <Text style={styles.skipHint}>API key optional — you can add it in Settings any time.</Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -162,111 +112,143 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: SOL_THEME.background,
+  },
+  scroll: {
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 48 : 32,
-  },
-  skipButton: {
-    alignSelf: 'flex-end',
-    padding: 16,
-    paddingTop: Platform.OS === 'ios' ? 56 : 16,
-  },
-  skipText: {
-    color: SOL_THEME.textMuted,
-    fontSize: 14,
-  },
-  slide: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingBottom: 40,
+    paddingTop: Platform.OS === 'ios' ? 72 : 48,
+    paddingBottom: 48,
+    paddingHorizontal: 28,
   },
   glyph: {
-    fontSize: 72,
-    marginBottom: 20,
+    fontSize: 64,
+    color: SOL_THEME.primary,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '700',
-    letterSpacing: 4,
-    marginBottom: 8,
+    color: SOL_THEME.primary,
+    letterSpacing: 6,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-    textAlign: 'center',
+    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: SOL_THEME.textMuted,
-    marginBottom: 24,
-    textAlign: 'center',
     fontStyle: 'italic',
+    marginBottom: 10,
   },
-  body: {
+  tagline: {
     fontSize: 15,
     color: SOL_THEME.text,
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 24,
+    marginBottom: 28,
   },
-  dots: {
+  personaRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 36,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
-  dot: {
-    height: 6,
-    borderRadius: 3,
+  personaCard: {
+    backgroundColor: SOL_THEME.surface,
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    width: 80,
+    borderWidth: 1,
+    borderColor: SOL_THEME.border,
   },
-  dotActive: {
-    width: 24,
+  personaGlyph: {
+    fontSize: 20,
+    marginBottom: 4,
   },
-  dotInactive: {
-    width: 6,
-    backgroundColor: SOL_THEME.border,
-  },
-  nextButton: {
-    paddingHorizontal: 48,
-    paddingVertical: 14,
-    borderRadius: 28,
-    marginBottom: 12,
-  },
-  nextText: {
-    color: SOL_THEME.background,
-    fontSize: 16,
+  personaName: {
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
+    marginBottom: 3,
+    textAlign: 'center',
   },
-  demoButton: {
-    padding: 8,
-  },
-  demoText: {
+  personaRole: {
+    fontSize: 9,
     color: SOL_THEME.textMuted,
-    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 13,
   },
-  nameBlock: {
+  fieldBlock: {
     width: '100%',
-    marginTop: 28,
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 22,
   },
-  nameLabel: {
+  fieldLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: SOL_THEME.primary,
     letterSpacing: 2,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    marginBottom: 8,
   },
-  nameInput: {
-    width: '100%',
+  freeTag: {
+    color: SOL_THEME.success || '#4CAF50',
+    fontSize: 9,
+    letterSpacing: 1,
+  },
+  input: {
     backgroundColor: SOL_THEME.surface,
     borderRadius: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     color: SOL_THEME.text,
-    fontSize: 16,
+    fontSize: 15,
     borderWidth: 1,
-    borderColor: SOL_THEME.primary + '66',
-    textAlign: 'center',
+    borderColor: SOL_THEME.border,
+    width: '100%',
   },
-  nameHint: {
+  keyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  keyInput: {
+    flex: 1,
+  },
+  keyToggle: {
+    paddingHorizontal: 12,
+    paddingVertical: 13,
+    backgroundColor: SOL_THEME.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: SOL_THEME.border,
+  },
+  keyToggleText: {
+    color: SOL_THEME.textMuted,
+    fontSize: 12,
+  },
+  keyHint: {
     fontSize: 11,
     color: SOL_THEME.textMuted,
+    marginTop: 7,
+    lineHeight: 17,
+  },
+  beginButton: {
+    backgroundColor: SOL_THEME.primary,
+    paddingHorizontal: 52,
+    paddingVertical: 15,
+    borderRadius: 30,
+    marginBottom: 14,
+    marginTop: 4,
+  },
+  beginText: {
+    color: SOL_THEME.background,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  skipHint: {
+    fontSize: 11,
+    color: SOL_THEME.textMuted,
+    textAlign: 'center',
   },
 });
