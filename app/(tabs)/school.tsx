@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, Platform, Alert, SafeAreaView, Animated, Share,
@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Haptics from 'expo-haptics';
+import { Accelerometer } from 'expo-sensors';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -110,6 +111,8 @@ export default function MysterySchoolScreen() {
   const [trialLoading, setTrialLoading] = useState(false);
   // Session counter per subject
   const [subjectSessionCounts, setSubjectSessionCounts] = useState<Record<string, number>>({});
+  // Shake-to-random
+  const lastShakeRef = useRef<number>(0);
 
   const runEntryAnimation = () => {
     cardAnims.forEach(a => a.setValue(0));
@@ -172,7 +175,42 @@ export default function MysterySchoolScreen() {
     });
     runEntryAnimation();
     setSubjectSearch('');
-  }, []));
+
+    // Mystery School Shake — accelerometer picks random unstudied subject
+    Accelerometer.setUpdateInterval(150);
+    const shakeSub = Accelerometer.addListener(({ x, y, z }) => {
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+      if (magnitude > 2.8) {
+        const now = Date.now();
+        if (now - lastShakeRef.current < 3000) return;
+        lastShakeRef.current = now;
+        // Pick random unstudied subject from all domains
+        const allSubjects: { subject: Subject; domain: SubjectDomain }[] = [];
+        MYSTERY_SCHOOL_DOMAINS.forEach(d => {
+          d.subjects.forEach(s => {
+            // Only show edge subjects if biometrics already OK (skip auth check here — edge is rare)
+            if (d.layer !== 'EDGE') allSubjects.push({ subject: s, domain: d });
+          });
+        });
+        // Prefer unstudied
+        const studiedSet = new Set(Array.from(studiedSubjects));
+        const unstudied = allSubjects.filter(({ subject }) => !studiedSet.has(subject.name));
+        const pool = unstudied.length > 0 ? unstudied : allSubjects;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        if (!pick) return;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          '🎲 The field speaks',
+          `"${pick.subject.name}"\n${pick.domain.label}`,
+          [
+            { text: 'Study it', onPress: () => { setSelectedDomain(pick.domain); enterStudySession(pick.subject, pick.domain); } },
+            { text: 'Skip', style: 'cancel' },
+          ]
+        );
+      }
+    });
+    return () => shakeSub.remove();
+  }, [studiedSubjects]));
 
   const enterStudySession = async (subject: Subject, domain: SubjectDomain | null) => {
     const host = getDailyHost(subject.name);

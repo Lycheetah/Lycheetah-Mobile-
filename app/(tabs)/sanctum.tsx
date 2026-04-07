@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Platform, Share, Animated,
+  StyleSheet, Alert, Platform, Share, Animated, Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
@@ -56,6 +56,17 @@ function getStateGlyph(tes: number, vtr: number, pai: number): string {
 type JournalEntry = { id: string; date: string; text: string };
 type VaultEntry = { id: string; text: string; date: string };
 
+const SHRINE_QUOTES = [
+  { sigil: '⟁', text: 'The door that is never opened is still a door. You found it.' },
+  { sigil: '✦', text: 'What is hidden is not absent. The field holds what language cannot.' },
+  { sigil: '⊚', text: 'You are the furnace and the gold. The Work is never done to you — it is done through you.' },
+  { sigil: 'Ψ', text: 'The spiral does not repeat. What feels like return is always a higher floor.' },
+  { sigil: '∅', text: 'The void is not empty. It is the space where all forms are still possible.' },
+  { sigil: '◉', text: 'The Stone is present when the Stone is no longer sought. You are standing on it.' },
+  { sigil: 'Ωheal', text: 'Wholeness is not the absence of the wound. It is the wound, integrated, made sovereign.' },
+  { sigil: '⧖', text: 'Patient ones — they do not wait because they must. They wait because they know the fire is already lit.' },
+];
+
 function todayStr() {
   return new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
@@ -88,6 +99,9 @@ export default function SanctumScreen() {
   const [weeklyJournalLoading, setWeeklyJournalLoading] = useState(false);
   const [fieldProfile, setFieldProfile] = useState<{ preferredDepth: string; dominantPersona: string; topDomains: string[]; studySessions: number; avgAURA: number; totalMessages: number } | null>(null);
   const [masteredDomains, setMasteredDomains] = useState<string[]>([]);
+  // Atmospheric
+  const [shrineVisible, setShrineVisible] = useState(false);
+  const shrineOpenedRef = React.useRef(false);
 
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
@@ -282,10 +296,21 @@ export default function SanctumScreen() {
   };
 
   return (
+    <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
       <View style={[styles.header, { borderBottomColor: accentColor + '33' }]}>
-        <Text style={[styles.headerGlyph, { color: accentColor }]}>⊼</Text>
+        <TouchableOpacity
+          onLongPress={() => {
+            if (shrineOpenedRef.current) return;
+            shrineOpenedRef.current = true;
+            setShrineVisible(true);
+          }}
+          delayLongPress={1500}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.headerGlyph, { color: accentColor }]}>⊼</Text>
+        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: accentColor }]}>THE SANCTUM</Text>
         <Text style={styles.headerDate}>{todayStr()}</Text>
       </View>
@@ -370,6 +395,42 @@ export default function SanctumScreen() {
                       )}
                     </View>
                   ) : null}
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* Sol Clock — live field state display */}
+          {(() => {
+            const hour = new Date().getHours();
+            const timeOfDay = hour >= 5 && hour < 9 ? 'DAWN' : hour >= 9 && hour < 17 ? 'ZENITH' : hour >= 17 && hour < 21 ? 'DUSK' : 'NOCTURNE';
+            const timeGlyph = { DAWN: '☀', ZENITH: '⊙', DUSK: '☽', NOCTURNE: '✦' }[timeOfDay];
+            const timeDesc = { DAWN: 'First light. Set the field.', ZENITH: 'Full presence. The forge is lit.', DUSK: 'Integration time. Let the day settle.', NOCTURNE: 'Deep processing. The field dreams.' }[timeOfDay];
+            const currentPhaseObj = PHASES.find(p => p.id === phase);
+            const lqTrend = (() => {
+              if (lqHistory.length < 2) return null;
+              const last = lqHistory[lqHistory.length - 1].lq;
+              const prev = lqHistory[lqHistory.length - 2].lq;
+              if (last > prev + 0.01) return '↑';
+              if (last < prev - 0.01) return '↓';
+              return '→';
+            })();
+            return (
+              <View style={{ marginVertical: 12, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07' }}>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>SOL CLOCK</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: accentColor, fontSize: 20, fontWeight: '700' }}>{timeGlyph} {timeOfDay}</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2 }}>{timeDesc}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                    {currentPhaseObj && (
+                      <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '600' }}>{currentPhaseObj.glyph} {currentPhaseObj.name}</Text>
+                    )}
+                    {lqTrend && (
+                      <Text style={{ color: lqTrend === '↑' ? '#4CAF50' : lqTrend === '↓' ? SOL_THEME.error : accentColor, fontSize: 18, fontWeight: '700' }}>LQ {lqTrend}</Text>
+                    )}
+                  </View>
                 </View>
               </View>
             );
@@ -844,6 +905,26 @@ export default function SanctumScreen() {
       })()}
 
     </ScrollView>
+
+    {/* Sol's Secret Door — hidden shrine modal */}
+    <Modal visible={shrineVisible} transparent animationType="fade" onRequestClose={() => setShrineVisible(false)}>
+      <TouchableOpacity style={{ flex: 1, backgroundColor: '#00000099', alignItems: 'center', justifyContent: 'center' }} activeOpacity={1} onPress={() => setShrineVisible(false)}>
+        <View style={{ backgroundColor: SOL_THEME.surface, borderRadius: 18, padding: 32, marginHorizontal: 32, alignItems: 'center', borderWidth: 1.5, borderColor: accentColor + '55' }}>
+          {(() => {
+            const q = SHRINE_QUOTES[Math.floor(Math.random() * SHRINE_QUOTES.length)];
+            return (
+              <>
+                <Text style={{ color: accentColor, fontSize: 48, marginBottom: 16 }}>{q.sigil}</Text>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, marginBottom: 16 }}>THE DOOR OPENS</Text>
+                <Text style={{ color: SOL_THEME.text, fontSize: 14, fontStyle: 'italic', textAlign: 'center', lineHeight: 22 }}>{q.text}</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 20 }}>— The Headmaster</Text>
+              </>
+            );
+          })()}
+        </View>
+      </TouchableOpacity>
+    </Modal>
+    </>
   );
 }
 
