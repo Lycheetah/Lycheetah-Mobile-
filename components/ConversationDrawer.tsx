@@ -2,10 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, FlatList,
   StyleSheet, Animated, Dimensions, Platform,
-  Alert, TextInput, Modal,
+  Alert, TextInput, Modal, Share,
 } from 'react-native';
 import { SOL_THEME, MODE_COLORS } from '../constants/theme';
-import { ConversationMeta, WELCOME_THREAD_ID } from '../lib/conversation-manager';
+import { ConversationMeta, WELCOME_THREAD_ID, loadConversation } from '../lib/conversation-manager';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(width * 0.82, 320);
@@ -30,6 +30,7 @@ export default function ConversationDrawer({
   const [renameTarget, setRenameTarget] = useState<ConversationMeta | null>(null);
   const [renameText, setRenameText] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [drawerSearch, setDrawerSearch] = useState('');
 
   // FREEZE FIX — DO NOT REVERT TO slideAnim.__getValue() GUARD.
   //
@@ -85,10 +86,24 @@ export default function ConversationDrawer({
   function handleLongPress(item: ConversationMeta) {
     if (item.locked || item.id === WELCOME_THREAD_ID) return;
     Alert.alert(
-      'Delete conversation?',
-      `"${item.title}" will be permanently deleted.`,
+      item.title.slice(0, 40),
+      undefined,
       [
         { text: 'Cancel', style: 'cancel' },
+        {
+          text: '↑ Export',
+          onPress: async () => {
+            try {
+              const conv = await loadConversation(item.id);
+              if (!conv) return;
+              const lines = conv.messages.map((m: any) =>
+                `${m.role === 'user' ? 'You' : item.persona.toUpperCase()}:\n${m.content.slice(0, 600).replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim()}`
+              );
+              const header = `— ${item.title} —\n${new Date(item.updatedAt).toLocaleDateString()} · ${item.messageCount} messages\nSol App · Lycheetah Framework\n\n`;
+              Share.share({ message: header + lines.join('\n\n---\n\n'), title: item.title });
+            } catch {}
+          },
+        },
         { text: 'Delete', style: 'destructive', onPress: () => onDelete(item.id) },
       ],
       { cancelable: true }
@@ -124,8 +139,23 @@ export default function ConversationDrawer({
           </TouchableOpacity>
         </View>
 
+        {conversations.length > 4 && (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+            <TextInput
+              style={{ backgroundColor: SOL_THEME.background, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, color: SOL_THEME.text, fontSize: 13, borderWidth: 1, borderColor: SOL_THEME.border }}
+              value={drawerSearch}
+              onChangeText={setDrawerSearch}
+              placeholder="Search conversations…"
+              placeholderTextColor={SOL_THEME.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+            />
+          </View>
+        )}
+
         <FlatList
-          data={conversations}
+          data={drawerSearch.trim() ? conversations.filter(c => c.title.toLowerCase().includes(drawerSearch.toLowerCase())) : conversations}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
@@ -166,10 +196,17 @@ export default function ConversationDrawer({
                   </Text>
                 </TouchableOpacity>
 
-                <Text style={styles.itemMeta}>
-                  {item.messageCount} msgs{item.auraComposite ? ` · AURA ${item.auraComposite}%` : ''}
-                  {isLocked ? ' · pinned' : ''}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={styles.itemMeta}>
+                    {item.messageCount} msgs{isLocked ? ' · pinned' : ''}
+                  </Text>
+                  {item.auraComposite ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: item.auraComposite >= 85 ? '#4CAF50' : item.auraComposite >= 60 ? '#E8A020' : SOL_THEME.error }} />
+                      <Text style={[styles.itemMeta, { color: item.auraComposite >= 85 ? '#4CAF50' : item.auraComposite >= 60 ? '#E8A020' : SOL_THEME.error }]}>AURA {item.auraComposite}%</Text>
+                    </View>
+                  ) : null}
+                </View>
 
                 {item.modeTrail && item.modeTrail.length > 0 && (
                   <View style={styles.modeTrailRow}>

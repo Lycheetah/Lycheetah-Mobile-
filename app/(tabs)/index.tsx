@@ -348,6 +348,7 @@ export default function SolChat() {
   const [fortuneCookie, setFortuneCookie] = useState<string | null>(null);
   const [messageChips, setMessageChips] = useState<Record<string, string[]>>({});
   const [paradoxFlags, setParadoxFlags] = useState<Record<string, { p: boolean; t: boolean }>>({});
+  const [messageReactions, setMessageReactions] = useState<Record<string, string>>({});;
   const [shadowReveals, setShadowReveals] = useState<Record<string, string>>({});
   const [shakeClearing, setShakeClearing] = useState(false);
   const lastShakeRef = useRef<number>(0);
@@ -356,6 +357,8 @@ export default function SolChat() {
   const [shadowLoading, setShadowLoading] = useState<string | null>(null);
   const [priorFieldContext, setPriorFieldContext] = useState<string>('');
   const [sessionPivotLoading, setSessionPivotLoading] = useState(false);
+  const [reflectLoading, setReflectLoading] = useState(false);
+  const [reflectCard, setReflectCard] = useState<string | null>(null);
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const aiTitledConvRef = useRef<string | null>(null);
   const [swipeToast, setSwipeToast] = useState<Mode | null>(null);
@@ -547,6 +550,11 @@ export default function SolChat() {
         // Load thinking stacks
         AsyncStorage.getItem('thinking_stacks_v1').then(raw => {
           if (raw) setStacks(JSON.parse(raw));
+        }).catch(() => {});
+
+        // Load message reactions
+        AsyncStorage.getItem('sol_message_reactions').then(raw => {
+          if (raw) setMessageReactions(JSON.parse(raw));
         }).catch(() => {});
 
         // Welcome back message
@@ -1887,6 +1895,31 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           Share.share({ message: card, title: `${label} · Sol` });
         },
       }] : []),
+      ...(msgId ? [{
+        text: messageReactions[msgId] ? `${messageReactions[msgId]} Remove reaction` : '◑ React',
+        onPress: () => {
+          if (messageReactions[msgId]) {
+            // Remove existing reaction
+            const updated = { ...messageReactions };
+            delete updated[msgId];
+            setMessageReactions(updated);
+            AsyncStorage.setItem('sol_message_reactions', JSON.stringify(updated)).catch(() => {});
+          } else {
+            Alert.alert('React', undefined, [
+              ...['❤', '✦', '⚡', '🔥', '◈'].map(g => ({
+                text: g,
+                onPress: async () => {
+                  const updated = { ...messageReactions, [msgId]: g };
+                  setMessageReactions(updated);
+                  await AsyncStorage.setItem('sol_message_reactions', JSON.stringify(updated));
+                  if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                },
+              })),
+              { text: 'Cancel', style: 'cancel' as const },
+            ]);
+          }
+        },
+      }] : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -2095,6 +2128,21 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             </View>
           )}
 
+          {/* Message reaction — tiny glyph shown under bubble */}
+          {item.id && messageReactions[item.id] && (
+            <TouchableOpacity
+              onPress={() => {
+                const updated = { ...messageReactions };
+                delete updated[item.id];
+                setMessageReactions(updated);
+                AsyncStorage.setItem('sol_message_reactions', JSON.stringify(updated)).catch(() => {});
+              }}
+              style={{ alignSelf: isUser ? 'flex-end' : 'flex-start', marginTop: 3, marginLeft: isUser ? 0 : 8, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, backgroundColor: SOL_THEME.surface, borderWidth: 1, borderColor: SOL_THEME.border }}
+            >
+              <Text style={{ fontSize: 14 }}>{messageReactions[item.id]}</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Contextual follow-up chips — only on the last message in the conversation */}
           {!isUser && item.id && messageChips[item.id] && messageChips[item.id].length > 0 && index === messages.length - 1 && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8, marginLeft: 8 }}>
@@ -2298,7 +2346,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           setMessages([]); setActiveConvId(null);
           setCurrentMode('ALBEDO'); setConversationPassRates([]);
           setLastAura(null); setCoherenceStreak(0); setFieldInsightActive(false); setCouncilFired(false);
-          setPriorFieldContext(''); aiTitledConvRef.current = null;
+          setPriorFieldContext(''); aiTitledConvRef.current = null; setReflectCard(null);
           clearConversation(); setDrawerOpen(false);
           if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }}
@@ -3037,34 +3085,77 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         style={{ height: 6, backgroundColor: MODE_COLORS[currentMode] + '33', borderRadius: 3, marginHorizontal: 20, marginBottom: 2 }}
       />
 
-      {/* Session Pivot — appears after 8+ messages */}
+      {/* Reflect card — shown when AI synthesis is ready */}
+      {reflectCard && (
+        <View style={{ marginHorizontal: 12, marginBottom: 6, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: accent + '44', backgroundColor: accent + '08' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={{ color: accent, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>✦ FIELD REFLECTION</Text>
+            <TouchableOpacity onPress={() => setReflectCard(null)}>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20 }}>{reflectCard}</Text>
+        </View>
+      )}
+
+      {/* Session Pivot + Reflect — appears after 8+ / 10+ messages */}
       {messages.length >= 8 && messages[messages.length - 1]?.role === 'assistant' && !loading && (
-        <TouchableOpacity
-          onPress={async () => {
-            setSessionPivotLoading(true);
-            try {
-              const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
-              if (!apiKey) { setSessionPivotLoading(false); return; }
-              const thread = messages.slice(-6).map(m => `${m.role === 'user' ? 'You' : getPersonaLabel(m.persona || persona)}: ${m.content.slice(0, 120).replace(/\n/g, ' ')}`).join('\n');
-              const res = await sendMessage(
-                [{ role: 'user', content: `Given this conversation:\n${thread}\n\nWhat single question would most powerfully advance this field right now? Return only the question — no preamble, no context.` }],
-                'You are a field navigator. Return exactly one question. No preamble, no explanation. Just the question.',
-                apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 60, 0.7,
-              );
-              const pivot = res.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim();
-              if (pivot) setInput(pivot);
-              if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            } catch {}
-            setSessionPivotLoading(false);
-          }}
-          disabled={sessionPivotLoading}
-          style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 12, marginBottom: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: accent + '12', borderWidth: 1, borderColor: accent + '33' }}
-          activeOpacity={0.7}
-        >
-          <Text style={{ color: accent + 'CC', fontSize: 11, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
-            {sessionPivotLoading ? '···' : '⊚ Where next?'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 6, marginRight: 12, marginBottom: 4 }}>
+          {messages.length >= 10 && (
+            <TouchableOpacity
+              onPress={async () => {
+                setReflectLoading(true);
+                try {
+                  const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+                  if (!apiKey) { setReflectLoading(false); return; }
+                  const thread = messages.filter(m => m.role === 'assistant').slice(-5).map(m => m.content.slice(0, 200).replace(/\n/g, ' ')).join('\n---\n');
+                  const res = await sendMessage(
+                    [{ role: 'user', content: `From this conversation, extract 3 key points:\n${thread}\n\nReturn exactly 3 numbered insights. Each max 1 sentence. No preamble.` }],
+                    `You are ${getPersonaLabel(persona)}. Synthesize the conversation into 3 numbered field insights. Each insight is a single, precise sentence. No intro, no outro.`,
+                    apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 200, 0.6,
+                  );
+                  const reflection = res.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim();
+                  if (reflection) setReflectCard(reflection);
+                  if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                } catch {}
+                setReflectLoading(false);
+              }}
+              disabled={reflectLoading}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: accent + '12', borderWidth: 1, borderColor: accent + '33' }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: accent + 'CC', fontSize: 11, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                {reflectLoading ? '···' : '✦ Reflect'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={async () => {
+              setSessionPivotLoading(true);
+              try {
+                const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+                if (!apiKey) { setSessionPivotLoading(false); return; }
+                const thread = messages.slice(-6).map(m => `${m.role === 'user' ? 'You' : getPersonaLabel(m.persona || persona)}: ${m.content.slice(0, 120).replace(/\n/g, ' ')}`).join('\n');
+                const res = await sendMessage(
+                  [{ role: 'user', content: `Given this conversation:\n${thread}\n\nWhat single question would most powerfully advance this field right now? Return only the question — no preamble, no context.` }],
+                  'You are a field navigator. Return exactly one question. No preamble, no explanation. Just the question.',
+                  apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 60, 0.7,
+                );
+                const pivot = res.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim();
+                if (pivot) setInput(pivot);
+                if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } catch {}
+              setSessionPivotLoading(false);
+            }}
+            disabled={sessionPivotLoading}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: accent + '12', borderWidth: 1, borderColor: accent + '33' }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: accent + 'CC', fontSize: 11, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+              {sessionPivotLoading ? '···' : '⊚ Where next?'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       <View style={[styles.inputRow, { borderTopColor: world.border, backgroundColor: world.surface }]}>

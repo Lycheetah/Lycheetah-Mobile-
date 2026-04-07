@@ -111,6 +111,13 @@ export default function MysterySchoolScreen() {
   const [trialLoading, setTrialLoading] = useState(false);
   // Session counter per subject
   const [subjectSessionCounts, setSubjectSessionCounts] = useState<Record<string, number>>({});
+  // Favorites
+  const [subjectFavorites, setSubjectFavorites] = useState<Set<string>>(new Set());
+  // Spaced repetition: last studied date per subject
+  const [studyDates, setStudyDates] = useState<Record<string, string>>({});
+  // Knowledge synthesis per domain
+  const [domainSynthesis, setDomainSynthesis] = useState<Record<string, string>>({});
+  const [synthesisLoading, setSynthesisLoading] = useState<string | null>(null);
   // Shake-to-random
   const lastShakeRef = useRef<number>(0);
 
@@ -153,6 +160,17 @@ export default function MysterySchoolScreen() {
       // Load session counts
       AsyncStorage.getItem('sol_study_session_counts').then(countRaw => {
         if (countRaw) { try { setSubjectSessionCounts(JSON.parse(countRaw)); } catch {} }
+      });
+
+      // Load favorites, study dates, synthesis
+      Promise.all([
+        AsyncStorage.getItem('sol_subject_favorites'),
+        AsyncStorage.getItem('sol_study_dates'),
+        AsyncStorage.getItem('sol_domain_synthesis'),
+      ]).then(([favRaw, datesRaw, synthRaw]) => {
+        if (favRaw) { try { setSubjectFavorites(new Set(JSON.parse(favRaw))); } catch {} }
+        if (datesRaw) { try { setStudyDates(JSON.parse(datesRaw)); } catch {} }
+        if (synthRaw) { try { setDomainSynthesis(JSON.parse(synthRaw)); } catch {} }
       });
 
       // Load active field trial
@@ -221,6 +239,14 @@ export default function MysterySchoolScreen() {
     setStudyInput('');
     setStudyArcPhase('intro');
     setStudyStudentDepth('balanced');
+
+    // Record study date for spaced repetition
+    const today = new Date().toISOString().split('T')[0];
+    setStudyDates(prev => {
+      const updated = { ...prev, [subject.name]: today };
+      AsyncStorage.setItem('sol_study_dates', JSON.stringify(updated)).catch(() => {});
+      return updated;
+    });
 
     // Build field context with smart echo retrieval
     const contextParts: string[] = [];
@@ -762,7 +788,9 @@ export default function MysterySchoolScreen() {
             return layerOrder;
           })().map(layer => {
             const q = subjectSearch.toLowerCase();
-            const layerSubjects = selectedDomain.subjects.filter(s => s.layer === layer && (q === '' || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)));
+            const layerSubjectsRaw = selectedDomain.subjects.filter(s => s.layer === layer && (q === '' || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)));
+            // Favorites float to top
+            const layerSubjects = [...layerSubjectsRaw.filter(s => subjectFavorites.has(s.name)), ...layerSubjectsRaw.filter(s => !subjectFavorites.has(s.name))];
             if (layerSubjects.length === 0) return null;
             const isRecommended = fieldStage && layer === stageToLayer(fieldStage);
             return (
@@ -792,13 +820,38 @@ export default function MysterySchoolScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.subjectTop}>
-                      <Text style={styles.subjectName}>{subject.name}</Text>
+                      <Text style={[styles.subjectName, { flex: 1 }]}>{subject.name}</Text>
+                      {/* Spaced repetition badge */}
+                      {studyDates[subject.name] && (() => {
+                        const studied = new Date(studyDates[subject.name]);
+                        const days = Math.floor((Date.now() - studied.getTime()) / 86400000);
+                        return days > 0 ? (
+                          <Text style={{ fontSize: 9, color: days > 7 ? '#E07040' : SOL_THEME.textMuted, marginTop: 3, marginRight: 4 }}>{days}d ago</Text>
+                        ) : null;
+                      })()}
                       {studiedSubjects.has(subject.name) && (
                         <Text style={{ fontSize: 10, color: '#4CAF50', marginTop: 3, marginRight: 2 }}>✓</Text>
                       )}
                       {subjectNotes[subject.name] && (
                         <Text style={{ fontSize: 10, color: SOL_THEME.textMuted, marginTop: 3, marginRight: 2 }}>✎</Text>
                       )}
+                      {/* Favorite star */}
+                      <TouchableOpacity
+                        onPress={async (e) => {
+                          e.stopPropagation?.();
+                          const updated = new Set(subjectFavorites);
+                          if (updated.has(subject.name)) updated.delete(subject.name);
+                          else updated.add(subject.name);
+                          setSubjectFavorites(updated);
+                          await AsyncStorage.setItem('sol_subject_favorites', JSON.stringify(Array.from(updated)));
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <Text style={{ fontSize: 12, color: subjectFavorites.has(subject.name) ? '#F5A623' : SOL_THEME.border, marginTop: 2 }}>
+                          {subjectFavorites.has(subject.name) ? '★' : '☆'}
+                        </Text>
+                      </TouchableOpacity>
                       <Text style={[styles.subjectLayerDot, { color: LAYER_COLORS[subject.layer] }]}>●</Text>
                     </View>
                     <Text style={styles.subjectDesc} numberOfLines={2}>{subject.description}</Text>
@@ -832,6 +885,49 @@ export default function MysterySchoolScreen() {
           })}
         </View>
       )}
+
+      {/* Knowledge Synthesis — available after 5+ subjects studied in domain */}
+      {selectedDomain && (() => {
+        const studied = selectedDomain.subjects.filter(s => studiedSubjects.has(s.name));
+        if (studied.length < 5) return null;
+        const synth = domainSynthesis[selectedDomain.id];
+        const isLoading = synthesisLoading === selectedDomain.id;
+        return (
+          <View style={{ marginTop: 8, marginBottom: 4, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: selectedDomain.color + '44', backgroundColor: selectedDomain.color + '08' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: synth ? 10 : 0 }}>
+              <Text style={{ color: selectedDomain.color, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>🔮 WHAT HAVE I LEARNED?</Text>
+              {!synth && !isLoading && (
+                <TouchableOpacity
+                  onPress={async () => {
+                    setSynthesisLoading(selectedDomain.id);
+                    try {
+                      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+                      if (!apiKey) { setSynthesisLoading(null); return; }
+                      const studiedNames = studied.map(s => s.name).join(', ');
+                      const res = await sendMessage(
+                        [{ role: 'user', content: `The student has studied these subjects in ${selectedDomain.label}: ${studiedNames}. Write a 3-4 sentence synthesis of what they now understand about this domain. Be honest about gaps. No preamble.` }],
+                        'You are the Headmaster. Synthesize the student\'s learning with precision and honesty. 3-4 sentences. No flattery.',
+                        apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 200, 0.65,
+                      );
+                      const text = res.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim();
+                      const updated = { ...domainSynthesis, [selectedDomain.id]: text };
+                      setDomainSynthesis(updated);
+                      await AsyncStorage.setItem('sol_domain_synthesis', JSON.stringify(updated));
+                    } catch {}
+                    setSynthesisLoading(null);
+                  }}
+                  style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: selectedDomain.color + '22' }}
+                >
+                  <Text style={{ color: selectedDomain.color, fontSize: 10, fontWeight: '700' }}>Synthesize</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {isLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The Headmaster is reading your path…</Text>}
+            {synth && <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20 }}>{synth}</Text>}
+            {!synth && !isLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, marginTop: 4 }}>{studied.length} subjects studied — tap Synthesize for your field report.</Text>}
+          </View>
+        );
+      })()}
 
       {/* #71 Anonymous Question Drop — visible when inside a domain */}
       {selectedDomain && (

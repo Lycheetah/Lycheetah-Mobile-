@@ -99,6 +99,8 @@ export default function SanctumScreen() {
   const [weeklyJournalLoading, setWeeklyJournalLoading] = useState(false);
   const [fieldProfile, setFieldProfile] = useState<{ preferredDepth: string; dominantPersona: string; topDomains: string[]; studySessions: number; avgAURA: number; totalMessages: number } | null>(null);
   const [masteredDomains, setMasteredDomains] = useState<string[]>([]);
+  const [dayReport, setDayReport] = useState<{ text: string; date: string } | null>(null);
+  const [dayReportLoading, setDayReportLoading] = useState(false);
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
@@ -135,6 +137,10 @@ export default function SanctumScreen() {
     ]);
     if (profileRaw) { try { setFieldProfile(JSON.parse(profileRaw)); } catch {} }
     if (masteredRaw) { try { setMasteredDomains(JSON.parse(masteredRaw)); } catch {} }
+
+    // Day Report — load cached report for today
+    const dayReportRaw = await AsyncStorage.getItem(`sol_day_report_${todayKey()}`);
+    if (dayReportRaw) { try { setDayReport(JSON.parse(dayReportRaw)); } catch {} }
 
     // Task 11: Load weekly journal summaries
     const summaries = await getFieldJournalSummaries();
@@ -436,6 +442,45 @@ export default function SanctumScreen() {
             );
           })()}
 
+          {/* Sol's Day Report — AI-generated daily synthesis */}
+          {(dayReport || (auraHistory.some(p => p.date === todayKey()) && lqHistory.some(p => p.date === todayKey()))) && (
+            <View style={{ marginVertical: 10, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#E8C76A33', backgroundColor: '#E8C76A08' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ color: '#E8C76A', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>𝔏 TODAY'S FIELD REPORT</Text>
+                {!dayReport && !dayReportLoading && (
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setDayReportLoading(true);
+                      try {
+                        const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+                        if (!apiKey) { setDayReportLoading(false); return; }
+                        const todayAURA = auraHistory.find(p => p.date === todayKey());
+                        const todayLQ = lqHistory.find(p => p.date === todayKey());
+                        const prompt = `Today's field data: LQ ${todayLQ?.lq.toFixed(3) || 'unknown'} (${todayLQ?.stage || 'unrated'}), AURA composite ${todayAURA?.composite || 0}% (${todayAURA?.passed || 0}/${todayAURA?.total || 7} invariants), Phase: ${phase}. Write a 2-3 sentence honest field report in the voice of the Headmaster. No preamble. No flattery.`;
+                        const res = await sendMessage(
+                          [{ role: 'user', content: prompt }],
+                          'You are the Headmaster. Write a brief, honest, precise field report. 2-3 sentences. No intro, no sign-off.',
+                          apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 150, 0.65,
+                        );
+                        const text = res.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim();
+                        const report = { text, date: todayKey() };
+                        setDayReport(report);
+                        await AsyncStorage.setItem(`sol_day_report_${todayKey()}`, JSON.stringify(report));
+                      } catch {}
+                      setDayReportLoading(false);
+                    }}
+                    style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: '#E8C76A22' }}
+                  >
+                    <Text style={{ color: '#E8C76A', fontSize: 10, fontWeight: '700' }}>Generate</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {dayReportLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The Headmaster is reading the field…</Text>}
+              {dayReport && <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>{dayReport.text}</Text>}
+              {!dayReport && !dayReportLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Field data available — tap Generate to receive your report.</Text>}
+            </View>
+          )}
+
           <View style={styles.divider} />
 
           <Text style={[styles.label, { color: accentColor }]}>EVENING REFLECTION</Text>
@@ -626,6 +671,101 @@ export default function SanctumScreen() {
                 )}
               </View>
             )}
+
+            {/* AURA Sparkline — 30-day composite trend */}
+            {auraHistory.length >= 3 && (() => {
+              const recent = auraHistory.slice(-30);
+              const max = 100;
+              const h = 40;
+              const w = 260;
+              const pts = recent.map((p, i) => ({
+                x: (i / Math.max(recent.length - 1, 1)) * w,
+                y: h - (p.composite / max) * h,
+                composite: p.composite,
+                date: p.date,
+              }));
+              return (
+                <View style={{ marginBottom: 16, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06' }}>
+                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>AURA TREND · {recent.length}d</Text>
+                  <View style={{ height: h + 4, width: w, position: 'relative' }}>
+                    {pts.map((pt, i) => (
+                      <View
+                        key={i}
+                        style={{
+                          position: 'absolute',
+                          left: pt.x,
+                          top: pt.y,
+                          width: i === pts.length - 1 ? 7 : 4,
+                          height: i === pts.length - 1 ? 7 : 4,
+                          borderRadius: 4,
+                          backgroundColor: pt.composite >= 85 ? '#4CAF50' : pt.composite >= 60 ? accentColor : '#E07040',
+                          marginLeft: -2,
+                          marginTop: -2,
+                        }}
+                      />
+                    ))}
+                    {/* Baseline */}
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 1, backgroundColor: accentColor + '22' }} />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }}>30d ago</Text>
+                    <Text style={{ color: accentColor, fontSize: 10, fontWeight: '700' }}>Now {recent[recent.length - 1].composite}%</Text>
+                  </View>
+                </View>
+              );
+            })()}
+
+            {/* Activity Heatmap — 12-week contribution grid */}
+            {lqHistory.length >= 3 && (() => {
+              const today = new Date();
+              const cells: { date: string; lq: number | null }[] = [];
+              for (let i = 83; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const pt = lqHistory.find(p => p.date === dateStr);
+                cells.push({ date: dateStr, lq: pt ? pt.lq : null });
+              }
+              const weeks: { date: string; lq: number | null }[][] = [];
+              for (let w = 0; w < 12; w++) {
+                weeks.push(cells.slice(w * 7, w * 7 + 7));
+              }
+              return (
+                <View style={{ marginBottom: 16, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06' }}>
+                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>FIELD ACTIVITY · 12 WEEKS</Text>
+                  <View style={{ flexDirection: 'row', gap: 3 }}>
+                    {weeks.map((week, wi) => (
+                      <View key={wi} style={{ flexDirection: 'column', gap: 3 }}>
+                        {week.map((cell, di) => (
+                          <View
+                            key={di}
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: 3,
+                              backgroundColor: cell.lq === null
+                                ? SOL_THEME.border
+                                : cell.lq >= 0.9 ? accentColor
+                                : cell.lq >= 0.8 ? accentColor + 'CC'
+                                : cell.lq >= 0.65 ? accentColor + '88'
+                                : cell.lq >= 0.45 ? accentColor + '44'
+                                : accentColor + '22',
+                            }}
+                          />
+                        ))}
+                      </View>
+                    ))}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 4, marginTop: 6, alignItems: 'center' }}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }}>less</Text>
+                    {[SOL_THEME.border, accentColor + '22', accentColor + '44', accentColor + '88', accentColor].map((c, i) => (
+                      <View key={i} style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: c }} />
+                    ))}
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }}>more</Text>
+                  </View>
+                </View>
+              );
+            })()}
 
             {/* #45 Field Timeline */}
             {lqHistory.length > 1 && (
