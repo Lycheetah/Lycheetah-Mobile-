@@ -15,6 +15,7 @@ export type ConversationMeta = {
   updatedAt: number;
   messageCount: number;
   auraComposite?: number;
+  modeTrail?: string[];
   pinned?: boolean;
   locked?: boolean;
 };
@@ -36,11 +37,16 @@ export function autoTitle(messages: Message[]): string {
 export async function saveConversation(conv: Conversation): Promise<void> {
   await AsyncStorage.setItem(CONV_PREFIX + conv.id, JSON.stringify(conv));
   const index = await listConversations();
+  const modeTrail = conv.messages
+    .filter(m => m.role === 'assistant' && (m as any).mode)
+    .map(m => (m as any).mode as string)
+    .slice(-24);
   const meta: ConversationMeta = {
     id: conv.id, title: conv.title, persona: conv.persona,
     model: conv.model, createdAt: conv.createdAt,
     updatedAt: conv.updatedAt, messageCount: conv.messages.length,
     auraComposite: conv.auraComposite,
+    modeTrail: modeTrail.length > 0 ? modeTrail : undefined,
     pinned: conv.pinned, locked: conv.locked,
   };
   const rest = index.filter(c => c.id !== conv.id);

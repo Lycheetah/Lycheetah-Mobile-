@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Platform,
+  StyleSheet, Alert, Platform, Share,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
@@ -80,8 +80,10 @@ export default function SanctumScreen() {
   const [pai, setPai] = useState(0);
   const [auraSaved, setAuraSaved] = useState(false);
   const [lqHistory, setLqHistory] = useState<LQPoint[]>([]);
+  const [auraHistory, setAuraHistory] = useState<{ date: string; passed: number; total: number; composite: number }[]>([]);
   const [fieldReflection, setFieldReflection] = useState<string>('');
   const [reflectionLoading, setReflectionLoading] = useState(false);
+  const [paradoxJournal, setParadoxJournal] = useState<{ id: string; date: string; mode: string; excerpt: string }[]>([]);
 
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
@@ -105,6 +107,26 @@ export default function SanctumScreen() {
     }
     const histRaw = await AsyncStorage.getItem(KEYS.LQ_HISTORY);
     setLqHistory(histRaw ? JSON.parse(histRaw) : []);
+    const paradoxRaw = await AsyncStorage.getItem('sol_paradox_journal');
+    setParadoxJournal(paradoxRaw ? JSON.parse(paradoxRaw) : []);
+    const auraHistRaw = await AsyncStorage.getItem('aura_history_v1');
+    if (auraHistRaw) {
+      // Aggregate by day — average composite per day
+      const raw: { date: string; passed: number; total: number; composite: number }[] = JSON.parse(auraHistRaw);
+      const byDay: Record<string, { sum: number; count: number; passed: number; total: number }> = {};
+      for (const e of raw) {
+        if (!byDay[e.date]) byDay[e.date] = { sum: 0, count: 0, passed: 0, total: 0 };
+        byDay[e.date].sum += e.composite;
+        byDay[e.date].count += 1;
+        byDay[e.date].passed += e.passed;
+        byDay[e.date].total += e.total;
+      }
+      const aggregated = Object.entries(byDay)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-30)
+        .map(([date, v]) => ({ date, passed: v.passed, total: v.total, composite: Math.round(v.sum / v.count) }));
+      setAuraHistory(aggregated);
+    }
   }, []);
 
   useEffect(() => { load(); }, []);
@@ -362,8 +384,91 @@ export default function SanctumScreen() {
         const lq = getLQ(tes, vtr, pai);
         const stage = getStage(lq);
         const glyph = getStateGlyph(tes, vtr, pai);
+        const fieldConflicts = lqHistory.slice(-30).reduce((count, pt, i, arr) => {
+          if (i === 0) return count;
+          return arr[i - 1].lq - pt.lq > 0.1 ? count + 1 : count;
+        }, 0);
         return (
           <>
+            {/* #44 Memory Health Indicator */}
+            <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08', marginBottom: 16 }}>
+              <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 }}>FIELD HEALTH</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{journal.length} journal</Text>
+                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
+                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{vault.length} vault</Text>
+                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
+                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{lqHistory.length} LQ days</Text>
+                {fieldConflicts > 0 && (
+                  <>
+                    <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
+                    <Text style={{ fontSize: 11, color: '#E07040' }}>{fieldConflicts} drop{fieldConflicts > 1 ? 's' : ''}</Text>
+                  </>
+                )}
+                {/* #73 AURA Trend Arrow */}
+                {auraHistory.length >= 2 && (() => {
+                  const last = auraHistory[auraHistory.length - 1];
+                  const prev = auraHistory[auraHistory.length - 2];
+                  const up = last.composite >= prev.composite;
+                  return (
+                    <>
+                      <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
+                      <Text style={{ fontSize: 11, color: up ? '#4CAF50' : '#E07040', fontWeight: '700' }}>{up ? '↑' : '↓'} AURA {up ? '+' : ''}{last.composite - prev.composite}%</Text>
+                    </>
+                  );
+                })()}
+                {lqHistory.length === 0 && (
+                  <>
+                    <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
+                    <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>no field data yet</Text>
+                  </>
+                )}
+              </View>
+            </View>
+
+            {/* #45 Field Timeline */}
+            {lqHistory.length > 1 && (
+              <>
+                <Text style={[styles.label, { color: accentColor, marginBottom: 6 }]}>FIELD TIMELINE</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 4 }}>
+                    {lqHistory.slice(-30).map((pt, i, arr) => {
+                      const dotColor = pt.stage === 'AVATAR' ? accentColor
+                        : pt.stage === 'HIEROPHANT' ? accentColor + 'CC'
+                        : pt.stage === 'MASTER' ? '#4A9EFF'
+                        : pt.stage === 'ADEPT' ? '#F5A623'
+                        : '#555555';
+                      const isToday = pt.date === todayKey();
+                      const trendUp = i > 0 && pt.lq > arr[i - 1].lq;
+                      return (
+                        <TouchableOpacity
+                          key={pt.date}
+                          onPress={() => Alert.alert(
+                            pt.date,
+                            `Stage: ${pt.stage}\nLQ: ${pt.lq.toFixed(3)}${i > 0 ? (trendUp ? '\n↑ Rising' : '\n↓ Dropped') : ''}`,
+                            [{ text: '⊚', style: 'default' }]
+                          )}
+                          style={{ alignItems: 'center', gap: 4 }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={{
+                            width: isToday ? 14 : 10,
+                            height: isToday ? 14 : 10,
+                            borderRadius: 7,
+                            backgroundColor: dotColor,
+                            opacity: isToday ? 1 : 0.8,
+                          }} />
+                          {isToday && (
+                            <Text style={{ fontSize: 7, color: accentColor, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>NOW</Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              </>
+            )}
+
             {/* Phase selector */}
             <Text style={[styles.label, { color: accentColor }]}>AWARENESS PHASE</Text>
             <Text style={styles.note}>Which phase are you currently in?</Text>
@@ -494,6 +599,87 @@ export default function SanctumScreen() {
                     );
                   })}
                 </ScrollView>
+              </>
+            )}
+
+            {/* AURA Score History Chart */}
+            {auraHistory.length > 1 && (
+              <>
+                <Text style={[styles.label, { color: accentColor, marginTop: 20 }]}>AURA SCORE HISTORY</Text>
+                <Text style={styles.note}>{auraHistory.length} days · daily average composite</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chartScroll}>
+                  {auraHistory.map(point => {
+                    const isToday = point.date === todayKey();
+                    const barH = Math.max(4, Math.round((point.composite / 100) * 80));
+                    const col = point.composite >= 85 ? '#4CAF5088'
+                      : point.composite >= 70 ? accentColor + '99'
+                      : point.composite >= 50 ? '#E8A02088'
+                      : '#CC222288';
+                    return (
+                      <View key={point.date} style={styles.chartBarWrap}>
+                        <Text style={[styles.chartLQLabel, { color: isToday ? accentColor : SOL_THEME.textMuted }]}>
+                          {point.composite}
+                        </Text>
+                        <View style={styles.chartBarTrack}>
+                          <View style={[styles.chartBarFill, { height: barH, backgroundColor: isToday ? accentColor : col }]} />
+                        </View>
+                        <Text style={[styles.chartDateLabel, isToday && { color: accentColor }]}>
+                          {point.date.slice(5)}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
+            {/* #78 Field State Export */}
+            {lqHistory.length > 0 && (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08', marginTop: 8, marginBottom: 16 }}
+                onPress={() => {
+                  const peak = lqHistory.reduce((a, b) => a.lq > b.lq ? a : b);
+                  const avg = (lqHistory.reduce((s, p) => s + p.lq, 0) / lqHistory.length).toFixed(3);
+                  const current = lqHistory[lqHistory.length - 1];
+                  const report = [
+                    '⊚ SOVEREIGN FIELD REPORT',
+                    `Generated: ${new Date().toLocaleDateString()}`,
+                    '═'.repeat(32),
+                    `Current Stage: ${current?.stage ?? '—'}`,
+                    `Current LQ: ${current?.lq.toFixed(3) ?? '—'}`,
+                    `Peak LQ: ${peak.lq.toFixed(3)} (${peak.date})`,
+                    `Average LQ: ${avg}`,
+                    `Days Tracked: ${lqHistory.length}`,
+                    '',
+                    'TRAJECTORY:',
+                    ...lqHistory.slice(-14).map(p => `${p.date}  ${p.lq.toFixed(3)}  ${p.stage}`),
+                    '',
+                    'Lycheetah Framework · Sol Protocol v3.1',
+                  ].join('\n');
+                  Share.share({ message: report, title: 'Sovereign Field Report' });
+                }}
+              >
+                <Text style={{ color: accentColor, fontSize: 13, fontWeight: '700' }}>↑ Export Field Report</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* #64 Paradox Journal */}
+            {paradoxJournal.length > 0 && (
+              <>
+                <Text style={[styles.label, { color: accentColor, marginTop: 20 }]}>PARADOX JOURNAL</Text>
+                <Text style={styles.note}>{paradoxJournal.length} detected · CASCADE flags</Text>
+                {paradoxJournal.slice(0, 10).map(entry => (
+                  <View key={entry.id} style={{ backgroundColor: SOL_THEME.surface, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, borderLeftWidth: 3, borderLeftColor: '#9B59B6', padding: 12, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 10, color: '#9B59B6', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1 }}>⚡ {entry.mode}</Text>
+                      <Text style={{ fontSize: 10, color: SOL_THEME.textMuted }}>{entry.date}</Text>
+                    </View>
+                    <Text style={{ fontSize: 12, color: SOL_THEME.textMuted, lineHeight: 18 }} numberOfLines={3}>{entry.excerpt}</Text>
+                  </View>
+                ))}
+                {paradoxJournal.length > 10 && (
+                  <Text style={{ fontSize: 11, color: SOL_THEME.textMuted, textAlign: 'center', marginBottom: 8 }}>+{paradoxJournal.length - 10} more in journal</Text>
+                )}
               </>
             )}
           </>

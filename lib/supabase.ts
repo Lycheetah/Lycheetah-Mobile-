@@ -43,6 +43,32 @@ export async function shareEntry(entry: SharedEntry): Promise<{ error: string | 
   }
 }
 
+export type CementExpression = {
+  id?: string;
+  name: string;
+  english: string;
+  expression: string;
+  reads_as: string;
+  created_at?: string;
+};
+
+export async function shareCementBlock(block: CementExpression): Promise<{ error: string | null }> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/cement_expressions`, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify(block),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { error: text };
+    }
+    return { error: null };
+  } catch (e: any) {
+    return { error: e?.message ?? 'Network error' };
+  }
+}
+
 export async function fetchSharedFeed(limit = 50): Promise<{ data: SharedEntry[]; error: string | null }> {
   try {
     const res = await fetch(

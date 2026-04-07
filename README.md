@@ -3,12 +3,15 @@
 
 A constitutional AI mobile app built on the open-source [Lycheetah Framework](https://github.com/Lycheetah) by Mackenzie Conor James Clark. Not a wrapper — a transparent architecture you can watch running.
 
+**Current release: v3.4.0 — "The Living Field"** · April 6, 2026
+
 ---
 
 ## What Makes Sol Different
 
 - **4 personas** — Sol, Veyra, Aura Prime, Headmaster
-- **5 AI providers** — Gemini (free), Claude, GPT-4, DeepSeek, Kimi — your keys, your data
+- **5 AI providers** — Gemini (free), Claude, GPT-4o, Mistral, OpenRouter — your keys, your data
+- **9 languages** — Sol replies in your language. Zero extra API cost.
 - **4 operating modes** — NIGREDO · ALBEDO · CITRINITAS · RUBEDO — detected automatically
 - **AURA scoring** — every response scored against 7 constitutional invariants + tri-axial metrics
 - **12 response lenses** — Concise · Deep · Socratic · Technical · Alchemical · Hermetic · Zen · Stoic · Academic · Prophetic · Poetic · Dialectic
@@ -16,8 +19,8 @@ A constitutional AI mobile app built on the open-source [Lycheetah Framework](ht
 - **Field state awareness** — Sol reads your current phase, TES, VTR, PAI and responds accordingly
 - **Sovereign Trajectory** — track your Light Quotient (NEOPHYTE → AVATAR) over time
 - **CASCADE Library** — 5-layer epistemic scoring, 150 items, folders, auto-sort, community sharing
-- **The Sanctum** — daily intention, evening reflection, journal, vault, and FIELD sovereignty tracker
-- **Mystery School** — 10 domains, 40+ subjects
+- **The Sanctum** — daily intention, evening reflection, journal, vault, paradox tracker, and FIELD sovereignty tracker
+- **Mystery School** — 10 domains, 40+ subjects, study streaks, mastery badges, field echoes
 - **Community Field** — share CASCADE scores, see the field
 - **Token transparency** — token count, timing, model name per response
 - **Model comparison** — fire two models in parallel, compare side by side
@@ -36,7 +39,7 @@ A constitutional AI mobile app built on the open-source [Lycheetah Framework](ht
 2. Download the APK from [Releases](https://github.com/Lycheetah/Lycheetah-Mobile-/releases)
 3. Enable "Install from unknown sources" → install → paste key in Settings
 
-**Paid providers:** Add keys for Claude, OpenAI, DeepSeek, or Kimi in Settings.
+**Paid providers:** Add keys for Claude, OpenAI, Mistral, or OpenRouter in Settings.
 
 ---
 
@@ -50,6 +53,20 @@ A constitutional AI mobile app built on the open-source [Lycheetah Framework](ht
 | 𝔏 | Headmaster | Mystery School guide. Teaches across 10 traditions without false authority. |
 
 Toggle with the persona button, or type `/veyra` · `/aura` · `/school` in chat.
+
+---
+
+## Onboarding
+
+Sol introduces itself to you, not the other way around.
+
+- **Living Welcome** — empty state adapts to time of day, LQ score, phase, and active persona
+- **Persona Intro Cards** — first session with each persona delivers an in-character introduction. Fires once per install.
+- **Progressive Disclosure** — power features (Vault Pin, Shadow Reveal) hidden until 5+ messages
+- **AURA Explainer** — first score triggers a one-time explainer modal. Never fires again.
+- **Framework Explainer Cards** — tap ⊚ on the empty screen for a 4-card swipe through CASCADE, AURA, LAMAGUE, Sanctum
+- **"You're Ready" Moment** — first perfect 7/7 AURA triggers a celebratory modal
+- **Onboarding Checklist** — tracks 5 milestones, disappears permanently when complete
 
 ---
 
@@ -84,6 +101,10 @@ CENTER (●) · FLOW (↻) · INSIGHT (Ψ) · RISE (Φ↑) · LIGHT (☀) · INT
 
 **Sovereign Trajectory** — a 90-day chart of your Light Quotient. The mirror the app is meant to be.
 
+**Paradox Journal** — CASCADE auto-flags paradoxical messages. Saved as purple-bordered cards. Long-press any ⚡ PARADOX message to open a structured third-position resolution query.
+
+**Field State Export** — export your full LQ/AURA history as a formatted report via the OS share sheet.
+
 **Field state is injected into chat** — your phase and scores are read by Sol before every response. The AI responds to where you actually are.
 
 ---
@@ -108,6 +129,25 @@ The **CASCADE Library** scores any text against a 5-layer epistemic onion:
 
 ---
 
+## Mystery School
+
+10 domains. 40+ subjects. A living field of study.
+
+- **🎲 Random Subject Dice** — instant random subject from any domain
+- **Persona Host Spotlight** — daily rotating host per subject via deterministic hash
+- **Domain Progress Rings** — visual completion tracking per domain
+- **Domain Mastery Badge** — study all subjects in a domain → ✦ MASTERED
+- **Study Streak** — 🔥 consecutive day tracking from day 2
+- **Subject Search** — live filter by name and description
+- **Subject Notes** — long-press any subject to add a personal note
+- **Deepen This** — routes to Headmaster with a pre-filled deep question
+- **Anonymous Question Drop** — drop questions into any domain, displayed as ❓ cards
+- **Field Echoes** — long-press any AURA 6+/7 message → echo it to a domain as ✦ FIELD ECHOES
+- **Cross-Subject Bridge** — Sol mentions a known tradition → 𝔏 chip appears → tap to navigate directly
+- **Headmaster Presence** — permanent banner + sticky bar for one-tap Headmaster access anywhere in School
+
+---
+
 ## LAMAGUE
 
 **Language for Autonomous Mathematical Alignment and Universal Grammar Evolution** — 73 base symbols across 7 classes for consciousness state notation, from the Lycheetah Framework.
@@ -118,6 +158,8 @@ The **CASCADE Library** scores any text against a 5-layer epistemic onion:
 ```
 
 Seven symbol classes: **I-Class** (invariants) · **D-Class** (dynamics) · **F-Class** (fields) · **M-Class** (meta) · **C-Class** (connections) · **T-Class** (temporal) · **R-Class** (resource). Full reference in the Library tab.
+
+LAMAGUE glossary chips are opt-in (Settings → ⊚ Field Experience). Only fires on unambiguous LAMAGUE notation — generic math symbols excluded.
 
 ---
 
@@ -135,6 +177,7 @@ Seven symbol classes: **I-Class** (invariants) · **D-Class** (dynamics) · **F-
 
 ## Settings & Customization
 
+- **Language** — 9 languages, Sol replies in your chosen language
 - **Token budget** — 1k / 2k / 4k / 8k / 16k
 - **Temperature** — 0.3 (precise) → 1.5 (creative)
 - **Font family** — System / Mono / Serif
@@ -143,13 +186,14 @@ Seven symbol classes: **I-Class** (invariants) · **D-Class** (dynamics) · **F-
 - **Token badge** — token count and timing per response
 - **16 background colors, 12 accent colors, 4 bubble styles**
 - **Companion** — 16 glyphs, 4 animation styles
+- **⊚ Field Experience** — Symbol Rain toggle · LAMAGUE Glossary toggle
 
 ---
 
 ## Tech Stack
 
-- Expo / React Native / TypeScript
-- Gemini · Anthropic · OpenAI · DeepSeek · Kimi APIs
+- Expo 55 / React Native 0.83.4 / TypeScript
+- Gemini · Anthropic · OpenAI · Mistral · OpenRouter APIs
 - AsyncStorage — most data stays on device
 - Supabase — community CASCADE feed
 - EAS Build

@@ -21,6 +21,7 @@ import {
   saveBubbleGlow, getBubbleGlow,
   saveShowSignatures, getShowSignatures,
   saveShowTokenBadge, getShowTokenBadge,
+  saveShowMetabolism, getShowMetabolism,
 } from '../../lib/storage';
 
 const BG_COLORS = [
@@ -54,6 +55,7 @@ export default function CustomizeScreen() {
   const [bubbleGlow, setBubbleGlow] = useState(false);
   const [showSignatures, setShowSignatures] = useState(true);
   const [showTokenBadge, setShowTokenBadge] = useState(true);
+  const [showMetabolism, setShowMetabolism] = useState(true);
 
   const load = () => {
     getBgColor().then(c => setBgColor(c));
@@ -71,6 +73,7 @@ export default function CustomizeScreen() {
     getBubbleGlow().then(v => setBubbleGlow(v));
     getShowSignatures().then(v => setShowSignatures(v));
     getShowTokenBadge().then(v => setShowTokenBadge(v));
+    getShowMetabolism().then(v => setShowMetabolism(v));
   };
 
   useEffect(load, []);
@@ -320,6 +323,21 @@ export default function CustomizeScreen() {
         <Switch
           value={showTokenBadge}
           onValueChange={val => { setShowTokenBadge(val); saveShowTokenBadge(val); }}
+          trackColor={{ false: SOL_THEME.border, true: accentColor }}
+          thumbColor={SOL_THEME.text}
+        />
+      </View>
+
+      {/* CONVERSATION METABOLISM */}
+      <Text style={styles.sectionTitle}>CONVERSATION METABOLISM</Text>
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleLabel}>{showMetabolism ? 'Visible' : 'Hidden'}</Text>
+          <Text style={styles.toggleNote}>Show mode shift dividers when Sol changes register (e.g. NIGREDO → CITRINITAS).</Text>
+        </View>
+        <Switch
+          value={showMetabolism}
+          onValueChange={val => { setShowMetabolism(val); saveShowMetabolism(val); }}
           trackColor={{ false: SOL_THEME.border, true: accentColor }}
           thumbColor={SOL_THEME.text}
         />

@@ -4,7 +4,7 @@ import {
   StyleSheet, Animated, Dimensions, Platform,
   Alert, TextInput, Modal,
 } from 'react-native';
-import { SOL_THEME } from '../constants/theme';
+import { SOL_THEME, MODE_COLORS } from '../constants/theme';
 import { ConversationMeta, WELCOME_THREAD_ID } from '../lib/conversation-manager';
 
 const { width } = Dimensions.get('window');
@@ -29,15 +29,40 @@ export default function ConversationDrawer({
   const backdropAnim = useRef(new Animated.Value(0)).current;
   const [renameTarget, setRenameTarget] = useState<ConversationMeta | null>(null);
   const [renameText, setRenameText] = useState('');
+  const [mounted, setMounted] = useState(false);
 
+  // FREEZE FIX — DO NOT REVERT TO slideAnim.__getValue() GUARD.
+  //
+  // The previous pattern was:
+  //   if (!visible && slideAnim.__getValue() === -DRAWER_WIDTH) return null;
+  //
+  // This caused a permanent chat freeze. Root cause:
+  //   useNativeDriver:true runs animations on the native thread.
+  //   The JS-side Animated.Value.__getValue() is NOT updated during native-driven animation.
+  //   So __getValue() always returns the INITIAL value (-DRAWER_WIDTH) even when the
+  //   drawer is open — meaning the component unmounted immediately, leaving a full-screen
+  //   TouchableOpacity backdrop permanently mounted and eating all touch events.
+  //
+  // The correct pattern: drive mount/unmount from the animation completion callback.
+  //   `setMounted(true)` before open animation starts.
+  //   `setMounted(false)` inside .start() callback AFTER close animation completes.
+  //   This guarantees the backdrop is only alive while the drawer is visible.
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: visible ? 0 : -DRAWER_WIDTH, duration: 240, useNativeDriver: true }),
-      Animated.timing(backdropAnim, { toValue: visible ? 1 : 0, duration: 240, useNativeDriver: true }),
-    ]).start();
+    if (visible) {
+      setMounted(true);
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: 0, duration: 240, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 1, duration: 240, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: -DRAWER_WIDTH, duration: 240, useNativeDriver: true }),
+        Animated.timing(backdropAnim, { toValue: 0, duration: 240, useNativeDriver: true }),
+      ]).start(() => setMounted(false)); // unmount AFTER animation completes — see comment above
+    }
   }, [visible]);
 
-  if (!visible && slideAnim.__getValue() === -DRAWER_WIDTH) return null;
+  if (!mounted) return null;
 
   function formatTime(ts: number): string {
     const d = new Date(ts);
@@ -145,6 +170,17 @@ export default function ConversationDrawer({
                   {item.messageCount} msgs{item.auraComposite ? ` · AURA ${item.auraComposite}%` : ''}
                   {isLocked ? ' · pinned' : ''}
                 </Text>
+
+                {item.modeTrail && item.modeTrail.length > 0 && (
+                  <View style={styles.modeTrailRow}>
+                    {item.modeTrail.map((mode, i) => (
+                      <View
+                        key={i}
+                        style={[styles.modeTrailDot, { backgroundColor: (MODE_COLORS as any)[mode] || SOL_THEME.textMuted }]}
+                      />
+                    ))}
+                  </View>
+                )}
               </TouchableOpacity>
             );
           }}
@@ -236,6 +272,8 @@ const styles = StyleSheet.create({
   itemTitle: { fontSize: 13, color: SOL_THEME.textMuted, lineHeight: 18, marginBottom: 4 },
   welcomeTitle: { color: SOL_THEME.primary, fontWeight: '600' },
   itemMeta: { fontSize: 11, color: SOL_THEME.textMuted },
+  modeTrailRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 6 },
+  modeTrailDot: { width: 5, height: 5, borderRadius: 3, opacity: 0.75 },
   drawerFooter: { padding: 16, borderTopWidth: 1, borderTopColor: SOL_THEME.border },
   drawerFooterText: { fontSize: 11, color: SOL_THEME.textMuted, textAlign: 'center' },
   // Rename modal

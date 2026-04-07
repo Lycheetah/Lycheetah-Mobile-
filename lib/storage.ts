@@ -41,6 +41,9 @@ const KEYS = {
   BUBBLE_GLOW: 'lycheetah_bubble_glow',
   SHOW_SIGNATURES: 'lycheetah_show_signatures',
   SHOW_TOKEN_BADGE: 'lycheetah_show_token_badge',
+  SHOW_METABOLISM: 'lycheetah_show_metabolism',
+  SHOW_LAMAGUE_GLOSS: 'lycheetah_show_lamague_gloss',
+  SYMBOL_RAIN_ENABLED: 'lycheetah_symbol_rain',
 };
 
 // Per-provider key storage
@@ -229,6 +232,21 @@ export async function savePendingSubject(subject: string) { await AsyncStorage.s
 export async function getPendingSubject(): Promise<string | null> { return AsyncStorage.getItem(KEYS.PENDING_SUBJECT); }
 export async function clearPendingSubject() { await AsyncStorage.removeItem(KEYS.PENDING_SUBJECT); }
 
+// Mystery School — studied subjects
+const STUDIED_KEY = 'school_studied_v1';
+export async function markSubjectStudied(subject: string): Promise<void> {
+  const raw = await AsyncStorage.getItem(STUDIED_KEY);
+  const set: string[] = raw ? JSON.parse(raw) : [];
+  if (!set.includes(subject)) {
+    set.push(subject);
+    await AsyncStorage.setItem(STUDIED_KEY, JSON.stringify(set));
+  }
+}
+export async function getStudiedSubjects(): Promise<string[]> {
+  const raw = await AsyncStorage.getItem(STUDIED_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
 // Token budget (max output tokens per response)
 export async function saveTokenBudget(budget: number) { await AsyncStorage.setItem(KEYS.TOKEN_BUDGET, String(budget)); }
 export async function getTokenBudget(): Promise<number> {
@@ -248,6 +266,12 @@ export async function getTemperature(): Promise<number> {
 export async function saveBraveKey(key: string) { await AsyncStorage.setItem(KEYS.BRAVE_KEY, key); }
 export async function getBraveKey(): Promise<string> {
   return (await AsyncStorage.getItem(KEYS.BRAVE_KEY)) || '';
+}
+
+// Language-Agnostic Mode
+export async function saveLanguage(lang: string) { await AsyncStorage.setItem('sol_language', lang); }
+export async function getLanguage(): Promise<string> {
+  return (await AsyncStorage.getItem('sol_language')) || 'English';
 }
 
 // Font family
@@ -276,6 +300,27 @@ export async function saveShowTokenBadge(v: boolean) { await AsyncStorage.setIte
 export async function getShowTokenBadge(): Promise<boolean> {
   const v = await AsyncStorage.getItem(KEYS.SHOW_TOKEN_BADGE);
   return v !== null ? JSON.parse(v) : true;
+}
+
+// Show/hide conversation metabolism dividers
+export async function saveShowMetabolism(v: boolean) { await AsyncStorage.setItem(KEYS.SHOW_METABOLISM, JSON.stringify(v)); }
+export async function getShowMetabolism(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(KEYS.SHOW_METABOLISM);
+  return v !== null ? JSON.parse(v) : true;
+}
+
+// Show/hide LAMAGUE glossary chips in chat
+export async function saveShowLamagueGloss(v: boolean) { await AsyncStorage.setItem(KEYS.SHOW_LAMAGUE_GLOSS, JSON.stringify(v)); }
+export async function getShowLamagueGloss(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(KEYS.SHOW_LAMAGUE_GLOSS);
+  return v !== null ? JSON.parse(v) : false; // off by default — power-user opt-in
+}
+
+// Symbol Rain toggle
+export async function saveSymbolRainEnabled(v: boolean) { await AsyncStorage.setItem(KEYS.SYMBOL_RAIN_ENABLED, JSON.stringify(v)); }
+export async function getSymbolRainEnabled(): Promise<boolean> {
+  const v = await AsyncStorage.getItem(KEYS.SYMBOL_RAIN_ENABLED);
+  return v !== null ? JSON.parse(v) : true; // on by default for existing users
 }
 
 // Active API key — returns key matching the current model's provider

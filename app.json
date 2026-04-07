@@ -8,12 +8,7 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "updates": {
-      "enabled": true,
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/d01430d6-5f76-49dd-8152-3b7b9041f723"
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
+      "enabled": false
     },
     "scheme": "lycheetah",
     "splash": {
@@ -22,7 +17,8 @@
       "backgroundColor": "#0A0A0A"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lycheetah.sol"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,14 +27,29 @@
       },
       "package": "com.lycheetah.sol",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F5A623",
+          "defaultChannel": "cognitive-weather"
+        }
+      ],
+      "expo-local-authentication"
+    ],
     "extra": {
       "eas": {
-        "projectId": "d01430d6-5f76-49dd-8152-3b7b9041f723"
+        "projectId": "702e30a6-a187-490f-9fa7-8c933b6e58b7"
       }
     }
   }

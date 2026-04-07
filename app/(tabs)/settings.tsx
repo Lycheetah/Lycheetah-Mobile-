@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, Platform, Linking, Share,
 } from 'react-native';
+import { getCognitiveWeatherEnabled, setCognitiveWeatherEnabled, getCognitiveWeatherHour, setCognitiveWeatherHour } from '../../lib/cognitive-weather';
+import { getWeirdQEnabled, setWeirdQEnabled, getWeirdQHour, setWeirdQHour } from '../../lib/weird-questions';
 import { SOL_THEME } from '../../constants/theme';
 import { AIModel } from '../../lib/ai-client';
 import { PROVIDERS } from '../../lib/providers/registry';
@@ -18,6 +21,9 @@ import {
   getTokenBudget, saveTokenBudget,
   getTemperature, saveTemperature,
   getBraveKey, saveBraveKey,
+  getLanguage, saveLanguage,
+  getShowLamagueGloss, saveShowLamagueGloss,
+  getSymbolRainEnabled, saveSymbolRainEnabled,
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
@@ -35,6 +41,15 @@ export default function SettingsScreen() {
   const [temperature, setTemperatureState] = useState(0.9);
   const [braveKey, setBraveKeyState] = useState('');
   const [braveKeySaved, setBraveKeySaved] = useState(false);
+  const [solMemory, setSolMemory] = useState<{ id: string; text: string; date: string }[]>([]);
+  const [weatherEnabled, setWeatherEnabled] = useState(false);
+  const [weatherHour, setWeatherHour] = useState(8);
+  const [chaosMode, setChaosMode] = useState(false);
+  const [weirdQEnabled, setWeirdQEnabled_] = useState(false);
+  const [weirdQHour, setWeirdQHour_] = useState(9);
+  const [language, setLanguage_] = useState('English');
+  const [lamagueGloss, setLamagueGloss] = useState(false);
+  const [symbolRainOn, setSymbolRainOn] = useState(true);
 
   useEffect(() => {
     getModel().then(m => {
@@ -50,6 +65,15 @@ export default function SettingsScreen() {
     getTokenBudget().then(t => setTokenBudgetState(t));
     getTemperature().then(t => setTemperatureState(t));
     getBraveKey().then(k => { if (k) { setBraveKeyState(k); setBraveKeySaved(true); } });
+    AsyncStorage.getItem('sol_memory_v1').then(raw => { if (raw) setSolMemory(JSON.parse(raw)); });
+    getCognitiveWeatherEnabled().then(setWeatherEnabled);
+    getCognitiveWeatherHour().then(setWeatherHour);
+    AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
+    getWeirdQEnabled().then(setWeirdQEnabled_);
+    getWeirdQHour().then(setWeirdQHour_);
+    getLanguage().then(setLanguage_);
+    getShowLamagueGloss().then(setLamagueGloss);
+    getSymbolRainEnabled().then(setSymbolRainOn);
     Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
       .then(results => {
         const keys: Record<string, string> = {};
@@ -237,6 +261,175 @@ export default function SettingsScreen() {
             <Text style={styles.saveButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
+      )}
+
+      {/* CHAOS MODE */}
+      <TouchableOpacity
+        activeOpacity={1}
+        onLongPress={async () => {
+          const next = !chaosMode;
+          setChaosMode(next);
+          await AsyncStorage.setItem('sol_chaos_mode', next ? 'true' : 'false');
+          Alert.alert(
+            next ? '↯ CHAOS MODE UNLOCKED' : '↯ CHAOS MODE DEACTIVATED',
+            next ? 'Sol will become more playful, symbolic, and unpredictable. Not harmful — just spicy.' : 'Sol returns to constitutional operation.',
+            [{ text: next ? 'Enter the Chaos' : 'Return to Order', style: 'default' }]
+          );
+        }}
+        delayLongPress={3000}
+      >
+        <Text style={[styles.sectionTitle, chaosMode && { color: '#E74C3C' }]}>
+          {chaosMode ? '↯ CHAOS MODE — ACTIVE' : '↯ CHAOS MODE'}
+        </Text>
+      </TouchableOpacity>
+      <Text style={styles.sectionNote}>{chaosMode ? 'Sol is operating in chaotic register. Hold section title 3s to deactivate.' : 'Hold this title for 3 seconds to unlock. Sol becomes playful, symbolic, unpredictable.'}</Text>
+      {chaosMode && (
+        <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E74C3C44', backgroundColor: '#E74C3C11', marginBottom: 16 }}>
+          <Text style={{ color: '#E74C3C', fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>↯ ACTIVE — Sol is in chaos mode</Text>
+        </View>
+      )}
+
+      {/* COGNITIVE WEATHER */}
+      <Text style={styles.sectionTitle}>⛅ COGNITIVE WEATHER</Text>
+      <Text style={styles.sectionNote}>Daily field report notification — LQ, phase, and AURA alignment delivered at your chosen hour.</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Text style={{ color: SOL_THEME.text, fontSize: 14 }}>Daily notification</Text>
+        <TouchableOpacity
+          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: weatherEnabled ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: weatherEnabled ? accentColor : SOL_THEME.border }}
+          onPress={async () => {
+            const next = !weatherEnabled;
+            setWeatherEnabled(next);
+            await setCognitiveWeatherEnabled(next);
+            if (next) Alert.alert('⛅ Cognitive Weather', 'Daily field report enabled. Open Sol each day to refresh your weather forecast.');
+          }}
+        >
+          <Text style={{ color: weatherEnabled ? accentColor : SOL_THEME.textMuted, fontSize: 13, fontWeight: '700' }}>{weatherEnabled ? 'ON' : 'OFF'}</Text>
+        </TouchableOpacity>
+      </View>
+      {weatherEnabled && (
+        <View style={{ marginBottom: 16 }}>
+          <Text style={[styles.sectionNote, { marginBottom: 8 }]}>Delivery hour (24h): {weatherHour}:00</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {[6, 7, 8, 9, 10, 18, 19, 20, 21].map(h => (
+              <TouchableOpacity
+                key={h}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: weatherHour === h ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: weatherHour === h ? accentColor : SOL_THEME.border }}
+                onPress={async () => { setWeatherHour(h); await setCognitiveWeatherHour(h); }}
+              >
+                <Text style={{ color: weatherHour === h ? accentColor : SOL_THEME.textMuted, fontSize: 12 }}>{h}:00</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* DAILY WEIRD QUESTION */}
+      <Text style={styles.sectionTitle}>⊛ DAILY WEIRD QUESTION</Text>
+      <Text style={styles.sectionNote}>A daily introspective prompt from Sol. Designed to surface what you're not yet asking.</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Text style={{ color: SOL_THEME.text, fontSize: 14 }}>Daily prompt</Text>
+        <TouchableOpacity
+          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: weirdQEnabled ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: weirdQEnabled ? accentColor : SOL_THEME.border }}
+          onPress={async () => {
+            const next = !weirdQEnabled;
+            setWeirdQEnabled_(next);
+            await setWeirdQEnabled(next);
+            if (next) Alert.alert('⊛ Daily Weird Question', 'A new question will arrive each morning. Open Sol to engage it.');
+          }}
+        >
+          <Text style={{ color: weirdQEnabled ? accentColor : SOL_THEME.textMuted, fontSize: 13, fontWeight: '700' }}>{weirdQEnabled ? 'ON' : 'OFF'}</Text>
+        </TouchableOpacity>
+      </View>
+      {weirdQEnabled && (
+        <View style={{ marginBottom: 16 }}>
+          <Text style={[styles.sectionNote, { marginBottom: 8 }]}>Delivery hour (24h): {weirdQHour}:00</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {[6, 7, 8, 9, 10, 18, 19, 20, 21].map(h => (
+              <TouchableOpacity
+                key={h}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: weirdQHour === h ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: weirdQHour === h ? accentColor : SOL_THEME.border }}
+                onPress={async () => { setWeirdQHour_(h); await setWeirdQHour(h); }}
+              >
+                <Text style={{ color: weirdQHour === h ? accentColor : SOL_THEME.textMuted, fontSize: 12 }}>{h}:00</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* LANGUAGE */}
+      <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>
+      <Text style={styles.sectionNote}>Sol replies in your chosen language. No extra API needed — injected into every prompt.</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+        {['English', 'Spanish', 'French', 'Portuguese', 'German', 'Japanese', 'Mandarin', 'Arabic', 'Hindi'].map(lang => (
+          <TouchableOpacity
+            key={lang}
+            style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: language === lang ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: language === lang ? accentColor : SOL_THEME.border }}
+            onPress={async () => { setLanguage_(lang); await saveLanguage(lang); }}
+          >
+            <Text style={{ color: language === lang ? accentColor : SOL_THEME.textMuted, fontSize: 12 }}>{lang}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* FIELD EXPERIENCE */}
+      <Text style={styles.sectionTitle}>⊚ FIELD EXPERIENCE</Text>
+      <Text style={styles.sectionNote}>Control ambient effects and power-user overlays.</Text>
+      <View style={{ gap: 12, marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '600' }}>Symbol Rain</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, marginTop: 2 }}>Glyph cascade on ×10 coherence streak. Disable if distracting.</Text>
+          </View>
+          <TouchableOpacity
+            onPress={async () => { const next = !symbolRainOn; setSymbolRainOn(next); await saveSymbolRainEnabled(next); }}
+            style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: symbolRainOn ? accentColor : SOL_THEME.border, justifyContent: 'center', paddingHorizontal: 3 }}
+          >
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: symbolRainOn ? 'flex-end' : 'flex-start' }} />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '600' }}>LAMAGUE Glossary</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, marginTop: 2 }}>Show tappable symbol chips when Sol uses LAMAGUE notation. Power-user overlay.</Text>
+          </View>
+          <TouchableOpacity
+            onPress={async () => { const next = !lamagueGloss; setLamagueGloss(next); await saveShowLamagueGloss(next); }}
+            style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: lamagueGloss ? accentColor : SOL_THEME.border, justifyContent: 'center', paddingHorizontal: 3 }}
+          >
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: lamagueGloss ? 'flex-end' : 'flex-start' }} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* SOL MEMORY */}
+      <Text style={styles.sectionTitle}>⊙ SOL MEMORY</Text>
+      <Text style={styles.sectionNote}>Saved from long-pressing any message. Injected into every future conversation.</Text>
+      {solMemory.length === 0 && (
+        <Text style={[styles.sectionNote, { fontStyle: 'italic', marginBottom: 10 }]}>No memories saved yet. Long-press any chat message to save it.</Text>
+      )}
+      {solMemory.map((item) => (
+        <View key={item.id} style={styles.memoryItem}>
+          <Text style={[styles.memoryText, { flex: 1 }]} numberOfLines={2}>{item.text}</Text>
+          <TouchableOpacity onPress={async () => {
+            const updated = solMemory.filter(m => m.id !== item.id);
+            setSolMemory(updated);
+            await AsyncStorage.setItem('sol_memory_v1', JSON.stringify(updated));
+          }}>
+            <Text style={styles.memoryRemove}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      {solMemory.length > 0 && (
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: SOL_THEME.border, marginBottom: 12 }]}
+          onPress={() => Alert.alert('Clear all memories?', 'This cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Clear', style: 'destructive', onPress: async () => { setSolMemory([]); await AsyncStorage.removeItem('sol_memory_v1'); } },
+          ])}
+        >
+          <Text style={[styles.saveButtonText, { color: SOL_THEME.textMuted }]}>Clear All ({solMemory.length})</Text>
+        </TouchableOpacity>
       )}
 
       {/* PROJECT CONTEXT */}

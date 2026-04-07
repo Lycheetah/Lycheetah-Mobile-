@@ -20,6 +20,8 @@ export type CascadeResult = {
   truthPressure: number;       // Π estimate 0–1
   coherence: number;           // S estimate — inverse of contradiction density
   reorganisationNeeded: boolean;
+  paradoxical: boolean;           // AXIOM > 50 AND CHAOS > 50 — Π diverges mathematically
+  structuralContradiction: boolean; // FOUNDATION > 50 AND EDGE > 50 — load-bearing AND contested
   dominantLayer: 'AXIOM' | 'FOUNDATION' | 'THEORY' | 'EDGE' | 'CHAOS';
   invariantCount: number;      // claims presented as load-bearing
   contradictionCount: number;  // conflicting or unresolved claims
@@ -157,16 +159,26 @@ export function scoreCASCADE(text: string): CascadeResult {
 
   const dominant = [...layers].sort((a, b) => b.score - a.score)[0].name;
 
+  const fScore = layers.find(l => l.name === 'FOUNDATION')?.score ?? 0;
+  const eScore = layers.find(l => l.name === 'EDGE')?.score ?? 0;
+  const axiomScore = layers.find(l => l.name === 'AXIOM')?.score ?? 0;
+  const chaosScore = layers.find(l => l.name === 'CHAOS')?.score ?? 0;
+
+  const structuralContradiction = fScore > 50 && eScore > 50;
+  const paradoxical = axiomScore > 50 && chaosScore > 50;
+
   return {
     layers,
     truthPressure,
     coherence,
     reorganisationNeeded,
+    paradoxical,
+    structuralContradiction,
     dominantLayer: dominant,
     invariantCount: invariantHits,
     contradictionCount: incoherenceHits,
     wordCount: words,
-    summary: buildSummary(dominant, truthPressure, coherence, reorganisationNeeded, words),
+    summary: buildSummary(dominant, truthPressure, coherence, reorganisationNeeded, structuralContradiction, paradoxical, words),
   };
 }
 
@@ -175,18 +187,21 @@ function buildSummary(
   pi: number,
   coherence: number,
   reorg: boolean,
+  structuralContradiction: boolean,
+  paradoxical: boolean,
   words: number,
 ): string {
   const piDesc = pi > 0.7 ? 'high Π' : pi > 0.3 ? 'moderate Π' : 'low Π';
   const cohDesc = coherence > 70 ? 'coherent' : coherence > 40 ? 'moderate coherence' : 'low coherence';
   const reorgFlag = reorg ? ' · ⚠ REORGANISE' : '';
-  return `${words}w · ${dominant} dominant · ${piDesc} · ${cohDesc}${reorgFlag}`;
+  const paradoxFlag = paradoxical ? ' · ⚡ PARADOX' : structuralContradiction ? ' · ⚠ STRUCTURAL TENSION' : '';
+  return `${words}w · ${dominant} dominant · ${piDesc} · ${cohDesc}${reorgFlag}${paradoxFlag}`;
 }
 
 function emptyResult(): CascadeResult {
   return {
     layers: [], truthPressure: 0, coherence: 100,
-    reorganisationNeeded: false, dominantLayer: 'THEORY',
+    reorganisationNeeded: false, paradoxical: false, structuralContradiction: false, dominantLayer: 'THEORY',
     invariantCount: 0, contradictionCount: 0, wordCount: 0,
     summary: 'Paste text to analyse with CASCADE.',
   };
