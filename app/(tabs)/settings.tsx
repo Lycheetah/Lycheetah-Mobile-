@@ -595,7 +595,7 @@ export default function SettingsScreen() {
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v3.7.0</Text>
+        <Text style={styles.footerVersion}>v3.10.0</Text>
       </View>
     </ScrollView>
   );
