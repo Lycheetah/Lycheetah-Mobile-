@@ -44,6 +44,11 @@ const KEYS = {
   SHOW_METABOLISM: 'lycheetah_show_metabolism',
   SHOW_LAMAGUE_GLOSS: 'lycheetah_show_lamague_gloss',
   SYMBOL_RAIN_ENABLED: 'lycheetah_symbol_rain',
+  PENDING_SUBJECT_CONTEXT: 'sol_pending_subject_context',
+  PREMIUM: 'sol_premium',
+  FIELD_PROFILE: 'sol_field_profile',
+  FIELD_TRIALS: 'sol_field_trials',
+  FIELD_JOURNAL_SUMMARY: 'sol_field_journal_summary',
 };
 
 // Per-provider key storage
@@ -232,6 +237,15 @@ export async function savePendingSubject(subject: string) { await AsyncStorage.s
 export async function getPendingSubject(): Promise<string | null> { return AsyncStorage.getItem(KEYS.PENDING_SUBJECT); }
 export async function clearPendingSubject() { await AsyncStorage.removeItem(KEYS.PENDING_SUBJECT); }
 
+// Premium support mode
+export async function getPremium(): Promise<boolean> { return (await AsyncStorage.getItem(KEYS.PREMIUM)) === 'true'; }
+export async function savePremium(val: boolean) { await AsyncStorage.setItem(KEYS.PREMIUM, val ? 'true' : 'false'); }
+
+// Pending subject context — field echoes + study history injected into Headmaster system prompt
+export async function savePendingSubjectContext(context: string) { await AsyncStorage.setItem(KEYS.PENDING_SUBJECT_CONTEXT, context); }
+export async function getPendingSubjectContext(): Promise<string | null> { return AsyncStorage.getItem(KEYS.PENDING_SUBJECT_CONTEXT); }
+export async function clearPendingSubjectContext() { await AsyncStorage.removeItem(KEYS.PENDING_SUBJECT_CONTEXT); }
+
 // Mystery School — studied subjects
 const STUDIED_KEY = 'school_studied_v1';
 export async function markSubjectStudied(subject: string): Promise<void> {
@@ -314,6 +328,23 @@ export async function saveShowLamagueGloss(v: boolean) { await AsyncStorage.setI
 export async function getShowLamagueGloss(): Promise<boolean> {
   const v = await AsyncStorage.getItem(KEYS.SHOW_LAMAGUE_GLOSS);
   return v !== null ? JSON.parse(v) : false; // off by default — power-user opt-in
+}
+
+// Field Trials
+export async function getFieldTrials(): Promise<any[]> {
+  const raw = await AsyncStorage.getItem(KEYS.FIELD_TRIALS);
+  return raw ? JSON.parse(raw) : [];
+}
+export async function saveFieldTrials(trials: any[]) { await AsyncStorage.setItem(KEYS.FIELD_TRIALS, JSON.stringify(trials)); }
+
+// Field Journal Summaries (weekly, rolling 4)
+export async function getFieldJournalSummaries(): Promise<any[]> {
+  const raw = await AsyncStorage.getItem(KEYS.FIELD_JOURNAL_SUMMARY);
+  return raw ? JSON.parse(raw) : [];
+}
+export async function saveFieldJournalSummaries(summaries: any[]) {
+  const capped = summaries.slice(-4);
+  await AsyncStorage.setItem(KEYS.FIELD_JOURNAL_SUMMARY, JSON.stringify(capped));
 }
 
 // Symbol Rain toggle

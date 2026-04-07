@@ -24,6 +24,7 @@ import {
   getLanguage, saveLanguage,
   getShowLamagueGloss, saveShowLamagueGloss,
   getSymbolRainEnabled, saveSymbolRainEnabled,
+  getPremium, savePremium,
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
@@ -50,6 +51,7 @@ export default function SettingsScreen() {
   const [language, setLanguage_] = useState('English');
   const [lamagueGloss, setLamagueGloss] = useState(false);
   const [symbolRainOn, setSymbolRainOn] = useState(true);
+  const [premiumOn, setPremiumOn] = useState(false);
 
   useEffect(() => {
     getModel().then(m => {
@@ -74,6 +76,7 @@ export default function SettingsScreen() {
     getLanguage().then(setLanguage_);
     getShowLamagueGloss().then(setLamagueGloss);
     getSymbolRainEnabled().then(setSymbolRainOn);
+    getPremium().then(setPremiumOn);
     Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
       .then(results => {
         const keys: Record<string, string> = {};
@@ -550,13 +553,40 @@ export default function SettingsScreen() {
         <Text style={styles.shareAppText}>Share This App</Text>
       </TouchableOpacity>
 
+      {/* SOVEREIGN SUPPORT — Premium */}
+      <View style={{ marginBottom: 20, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: premiumOn ? '#F5A623AA' : '#F5A62344', backgroundColor: premiumOn ? '#F5A62310' : '#F5A62308' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Text style={{ color: '#F5A623', fontSize: 14, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>⊚ SOVEREIGN SUPPORT</Text>
+              {premiumOn && <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#F5A62333', borderWidth: 1, borderColor: '#F5A62388' }}><Text style={{ color: '#F5A623', fontSize: 9, fontWeight: '700', letterSpacing: 1 }}>ACTIVE</Text></View>}
+            </View>
+            <Text style={{ color: '#F5A62399', fontSize: 12, lineHeight: 17 }}>Enhanced field atmosphere, persona symbol rain, and the warm knowledge that you're supporting the Work.</Text>
+            <Text style={{ color: '#F5A62366', fontSize: 11, marginTop: 4, fontStyle: 'italic' }}>Cosmetic only. Zero functionality is gated. Sovereignty is free.</Text>
+          </View>
+          <TouchableOpacity
+            onPress={async () => { const next = !premiumOn; setPremiumOn(next); await savePremium(next); }}
+            style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: premiumOn ? '#F5A623' : '#F5A62333', justifyContent: 'center', paddingHorizontal: 3, marginLeft: 12 }}
+          >
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: premiumOn ? 'flex-end' : 'flex-start' }} />
+          </TouchableOpacity>
+        </View>
+        {premiumOn && (
+          <View style={{ gap: 4 }}>
+            <Text style={{ color: '#F5A62399', fontSize: 11 }}>✦ Enhanced atmosphere overlay active</Text>
+            <Text style={{ color: '#F5A62399', fontSize: 11 }}>✦ Persona-specific symbol rain unlocked</Text>
+            <Text style={{ color: '#F5A62399', fontSize: 11 }}>✦ The field remembers your support</Text>
+          </View>
+        )}
+      </View>
+
       <View style={styles.footer}>
         <Text style={styles.footerText}>Lycheetah Framework — Open Source</Text>
         <TouchableOpacity onPress={() => Linking.openURL('https://github.com/Lycheetah/Lycheetah-Mobile-')}>
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v2.1.0</Text>
+        <Text style={styles.footerVersion}>v3.7.0</Text>
       </View>
     </ScrollView>
   );

@@ -43,7 +43,10 @@ import {
   getBraveKey,
   getFontFamily, getBubbleGlow, getShowSignatures, getShowTokenBadge, getShowMetabolism,
   getLanguage, getShowLamagueGloss, getSymbolRainEnabled,
+  getPendingSubjectContext, clearPendingSubjectContext,
+  getPremium,
 } from '../../lib/storage';
+import { updateFieldProfile, getFieldProfile, formatProfileForContext } from '../../lib/intelligence/field-profile';
 import { getFieldNote } from '../../lib/field-notes';
 import { scheduleCognitiveWeather } from '../../lib/cognitive-weather';
 import { calculate, detectCalcIntent } from '../../lib/tools/calculator';
@@ -262,7 +265,13 @@ export default function SolChat() {
   const [showMetabolism, setShowMetabolism] = useState(true);
   const [showLamagueGloss, setShowLamagueGloss] = useState(false);
   const [symbolRainEnabled, setSymbolRainEnabled] = useState(true);
+  const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [chaosMode, setChaosMode] = useState(false);
+  const [councilFired, setCouncilFired] = useState(false);
+  const [fieldInsightActive, setFieldInsightActive] = useState(false);
+  const [fieldPulseActive, setFieldPulseActive] = useState(false);
+  const fieldPulseAnim = useRef(new Animated.Value(0)).current;
+  const fieldPulseLoop = useRef<Animated.CompositeAnimation | null>(null);
   const [sanctumField, setSanctumField] = useState<string>('');
   const [showInitiation, setShowInitiation] = useState(false);
   const [showYoureReady, setShowYoureReady] = useState(false);
@@ -271,6 +280,7 @@ export default function SolChat() {
   const [auraExplainerShown, setAuraExplainerShown] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [cementContext, setCementContext] = useState<string>('');
+  const [schoolSubjectContext, setSchoolSubjectContext] = useState<string>('');
   const [sovereignPulse, setSovereignPulse] = useState<string | null>(null);
   const [fieldCard, setFieldCard] = useState<{ phase: string; tes: number; vtr: number; pai: number; lq: number; stage: string } | null>(null);
   const [fieldEcho, setFieldEcho] = useState<string | null>(null);
@@ -298,6 +308,9 @@ export default function SolChat() {
   const messagesRef = useRef<DisplayMessage[]>([]);
   const personaRef = useRef<Persona>('sol');
   const [shadowLoading, setShadowLoading] = useState<string | null>(null);
+  const [priorFieldContext, setPriorFieldContext] = useState<string>('');
+  const [sessionPivotLoading, setSessionPivotLoading] = useState(false);
+  const aiTitledConvRef = useRef<string | null>(null);
   const [swipeToast, setSwipeToast] = useState<Mode | null>(null);
   const swipeToastAnim = useRef(new Animated.Value(0)).current;
   const [stacks, setStacks] = useState<{ name: string; persona: string; replyStyle: string; temperature: number; tokenBudget: number }[]>([]);
@@ -380,15 +393,32 @@ export default function SolChat() {
     setMessages(prev => prev.length === 0 ? [introMsg] : prev);
   }
 
-  function triggerSymbolRain() {
+  const PERSONA_RAIN_GLYPHS: Record<string, string[]> = {
+    sol:        ['⊚', '∴', '∵', 'Ψ', 'Ω', '∞', '△', '☽', '⊕', '✦', '⌬', '⍟'],
+    veyra:      ['◈', '⟁', '∇', '⊗', '⊞', '≡', '≢', '∅', '◉', '⊘', '⌥', '⊶'],
+    'aura-prime': ['✦', '⊛', '◎', '◌', '●', '○', '◦', '⊙', '⋆', '✧', '⊜', '⋇'],
+    headmaster: ['⊙', '✶', '⁂', '※', '♁', '⚕', '⚖', '✠', '⚜', '⌂', '⊷', '✡'],
+  };
+
+  // Task 9: triggerSymbolRain accepts optional count (default 12) and opacity override
+  function triggerSymbolRain(count?: number, opacityOverride?: number) {
     if (!symbolRainEnabled) return;
-    symbolRainAnims.forEach(a => a.y.setValue(-60));
+    const glyphs = premiumEnabled
+      ? (PERSONA_RAIN_GLYPHS[persona] || PERSONA_RAIN_GLYPHS.sol)
+      : PERSONA_RAIN_GLYPHS.sol;
+    const activeCount = count ?? 12;
+    const duration = premiumEnabled ? 1800 : 1400;
+    symbolRainAnims.forEach((a, i) => {
+      (a as any).glyph = glyphs[Math.floor(Math.random() * glyphs.length)];
+      (a as any).opacity = i < activeCount ? (opacityOverride ?? 1) : 0;
+      a.y.setValue(-60);
+    });
     setSymbolRain(true);
     Animated.parallel(
-      symbolRainAnims.map(a =>
+      symbolRainAnims.slice(0, activeCount).map(a =>
         Animated.sequence([
           Animated.delay(a.delay),
-          Animated.timing(a.y, { toValue: 820, duration: 1400, useNativeDriver: true }),
+          Animated.timing(a.y, { toValue: 820, duration, useNativeDriver: true }),
         ])
       )
     ).start(() => setSymbolRain(false));
@@ -544,6 +574,29 @@ export default function SolChat() {
     return () => { Speech.stop(); setSpeakingId(null); };
   }, []));
 
+  // Cross-session context: load last 3 convos when messages is empty
+  useFocusEffect(useCallback(() => {
+    if (messages.length > 0) return;
+    listConversations().then(async (convList) => {
+      const recent = convList.filter(c => c.id !== 'welcome_thread').slice(0, 3);
+      if (recent.length === 0) return;
+      const parts: string[] = [];
+      for (const meta of recent) {
+        try {
+          const conv = await loadConversation(meta.id);
+          if (!conv) continue;
+          const firstAsst = conv.messages.find(m => m.role === 'assistant');
+          if (firstAsst) {
+            parts.push(`"${firstAsst.content.slice(0, 100).replace(/\n/g, ' ')}..." (${meta.title})`);
+          }
+        } catch {}
+      }
+      if (parts.length > 0) {
+        setPriorFieldContext(`[Prior Field Context — recent conversations]\n${parts.map((p, i) => `${i + 1}. ${p}`).join('\n')}`);
+      }
+    }).catch(() => {});
+  }, [messages.length]));
+
   // Companion animation
   useEffect(() => {
     if (!companionEnabled) return;
@@ -584,6 +637,11 @@ export default function SolChat() {
       ),
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginRight: 14 }}>
+          {fieldInsightActive && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: '#4A9EFF18', borderWidth: 1, borderColor: '#4A9EFF44' }}>
+              <Text style={{ color: '#4A9EFF', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>⟁ FIELD</Text>
+            </View>
+          )}
           {lastAura && (
             <TouchableOpacity
               onPress={() => { setShowIntegrityModal(true); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
@@ -610,7 +668,7 @@ export default function SolChat() {
         </View>
       ),
     });
-  }, [lastAura, coherenceStreak, fieldCard, accent, auraHeaderAnim, router]);
+  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router]);
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
@@ -686,6 +744,16 @@ export default function SolChat() {
           });
         }
       }
+      // Mastery bonus — mastered domains visible in field state
+      const masteredRaw = await AsyncStorage.getItem('sol_mastered_domains');
+      if (masteredRaw) {
+        try {
+          const mastered: string[] = JSON.parse(masteredRaw);
+          if (mastered.length > 0) {
+            lines.push(`School Mastery: ${mastered.join(', ')} — ${mastered.length} domain${mastered.length > 1 ? 's' : ''} fully integrated. Field coherence elevated.`);
+          }
+        } catch {}
+      }
       setSanctumField(lines.join('\n'));
 
       // Field State Echo — build a 1-2 sentence continuity reflection for the empty state
@@ -756,6 +824,7 @@ export default function SolChat() {
     getShowMetabolism().then(v => setShowMetabolism(v));
     getShowLamagueGloss().then(v => setShowLamagueGloss(v));
     getSymbolRainEnabled().then(v => setSymbolRainEnabled(v));
+    getPremium().then(v => setPremiumEnabled(v));
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
     AsyncStorage.getItem('sol_initiated').then(v => { if (!v) setShowInitiation(true); });
     AsyncStorage.getItem('sol_aura_explained').then(v => { if (v) setAuraExplainerShown(true); });
@@ -763,11 +832,17 @@ export default function SolChat() {
     getAccentColor().then(c => setAccentColor(c));
     getBubbleRadius().then(r => setBubbleRadius(r));
     getFontSize().then(s => setFontSize(s));
-    getPendingSubject().then(subject => {
+    getPendingSubject().then(async subject => {
       if (!subject) return;
       clearPendingSubject();
       setPersona('headmaster');
       maybeShowPersonaIntro('headmaster');
+      // Load field echoes + study history context if present
+      const subjectCtx = await getPendingSubjectContext();
+      if (subjectCtx) {
+        setSchoolSubjectContext(subjectCtx);
+        clearPendingSubjectContext();
+      }
       // Paradox resolution context comes pre-formatted; regular subjects get a prefix
       setInput(subject.startsWith('PARADOX DETECTED:') ? subject : `Teach me about: ${subject}`);
       if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -954,6 +1029,14 @@ export default function SolChat() {
       return;
     }
 
+    // /council — trigger council mode manually (reset so it can fire)
+    if (text.toLowerCase() === '/council') {
+      setInput('');
+      setCouncilFired(false);
+      Alert.alert('⟁ Council Mode', 'The next high-AURA response will trigger a council moment — two personas will respond.', [{ text: '⊚', style: 'default' }]);
+      return;
+    }
+
     // /school — jump directly to Headmaster
     if (detectHeadmasterToggle(text)) {
       setInput('');
@@ -1004,11 +1087,45 @@ export default function SolChat() {
       basePrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
     }
     // Prepend compiled persona spec + reply style instruction
+    // Task 3: Field Profile injection
+    const fieldProfile = await getFieldProfile();
+    const profileLine = formatProfileForContext(fieldProfile);
+
+    // Task 2: Field Insight — first message only, if echoes or mastery exist
+    let fieldInsightLine = '';
+    if (messages.length === 0) {
+      try {
+        const [echoesRaw, masteredRaw] = await Promise.all([
+          AsyncStorage.getItem('sol_school_echoes'),
+          AsyncStorage.getItem('sol_mastered_domains'),
+        ]);
+        const insights: string[] = [];
+        if (echoesRaw) {
+          const echoes: Record<string, { id: string; date: string; text: string }[]> = JSON.parse(echoesRaw);
+          const allEchoes = Object.values(echoes).flat().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          if (allEchoes.length > 0) insights.push(`recent breakthrough: "${allEchoes[0].text.slice(0, 80)}"`);
+        }
+        if (masteredRaw) {
+          const mastered: string[] = JSON.parse(masteredRaw);
+          if (mastered.length > 0) insights.push(`mastered ${mastered[mastered.length - 1]}`);
+        }
+        if (insights.length > 0) {
+          fieldInsightLine = `[Field Insight] The field recalls — ${insights.join(', ')}. Let this inform your response if relevant.`;
+          setFieldInsightActive(true);
+        }
+      } catch {}
+    }
+
     const contextBlock = [
       sanctumField.trim() ? sanctumField.trim() : '',
       cementContext.trim() ? cementContext.trim() : '',
+      profileLine ? profileLine : '',
+      fieldInsightLine ? fieldInsightLine : '',
+      // Cross-session context — only on first message
+      messages.length === 0 && priorFieldContext ? priorFieldContext : '',
       contextMemory.length > 0 ? `[User Context]\n${contextMemory.map(m => `• ${m}`).join('\n')}` : '',
       projectContext.trim() ? `[Project Context]\n${projectContext.trim().slice(0, 1500)}` : '',
+      schoolSubjectContext.trim() ? schoolSubjectContext.trim() : '',
     ].filter(Boolean).join('\n\n');
 
     const styleInstruction = getStyle(replyStyle).instruction;
@@ -1156,8 +1273,12 @@ export default function SolChat() {
             [{ text: '⊚', style: 'default' }]
           ), 600);
         }
-        if (next > 0 && next % 10 === 0) {
-          setTimeout(() => triggerSymbolRain(), 200);
+        // Task 9: Reactive rain intensity — ×5 light, ×10 full, ×15 heavy
+        if (next === 5) setTimeout(() => triggerSymbolRain(6, 0.5), 200);
+        else if (next === 10) setTimeout(() => triggerSymbolRain(12, 1), 200);
+        else if (next >= 15 && next % 5 === 0) {
+          setTimeout(() => triggerSymbolRain(18, 1), 200);
+          if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
         return next;
       });
@@ -1168,6 +1289,7 @@ export default function SolChat() {
         AsyncStorage.getItem('sol_first_perfect').then(v => {
           if (!v) {
             AsyncStorage.setItem('sol_first_perfect', 'true');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setTimeout(() => setShowYoureReady(true), 1200);
           }
         });
@@ -1237,6 +1359,104 @@ export default function SolChat() {
       if (!activeConvId) setActiveConvId(convId);
       setConversations(await listConversations());
       saveConversation(finalMessages.map(({ role, content }) => ({ role, content })));
+
+      // AI conversation title — fires once after 3rd exchange (6 messages)
+      if (finalMessages.length === 6 && aiTitledConvRef.current !== convId) {
+        aiTitledConvRef.current = convId;
+        const recentExchange = finalMessages.slice(-4).map(m => `${m.role}: ${m.content.slice(0, 80)}`).join('\n');
+        (async () => {
+          try {
+            const titleResult = await sendMessage(
+              [{ role: 'user', content: `Name this conversation in 4-6 words. Evocative, not generic. No quotes, no punctuation.\n\n${recentExchange}` }],
+              'Return only the title. 4-6 words. Evocative. No quotes, no punctuation, no preamble.',
+              apiKey, (model || 'gemini-2.5-flash') as AIModel,
+              undefined, 'fast', 24, 0.85,
+            );
+            const generatedTitle = titleResult.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/["']/g, '').trim().slice(0, 48);
+            if (generatedTitle && generatedTitle.length > 5) {
+              await renameConversation(convId, generatedTitle);
+              setConversations(await listConversations());
+            }
+          } catch {}
+        })();
+      }
+
+      // Task 3: Update field profile after each response
+      updateFieldProfile({
+        auraScore: auraMetrics.passed,
+        persona,
+        userMessageLength: text.length,
+      });
+
+      // Task 8: Field Pulse — trigger glow when AURA is climbing
+      const prevPassed = conversationPassRates.length > 0
+        ? conversationPassRates[conversationPassRates.length - 1] * 7
+        : 0;
+      const auraClimbing = auraMetrics.passed > prevPassed;
+      if (auraClimbing && auraMetrics.passed >= 5) {
+        if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setFieldPulseActive(true);
+        fieldPulseLoop.current?.stop();
+        fieldPulseLoop.current = Animated.loop(
+          Animated.sequence([
+            Animated.timing(fieldPulseAnim, { toValue: 1, duration: premiumEnabled ? 2400 : 1800, useNativeDriver: true }),
+            Animated.timing(fieldPulseAnim, { toValue: 0, duration: premiumEnabled ? 2400 : 1800, useNativeDriver: true }),
+          ])
+        );
+        fieldPulseLoop.current.start();
+        setTimeout(() => {
+          fieldPulseLoop.current?.stop();
+          fieldPulseAnim.setValue(0);
+          setFieldPulseActive(false);
+        }, 8000);
+      } else if (!auraClimbing && fieldPulseActive) {
+        fieldPulseLoop.current?.stop();
+        fieldPulseAnim.setValue(0);
+        setFieldPulseActive(false);
+      }
+
+      // Task 9: Reactive symbol rain — perfect 7/7 burst (3 symbols)
+      if (isPerfect && symbolRainEnabled) {
+        setTimeout(() => triggerSymbolRain(3), 150);
+      }
+
+      // Task 7: Council Mode — fire second persona when AURA 6+/7 (once per conversation)
+      if (!councilFired && auraMetrics.passed >= 6) {
+        const shouldCouncil = true;
+        if (shouldCouncil) {
+          setCouncilFired(true);
+          if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          const COUNCIL_SECOND: Record<string, string> = { sol: 'aura-prime', veyra: 'sol', 'aura-prime': 'headmaster', headmaster: 'aura-prime' };
+          const COUNCIL_GLYPHS: Record<string, string> = { sol: '⊚', veyra: '◈', 'aura-prime': '✦', headmaster: '⊙' };
+          const COUNCIL_COLORS: Record<string, string> = { sol: '#F5A623', veyra: '#4A9EFF', 'aura-prime': '#9B59B6', headmaster: '#E8C76A' };
+          const COUNCIL_NAMES: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura Prime', headmaster: 'Headmaster' };
+          const secondPersona = COUNCIL_SECOND[persona] || 'aura-prime';
+          const secondGlyph = COUNCIL_GLYPHS[secondPersona] || '✦';
+          const secondColor = COUNCIL_COLORS[secondPersona] || '#9B59B6';
+          const secondName = COUNCIL_NAMES[secondPersona] || 'Aura Prime';
+          try {
+            const councilPrompt = `You are ${secondName}. In 1-2 sentences only, add your perspective on the following exchange. Do not repeat what was said — only add what ${getPersonaLabel(persona)} missed or what you see differently. Be direct.\n\nUser: ${text}\n\n${getPersonaLabel(persona)} responded: ${fullResponse.slice(0, 600)}`;
+            const councilResult = await sendMessage(
+              [{ role: 'user', content: councilPrompt }],
+              `You are ${secondName} from the Sol constitutional AI system. Brief, precise, no padding.`,
+              apiKey,
+              model
+            );
+            const councilReply = councilResult.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
+            if (councilReply) {
+              const councilMsg: DisplayMessage = {
+                id: (Date.now() + 2).toString(),
+                role: 'assistant',
+                content: `${secondGlyph} ${secondName} — Council\n\n${councilReply}`,
+                mode: detectedMode,
+                persona: secondPersona as Persona,
+              };
+              setMessages(prev => [...prev, councilMsg]);
+            }
+          } catch {}
+        }
+      }
+
     } catch (err: any) {
       const msg = err?.message || String(err) || 'Unknown error';
       console.error('Sol send error:', msg);
@@ -1559,6 +1779,44 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           Alert.alert('⊙ Saved to Memory', 'This will be included in future conversations.');
         },
       },
+      ...(isAssistant ? [{
+        text: '✦ Mark Insightful',
+        onPress: async () => {
+          const insightRaw = await AsyncStorage.getItem('sol_insights');
+          const insights: { id: string; text: string; date: string; persona: string }[] = insightRaw ? JSON.parse(insightRaw) : [];
+          if (insights.length >= 50) { Alert.alert('Insights full', 'Max 50 insights.'); return; }
+          const snippet = content.slice(0, 320);
+          insights.unshift({ id: Date.now().toString(), text: snippet, date: new Date().toLocaleDateString(), persona: msgPersona });
+          await AsyncStorage.setItem('sol_insights', JSON.stringify(insights));
+          // Also inject into context memory so it informs future sessions
+          const memRaw = await AsyncStorage.getItem('sol_memory_v1');
+          const mems: { id: string; text: string; date: string }[] = memRaw ? JSON.parse(memRaw) : [];
+          if (mems.length < 30) {
+            mems.unshift({ id: (Date.now() + 1).toString(), text: `[Insight] ${snippet.slice(0, 200)}`, date: new Date().toLocaleDateString() });
+            await AsyncStorage.setItem('sol_memory_v1', JSON.stringify(mems));
+          }
+          if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('✦ Marked as Insightful', 'Saved to field memory — will inform future sessions.');
+        },
+      }] : []),
+      ...(isAssistant ? [{
+        text: '↑ Share as Card',
+        onPress: () => {
+          const glyph = getPersonaGlyph(msgPersona);
+          const label = getPersonaLabel(msgPersona).toUpperCase();
+          const modeLine = msgMode ? ` · ${msgMode}` : '';
+          const auraLine = aura ? ` · AURA ${aura.passed}/${aura.total}` : '';
+          const excerpt = content.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim().slice(0, 300);
+          const card = [
+            `${glyph} ${label}${modeLine}${auraLine}`,
+            '',
+            excerpt + (content.length > 300 ? '…' : ''),
+            '',
+            '— Sol App · Lycheetah Framework',
+          ].join('\n');
+          Share.share({ message: card, title: `${label} · Sol` });
+        },
+      }] : []),
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -1918,13 +2176,26 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
 
   const world = PERSONA_WORLDS[persona] ?? PERSONA_WORLDS.sol;
 
-  // Field-Responsive Atmosphere — LQ drives a subtle tint overlay
+  // Field-Responsive Atmosphere — LQ drives a subtle tint overlay (premium = enhanced opacity)
   const lq = fieldCard?.lq ?? null;
+  const atmosphereMultiplier = premiumEnabled ? 2.0 : 1.0;
   const fieldAtmosphere: { color: string; opacity: number } | null = lq === null ? null
-    : lq >= 0.75 ? { color: accent, opacity: 0.04 }          // high LQ — warm persona tint
-    : lq >= 0.55 ? null                                         // mid LQ — neutral, no overlay
-    : lq >= 0.40 ? { color: '#4A6080', opacity: 0.06 }         // low LQ — cool blue-grey dim
-    : { color: '#2A2A40', opacity: 0.12 };                      // very low LQ — significantly dimmed
+    : lq >= 0.75 ? { color: accent, opacity: 0.04 * atmosphereMultiplier }
+    : lq >= 0.55 ? premiumEnabled ? { color: accent, opacity: 0.02 } : null
+    : lq >= 0.40 ? { color: '#4A6080', opacity: 0.06 * atmosphereMultiplier }
+    : { color: '#2A2A40', opacity: 0.12 * atmosphereMultiplier };
+
+  // Task 12: Persona aura — premium-only subtle directional overlay per persona
+  const PERSONA_AURA_COLORS: Record<string, string> = {
+    sol: '#F5A623', veyra: '#4A9EFF', 'aura-prime': '#9B59B6', headmaster: '#C8A060',
+  };
+  const personaAuraColor = PERSONA_AURA_COLORS[persona] || '#F5A623';
+
+  // Task 8: Field Pulse opacity interpolation
+  const fieldPulseOpacity = fieldPulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.03, premiumEnabled ? 0.09 : 0.06],
+  });
 
   return (
     <KeyboardAvoidingView
@@ -1936,6 +2207,18 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
       {fieldAtmosphere && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: fieldAtmosphere.color, opacity: fieldAtmosphere.opacity, zIndex: 0, pointerEvents: 'none' }} />
       )}
+      {/* Task 12: Persona Aura — premium only */}
+      {premiumEnabled && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0, pointerEvents: 'none' }}>
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', backgroundColor: personaAuraColor, opacity: 0.025, borderTopLeftRadius: 80, borderTopRightRadius: 80 }} />
+          <View style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: '20%', backgroundColor: personaAuraColor, opacity: 0.015 }} />
+          <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '20%', backgroundColor: personaAuraColor, opacity: 0.015 }} />
+        </View>
+      )}
+      {/* Task 8: Field Pulse — breathes when AURA climbing */}
+      {fieldPulseActive && (
+        <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderWidth: 2, borderColor: personaAuraColor, borderRadius: 0, opacity: fieldPulseOpacity, zIndex: 0, pointerEvents: 'none' }} />
+      )}
       <ConversationDrawer
         visible={drawerOpen}
         conversations={conversations}
@@ -1944,7 +2227,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         onNew={() => {
           setMessages([]); setActiveConvId(null);
           setCurrentMode('ALBEDO'); setConversationPassRates([]);
-          setLastAura(null); setCoherenceStreak(0);
+          setLastAura(null); setCoherenceStreak(0); setFieldInsightActive(false); setCouncilFired(false);
+          setPriorFieldContext(''); aiTitledConvRef.current = null;
           clearConversation(); setDrawerOpen(false);
           if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }}
@@ -2624,6 +2908,36 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         {...swipePanResponder.panHandlers}
         style={{ height: 6, backgroundColor: MODE_COLORS[currentMode] + '33', borderRadius: 3, marginHorizontal: 20, marginBottom: 2 }}
       />
+
+      {/* Session Pivot — appears after 8+ messages */}
+      {messages.length >= 8 && messages[messages.length - 1]?.role === 'assistant' && !loading && (
+        <TouchableOpacity
+          onPress={async () => {
+            setSessionPivotLoading(true);
+            try {
+              const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+              if (!apiKey) { setSessionPivotLoading(false); return; }
+              const thread = messages.slice(-6).map(m => `${m.role === 'user' ? 'You' : getPersonaLabel(m.persona || persona)}: ${m.content.slice(0, 120).replace(/\n/g, ' ')}`).join('\n');
+              const res = await sendMessage(
+                [{ role: 'user', content: `Given this conversation:\n${thread}\n\nWhat single question would most powerfully advance this field right now? Return only the question — no preamble, no context.` }],
+                'You are a field navigator. Return exactly one question. No preamble, no explanation. Just the question.',
+                apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 60, 0.7,
+              );
+              const pivot = res.text.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim();
+              if (pivot) setInput(pivot);
+              if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch {}
+            setSessionPivotLoading(false);
+          }}
+          disabled={sessionPivotLoading}
+          style={{ alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 12, marginBottom: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, backgroundColor: accent + '12', borderWidth: 1, borderColor: accent + '33' }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ color: accent + 'CC', fontSize: 11, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+            {sessionPivotLoading ? '···' : '⊚ Where next?'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <View style={[styles.inputRow, { borderTopColor: world.border, backgroundColor: world.surface }]}>
         {typingMode && (

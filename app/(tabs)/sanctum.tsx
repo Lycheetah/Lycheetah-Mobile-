@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Platform, Share,
+  StyleSheet, Alert, Platform, Share, Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { SOL_THEME } from '../../constants/theme';
-import { getAccentColor, getActiveKey, getModel } from '../../lib/storage';
+import { getAccentColor, getActiveKey, getModel, getFieldJournalSummaries, saveFieldJournalSummaries } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
 
 const KEYS = {
@@ -84,6 +84,10 @@ export default function SanctumScreen() {
   const [fieldReflection, setFieldReflection] = useState<string>('');
   const [reflectionLoading, setReflectionLoading] = useState(false);
   const [paradoxJournal, setParadoxJournal] = useState<{ id: string; date: string; mode: string; excerpt: string }[]>([]);
+  const [weeklyJournalSummaries, setWeeklyJournalSummaries] = useState<{ weekOf: string; summary: string; generatedAt: string }[]>([]);
+  const [weeklyJournalLoading, setWeeklyJournalLoading] = useState(false);
+  const [fieldProfile, setFieldProfile] = useState<{ preferredDepth: string; dominantPersona: string; topDomains: string[]; studySessions: number; avgAURA: number; totalMessages: number } | null>(null);
+  const [masteredDomains, setMasteredDomains] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
@@ -109,6 +113,62 @@ export default function SanctumScreen() {
     setLqHistory(histRaw ? JSON.parse(histRaw) : []);
     const paradoxRaw = await AsyncStorage.getItem('sol_paradox_journal');
     setParadoxJournal(paradoxRaw ? JSON.parse(paradoxRaw) : []);
+
+    // Load field profile and mastered domains
+    const [profileRaw, masteredRaw] = await Promise.all([
+      AsyncStorage.getItem('sol_field_profile'),
+      AsyncStorage.getItem('sol_mastered_domains'),
+    ]);
+    if (profileRaw) { try { setFieldProfile(JSON.parse(profileRaw)); } catch {} }
+    if (masteredRaw) { try { setMasteredDomains(JSON.parse(masteredRaw)); } catch {} }
+
+    // Task 11: Load weekly journal summaries
+    const summaries = await getFieldJournalSummaries();
+    setWeeklyJournalSummaries(summaries);
+
+    // Check if weekly summary needed (7 days since last or no summary)
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const weekOf = weekStart.toISOString().split('T')[0];
+    const hasSummaryThisWeek = summaries.some((s: any) => s.weekOf === weekOf);
+    if (!hasSummaryThisWeek) {
+      // Generate it async (non-blocking)
+      getActiveKey().then(async (apiKey) => {
+        if (!apiKey) return;
+        const model = await getModel();
+        const histRaw2 = await AsyncStorage.getItem(KEYS.LQ_HISTORY);
+        const lqHist: LQPoint[] = histRaw2 ? JSON.parse(histRaw2) : [];
+        const weekPoints = lqHist.filter(p => p.date >= weekOf);
+        if (weekPoints.length === 0) return; // no data this week yet
+
+        const masteredRaw = await AsyncStorage.getItem('sol_mastered_domains');
+        const mastered: string[] = masteredRaw ? JSON.parse(masteredRaw) : [];
+        const echoRaw = await AsyncStorage.getItem('sol_school_echoes');
+        const echoCount = echoRaw ? Object.values(JSON.parse(echoRaw)).flat().length : 0;
+        const studyCountRaw = await AsyncStorage.getItem('sol_school_streak');
+        const studyStreak = studyCountRaw ? (JSON.parse(studyCountRaw).count || 0) : 0;
+
+        const avgLQ = weekPoints.length > 0 ? weekPoints.reduce((s, p) => s + p.lq, 0) / weekPoints.length : 0;
+        const prompt = `Week of ${weekOf}. Average Light Quotient: ${avgLQ.toFixed(2)}. Mastered domains: ${mastered.join(', ') || 'none'}. Field echoes: ${echoCount}. Study streak: ${studyStreak} days. Summarize this student's week in 3-4 honest sentences. Note growth and stagnation equally. Do not be falsely positive. End with one question for the week ahead.`;
+
+        setWeeklyJournalLoading(true);
+        try {
+          const result = await sendMessage(
+            [{ role: 'user', content: prompt }],
+            'You are the Headmaster. Summarize the student\'s week with honest authority. 3-4 sentences. No preamble.',
+            apiKey, (model || 'gemini-2.5-flash') as AIModel,
+            undefined, 'fast', 512, 0.7,
+          );
+          const summaryText = result.text.replace(/\[CONF:[^\]]+\]/, '').trim();
+          const newSummary = { weekOf, summary: summaryText, generatedAt: new Date().toISOString() };
+          const updatedSummaries = [...summaries, newSummary];
+          setWeeklyJournalSummaries(updatedSummaries);
+          await saveFieldJournalSummaries(updatedSummaries);
+        } catch {}
+        setWeeklyJournalLoading(false);
+      });
+    }
+
     const auraHistRaw = await AsyncStorage.getItem('aura_history_v1');
     if (auraHistRaw) {
       // Aggregate by day — average composite per day
@@ -274,6 +334,47 @@ export default function SanctumScreen() {
             </View>
           ) : null}
 
+          {/* Field State Today card */}
+          {(fieldProfile || lqHistory.some(p => p.date === todayKey())) && (() => {
+            const todayLQ = lqHistory.find(p => p.date === todayKey());
+            const todayAURA = auraHistory.find(p => p.date === todayKey());
+            const hasData = todayLQ || todayAURA || fieldProfile?.totalMessages;
+            if (!hasData) return null;
+            return (
+              <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07', marginTop: 10 }}>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>FIELD STATE TODAY</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                  {todayLQ && (
+                    <View>
+                      <Text style={{ color: accentColor, fontSize: 18, fontWeight: '700' }}>{todayLQ.lq.toFixed(2)}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>LQ · {todayLQ.stage}</Text>
+                    </View>
+                  )}
+                  {todayAURA && (
+                    <View>
+                      <Text style={{ color: accentColor, fontSize: 18, fontWeight: '700' }}>{todayAURA.composite}%</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>AURA today</Text>
+                    </View>
+                  )}
+                  {fieldProfile?.studySessions ? (
+                    <View>
+                      <Text style={{ color: accentColor, fontSize: 18, fontWeight: '700' }}>{fieldProfile.studySessions}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>study sessions</Text>
+                    </View>
+                  ) : null}
+                  {fieldProfile?.topDomains?.[0] ? (
+                    <View style={{ justifyContent: 'center' }}>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Strong in {fieldProfile.topDomains[0]}</Text>
+                      {fieldProfile.preferredDepth && fieldProfile.preferredDepth !== 'balanced' && (
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{fieldProfile.preferredDepth === 'deep' ? '⬇ Deep thinker' : '⚡ Quick explorer'}</Text>
+                      )}
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })()}
+
           <View style={styles.divider} />
 
           <Text style={[styles.label, { color: accentColor }]}>EVENING REFLECTION</Text>
@@ -330,7 +431,10 @@ export default function SanctumScreen() {
                     <Text style={styles.deleteBtn}>✕</Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.entryText}>{entry.text}</Text>
+                {/* Task 10: Parchment tint on journal entries */}
+                <View style={{ backgroundColor: '#FFFEF806', borderRadius: 4, padding: 4, borderWidth: 1, borderColor: '#FFFEF815' }}>
+                  <Text style={styles.entryText}>{entry.text}</Text>
+                </View>
               </View>
             ))
           )}
@@ -425,6 +529,42 @@ export default function SanctumScreen() {
                 )}
               </View>
             </View>
+
+            {/* Sovereign Stats card */}
+            {fieldProfile && (fieldProfile.totalMessages > 0 || fieldProfile.studySessions > 0 || masteredDomains.length > 0) && (
+              <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06', marginBottom: 16 }}>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>SOVEREIGN STATS</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
+                  {fieldProfile.totalMessages > 0 && (
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{fieldProfile.totalMessages}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>messages</Text>
+                    </View>
+                  )}
+                  {fieldProfile.studySessions > 0 && (
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{fieldProfile.studySessions}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>study sessions</Text>
+                    </View>
+                  )}
+                  {fieldProfile.avgAURA > 0 && (
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{fieldProfile.avgAURA.toFixed(1)}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>avg AURA/7</Text>
+                    </View>
+                  )}
+                  {masteredDomains.length > 0 && (
+                    <View style={{ alignItems: 'center' }}>
+                      <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{masteredDomains.length}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>domains mastered</Text>
+                    </View>
+                  )}
+                </View>
+                {fieldProfile.topDomains?.length > 0 && (
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 8 }}>Strongest: {fieldProfile.topDomains.slice(0, 2).join(', ')}</Text>
+                )}
+              </View>
+            )}
 
             {/* #45 Field Timeline */}
             {lqHistory.length > 1 && (
@@ -567,6 +707,23 @@ export default function SanctumScreen() {
                 <Text style={styles.reflectionText}>
                   {reflectionLoading ? '...' : fieldReflection}
                 </Text>
+              </View>
+            )}
+
+            {/* Task 11: Weekly Field Journal Summary */}
+            {(weeklyJournalLoading || weeklyJournalSummaries.length > 0) && (
+              <View style={{ marginTop: 16, padding: 14, borderRadius: 10, backgroundColor: '#C8A06010', borderWidth: 1, borderColor: '#C8A06044' }}>
+                <Text style={{ color: '#C8A060', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>📜 WEEKLY FIELD JOURNAL</Text>
+                {weeklyJournalLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The Headmaster is reviewing your week...</Text>}
+                {weeklyJournalSummaries.slice(-1).map((s, i) => (
+                  <View key={i}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginBottom: 6 }}>Week of {s.weekOf}</Text>
+                    {/* Task 10: Parchment-style text for high-signal entries */}
+                    <View style={{ backgroundColor: '#FFFEF808', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#FFFEF820' }}>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>{s.summary}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
 
