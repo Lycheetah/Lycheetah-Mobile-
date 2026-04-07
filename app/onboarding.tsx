@@ -143,12 +143,18 @@ export default function OnboardingScreen() {
                 You can also add OpenAI, Anthropic, DeepSeek in Settings later.
               </Text>
             </View>
+            {!geminiKey.trim() && (
+              <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 8, backgroundColor: '#E0704015', borderWidth: 1, borderColor: '#E0704033', marginBottom: 12 }}>
+                <Text style={{ fontSize: 13 }}>⚠</Text>
+                <Text style={{ flex: 1, fontSize: 12, color: '#E07040', lineHeight: 17 }}>Without a key Sol cannot respond. You can add it later in Settings, but the app won't work until you do.</Text>
+              </View>
+            )}
             <View style={styles.navRow}>
               <TouchableOpacity style={styles.backButton} onPress={back}>
                 <Text style={styles.backButtonText}>← Back</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={next}>
-                <Text style={styles.primaryButtonText}>{geminiKey.trim() ? 'Next →' : 'Skip for now →'}</Text>
+              <TouchableOpacity style={[styles.primaryButton, { flex: 1, backgroundColor: geminiKey.trim() ? SOL_THEME.primary : SOL_THEME.surface }]} onPress={next}>
+                <Text style={[styles.primaryButtonText, { color: geminiKey.trim() ? SOL_THEME.background : SOL_THEME.textMuted }]}>{geminiKey.trim() ? 'Next →' : 'Skip (won\'t work) →'}</Text>
               </TouchableOpacity>
             </View>
           </View>

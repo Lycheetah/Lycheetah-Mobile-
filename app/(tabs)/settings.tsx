@@ -149,6 +149,15 @@ export default function SettingsScreen() {
       </View>
 
       {/* PROVIDERS */}
+      {Object.values(savedKeys).every(k => !k) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E0704055', backgroundColor: '#E0704010', marginBottom: 12 }}>
+          <Text style={{ fontSize: 18 }}>⚠</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#E07040', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>No API key — Sol cannot respond</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Add a free Gemini key below to get started.</Text>
+          </View>
+        </View>
+      )}
       <Text style={styles.sectionTitle}>API KEYS & MODELS</Text>
 
       {PROVIDERS.map(provider => {

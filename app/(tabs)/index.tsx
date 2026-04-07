@@ -310,6 +310,7 @@ export default function SolChat() {
   const [shadowLoading, setShadowLoading] = useState<string | null>(null);
   const [priorFieldContext, setPriorFieldContext] = useState<string>('');
   const [sessionPivotLoading, setSessionPivotLoading] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const aiTitledConvRef = useRef<string | null>(null);
   const [swipeToast, setSwipeToast] = useState<Mode | null>(null);
   const swipeToastAnim = useRef(new Animated.Value(0)).current;
@@ -521,6 +522,9 @@ export default function SolChat() {
         };
         const p = (savedPersona as string) || 'sol';
         setWelcomeMsg(greetings[p]?.[timeOfDay] || greetings['sol'][timeOfDay]);
+
+        // API key detection — surface immediately for fresh users
+        getActiveKey().then(key => setHasApiKey(!!key)).catch(() => setHasApiKey(false));
       });
   }, []);
 
@@ -572,6 +576,11 @@ export default function SolChat() {
   // Stop speech when tab loses focus
   useFocusEffect(useCallback(() => {
     return () => { Speech.stop(); setSpeakingId(null); };
+  }, []));
+
+  // Re-check API key when tab gains focus (user may have just set one in Settings)
+  useFocusEffect(useCallback(() => {
+    getActiveKey().then(key => setHasApiKey(!!key)).catch(() => setHasApiKey(false));
   }, []));
 
   // Cross-session context: load last 3 convos when messages is empty
@@ -2376,8 +2385,45 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         initialNumToRender={12}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            {/* #53 Living Welcome */}
-            {(() => {
+
+            {/* API key missing — top priority banner */}
+            {hasApiKey === false && (
+              <TouchableOpacity
+                onPress={() => router.push('/(tabs)/settings')}
+                style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E0704055', backgroundColor: '#E0704012', marginBottom: 20 }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 20 }}>⚠</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#E07040', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Sol needs an API key to respond</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Free Gemini key takes 30 seconds → tap to set up</Text>
+                </View>
+                <Text style={{ color: '#E07040', fontSize: 16 }}>→</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Sol greeting card — fresh users only (0 conversations, no field data) */}
+            {conversations.length === 0 && !fieldCard && hasApiKey !== false && (
+              <View style={{ alignSelf: 'flex-start', maxWidth: '88%', marginBottom: 20 }}>
+                <Text style={{ color: accent, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', marginBottom: 5 }}>
+                  {getPersonaGlyph(persona)} {getPersonaLabel(persona)}
+                </Text>
+                <View style={{ backgroundColor: SOL_THEME.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: accent + '44', borderLeftWidth: 3, borderLeftColor: accent }}>
+                  <Text style={{ color: SOL_THEME.text, fontSize: 14, lineHeight: 22 }}>
+                    {persona === 'headmaster'
+                      ? "The door is open. What brings you to the school today?"
+                      : persona === 'veyra'
+                      ? "Systems ready. What are we building today?"
+                      : persona === 'aura-prime'
+                      ? "The field is clear. What enters it?"
+                      : "The forge is lit. What's one thing you're trying to figure out right now?"}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {/* Living Welcome — returning users only */}
+            {(conversations.length > 0 || !!fieldCard) && (() => {
               const hour = new Date().getHours();
               const timeGreet = hour < 5 ? 'Still awake' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : hour < 21 ? 'Good evening' : 'Good night';
               const personaNames: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura-Prime', headmaster: 'Headmaster' };
@@ -2420,7 +2466,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 </View>
               );
             })()}
-            {fieldEcho && (
+            {fieldEcho && (conversations.length > 0 || !!fieldCard) && (
               <View style={{ marginBottom: 12, paddingHorizontal: 4, paddingVertical: 8, borderLeftWidth: 2, borderLeftColor: accent + '55' }}>
                 <Text style={{ fontSize: 11, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5, lineHeight: 17 }}>
                   ⊚ {fieldEcho}
@@ -2477,13 +2523,15 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             <Text style={styles.emptyHint}>
               {persona === 'veyra' ? 'The forge is lit. What are we building?' : persona === 'aura-prime' ? 'The grey zone is known. What enters the field?' : persona === 'headmaster' ? 'The mysteries are real. You do not have to believe. You get to find out.' : 'The forge is lit. What do you bring?'}
             </Text>
-            <View style={styles.emptyModes}>
-              {(['NIGREDO', 'ALBEDO', 'CITRINITAS', 'RUBEDO'] as Mode[]).map(m => (
-                <View key={m} style={[styles.emptyModePill, { borderColor: MODE_COLORS[m] }]}>
-                  <Text style={[styles.emptyModePillText, { color: MODE_COLORS[m] }]}>{m}</Text>
-                </View>
-              ))}
-            </View>
+            {(conversations.length > 0 || !!fieldCard) && (
+              <View style={styles.emptyModes}>
+                {(['NIGREDO', 'ALBEDO', 'CITRINITAS', 'RUBEDO'] as Mode[]).map(m => (
+                  <View key={m} style={[styles.emptyModePill, { borderColor: MODE_COLORS[m] }]}>
+                    <Text style={[styles.emptyModePillText, { color: MODE_COLORS[m] }]}>{m}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             <View style={styles.starterChips}>
               {(persona === 'aura-prime'
                 ? ['What is the constitutional field?', 'Test my reasoning', 'Where is the grey zone?']
