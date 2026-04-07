@@ -679,7 +679,7 @@ export default function SolChat() {
       AsyncStorage.getItem(`sanctum_aura_${todayKey}`),
       AsyncStorage.getItem('lamague_cement_blocks_v1'),
       AsyncStorage.getItem('sol_memory_v1'),
-    ]).then(([phase, auraRaw, cementRaw, memRaw]) => {
+    ]).then(async ([phase, auraRaw, cementRaw, memRaw]) => {
       const contextParts: string[] = [];
       // Cross-session memory
       if (memRaw) {
