@@ -694,9 +694,21 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
       <View style={[styles.header, { borderBottomColor: accentColor + '33' }]}>
-        <Text style={[styles.headerGlyph, { color: accentColor }]}>◬</Text>
-        <Text style={[styles.headerTitle, { color: accentColor }]}>LYCHEETAH LIBRARY</Text>
-        <Text style={styles.headerSub}>CASCADE · LAMAGUE</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={[styles.headerGlyph, { color: accentColor }]}>◬</Text>
+            <View>
+              <Text style={[styles.headerTitle, { color: accentColor }]}>LYCHEETAH LIBRARY</Text>
+              <Text style={styles.headerSub}>CASCADE · LAMAGUE</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/codex')}
+            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: accentColor + '44', backgroundColor: accentColor + '11' }}
+          >
+            <Text style={{ color: accentColor, fontSize: 11, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>𝔏 CODEX</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Tabs */}

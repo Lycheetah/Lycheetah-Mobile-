@@ -8,6 +8,7 @@ import { useFocusEffect } from 'expo-router';
 import { SOL_THEME } from '../../constants/theme';
 import { getAccentColor, getActiveKey, getModel, getFieldJournalSummaries, saveFieldJournalSummaries } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
+import { useAppMode } from '../../lib/app-mode';
 
 const KEYS = {
   INTENTION: 'sanctum_intention',
@@ -74,7 +75,36 @@ function todayKey() {
   return new Date().toISOString().split('T')[0];
 }
 
+// Wayfarer label map for sanctum
+const W_LABELS: Record<string, string> = {
+  'FIELD STATE TODAY': 'YOUR STATE TODAY',
+  'SOL CLOCK': 'DAILY RHYTHM',
+  'FIELD STATE': 'YOUR STATE',
+  'FIELD HEALTH': 'YOUR HEALTH',
+  'SOVEREIGN STATS': 'YOUR STATS',
+  'AURA TREND': 'FOCUS TREND',
+  'FIELD ACTIVITY': 'ACTIVITY',
+  'FIELD TIMELINE': 'PROGRESS TIMELINE',
+  'AWARENESS PHASE': 'WHERE YOU ARE NOW',
+  'AURA FIELD CHECK': 'DAILY CHECK-IN',
+  'AURA SPARKLINE': 'FOCUS TRENDS',
+  'The Field': 'Your Space',
+  'Field State': 'Inner State',
+  'AURA today': 'Focus today',
+  'LQ': 'Focus',
+  'NEOPHYTE': 'Explorer',
+  'ADEPT': 'Learner',
+  'MASTER': 'Practitioner',
+  'HIEROPHANT': 'Guide',
+  'AVATAR': 'Master',
+  'Paradox Journal': 'Open Questions',
+  'FIELD': 'FOCUS',
+  'LQ days': 'tracked days',
+};
+
 export default function SanctumScreen() {
+  const { isWayfarer } = useAppMode();
+  const wl = (label: string) => isWayfarer ? (W_LABELS[label] ?? label) : label;
   const [accentColor, setAccentColor] = useState('#F5A623');
   const [intention, setIntention] = useState('');
   const [savedIntention, setSavedIntention] = useState('');
@@ -330,7 +360,7 @@ export default function SanctumScreen() {
             onPress={() => setSection(s)}
           >
             <Text style={[styles.sectionTabText, section === s && { color: accentColor }]}>
-              {s === 'today' ? 'TODAY' : s === 'journal' ? 'JOURNAL' : s === 'vault' ? 'VAULT' : 'FIELD'}
+              {s === 'today' ? 'TODAY' : s === 'journal' ? 'JOURNAL' : s === 'vault' ? 'VAULT' : wl('FIELD')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -373,18 +403,18 @@ export default function SanctumScreen() {
             if (!hasData) return null;
             return (
               <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07', marginTop: 10 }}>
-                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>FIELD STATE TODAY</Text>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>{wl('FIELD STATE TODAY')}</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                   {todayLQ && (
                     <View>
                       <Text style={{ color: accentColor, fontSize: 18, fontWeight: '700' }}>{todayLQ.lq.toFixed(2)}</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>LQ · {todayLQ.stage}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{wl('LQ')} · {wl(todayLQ.stage)}</Text>
                     </View>
                   )}
                   {todayAURA && (
                     <View>
                       <Text style={{ color: accentColor, fontSize: 18, fontWeight: '700' }}>{todayAURA.composite}%</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>AURA today</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{wl('AURA today')}</Text>
                     </View>
                   )}
                   {fieldProfile?.studySessions ? (
@@ -423,7 +453,7 @@ export default function SanctumScreen() {
             })();
             return (
               <View style={{ marginVertical: 12, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07' }}>
-                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>SOL CLOCK</Text>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>{wl('SOL CLOCK')}</Text>
                 <View style={{ flexDirection: 'row', gap: 12 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: accentColor, fontSize: 20, fontWeight: '700' }}>{timeGlyph} {timeOfDay}</Text>
@@ -446,7 +476,7 @@ export default function SanctumScreen() {
           {(dayReport || (auraHistory.some(p => p.date === todayKey()) && lqHistory.some(p => p.date === todayKey()))) && (
             <View style={{ marginVertical: 10, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#E8C76A33', backgroundColor: '#E8C76A08' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={{ color: '#E8C76A', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>𝔏 TODAY'S FIELD REPORT</Text>
+                <Text style={{ color: '#E8C76A', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>{isWayfarer ? "TODAY'S REPORT" : "𝔏 TODAY'S FIELD REPORT"}</Text>
                 {!dayReport && !dayReportLoading && (
                   <TouchableOpacity
                     onPress={async () => {
@@ -602,13 +632,13 @@ export default function SanctumScreen() {
           <>
             {/* #44 Memory Health Indicator */}
             <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08', marginBottom: 16 }}>
-              <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 }}>FIELD HEALTH</Text>
+              <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 }}>{wl('FIELD HEALTH')}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{journal.length} journal</Text>
                 <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
                 <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{vault.length} vault</Text>
                 <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
-                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{lqHistory.length} LQ days</Text>
+                <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>{lqHistory.length} {wl('LQ days')}</Text>
                 {fieldConflicts > 0 && (
                   <>
                     <Text style={{ fontSize: 11, color: SOL_THEME.textMuted }}>·</Text>
@@ -639,7 +669,7 @@ export default function SanctumScreen() {
             {/* Sovereign Stats card */}
             {fieldProfile && (fieldProfile.totalMessages > 0 || fieldProfile.studySessions > 0 || masteredDomains.length > 0) && (
               <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06', marginBottom: 16 }}>
-                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>SOVEREIGN STATS</Text>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>{wl('SOVEREIGN STATS')}</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
                   {fieldProfile.totalMessages > 0 && (
                     <View style={{ alignItems: 'center' }}>
@@ -686,7 +716,7 @@ export default function SanctumScreen() {
               }));
               return (
                 <View style={{ marginBottom: 16, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06' }}>
-                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>AURA TREND · {recent.length}d</Text>
+                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>{wl('AURA TREND')} · {recent.length}d</Text>
                   <View style={{ height: h + 4, width: w, position: 'relative' }}>
                     {pts.map((pt, i) => (
                       <View
@@ -732,7 +762,7 @@ export default function SanctumScreen() {
               }
               return (
                 <View style={{ marginBottom: 16, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06' }}>
-                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>FIELD ACTIVITY · 12 WEEKS</Text>
+                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 8 }}>{wl('FIELD ACTIVITY')} · 12 WEEKS</Text>
                   <View style={{ flexDirection: 'row', gap: 3 }}>
                     {weeks.map((week, wi) => (
                       <View key={wi} style={{ flexDirection: 'column', gap: 3 }}>
@@ -770,7 +800,7 @@ export default function SanctumScreen() {
             {/* #45 Field Timeline */}
             {lqHistory.length > 1 && (
               <>
-                <Text style={[styles.label, { color: accentColor, marginBottom: 6 }]}>FIELD TIMELINE</Text>
+                <Text style={[styles.label, { color: accentColor, marginBottom: 6 }]}>{wl('FIELD TIMELINE')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 4 }}>
                     {lqHistory.slice(-30).map((pt, i, arr) => {
@@ -811,7 +841,7 @@ export default function SanctumScreen() {
             )}
 
             {/* Phase selector */}
-            <Text style={[styles.label, { color: accentColor }]}>AWARENESS PHASE</Text>
+            <Text style={[styles.label, { color: accentColor }]}>{wl('AWARENESS PHASE')}</Text>
             <Text style={styles.note}>Which phase are you currently in?</Text>
             {PHASES.map(p => (
               <TouchableOpacity
@@ -832,7 +862,7 @@ export default function SanctumScreen() {
             <View style={styles.divider} />
 
             {/* AURA self-rating */}
-            <Text style={[styles.label, { color: accentColor }]}>AURA FIELD CHECK</Text>
+            <Text style={[styles.label, { color: accentColor }]}>{wl('AURA FIELD CHECK')}</Text>
             <Text style={styles.note}>Rate your current state. Five points each.</Text>
 
             {[
@@ -860,8 +890,8 @@ export default function SanctumScreen() {
             ].map(metric => (
               <View key={metric.label} style={styles.metricBlock}>
                 <View style={styles.metricHeader}>
-                  <Text style={[styles.metricLabel, { color: accentColor }]}>{metric.label}</Text>
-                  <Text style={styles.metricSub}>{metric.sub}</Text>
+                  <Text style={[styles.metricLabel, { color: accentColor }]}>{isWayfarer ? metric.sub.split(' ').slice(0, 2).join(' ') : metric.label}</Text>
+                  {!isWayfarer && <Text style={styles.metricSub}>{metric.sub}</Text>}
                   <Text style={[styles.metricVal, { color: accentColor }]}>{metric.val > 0 ? metric.val.toFixed(2) : '—'}</Text>
                 </View>
                 <Text style={styles.metricQuestion}>{metric.question}</Text>
@@ -885,26 +915,26 @@ export default function SanctumScreen() {
               onPress={saveAura}
               disabled={!tes || !vtr || !pai}
             >
-              <Text style={styles.saveBtnText}>{auraSaved ? '✔ Field Recorded' : 'Record Field State'}</Text>
+              <Text style={styles.saveBtnText}>{auraSaved ? '✔ Saved' : isWayfarer ? 'Save Check-In' : 'Record Field State'}</Text>
             </TouchableOpacity>
 
             {/* Light Quotient */}
             {lq > 0 && (
               <View style={[styles.lqCard, { borderColor: accentColor + '44' }]}>
-                <Text style={[styles.lqStage, { color: accentColor }]}>{stage}</Text>
+                <Text style={[styles.lqStage, { color: accentColor }]}>{wl(stage)}</Text>
                 <Text style={[styles.lqValue, { color: accentColor }]}>{lq.toFixed(3)}</Text>
-                <Text style={styles.lqLabel}>LIGHT QUOTIENT</Text>
+                <Text style={styles.lqLabel}>{isWayfarer ? 'FOCUS SCORE' : 'LIGHT QUOTIENT'}</Text>
                 <View style={styles.lqBarTrack}>
                   <View style={[styles.lqBarFill, { width: `${Math.round(lq * 100)}%`, backgroundColor: accentColor }]} />
                 </View>
-                <Text style={[styles.lqGlyph, { color: accentColor }]}>{glyph}</Text>
+                {!isWayfarer && <Text style={[styles.lqGlyph, { color: accentColor }]}>{glyph}</Text>}
               </View>
             )}
 
             {/* AI Field Reflection */}
             {(fieldReflection || reflectionLoading) && (
               <View style={[styles.reflectionCard, { borderColor: accentColor + '33' }]}>
-                <Text style={[styles.reflectionLabel, { color: accentColor }]}>FIELD REFLECTION</Text>
+                <Text style={[styles.reflectionLabel, { color: accentColor }]}>{isWayfarer ? 'TODAY\'S REFLECTION' : 'FIELD REFLECTION'}</Text>
                 <Text style={styles.reflectionText}>
                   {reflectionLoading ? '...' : fieldReflection}
                 </Text>
@@ -914,8 +944,8 @@ export default function SanctumScreen() {
             {/* Task 11: Weekly Field Journal Summary */}
             {(weeklyJournalLoading || weeklyJournalSummaries.length > 0) && (
               <View style={{ marginTop: 16, padding: 14, borderRadius: 10, backgroundColor: '#C8A06010', borderWidth: 1, borderColor: '#C8A06044' }}>
-                <Text style={{ color: '#C8A060', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>📜 WEEKLY FIELD JOURNAL</Text>
-                {weeklyJournalLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The Headmaster is reviewing your week...</Text>}
+                <Text style={{ color: '#C8A060', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>📜 {isWayfarer ? 'WEEKLY SUMMARY' : 'WEEKLY FIELD JOURNAL'}</Text>
+                {weeklyJournalLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>{isWayfarer ? 'Reviewing your week...' : 'The Headmaster is reviewing your week...'}</Text>}
                 {weeklyJournalSummaries.slice(-1).map((s, i) => (
                   <View key={i}>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginBottom: 6 }}>Week of {s.weekOf}</Text>

@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../constants/theme';
+import { AppModeProvider } from '../lib/app-mode';
 
 const ONBOARDING_KEY = 'lycheetah_onboarded';
 
@@ -21,7 +22,7 @@ export default function RootLayout() {
   if (onboarded === null) return null; // splash still showing
 
   return (
-    <>
+    <AppModeProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -38,6 +39,6 @@ export default function RootLayout() {
         />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </AppModeProvider>
   );
 }

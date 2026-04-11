@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Text, Platform } from 'react-native';
 import { SOL_THEME } from '../../constants/theme';
+import { useAppMode } from '../../lib/app-mode';
 
 type IconProps = { color: string; focused: boolean };
 
@@ -11,6 +12,7 @@ const TabIcon = ({ glyph, color }: { glyph: string; color: string }) => (
 );
 
 export default function TabLayout() {
+  const { t } = useAppMode();
   return (
     <Tabs
       screenOptions={{
@@ -49,16 +51,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name="school"
         options={{
-          title: 'MYSTERY SCHOOL',
-          tabBarLabel: 'School',
+          title: t('MYSTERY SCHOOL'),
+          tabBarLabel: t('School'),
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊕" color={color} />,
         }}
       />
       <Tabs.Screen
         name="sanctum"
         options={{
-          title: 'THE SANCTUM',
-          tabBarLabel: 'Sanctum',
+          title: t('THE SANCTUM'),
+          tabBarLabel: t('Sanctum'),
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} />,
         }}
       />
@@ -71,22 +73,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="codex"
-        options={{
-          title: 'CODEX',
-          tabBarLabel: 'Codex',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="customize"
-        options={{
-          title: 'CUSTOMIZE',
-          tabBarLabel: 'Style',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="◈" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="settings"
         options={{
           title: 'SETTINGS',
@@ -94,7 +80,21 @@ export default function TabLayout() {
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⚙" color={color} />,
         }}
       />
-      {/* Field tab hidden — modes reference available in chat header */}
+      <Tabs.Screen
+        name="codex"
+        options={{
+          href: null,
+          title: 'CODEX',
+        }}
+      />
+      <Tabs.Screen
+        name="customize"
+        options={{
+          href: null,
+          title: 'CUSTOMIZE',
+        }}
+      />
+      {/* Modes hidden — accessible from chat header */}
       <Tabs.Screen
         name="modes"
         options={{

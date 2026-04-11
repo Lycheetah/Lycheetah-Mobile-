@@ -4,9 +4,11 @@ import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Alert, Platform, Linking, Share,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { getCognitiveWeatherEnabled, setCognitiveWeatherEnabled, getCognitiveWeatherHour, setCognitiveWeatherHour } from '../../lib/cognitive-weather';
 import { getWeirdQEnabled, setWeirdQEnabled, getWeirdQHour, setWeirdQHour } from '../../lib/weird-questions';
 import { SOL_THEME } from '../../constants/theme';
+import { useAppMode } from '../../lib/app-mode';
 import { AIModel } from '../../lib/ai-client';
 import { PROVIDERS } from '../../lib/providers/registry';
 import {
@@ -28,6 +30,8 @@ import {
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
+  const router = useRouter();
+  const { mode, setMode } = useAppMode();
   const [providerKeys, setProviderKeys] = useState<Record<string, string>>({});
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
   const [model, setModel] = useState<string>('gemini-2.5-flash');
@@ -120,6 +124,22 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+
+      {/* PERSONALIZATION — formerly Customize tab */}
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/customize')}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.primary + '44', backgroundColor: SOL_THEME.primary + '08', marginBottom: 20 }}
+        activeOpacity={0.75}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Text style={{ color: SOL_THEME.primary, fontSize: 18 }}>◈</Text>
+          <View>
+            <Text style={{ color: SOL_THEME.primary, fontSize: 13, fontWeight: '700' }}>Personalization</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 1 }}>Themes, persona auras, field experience</Text>
+          </View>
+        </View>
+        <Text style={{ color: SOL_THEME.primary + '88', fontSize: 16 }}>→</Text>
+      </TouchableOpacity>
 
       {/* YOUR NAME */}
       <Text style={styles.sectionTitle}>YOUR NAME</Text>
@@ -370,6 +390,28 @@ export default function SettingsScreen() {
       )}
 
       {/* LANGUAGE */}
+      {/* EXPERIENCE MODE */}
+      <Text style={styles.sectionTitle}>◌ EXPERIENCE MODE</Text>
+      <Text style={styles.sectionNote}>How Sol presents itself. Same depth either way.</Text>
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+        <TouchableOpacity
+          onPress={() => setMode('seeker')}
+          style={{ flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.border, backgroundColor: mode === 'seeker' ? SOL_THEME.primary + '11' : SOL_THEME.surface, alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 22, color: SOL_THEME.primary, marginBottom: 4 }}>⊚</Text>
+          <Text style={{ color: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>SEEKER</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }}>Mystical language, full framework.</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setMode('wayfarer')}
+          style={{ flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.border, backgroundColor: mode === 'wayfarer' ? '#4A9EFF11' : SOL_THEME.surface, alignItems: 'center' }}
+        >
+          <Text style={{ fontSize: 22, color: '#4A9EFF', marginBottom: 4 }}>◦</Text>
+          <Text style={{ color: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>WAYFARER</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }}>Plain language, warm framing.</Text>
+        </TouchableOpacity>
+      </View>
+
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>
       <Text style={styles.sectionNote}>Sol replies in your chosen language. No extra API needed — injected into every prompt.</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>

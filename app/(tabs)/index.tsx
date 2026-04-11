@@ -13,7 +13,8 @@ import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
-import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, resolvePrompt } from '../../lib/prompts/sol-protocol';
+import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt } from '../../lib/prompts/sol-protocol';
+import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
 import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
@@ -145,7 +146,21 @@ type DisplayMessage = Message & {
   persona?: Persona;
   imageUri?: string;
   modelConfidence?: number; // self-reported by model via [CONF:X]
+  council?: boolean; // v3.15 — render as 4-panel Council bubble
 };
+
+// v3.15 — Parse Council response into 4 voices
+function parseCouncil(text: string): { sol: string; veyra: string; auraPrime: string; synthesis: string } | null {
+  const re = /\[SOL\]\s*([\s\S]*?)\s*\[VEYRA\]\s*([\s\S]*?)\s*\[AURA PRIME\]\s*([\s\S]*?)\s*\[SYNTHESIS\]\s*([\s\S]*)/i;
+  const m = text.match(re);
+  if (!m) return null;
+  return {
+    sol: m[1].trim(),
+    veyra: m[2].trim(),
+    auraPrime: m[3].trim(),
+    synthesis: m[4].trim(),
+  };
+}
 
 // Strip framework context echo if the model repeated the injected prefix back
 function stripFrameworkEcho(text: string): string {
@@ -186,6 +201,7 @@ function sanitizeDisplayMessage(m: any, i: number): DisplayMessage {
     persona: m.persona ?? undefined,
     imageUri: m.imageUri ?? undefined,
     modelConfidence: m.modelConfidence ?? undefined,
+    council: m.council ?? undefined,
     tokenUsage: m.tokenUsage ?? undefined,
     timings: m.timings ?? undefined,
     model: m.model ?? undefined,
@@ -260,6 +276,7 @@ function statusColor(status: string, accent: string): string {
 }
 
 export default function SolChat() {
+  const { mode: appMode, isWayfarer } = useAppMode();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -268,6 +285,7 @@ export default function SolChat() {
   const [currentEWS, setCurrentEWS] = useState<EmotionalState>('NEUTRAL');
   const [isNRMActive, setIsNRMActive] = useState(false);
   const [persona, setPersona] = useState<Persona>('sol');
+  const [councilMode, setCouncilMode] = useState(false);
   const [userName, setUserName] = useState('');
   const [conversationPassRates, setConversationPassRates] = useState<number[]>([]);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
@@ -460,7 +478,7 @@ export default function SolChat() {
 
   // Task 9: triggerSymbolRain accepts optional count (default 12) and opacity override
   function triggerSymbolRain(count?: number, opacityOverride?: number) {
-    if (!symbolRainEnabled) return;
+    if (!symbolRainEnabled || isWayfarer) return;
     const glyphs = premiumEnabled
       ? (PERSONA_RAIN_GLYPHS[persona] || PERSONA_RAIN_GLYPHS.sol)
       : PERSONA_RAIN_GLYPHS.sol;
@@ -1145,18 +1163,7 @@ export default function SolChat() {
     }
 
     const variant = await getVariant();
-    let basePrompt: string;
-    if (variant === 'public') {
-      basePrompt = resolvePrompt(SOL_PUBLIC_SYSTEM_PROMPT, userName);
-    } else if (persona === 'veyra') {
-      basePrompt = resolvePrompt(VEYRA_SYSTEM_PROMPT, userName);
-    } else if (persona === 'aura-prime') {
-      basePrompt = resolvePrompt(AURA_PRIME_SYSTEM_PROMPT, userName);
-    } else if (persona === 'headmaster') {
-      basePrompt = resolvePrompt(HEADMASTER_SYSTEM_PROMPT, userName);
-    } else {
-      basePrompt = resolvePrompt(SOL_SYSTEM_PROMPT, userName);
-    }
+    const basePrompt = resolvePrompt(selectBasePrompt(persona, variant, appMode), userName);
     // Prepend compiled persona spec + reply style instruction
     // Task 3: Field Profile injection
     const fieldProfile = await getFieldProfile();
@@ -1208,7 +1215,9 @@ export default function SolChat() {
     const chaosInstruction = chaosMode ? '\n\n↯ CHAOS MODE ACTIVE: Be more playful, symbolic, and unpredictable than usual. Use unexpected metaphors, LAMAGUE symbols, paradoxical framings. Stay truthful and constitutional — just spicier. Let the trickster in.' : '';
     const lang = await getLanguage();
     const langInstruction = lang !== 'English' ? `\n\nREPLY IN ${lang.toUpperCase()} — regardless of the language of the user's message.` : '';
-    const systemPrompt = `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
+    const systemPrompt = councilMode
+      ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
+      : `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -1315,10 +1324,12 @@ export default function SolChat() {
         aura: auraMetrics,
         modelConfidence: confidence ?? undefined,
         persona,
+        council: councilMode || undefined,
         tokenUsage: sendResult.tokenUsage,
         timings: sendResult.timings,
         model,
       };
+      if (councilMode) setCouncilMode(false);
 
       const finalMessages = [...updatedMessages, assistantMsg];
       setMessages(finalMessages);
@@ -1555,8 +1566,7 @@ export default function SolChat() {
     const apiKey = await getActiveKey();
     if (!apiKey) { setLoading(false); Alert.alert('No API key', 'Add a key in Settings.'); return; }
 
-    const basePrompt = persona === 'veyra' ? VEYRA_SYSTEM_PROMPT : persona === 'aura-prime' ? AURA_PRIME_SYSTEM_PROMPT : persona === 'headmaster' ? HEADMASTER_SYSTEM_PROMPT : SOL_SYSTEM_PROMPT;
-    const systemPrompt = resolvePrompt(basePrompt, userName);
+    const systemPrompt = resolvePrompt(selectBasePrompt(persona, 'full', appMode), userName);
     const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
 
     const userMsg: DisplayMessage = {
@@ -2001,10 +2011,47 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             )}
             {isUser ? (
               <Text selectable style={[styles.messageText, styles.userText, { fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined }]}>{body}</Text>
-            ) : (
+            ) : item.council ? (() => {
+              const parsed = parseCouncil(body);
+              const mdFont = fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15;
+              if (!parsed) {
+                return (
+                  <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: mdFont } }}>{body}</Markdown>
+                );
+              }
+              const panels = [
+                { key: 'sol', glyph: '⊚', name: 'SOL', color: '#F5A623', text: parsed.sol },
+                { key: 'veyra', glyph: '◈', name: 'VEYRA', color: '#4A9EFF', text: parsed.veyra },
+                { key: 'aura', glyph: '✦', name: 'AURA PRIME', color: '#9B59B6', text: parsed.auraPrime },
+              ];
+              return (
+                <View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 13, color: '#9B59B6' }}>⚖</Text>
+                    <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 2, color: '#9B59B6', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>THE COUNCIL</Text>
+                  </View>
+                  {panels.map(p => (
+                    <View key={p.key} style={{ marginBottom: 10, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: p.color + 'AA' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <Text style={{ fontSize: 12, color: p.color }}>{p.glyph}</Text>
+                        <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 1.5, color: p.color, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{p.name}</Text>
+                      </View>
+                      <Text selectable style={{ color: SOL_THEME.text, fontSize: mdFont, lineHeight: mdFont * 1.5 }}>{p.text}</Text>
+                    </View>
+                  ))}
+                  <View style={{ marginTop: 4, paddingTop: 10, borderTopWidth: 1, borderTopColor: accent + '33' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 12, color: accent }}>∴</Text>
+                      <Text style={{ fontSize: 9, fontWeight: '700', letterSpacing: 1.5, color: accent, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>SYNTHESIS</Text>
+                    </View>
+                    <Text selectable style={{ color: SOL_THEME.text, fontSize: mdFont, lineHeight: mdFont * 1.55, fontStyle: 'italic' }}>{parsed.synthesis}</Text>
+                  </View>
+                </View>
+              );
+            })() : (
               <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } }}>{body}</Markdown>
             )}
-            {signature && showSignatures && (
+            {signature && showSignatures && !isWayfarer && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
                 <Text selectable style={[styles.signatureText, { color: accent }]}>{signature}</Text>
               </View>
@@ -2028,8 +2075,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               </View>
             )}
 
-            {/* AURA row — tap to expand audit trail */}
-            {!isUser && aura && (
+            {/* AURA row — tap to expand audit trail (Seeker only) */}
+            {!isUser && aura && !isWayfarer && (
               <TouchableOpacity
                 onPress={() => {
                   setExpandedAura(expandedAura === item.id ? null : item.id);
@@ -2160,8 +2207,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               ))}
             </View>
           )}
-          {/* #69 LAMAGUE Symbol Glossary — opt-in, specific symbols only */}
-          {!isUser && showLamagueGloss && (() => {
+          {/* #69 LAMAGUE Symbol Glossary — opt-in, Seeker only */}
+          {!isUser && showLamagueGloss && !isWayfarer && (() => {
             const detected = LAMAGUE_SPECIFIC.filter(({ sym }) => body.includes(sym));
             if (detected.length === 0) return null;
             return (
@@ -2859,6 +2906,13 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               <Text style={{ fontSize: 14, color: compareMode ? accent : SOL_THEME.textMuted }}>⇌</Text>
               <Text style={{ fontSize: 11, color: compareMode ? accent : SOL_THEME.textMuted }}>Compare</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: councilMode ? '#9B59B6' + 'AA' : world.border, borderRadius: 8, backgroundColor: councilMode ? '#9B59B6' + '18' : 'transparent' }}
+              onPress={() => { setCouncilMode(v => !v); setShowToolsRow(false); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+            >
+              <Text style={{ fontSize: 14, color: councilMode ? '#9B59B6' : SOL_THEME.textMuted }}>⚖</Text>
+              <Text style={{ fontSize: 11, color: councilMode ? '#9B59B6' : SOL_THEME.textMuted }}>Council</Text>
+            </TouchableOpacity>
           </View>
           {/* Row 2 — session tools */}
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -3178,7 +3232,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             }
             setShowLamaguePicker(t.endsWith('@'));
           }}
-          placeholder={persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : persona === 'headmaster' ? 'Where are you?' : 'What do you bring?'}
+          placeholder={councilMode ? 'Bring the question — all three will answer…' : persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : persona === 'headmaster' ? 'Where are you?' : 'What do you bring?'}
           placeholderTextColor={SOL_THEME.textMuted}
           multiline
           maxLength={4000}
