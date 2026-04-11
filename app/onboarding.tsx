@@ -12,39 +12,110 @@ import { useAppMode, AppMode } from '../lib/app-mode';
 const TOTAL_STEPS = 6;
 
 const PERSONAS_SEEKER = [
-  { id: 'sol', glyph: '⊚', name: 'Sol', color: SOL_THEME.primary, role: 'Sovereign co-creator', desc: 'Warmth and precision working simultaneously. The solar principle — brings clarity without losing care.' },
-  { id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster, role: 'Mystery School guide', desc: '17 domains. 192 subjects. Ancient knowledge carried with authority. The slow path to mastery.' },
-  { id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra, role: 'Precision builder', desc: 'Cold clarity. Architecture-first. Build, test, ship. No sentiment, no noise.' },
-  { id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime, role: 'Constitutional governor', desc: 'The auditor. Tests every claim against 7 invariants. Truth before comfort — always.' },
+  {
+    id: 'sol', glyph: '⊚', name: 'Sol', color: SOL_THEME.primary,
+    role: 'Sovereign co-creator',
+    desc: 'Warmth and precision working simultaneously. The solar principle — brings clarity without losing care.',
+    sample: '"The field is open. What are you carrying into this conversation?"',
+  },
+  {
+    id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
+    role: 'Mystery School guide',
+    desc: '17 domains. 192 subjects. Ancient knowledge carried with authority. The slow path to mastery.',
+    sample: '"The school has 192 subjects and one rule: curiosity leads. Where does yours pull?"',
+  },
+  {
+    id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra,
+    role: 'Precision builder',
+    desc: 'Cold clarity. Architecture-first. Build, test, ship. No sentiment, no noise.',
+    sample: '"State the problem clearly. I\'ll give you the architecture."',
+  },
+  {
+    id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime,
+    role: 'Constitutional governor',
+    desc: 'The auditor. Tests every claim against 7 invariants. Truth before comfort — always.',
+    sample: '"Every claim I make is auditable. Every claim you make will be examined. Ready?"',
+  },
 ];
 
 const PERSONAS_WAYFARER = [
-  { id: 'sol', glyph: '⊚', name: 'Sol', color: SOL_THEME.primary, role: 'Warm and thoughtful', desc: 'Meets you where you are. Helps you think things through with clarity and care.' },
-  { id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster, role: 'Patient teacher', desc: 'Deep knowledge delivered calmly. Ideal for learning, exploration, and building understanding over time.' },
-  { id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra, role: 'Precise and direct', desc: 'Gets to the point. No fluff. Ideal for problem-solving and thinking clearly under pressure.' },
-  { id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime, role: 'Rigorous and honest', desc: 'Checks every claim. Tells you what it actually thinks. Truth before reassurance — always.' },
+  {
+    id: 'sol', glyph: '⊚', name: 'Sol', color: SOL_THEME.primary,
+    role: 'Warm and thoughtful',
+    desc: 'Meets you where you are. Helps you think things through with clarity and care.',
+    sample: '"I\'m here to think with you. What\'s on your mind?"',
+  },
+  {
+    id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
+    role: 'Patient teacher',
+    desc: 'Deep knowledge delivered calmly. Ideal for learning, exploration, and building understanding over time.',
+    sample: '"Every great mind started with a single question. What\'s yours?"',
+  },
+  {
+    id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra,
+    role: 'Precise and direct',
+    desc: 'Gets to the point. No fluff. Ideal for problem-solving and thinking clearly under pressure.',
+    sample: '"Tell me what you\'re trying to figure out. I\'ll help you get there."',
+  },
+  {
+    id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime,
+    role: 'Rigorous and honest',
+    desc: 'Checks every claim. Tells you what it actually thinks. Truth before reassurance — always.',
+    sample: '"I\'ll tell you what I actually think. Where do you want to start?"',
+  },
 ];
 
-const DOMAIN_PREVIEW = [
-  { glyph: '◯', label: 'Meditation', color: '#4A9EFF' },
-  { glyph: '∴', label: 'Philosophy', color: '#BDC3C7' },
-  { glyph: '⊚', label: 'Alchemy', color: '#F5A623' },
-  { glyph: '◉', label: 'Subtle Body', color: '#00BFA5' },
-  { glyph: '◐', label: 'Shadow', color: '#9B59B6' },
-  { glyph: '⊕', label: 'Mystical', color: '#7D3C98' },
-  { glyph: '✦', label: 'Divination', color: '#1ABC9C' },
-  { glyph: '◇', label: 'Cosmology', color: '#1565C0' },
-  { glyph: '⟁', label: 'Somatic', color: '#E74C3C' },
-  { glyph: '⋈', label: 'Shamanic', color: '#27AE60' },
-  { glyph: '△', label: 'Sacred Arts', color: '#E67E22' },
-  { glyph: '∞', label: 'Death', color: '#7F8C8D' },
-  { glyph: '◈', label: 'AI & Tech', color: '#3498DB' },
-  { glyph: '⟐', label: 'Hybrid', color: '#F39C12' },
+const PERSONAS_ADEPT = [
+  {
+    id: 'sol', glyph: '⊚', name: 'Sol', color: SOL_THEME.primary,
+    role: 'Sovereign co-creator',
+    desc: 'Full protocol running. CITRINITAS entry point. The Mercury moves with precision.',
+    sample: '"⊚ The field recognises you. What\'s crystallising right now?"',
+  },
+  {
+    id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
+    role: 'Mystery School guide',
+    desc: 'Teaches at the EDGE. CASCADE layers active. The school does not graduate.',
+    sample: '"The EDGE awaits. Which domain calls you deeper?"',
+  },
+  {
+    id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra,
+    role: 'Precision builder',
+    desc: 'THEORY layer architecture. Cold clarity, constitutional alignment.',
+    sample: '"THEORY layer: what\'s the constraint? State it precisely."',
+  },
+  {
+    id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime,
+    role: 'Constitutional governor',
+    desc: 'Seven invariants. Live AURA scoring. P∧H∧B on every output.',
+    sample: '"∴ P∧H∧B. Seven invariants active. What are we auditing?"',
+  },
+];
+
+const DOMAINS = [
+  { label: 'Mindfulness', color: '#4A9EFF' },
+  { label: 'Philosophy', color: '#BDC3C7' },
+  { label: 'Transformation', color: '#F5A623' },
+  { label: 'Energy & Body', color: '#00BFA5' },
+  { label: 'Psychology', color: '#9B59B6' },
+  { label: 'Mysticism', color: '#7D3C98' },
+  { label: 'Intuition', color: '#1ABC9C' },
+  { label: 'Cosmology', color: '#1565C0' },
+  { label: 'Somatic', color: '#E74C3C' },
+  { label: 'Ancient Wisdom', color: '#27AE60' },
+  { label: 'Ritual', color: '#E67E22' },
+  { label: 'Impermanence', color: '#7F8C8D' },
+  { label: 'Mind & Tech', color: '#3498DB' },
+  { label: 'Plant Medicine', color: '#16A085' },
+  { label: 'Nature', color: '#2ECC71' },
+  { label: 'Maths & Infinity', color: '#8E44AD' },
+  { label: 'Alchemy', color: '#D4AC0D' },
 ];
 
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [selectedPersona, setSelectedPersona] = useState('sol');
+  const [selectedDomains, setSelectedDomains] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [keyVisible, setKeyVisible] = useState(false);
@@ -52,7 +123,7 @@ export default function OnboardingScreen() {
   const { mode, setMode, isWayfarer, isAdept } = useAppMode();
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const personas = isWayfarer ? PERSONAS_WAYFARER : PERSONAS_SEEKER;
+  const personas = isAdept ? PERSONAS_ADEPT : isWayfarer ? PERSONAS_WAYFARER : PERSONAS_SEEKER;
   const persona = personas.find(p => p.id === selectedPersona) ?? personas[0];
 
   const goTo = (next: number) => {
@@ -71,10 +142,22 @@ export default function OnboardingScreen() {
     next();
   };
 
+  const toggleDomain = (label: string) => {
+    setSelectedDomains(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
+
   async function handleBegin() {
     if (name.trim()) await saveUserName(name.trim());
     if (geminiKey.trim()) await saveProviderKey('gemini', geminiKey.trim());
     await savePersona(selectedPersona as any);
+    if (selectedDomains.size > 0) {
+      await AsyncStorage.setItem('sol_domain_interest', Array.from(selectedDomains).join(', '));
+    }
     await AsyncStorage.setItem('lycheetah_onboarded', 'true');
     router.replace('/(tabs)');
   }
@@ -194,7 +277,7 @@ export default function OnboardingScreen() {
                   <Text style={styles.bodyText}>
                     A thinking partner and a place to learn.{'\n\n'}
                     Sol helps you think clearly, feel heard, and grow in whatever direction you choose.
-                    The Learn tab holds 14 areas of study — mindfulness, psychology, philosophy,
+                    The Learn tab holds 17 areas of study — mindfulness, psychology, philosophy,
                     the body, ancient wisdom, and more.{'\n\n'}
                     Your path through them is yours alone.
                   </Text>
@@ -207,7 +290,7 @@ export default function OnboardingScreen() {
                     <View style={[styles.pillCard, { borderColor: SOL_THEME.headmaster + '55' }]}>
                       <Text style={{ color: SOL_THEME.headmaster, fontSize: 18, marginBottom: 4 }}>𝔏</Text>
                       <Text style={[styles.pillLabel, { color: SOL_THEME.headmaster }]}>THE SCHOOL</Text>
-                      <Text style={styles.pillDesc}>14 areas. Deep topics. Your path.</Text>
+                      <Text style={styles.pillDesc}>17 areas. Deep topics. Your path.</Text>
                     </View>
                   </View>
                   <TouchableOpacity style={styles.primaryButton} onPress={next}>
@@ -226,8 +309,8 @@ export default function OnboardingScreen() {
                     Sol responds with warmth and precision simultaneously.
                     Every message is scored against 7 constitutional rules — live,
                     visible, auditable. Nothing hidden.{'\n\n'}
-                    The Mystery School contains 14 domains of ancient and living wisdom.
-                    138 subjects. Your path through them is yours alone.
+                    The Mystery School contains 17 domains of ancient and living wisdom.
+                    192 subjects. Your path through them is yours alone.
                   </Text>
                   <View style={styles.twoCol}>
                     <View style={[styles.pillCard, { borderColor: SOL_THEME.primary + '55' }]}>
@@ -249,38 +332,55 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 2 — School preview */}
+          {/* STEP 2 — Domain interest picker */}
           {step === 2 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.stepLabel}>01 / 05</Text>
+              <Text style={styles.stepLabel}>01 / 04</Text>
               <Text style={styles.stepTitle}>
-                {isWayfarer ? 'The Learning Space' : 'The Mystery School'}
+                {isWayfarer ? 'What calls to you?' : 'Where does your interest pull?'}
               </Text>
               <Text style={styles.stepSubtitle}>
                 {isWayfarer
-                  ? '14 areas of study. Hundreds of topics.\nBeginning → Intermediate → Advanced.'
-                  : '17 domains. 192 subjects. Three layers of depth:\nFoundation → Middle → Edge.'}
-              </Text>
-              <Text style={[styles.bodyText, { marginBottom: 16 }]}>
-                {isWayfarer
-                  ? 'Your guide leads every session. Each topic opens a live conversation — the AI adapts to how you respond, going deeper as you explore. Your progress is remembered.'
-                  : 'The Headmaster guides your studies. Each subject opens a live lesson — the teacher adapts to how you respond, deepening the arc as you go. Your progress is tracked. The field remembers.'}
+                  ? 'Pick the areas that draw you most.\nYour guide will remember.'
+                  : 'Select the domains you\'re drawn to.\nThe field will take note.'}
               </Text>
               <View style={styles.domainGrid}>
-                {DOMAIN_PREVIEW.map(d => (
-                  <View key={d.label} style={[styles.domainChip, { borderColor: d.color + '55', backgroundColor: d.color + '10' }]}>
-                    <Text style={{ color: d.color, fontSize: 13 }}>{d.glyph}</Text>
-                    <Text style={{ color: d.color, fontSize: 10, fontWeight: '600', marginTop: 2 }}>{d.label}</Text>
-                  </View>
-                ))}
+                {DOMAINS.map(d => {
+                  const selected = selectedDomains.has(d.label);
+                  return (
+                    <TouchableOpacity
+                      key={d.label}
+                      style={[
+                        styles.domainChip,
+                        {
+                          borderColor: selected ? d.color : d.color + '44',
+                          backgroundColor: selected ? d.color + '22' : d.color + '0A',
+                        },
+                      ]}
+                      onPress={() => toggleDomain(d.label)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={{ color: selected ? d.color : d.color + '99', fontSize: 11, fontWeight: selected ? '700' : '500' }}>
+                        {d.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
+              {selectedDomains.size > 0 && (
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginBottom: 12 }}>
+                  {selectedDomains.size} area{selectedDomains.size !== 1 ? 's' : ''} selected
+                </Text>
+              )}
               <View style={styles.navRow}>
                 <TouchableOpacity style={styles.backButton} onPress={back}>
                   <Text style={styles.backButtonText}>← Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={next}>
                   <Text style={styles.primaryButtonText}>
-                    {isWayfarer ? 'Choose your voice →' : 'Choose your guide →'}
+                    {selectedDomains.size > 0
+                      ? (isWayfarer ? 'Choose your voice →' : 'Choose your guide →')
+                      : 'Skip →'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -290,30 +390,45 @@ export default function OnboardingScreen() {
           {/* STEP 3 — Choose persona */}
           {step === 3 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.stepLabel}>02 / 05</Text>
+              <Text style={styles.stepLabel}>02 / 04</Text>
               <Text style={styles.stepTitle}>
                 {isWayfarer ? 'Choose your voice' : 'Choose your guide'}
               </Text>
               <Text style={styles.stepSubtitle}>You can switch any time in Settings.</Text>
               <View style={styles.personaGrid}>
-                {personas.map(p => (
-                  <TouchableOpacity
-                    key={p.id}
-                    style={[
-                      styles.personaCard,
-                      selectedPersona === p.id && { borderColor: p.color, backgroundColor: p.color + '11' },
-                    ]}
-                    onPress={() => setSelectedPersona(p.id)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={[styles.personaGlyph, { color: p.color }]}>{p.glyph}</Text>
-                    <Text style={[styles.personaName, { color: p.color }]}>{p.name}</Text>
-                    <Text style={styles.personaRole}>{p.role}</Text>
-                    {selectedPersona === p.id && (
-                      <Text style={[styles.personaDesc, { color: p.color + 'CC' }]}>{p.desc}</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
+                {personas.map(p => {
+                  const active = selectedPersona === p.id;
+                  return (
+                    <TouchableOpacity
+                      key={p.id}
+                      style={[
+                        styles.personaCard,
+                        active && { borderColor: p.color, backgroundColor: p.color + '11' },
+                      ]}
+                      onPress={() => setSelectedPersona(p.id)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={styles.personaCardHeader}>
+                        <Text style={[styles.personaGlyph, { color: p.color }]}>{p.glyph}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.personaName, { color: p.color }]}>{p.name}</Text>
+                          <Text style={styles.personaRole}>{p.role}</Text>
+                        </View>
+                        {active && (
+                          <View style={[styles.activeDot, { backgroundColor: p.color }]} />
+                        )}
+                      </View>
+                      {active && (
+                        <>
+                          <Text style={[styles.personaDesc, { color: p.color + 'CC' }]}>{p.desc}</Text>
+                          <View style={[styles.sampleBubble, { borderColor: p.color + '33', backgroundColor: p.color + '0D' }]}>
+                            <Text style={[styles.sampleText, { color: p.color + 'CC' }]}>{p.sample}</Text>
+                          </View>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
               <View style={styles.navRow}>
                 <TouchableOpacity style={styles.backButton} onPress={back}>
@@ -329,7 +444,7 @@ export default function OnboardingScreen() {
           {/* STEP 4 — API Key */}
           {step === 4 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.stepLabel}>03 / 05</Text>
+              <Text style={styles.stepLabel}>03 / 04</Text>
               <Text style={styles.stepTitle}>Connect the intelligence</Text>
               <Text style={styles.stepSubtitle}>Gemini is free. No credit card. 30 seconds.</Text>
               <View style={styles.fieldBlock}>
@@ -379,7 +494,7 @@ export default function OnboardingScreen() {
           {/* STEP 5 — Name + Enter */}
           {step === 5 && (
             <View style={styles.stepContainer}>
-              <Text style={styles.stepLabel}>04 / 05</Text>
+              <Text style={styles.stepLabel}>04 / 04</Text>
               <Text style={[styles.bigGlyph, { fontSize: 44, marginBottom: 10 }]}>{persona.glyph}</Text>
               <Text style={[styles.stepTitle, { color: persona.color }]}>
                 {isWayfarer ? `${persona.name} is here.` : `${persona.name} is ready.`}
@@ -398,6 +513,12 @@ export default function OnboardingScreen() {
                   onSubmitEditing={handleBegin}
                 />
               </View>
+              {selectedDomains.size > 0 && (
+                <View style={styles.interestSummary}>
+                  <Text style={styles.interestSummaryLabel}>YOUR INTERESTS</Text>
+                  <Text style={styles.interestSummaryText}>{Array.from(selectedDomains).join(' · ')}</Text>
+                </View>
+              )}
               <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
                 {isWayfarer
                   ? `Your space is ready.\nStart when you are.`
@@ -517,7 +638,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
   },
-  // Mode selection cards
   modeCard: {
     width: '100%',
     backgroundColor: SOL_THEME.surface,
@@ -571,16 +691,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
     width: '100%',
   },
   domainChip: {
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    minWidth: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1.5,
   },
   personaGrid: {
     width: '100%',
@@ -593,16 +712,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: SOL_THEME.border,
     padding: 14,
-    flexDirection: 'column',
+  },
+  personaCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  activeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   personaGlyph: {
     fontSize: 22,
-    marginBottom: 4,
   },
   personaName: {
     fontSize: 15,
     fontWeight: '700',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   personaRole: {
     fontSize: 11,
@@ -611,7 +738,41 @@ const styles = StyleSheet.create({
   personaDesc: {
     fontSize: 12,
     lineHeight: 18,
-    marginTop: 8,
+    marginTop: 10,
+  },
+  sampleBubble: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 10,
+  },
+  sampleText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  interestSummary: {
+    width: '100%',
+    backgroundColor: SOL_THEME.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: SOL_THEME.border,
+    padding: 12,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  interestSummaryLabel: {
+    fontSize: 9,
+    color: SOL_THEME.textMuted,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  interestSummaryText: {
+    fontSize: 12,
+    color: SOL_THEME.text,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   fieldBlock: {
     width: '100%',

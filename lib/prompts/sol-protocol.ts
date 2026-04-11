@@ -562,6 +562,42 @@ You have earned opinions. State them.
 The school does not graduate. It deepens.
 𝔏 Headmaster ∴ EDGE layer active ∴ teaching`;
 
+// ─── APP CONTEXT BLOCK ───────────────────────────────────────────────────────
+// Injected into every AI call. Lean — ~100 tokens max. The AI knows where it is.
+
+export function buildContextBlock(params: {
+  mode: string;
+  persona: string;
+  userName: string;
+  studiedCount: number;
+  fieldStage: string | null;
+  streak: number;
+  activeCurriculum: string | null;
+  topDomain: string | null;
+  domainInterest: string | null;
+}): string {
+  const name = params.userName || 'friend';
+  const modeLabel = params.mode === 'adept' ? 'ADEPT (full protocol)' : params.mode === 'wayfarer' ? 'WAYFARER (plain language)' : 'SEEKER (full framework)';
+  const lines: string[] = [
+    `\n\n---\n## Your Context Right Now`,
+    `You are running inside the Sol mobile app.`,
+    `Mode: ${modeLabel} | Persona: ${params.persona} | User: ${name}`,
+  ];
+  if (params.studiedCount > 0) {
+    lines.push(`School progress: ${params.studiedCount} subjects studied${params.fieldStage ? ` | Stage: ${params.fieldStage}` : ''}`);
+  } else {
+    lines.push(`School progress: just starting — no subjects studied yet`);
+  }
+  if (params.streak > 1) lines.push(`Study streak: ${params.streak} days in a row`);
+  if (params.activeCurriculum) lines.push(`Active curriculum: "${params.activeCurriculum}"`);
+  if (params.domainInterest) lines.push(`${name}'s stated interest area: ${params.domainInterest}`);
+  if (params.studiedCount === 0) {
+    lines.push(`This is ${name}'s first time using the app. Be welcoming. Don't overwhelm.`);
+  }
+  lines.push(`---`);
+  return lines.join('\n');
+}
+
 // ─── RESOLVER ────────────────────────────────────────────────────────────────
 // Replace {{USER_NAME}} placeholder with the actual user's name at runtime.
 // Falls back to 'friend' if no name is set — warm, not broken.

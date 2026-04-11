@@ -13,7 +13,7 @@ import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
 import { sendMessage, Message, AIModel } from '../../lib/ai-client';
-import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt } from '../../lib/prompts/sol-protocol';
+import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
@@ -1194,6 +1194,39 @@ export default function SolChat() {
       } catch {}
     }
 
+    // App context block — tells the AI what app it's in, who the user is, their progress
+    let appContextBlock = '';
+    try {
+      const [studiedRaw, streakRaw, phaseRaw, curriculaRaw, interestRaw] = await Promise.all([
+        AsyncStorage.getItem('school_studied_v1'),
+        AsyncStorage.getItem('sol_school_streak'),
+        AsyncStorage.getItem('sanctum_phase'),
+        AsyncStorage.getItem('sol_curricula'),
+        AsyncStorage.getItem('sol_domain_interest'),
+      ]);
+      const studiedCount = studiedRaw ? JSON.parse(studiedRaw).length : 0;
+      const streakData = streakRaw ? JSON.parse(streakRaw) : null;
+      const streak = streakData?.count ?? 0;
+      const fieldStage = phaseRaw || null;
+      let activeCurriculumName: string | null = null;
+      if (curriculaRaw) {
+        const curricula: Array<{ name: string; active?: boolean }> = JSON.parse(curriculaRaw);
+        const active = curricula.find(c => c.active);
+        activeCurriculumName = active?.name ?? null;
+      }
+      appContextBlock = buildContextBlock({
+        mode: appMode,
+        persona,
+        userName,
+        studiedCount,
+        fieldStage,
+        streak,
+        activeCurriculum: activeCurriculumName,
+        topDomain: null,
+        domainInterest: interestRaw || null,
+      });
+    } catch {}
+
     const contextBlock = [
       sanctumField.trim() ? sanctumField.trim() : '',
       cementContext.trim() ? cementContext.trim() : '',
@@ -1204,6 +1237,7 @@ export default function SolChat() {
       contextMemory.length > 0 ? `[User Context]\n${contextMemory.map(m => `• ${m}`).join('\n')}` : '',
       projectContext.trim() ? `[Project Context]\n${projectContext.trim().slice(0, 1500)}` : '',
       schoolSubjectContext.trim() ? schoolSubjectContext.trim() : '',
+      appContextBlock || '',
     ].filter(Boolean).join('\n\n');
 
     const styleInstruction = getStyle(replyStyle).instruction;
