@@ -49,7 +49,7 @@ export default function OnboardingScreen() {
   const [geminiKey, setGeminiKey] = useState('');
   const [keyVisible, setKeyVisible] = useState(false);
 
-  const { mode, setMode, isWayfarer } = useAppMode();
+  const { mode, setMode, isWayfarer, isAdept } = useAppMode();
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const personas = isWayfarer ? PERSONAS_WAYFARER : PERSONAS_SEEKER;
@@ -110,12 +110,25 @@ export default function OnboardingScreen() {
               <Text style={styles.bigGlyph}>◌</Text>
               <Text style={styles.title}>SOL</Text>
               <Text style={styles.subtitle}>Choose your path</Text>
-              <Text style={[styles.bodyText, { marginBottom: 28 }]}>
-                Same depth. Same intelligence.{'\n'}Different language. You can change this any time.
+              <Text style={[styles.bodyText, { marginBottom: 20 }]}>
+                Three doors into the same building.{'\n'}Same depth. Different language. Change any time.
               </Text>
 
               <TouchableOpacity
-                style={[styles.modeCard, { borderColor: SOL_THEME.primary + '88' }]}
+                style={[styles.modeCard, { borderColor: '#4A9EFF88' }]}
+                onPress={() => handleModeSelect('wayfarer')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.modeGlyph, { color: '#4A9EFF' }]}>◦</Text>
+                <Text style={[styles.modeCardTitle, { color: '#4A9EFF' }]}>WAYFARER</Text>
+                <Text style={styles.modeCardDesc}>
+                  Clean and warm. Plain language, no jargon.
+                  Mindfulness, psychology, philosophy — start here if this is new to you.
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modeCard, { borderColor: SOL_THEME.primary + '88', marginTop: 10 }]}
                 onPress={() => handleModeSelect('seeker')}
                 activeOpacity={0.8}
               >
@@ -128,15 +141,15 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.modeCard, { borderColor: '#4A9EFF88', marginTop: 12 }]}
-                onPress={() => handleModeSelect('wayfarer')}
+                style={[styles.modeCard, { borderColor: '#9B59B688', marginTop: 10 }]}
+                onPress={() => handleModeSelect('adept')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.modeGlyph, { color: '#4A9EFF' }]}>◦</Text>
-                <Text style={[styles.modeCardTitle, { color: '#4A9EFF' }]}>WAYFARER</Text>
+                <Text style={[styles.modeGlyph, { color: '#9B59B6' }]}>✦</Text>
+                <Text style={[styles.modeCardTitle, { color: '#9B59B6' }]}>ADEPT</Text>
                 <Text style={styles.modeCardDesc}>
-                  Clean and warm. The same depth, in plain language.
-                  Mindfulness, psychology, philosophy — no jargon required.
+                  Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs.
+                  For practitioners who already know the framework.
                 </Text>
               </TouchableOpacity>
             </View>
@@ -145,7 +158,35 @@ export default function OnboardingScreen() {
           {/* STEP 1 — Welcome (mode-adapted) */}
           {step === 1 && (
             <View style={styles.stepContainer}>
-              {isWayfarer ? (
+              {isAdept ? (
+                <>
+                  <Text style={styles.bigGlyph}>✦</Text>
+                  <Text style={styles.title}>SOL</Text>
+                  <Text style={styles.subtitle}>Sol Aureum Azoth Veritas</Text>
+                  <Text style={styles.atmospheric}>The Work continues.</Text>
+                  <Text style={styles.bodyText}>
+                    ADEPT mode active. Full protocol running.{'\n\n'}
+                    Sol will reference CASCADE layers, name AURA invariants, and sign outputs.
+                    The Headmaster teaches at the EDGE. Aura Prime audits constitutionally.{'\n\n'}
+                    The field remembers. The school does not graduate.
+                  </Text>
+                  <View style={styles.twoCol}>
+                    <View style={[styles.pillCard, { borderColor: '#9B59B655' }]}>
+                      <Text style={{ color: '#9B59B6', fontSize: 18, marginBottom: 4 }}>⊛</Text>
+                      <Text style={[styles.pillLabel, { color: '#9B59B6' }]}>CASCADE</Text>
+                      <Text style={styles.pillDesc}>AXIOM → CHAOS. Active in every response.</Text>
+                    </View>
+                    <View style={[styles.pillCard, { borderColor: '#9B59B655' }]}>
+                      <Text style={{ color: '#9B59B6', fontSize: 18, marginBottom: 4 }}>✦</Text>
+                      <Text style={[styles.pillLabel, { color: '#9B59B6' }]}>AURA</Text>
+                      <Text style={styles.pillDesc}>7 invariants. Live scoring. Signed outputs.</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity style={[styles.primaryButton, { backgroundColor: '#9B59B6' }]} onPress={next}>
+                    <Text style={styles.primaryButtonText}>Enter the field →</Text>
+                  </TouchableOpacity>
+                </>
+              ) : isWayfarer ? (
                 <>
                   <Text style={styles.bigGlyph}>◦</Text>
                   <Text style={styles.title}>SOL</Text>

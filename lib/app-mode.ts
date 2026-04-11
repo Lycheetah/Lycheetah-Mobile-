@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type AppMode = 'seeker' | 'wayfarer';
+export type AppMode = 'seeker' | 'wayfarer' | 'adept';
 
 const APP_MODE_KEY = 'sol_app_mode';
 
@@ -57,8 +57,8 @@ const WAYFARER: Record<string, string> = {
 };
 
 export function translateLabel(mode: AppMode, label: string): string {
-  if (mode === 'seeker') return label;
-  return WAYFARER[label] ?? label;
+  if (mode === 'wayfarer') return WAYFARER[label] ?? label;
+  return label; // seeker and adept use raw labels
 }
 
 // Context
@@ -67,6 +67,7 @@ interface AppModeCtx {
   setMode: (mode: AppMode) => Promise<void>;
   t: (label: string) => string;
   isWayfarer: boolean;
+  isAdept: boolean;
 }
 
 const AppModeContext = createContext<AppModeCtx>({
@@ -74,6 +75,7 @@ const AppModeContext = createContext<AppModeCtx>({
   setMode: async () => {},
   t: l => l,
   isWayfarer: false,
+  isAdept: false,
 });
 
 export function AppModeProvider({ children }: { children: React.ReactNode }) {
@@ -90,10 +92,11 @@ export function AppModeProvider({ children }: { children: React.ReactNode }) {
 
   const t = (label: string) => translateLabel(mode, label);
   const isWayfarer = mode === 'wayfarer';
+  const isAdept = mode === 'adept';
 
   return React.createElement(
     AppModeContext.Provider,
-    { value: { mode, setMode, t, isWayfarer } },
+    { value: { mode, setMode, t, isWayfarer, isAdept } },
     children
   );
 }

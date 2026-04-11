@@ -393,23 +393,40 @@ export default function SettingsScreen() {
       {/* LANGUAGE */}
       {/* EXPERIENCE MODE */}
       <Text style={styles.sectionTitle}>◌ EXPERIENCE MODE</Text>
-      <Text style={styles.sectionNote}>How Sol presents itself. Same depth either way.</Text>
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-        <TouchableOpacity
-          onPress={() => setMode('seeker')}
-          style={{ flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.border, backgroundColor: mode === 'seeker' ? SOL_THEME.primary + '11' : SOL_THEME.surface, alignItems: 'center' }}
-        >
-          <Text style={{ fontSize: 22, color: SOL_THEME.primary, marginBottom: 4 }}>⊚</Text>
-          <Text style={{ color: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>SEEKER</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }}>Mystical language, full framework.</Text>
-        </TouchableOpacity>
+      <Text style={styles.sectionNote}>Three doors into the same building. The AI voice changes with each.</Text>
+      <View style={{ gap: 8, marginBottom: 20 }}>
         <TouchableOpacity
           onPress={() => setMode('wayfarer')}
-          style={{ flex: 1, padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.border, backgroundColor: mode === 'wayfarer' ? '#4A9EFF11' : SOL_THEME.surface, alignItems: 'center' }}
+          style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.border, backgroundColor: mode === 'wayfarer' ? '#4A9EFF11' : SOL_THEME.surface }}
         >
-          <Text style={{ fontSize: 22, color: '#4A9EFF', marginBottom: 4 }}>◦</Text>
-          <Text style={{ color: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>WAYFARER</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 4, lineHeight: 15 }}>Plain language, warm framing.</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'wayfarer' ? 6 : 0 }}>
+            <Text style={{ fontSize: 20, color: '#4A9EFF' }}>◦</Text>
+            <Text style={{ color: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>WAYFARER</Text>
+            {mode === 'wayfarer' && <Text style={{ color: '#4A9EFF', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
+          </View>
+          {mode === 'wayfarer' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Plain language, warm framing. Sol speaks as a friendly thinking partner. No jargon required.</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setMode('seeker')}
+          style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.border, backgroundColor: mode === 'seeker' ? SOL_THEME.primary + '11' : SOL_THEME.surface }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'seeker' ? 6 : 0 }}>
+            <Text style={{ fontSize: 20, color: SOL_THEME.primary }}>⊚</Text>
+            <Text style={{ color: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>SEEKER</Text>
+            {mode === 'seeker' && <Text style={{ color: SOL_THEME.primary, fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
+          </View>
+          {mode === 'seeker' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Mystical language, full framework visible. Sol speaks in the field. The Mystery School opens.</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setMode('adept')}
+          style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'adept' ? '#9B59B6' : SOL_THEME.border, backgroundColor: mode === 'adept' ? '#9B59B611' : SOL_THEME.surface }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'adept' ? 6 : 0 }}>
+            <Text style={{ fontSize: 20, color: '#9B59B6' }}>✦</Text>
+            <Text style={{ color: mode === 'adept' ? '#9B59B6' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
+            {mode === 'adept' && <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
+          </View>
+          {mode === 'adept' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs. For practitioners who know the framework.</Text>}
         </TouchableOpacity>
       </View>
 
