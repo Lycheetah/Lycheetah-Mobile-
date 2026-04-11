@@ -159,6 +159,9 @@ export default function MysterySchoolScreen() {
   // Global search
   const [globalSearch, setGlobalSearch] = useState('');
 
+  // Daily suggestion
+  const [dailySuggestion, setDailySuggestion] = useState<{ subject: Subject; domain: SubjectDomain } | null>(null);
+
   // Focus mode (study session)
   const [focusMode, setFocusMode] = useState(false);
   const [focusSeconds, setFocusSeconds] = useState(0);
@@ -242,6 +245,28 @@ export default function MysterySchoolScreen() {
       getFieldTrials().then(trials => {
         const pending = trials.find((t: any) => !t.completed);
         setActiveFieldTrial(pending || null);
+      });
+
+      // Daily suggestion — one subject per day, Foundation-first for new users
+      AsyncStorage.getItem('sol_daily_suggestion_v1').then(async suggRaw => {
+        const today = new Date().toISOString().split('T')[0];
+        const sugr = suggRaw ? JSON.parse(suggRaw) : null;
+        if (!sugr || sugr.date !== today) {
+          const studiedSet = new Set(studied);
+          const allFoundation = MYSTERY_SCHOOL_DOMAINS.flatMap(d =>
+            d.subjects.filter(s => s.layer === 'FOUNDATION').map(s => ({ subject: s, domain: d }))
+          );
+          const unstudied = allFoundation.filter(({ subject }) => !studiedSet.has(subject.name));
+          const pool = unstudied.length > 0 ? unstudied : allFoundation;
+          const seed = [...today].reduce((acc, c) => acc + c.charCodeAt(0), 0);
+          const pick = pool[seed % pool.length];
+          await AsyncStorage.setItem('sol_daily_suggestion_v1', JSON.stringify({ subjectName: pick.subject.name, domainId: pick.domain.id, date: today }));
+          setDailySuggestion(pick);
+        } else {
+          const domain = MYSTERY_SCHOOL_DOMAINS.find(d => d.id === sugr.domainId);
+          const subject = domain?.subjects.find(s => s.name === sugr.subjectName);
+          if (domain && subject) setDailySuggestion({ subject, domain });
+        }
       });
 
       AsyncStorage.getItem('sol_mastered_domains').then(masteredRaw => {
@@ -945,13 +970,16 @@ export default function MysterySchoolScreen() {
               <Text style={{ fontSize: 36, color: SOL_THEME.headmaster, marginBottom: 8 }}>𝔏</Text>
               <Text style={{ fontSize: 13, fontWeight: '700', color: SOL_THEME.headmaster, letterSpacing: 3, marginBottom: 6, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{t('MYSTERY SCHOOL')}</Text>
               {/* Progress arc */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>{totalStudied}/{totalSubjects} subjects explored</Text>
-                {studyStreak >= 2 && <Text style={{ color: '#E07040', fontSize: 12, fontWeight: '700' }}>🔥 {studyStreak}</Text>}
-              </View>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, marginTop: 4 }}>{totalStudied}/{totalSubjects} subjects explored</Text>
               <View style={{ width: 200, height: 4, backgroundColor: SOL_THEME.border, borderRadius: 2, marginTop: 10, overflow: 'hidden' }}>
                 <View style={{ height: 4, width: `${Math.round((totalStudied / totalSubjects) * 100)}%`, backgroundColor: SOL_THEME.headmaster, borderRadius: 2 }} />
               </View>
+              {studyStreak >= 1 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: '#E0704015', borderWidth: 1, borderColor: '#E0704033' }}>
+                  <Text style={{ fontSize: 14 }}>🔥</Text>
+                  <Text style={{ color: '#E07040', fontSize: 12, fontWeight: '700' }}>{studyStreak} day{studyStreak !== 1 ? 's' : ''} in a row</Text>
+                </View>
+              )}
             </View>
 
             {/* Quick nav */}
@@ -988,6 +1016,55 @@ export default function MysterySchoolScreen() {
                 </Text>
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>{STAGE_GUIDANCE[fieldStage]}</Text>
               </View>
+            )}
+
+            {/* Empty state — brand new user */}
+            {totalStudied === 0 && (
+              <View style={{ marginBottom: 14, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.headmaster + '55', backgroundColor: SOL_THEME.headmaster + '08', alignItems: 'center' }}>
+                <Text style={{ color: SOL_THEME.headmaster, fontSize: 28, marginBottom: 8 }}>𝔏</Text>
+                <Text style={{ color: SOL_THEME.text, fontSize: 15, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>
+                  {isWayfarer ? "You're here. Start anywhere." : 'The school is open.'}
+                </Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: dailySuggestion ? 14 : 0 }}>
+                  {isWayfarer
+                    ? 'Pick any topic below — your guide will meet you there and build a lesson around it.'
+                    : 'Choose a domain and the Headmaster guides you through it. Begin with Foundation — or let the field choose.'}
+                </Text>
+                {dailySuggestion && (
+                  <TouchableOpacity
+                    onPress={async () => { setSelectedDomain(dailySuggestion.domain); await openSubjectDetail(dailySuggestion.subject, dailySuggestion.domain); }}
+                    style={{ width: '100%', padding: 12, borderRadius: 10, backgroundColor: dailySuggestion.domain.color + '18', borderWidth: 1, borderColor: dailySuggestion.domain.color + '44', flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ color: dailySuggestion.domain.color, fontSize: 22 }}>{dailySuggestion.domain.glyph}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 2 }}>START HERE TODAY</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>{dailySuggestion.subject.name}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{t(dailySuggestion.domain.label)}</Text>
+                    </View>
+                    <Text style={{ color: dailySuggestion.domain.color, fontSize: 14 }}>→</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {/* Daily suggestion — returning user */}
+            {totalStudied > 0 && dailySuggestion && (
+              <TouchableOpacity
+                onPress={async () => { setSelectedDomain(dailySuggestion.domain); await openSubjectDetail(dailySuggestion.subject, dailySuggestion.domain); }}
+                style={{ marginBottom: 14, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: dailySuggestion.domain.color + '44', backgroundColor: dailySuggestion.domain.color + '0D', flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: dailySuggestion.domain.color, fontSize: 20 }}>{dailySuggestion.domain.glyph}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 2 }}>
+                    {isWayfarer ? "◦ TODAY'S SUGGESTION" : "⊙ TODAY'S SUBJECT"}
+                  </Text>
+                  <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>{dailySuggestion.subject.name}</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{t(dailySuggestion.domain.label)} · {t(LAYER_LABELS[dailySuggestion.subject.layer])}</Text>
+                </View>
+                <Text style={{ color: dailySuggestion.domain.color + '99', fontSize: 14 }}>→</Text>
+              </TouchableOpacity>
             )}
 
             {/* School Intelligence — "The school watches you" */}

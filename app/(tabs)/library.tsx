@@ -711,6 +711,33 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         </View>
       </View>
 
+      {/* Study Paths — curated starting points */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, fontWeight: '700', marginBottom: 10 }}>◦ CURATED PATHS</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {[
+              { label: 'The Inner Life', desc: 'Shadow, somatic, depth psychology', glyph: '◐', color: '#9B59B6', subjects: ['Shadow Work', 'Somatic Awareness', 'Inner Child Work'] },
+              { label: 'The Ancient Map', desc: 'Alchemy, mysticism, sacred arts', glyph: '⊚', color: '#F5A623', subjects: ['Hermetic Principles', 'Mystical States', 'Ritual Design'] },
+              { label: 'The Clear Mind', desc: 'Meditation, philosophy, contemplative', glyph: '◯', color: '#4A9EFF', subjects: ['Breath as Gateway', 'Stoic Practice', 'Mindful Attention'] },
+              { label: 'The Body\'s Wisdom', desc: 'Energy, ecology, earth intelligence', glyph: '⟁', color: '#27AE60', subjects: ['Nervous System Regulation', 'Earth Attunement', 'Subtle Energy Awareness'] },
+            ].map(path => (
+              <TouchableOpacity
+                key={path.label}
+                onPress={() => savePendingSubject(`Introduce me to the "${path.label}" study path. Subjects: ${path.subjects.join(', ')}. Give me an overview and suggest where to begin.`).then(() => router.push('/(tabs)/'))}
+                style={{ width: 160, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: path.color + '55', backgroundColor: path.color + '0D' }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: path.color, fontSize: 22, marginBottom: 6 }}>{path.glyph}</Text>
+                <Text style={{ color: path.color, fontSize: 12, fontWeight: '700', marginBottom: 3 }}>{path.label}</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 16 }}>{path.desc}</Text>
+                <Text style={{ color: path.color + '88', fontSize: 10, marginTop: 8, fontWeight: '700' }}>Explore with Sol →</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
       {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ flexDirection: 'row' }}>
         {([['forge', '⚗ FORGE'], ['cascade', 'CASCADE'], ['probe', 'PROBE'], ['cementer', 'CEMENTER'], ['library', `SAVED (${library.length})`], ['community', 'FIELD']] as const).map(([t, label]) => (

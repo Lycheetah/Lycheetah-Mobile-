@@ -205,7 +205,7 @@ export default function SanctumScreen() {
         try {
           const result = await sendMessage(
             [{ role: 'user', content: prompt }],
-            'You are the Headmaster. Summarize the student\'s week with honest authority. 3-4 sentences. No preamble.',
+            'You are the Headmaster — not an assistant, a teacher with long memory and high standards. Write a personal weekly letter to this student. 3-4 sentences. Be specific about what the data shows. Name what grew, name what stalled. End with one question that cuts to the real work ahead. No preamble, no "Dear Student", start directly with your observation.',
             apiKey, (model || 'gemini-2.5-flash') as AIModel,
             undefined, 'fast', 512, 0.7,
           );

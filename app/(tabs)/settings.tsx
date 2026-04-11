@@ -56,6 +56,7 @@ export default function SettingsScreen() {
   const [lamagueGloss, setLamagueGloss] = useState(false);
   const [symbolRainOn, setSymbolRainOn] = useState(true);
   const [premiumOn, setPremiumOn] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   useEffect(() => {
     getModel().then(m => {
@@ -505,6 +506,18 @@ export default function SettingsScreen() {
         <Text style={styles.contextCount}>{projectContext.length} chars · auto-saved on exit</Text>
       )}
 
+      {/* ADVANCED — collapsible */}
+      <TouchableOpacity
+        onPress={() => setAdvancedOpen(v => !v)}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface, marginBottom: 16 }}
+        activeOpacity={0.75}
+      >
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⚙ ADVANCED</Text>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 13 }}>{advancedOpen ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+
+      {advancedOpen && <>
+
       {/* TOKEN BUDGET */}
       <Text style={styles.sectionTitle}>TOKEN BUDGET</Text>
       <Text style={styles.sectionNote}>Max tokens per response. Higher = longer answers, more API cost.</Text>
@@ -587,6 +600,8 @@ export default function SettingsScreen() {
         </View>
         <Text style={[styles.variantToggle, { color: accentColor }]}>{isPrivate ? '◉' : '○'}</Text>
       </TouchableOpacity>
+
+      </>}
 
       {/* HISTORY */}
       <Text style={styles.sectionTitle}>HISTORY</Text>
