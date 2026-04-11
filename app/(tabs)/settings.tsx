@@ -27,6 +27,7 @@ import {
   getShowLamagueGloss, saveShowLamagueGloss,
   getSymbolRainEnabled, saveSymbolRainEnabled,
   getPremium, savePremium,
+  getStudiedSubjects,
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
@@ -57,6 +58,7 @@ export default function SettingsScreen() {
   const [symbolRainOn, setSymbolRainOn] = useState(true);
   const [premiumOn, setPremiumOn] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [studiedCount, setStudiedCount] = useState(0);
 
   useEffect(() => {
     getModel().then(m => {
@@ -82,6 +84,7 @@ export default function SettingsScreen() {
     getShowLamagueGloss().then(setLamagueGloss);
     getSymbolRainEnabled().then(setSymbolRainOn);
     getPremium().then(setPremiumOn);
+    getStudiedSubjects().then(s => setStudiedCount(s.length));
     Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
       .then(results => {
         const keys: Record<string, string> = {};
@@ -417,17 +420,37 @@ export default function SettingsScreen() {
           </View>
           {mode === 'seeker' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Mystical language, full framework visible. Sol speaks in the field. The Mystery School opens.</Text>}
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => setMode('adept')}
-          style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'adept' ? '#9B59B6' : SOL_THEME.border, backgroundColor: mode === 'adept' ? '#9B59B611' : SOL_THEME.surface }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'adept' ? 6 : 0 }}>
-            <Text style={{ fontSize: 20, color: '#9B59B6' }}>✦</Text>
-            <Text style={{ color: mode === 'adept' ? '#9B59B6' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
-            {mode === 'adept' && <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
-          </View>
-          {mode === 'adept' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs. For practitioners who know the framework.</Text>}
-        </TouchableOpacity>
+        {studiedCount < 25 ? (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => Alert.alert('✦ ADEPT — LOCKED', `Study ${25 - studiedCount} more subject${25 - studiedCount === 1 ? '' : 's'} in the Mystery School to unlock Adept mode.\n\nAdept mode activates the full Sol Protocol — CASCADE layers, AURA invariants, field signatures.`, [{ text: 'Continue Studying', style: 'default' }])}
+            style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface, opacity: 0.6 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <Text style={{ fontSize: 20, color: SOL_THEME.textMuted }}>✦</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontWeight: '700' }}>LOCKED</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ flex: 1, height: 3, backgroundColor: SOL_THEME.border, borderRadius: 2 }}>
+                <View style={{ width: `${Math.min((studiedCount / 25) * 100, 100)}%`, height: 3, backgroundColor: '#9B59B6', borderRadius: 2 }} />
+              </View>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{studiedCount}/25</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => setMode('adept')}
+            style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'adept' ? '#9B59B6' : SOL_THEME.border, backgroundColor: mode === 'adept' ? '#9B59B611' : SOL_THEME.surface }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'adept' ? 6 : 0 }}>
+              <Text style={{ fontSize: 20, color: '#9B59B6' }}>✦</Text>
+              <Text style={{ color: mode === 'adept' ? '#9B59B6' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
+              {mode === 'adept' && <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
+            </View>
+            {mode === 'adept' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs. For practitioners who know the framework.</Text>}
+          </TouchableOpacity>
+        )}
       </View>
 
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>

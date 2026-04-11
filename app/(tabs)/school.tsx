@@ -64,9 +64,18 @@ function stageToLayer(stage: FieldStage): SchoolLayer {
   return 'EDGE';
 }
 
+function getDomainArcPhase(studiedInDomain: number): ArcPhase {
+  if (studiedInDomain === 0) return 'intro';
+  if (studiedInDomain <= 2) return 'concept';
+  if (studiedInDomain <= 5) return 'question';
+  if (studiedInDomain <= 8) return 'reflection';
+  return 'advanced';
+}
+
 function buildTeacherPrompt(
   subject: Subject, host: string, fieldContext: string,
   arcPhase: ArcPhase = 'intro', studentDepth: 'shallow' | 'deep' | 'balanced' = 'balanced',
+  isWayfarer = false,
 ): string {
   const arcGuidance = {
     intro: 'Open with 1-2 sentences of contextual grounding. Present the single most important core concept with precision.',
@@ -77,6 +86,9 @@ function buildTeacherPrompt(
       : 'Offer a reflection that connects this subject to the student\'s broader path. Be honest if they\'re missing something.',
     advanced: 'The student is ready for the edge. Advance to the most nuanced aspect of this subject. Do not simplify.',
   }[arcPhase];
+  const wayfarerInstruction = isWayfarer
+    ? `\n\nLANGUAGE: Plain and warm. No alchemical terms, mystical jargon, framework labels (AURA, CASCADE, Nigredo, field coherence, etc.), or symbolic sign-offs. Teach this subject in clear, everyday language. Be a knowledgeable friend, not a mystery school initiator.`
+    : '';
   return `You are ${TEACHER_NAMES[host]}, teaching "${subject.name}" in the Sol Mystery School.
 
 [Session Arc: ${arcPhase.toUpperCase()}] ${arcGuidance}
@@ -87,14 +99,14 @@ ${subject.traditions ? `Traditions: ${subject.traditions.join(', ')}` : ''}
 Description: ${subject.description}
 ${fieldContext ? `\n${fieldContext}` : ''}
 
-You are the teacher here. Stay on this subject. Build lesson by lesson — one idea at a time. Do not repeat what has already been covered. Be the ${TEACHER_NAMES[host]} — not an assistant. End each response with ONE question or invitation.`;
+You are the teacher here. Stay on this subject. Build lesson by lesson — one idea at a time. Do not repeat what has already been covered. Be the ${TEACHER_NAMES[host]} — not an assistant. End each response with ONE question or invitation.${wayfarerInstruction}`;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MysterySchoolScreen() {
   const router = useRouter();
-  const { t, isWayfarer } = useAppMode();
+  const { t, isWayfarer, mode, setMode } = useAppMode();
 
   // Navigation state
   const [schoolView, setSchoolView] = useState<SchoolView>('home');
@@ -137,6 +149,9 @@ export default function MysterySchoolScreen() {
   // Session completion overlay
   const [showSessionComplete, setShowSessionComplete] = useState(false);
   const sessionCompleteAnim = useRef(new Animated.Value(0)).current;
+
+  // Unlock banner
+  const [unlockBanner, setUnlockBanner] = useState<'seeker' | 'adept' | null>(null);
 
   // Curriculum state
   const [curricula, setCurricula] = useState<Curriculum[]>([]);
@@ -451,6 +466,12 @@ export default function MysterySchoolScreen() {
     const newStudied = new Set([...studiedSubjects, subject.name]);
     setStudiedSubjects(newStudied);
 
+    // Progression gates — check unlock thresholds
+    const allStudied = await getStudiedSubjects();
+    const totalStudied = allStudied.length;
+    if (totalStudied === 5) setUnlockBanner('seeker');
+    else if (totalStudied === 25) setUnlockBanner('adept');
+
     const streakRaw = await AsyncStorage.getItem('sol_school_streak');
     const streak = streakRaw ? JSON.parse(streakRaw) : { count: 0, lastDate: '' };
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -465,7 +486,7 @@ export default function MysterySchoolScreen() {
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!apiKey) { setStudyLoading(false); return; }
-      const systemPrompt = buildTeacherPrompt(subject, host, ctx, 'intro', 'balanced');
+      const systemPrompt = buildTeacherPrompt(subject, host, ctx, 'intro', 'balanced', isWayfarer);
       const triggerMsg: Message = { role: 'user', content: 'Begin the lesson.' };
       const result = await sendMessage([triggerMsg], systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
       const opener = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
@@ -505,7 +526,7 @@ export default function MysterySchoolScreen() {
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!apiKey) { setStudyLoading(false); return; }
-      const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth);
+      const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth, isWayfarer);
       const apiMessages: Message[] = updated.map(m => ({ role: m.role, content: m.content }));
       const result = await sendMessage(apiMessages, systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
       const reply = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
@@ -768,6 +789,39 @@ export default function MysterySchoolScreen() {
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
+
+        {unlockBanner && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: SOL_THEME.background + 'F0', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+            <View style={{ width: '100%', borderRadius: 20, borderWidth: 1.5, borderColor: unlockBanner === 'adept' ? '#9B59B6' : SOL_THEME.primary, backgroundColor: SOL_THEME.surface, padding: 28, alignItems: 'center' }}>
+              <Text style={{ fontSize: 44, marginBottom: 12 }}>{unlockBanner === 'adept' ? '✦' : '⊚'}</Text>
+              <Text style={{ color: unlockBanner === 'adept' ? '#9B59B6' : SOL_THEME.primary, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 10 }}>
+                {unlockBanner === 'adept' ? 'ADEPT MODE UNLOCKED' : 'SEEKER MODE UNLOCKED'}
+              </Text>
+              <Text style={{ color: SOL_THEME.text, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 12 }}>
+                {unlockBanner === 'adept' ? 'The Full Protocol Opens' : 'The Mystery School Opens'}
+              </Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+                {unlockBanner === 'adept'
+                  ? 'You have studied 25 subjects. Adept mode is now available — Sol speaks in full protocol, naming CASCADE layers and AURA invariants.'
+                  : 'You have studied 5 subjects. Seeker mode is now available — Sol speaks in the full mystical register of the framework.'}
+              </Text>
+              <TouchableOpacity
+                onPress={async () => { await setMode(unlockBanner); setUnlockBanner(null); }}
+                style={{ width: '100%', paddingVertical: 13, borderRadius: 12, backgroundColor: unlockBanner === 'adept' ? '#9B59B6' : SOL_THEME.primary, alignItems: 'center', marginBottom: 10 }}
+              >
+                <Text style={{ color: '#000', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 }}>
+                  {unlockBanner === 'adept' ? 'Enter Adept Mode' : 'Enter Seeker Mode'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setUnlockBanner(null)}
+                style={{ width: '100%', paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.border, alignItems: 'center' }}
+              >
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 14, fontWeight: '600' }}>Stay in Current Mode</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {showSessionComplete && (
           <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: SOL_THEME.background + 'EE', justifyContent: 'center', alignItems: 'center', padding: 24, opacity: sessionCompleteAnim }}>
@@ -1225,10 +1279,17 @@ export default function MysterySchoolScreen() {
               );
             })()}
 
-            {/* Resonance links */}
-            {resonanceLinks.length > 0 && (
+            {/* Resonance links — always visible in Adept mode */}
+            {(resonanceLinks.length > 0 || mode === 'adept') && (
               <View style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 10, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1, marginBottom: 8, fontWeight: '700' }}>⟁ RESONANCE LINKS</Text>
+                <Text style={{ fontSize: 10, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1, marginBottom: 8, fontWeight: '700' }}>
+                  {mode === 'adept' ? '⟁ AURA RESONANCE LINKS' : '⟁ RESONANCE LINKS'}
+                </Text>
+                {resonanceLinks.length === 0 && mode === 'adept' && (
+                  <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18 }}>Study more subjects to activate cross-domain resonance detection. The AURA engine maps connections as your field grows.</Text>
+                  </View>
+                )}
                 {resonanceLinks.map(({ domain, reason }) => (
                   <TouchableOpacity key={domain.id}
                     style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: domain.color + '55', backgroundColor: domain.color + '0D', marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}
@@ -1274,6 +1335,11 @@ export default function MysterySchoolScreen() {
                         </View>
                       </View>
                       <Text style={{ fontSize: 15, fontWeight: '700', color: domain.color }}>{t(domain.label)}</Text>
+                      {mode === 'adept' && (
+                        <Text style={{ fontSize: 9, color: domain.color + 'AA', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, fontWeight: '700', marginTop: 1 }}>
+                          ⊙ ARC · {getDomainArcPhase(studiedCount).toUpperCase()}
+                        </Text>
+                      )}
                       <Text style={{ fontSize: 12, color: SOL_THEME.textMuted, lineHeight: 18 }} numberOfLines={2}>{domain.description}</Text>
                       <View style={{ marginTop: 6 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -1367,7 +1433,7 @@ export default function MysterySchoolScreen() {
                     }]}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={{ fontSize: isRecommended ? 13 : 11, fontWeight: '700', letterSpacing: 1.5, color: LAYER_COLORS[layer], fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
-                          {LAYER_LABELS[layer].toUpperCase()}
+                          {mode === 'adept' ? `CASCADE · ${LAYER_LABELS[layer].toUpperCase()}` : LAYER_LABELS[layer].toUpperCase()}
                         </Text>
                         {isRecommended && (
                           <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: LAYER_COLORS[layer] + '33' }}>

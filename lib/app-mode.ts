@@ -11,7 +11,9 @@ export async function saveAppMode(mode: AppMode): Promise<void> {
 
 export async function getAppMode(): Promise<AppMode> {
   const v = await AsyncStorage.getItem(APP_MODE_KEY);
-  return v === 'wayfarer' ? 'wayfarer' : 'seeker';
+  if (v === 'wayfarer') return 'wayfarer';
+  if (v === 'adept') return 'adept';
+  return 'seeker';
 }
 
 // Wayfarer language map — plain equivalents for every Seeker term
