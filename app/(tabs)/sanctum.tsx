@@ -114,6 +114,7 @@ export default function SanctumScreen() {
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [vaultInput, setVaultInput] = useState('');
   const [vault, setVault] = useState<VaultEntry[]>([]);
+  const [toolHistory, setToolHistory] = useState<Array<{ tool: string; query: string; result: string; timestamp: string }>>([]);
   const [section, setSection] = useState<'today' | 'journal' | 'vault' | 'field'>('today');
   const [phase, setPhase] = useState<string>('CENTER');
   const [tes, setTes] = useState(0);
@@ -137,18 +138,20 @@ export default function SanctumScreen() {
 
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
-    const [int, ref, jRaw, vRaw, phaseRaw, auraRaw] = await Promise.all([
+    const [int, ref, jRaw, vRaw, phaseRaw, auraRaw, toolHistRaw] = await Promise.all([
       AsyncStorage.getItem(`${KEYS.INTENTION}_${todayKey()}`),
       AsyncStorage.getItem(`${KEYS.REFLECTION}_${todayKey()}`),
       AsyncStorage.getItem(KEYS.JOURNAL),
       AsyncStorage.getItem(KEYS.VAULT),
       AsyncStorage.getItem(KEYS.PHASE),
       AsyncStorage.getItem(`${KEYS.AURA}_${todayKey()}`),
+      AsyncStorage.getItem('sol_tool_history'),
     ]);
     if (int) { setIntention(int); setSavedIntention(int); }
     if (ref) { setReflection(ref); setSavedReflection(ref); }
     setJournal(jRaw ? JSON.parse(jRaw) : []);
     setVault(vRaw ? JSON.parse(vRaw) : []);
+    setToolHistory(toolHistRaw ? JSON.parse(toolHistRaw) : []);
     if (phaseRaw) setPhase(phaseRaw);
     if (auraRaw) {
       const a = JSON.parse(auraRaw);
@@ -615,6 +618,33 @@ export default function SanctumScreen() {
                 </View>
               </View>
             ))
+          )}
+
+          {toolHistory.length > 0 && (
+            <>
+              <Text style={[styles.label, { color: accentColor, marginTop: 24 }]}>KNOWLEDGE LOG</Text>
+              <Text style={styles.note}>Tools Sol called this session.</Text>
+              {toolHistory.slice(0, 20).map((entry, i) => {
+                const toolLabel: Record<string, string> = {
+                  wikipedia_search: '⊙ Wiki',
+                  duckduckgo_instant: '→ DDG',
+                  web_search: '⟁ Search',
+                  read_url: '→ URL',
+                  calculate: '◈ Calc',
+                  save_insight: '⊛ Saved',
+                };
+                const label = toolLabel[entry.tool] || entry.tool;
+                const time = new Date(entry.timestamp).toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit' });
+                return (
+                  <View key={i} style={[styles.vaultCard, { borderLeftColor: accentColor + '66' }]}>
+                    <Text style={[styles.vaultText, { fontSize: 12 }]}>
+                      <Text style={{ color: accentColor }}>{label}</Text>{'  '}{entry.query}
+                    </Text>
+                    <Text style={[styles.vaultDate, { marginTop: 2 }]}>{entry.result}  ·  {time}</Text>
+                  </View>
+                );
+              })}
+            </>
           )}
         </>
       )}

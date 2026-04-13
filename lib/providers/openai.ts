@@ -1,5 +1,7 @@
 import { Message } from '../ai-client';
 import { AIProvider, TokenUsage, ResponseTimings } from './types';
+import type { ToolDefinition, ToolCall, ToolResult } from '../tools/definitions';
+import { toOpenAITool } from '../tools/definitions';
 
 export const OpenAIProvider: AIProvider = {
   id: 'openai',
@@ -102,5 +104,89 @@ export const OpenAIProvider: AIProvider = {
       );
     }
     return json.choices[0].message.content;
+  },
+
+  async sendWithTools(messages, systemPrompt, apiKey, model, tools, executeTools, onToolStart, onUsage, tokenBudget = 8192, temperature = 0.9) {
+    const startTime = Date.now();
+    const openaiTools = tools.map(toOpenAITool);
+
+    const apiMessages: any[] = [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(m => ({
+        role: m.role,
+        content: m.image
+          ? [
+              { type: 'image_url', image_url: { url: `data:${m.image.mimeType};base64,${m.image.base64}` } },
+              { type: 'text', text: m.content },
+            ]
+          : m.content,
+      })),
+    ];
+
+    let totalInput = 0;
+    let totalOutput = 0;
+
+    for (let iter = 0; iter < 10; iter++) {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model, max_tokens: tokenBudget, temperature,
+          tools: openaiTools, tool_choice: 'auto',
+          messages: apiMessages,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as any)?.error?.message || `OpenAI error ${res.status}`);
+      }
+
+      const json = await res.json();
+      if (json.usage) {
+        totalInput += json.usage.prompt_tokens || 0;
+        totalOutput += json.usage.completion_tokens || 0;
+      }
+
+      const choice = json.choices[0];
+      const message = choice.message;
+
+      if (choice.finish_reason === 'tool_calls' && message.tool_calls?.length > 0) {
+        // Notify UI before execution
+        for (const tc of message.tool_calls) {
+          onToolStart?.(tc.function.name);
+        }
+
+        // Execute all tool calls (parallel)
+        const calls: ToolCall[] = message.tool_calls.map((tc: any) => ({
+          id: tc.id,
+          name: tc.function.name,
+          input: (() => { try { return JSON.parse(tc.function.arguments || '{}'); } catch { return {}; } })(),
+        }));
+        const results: ToolResult[] = await executeTools(calls);
+
+        // Append assistant turn with tool_calls
+        apiMessages.push(message);
+
+        // Append one tool message per result
+        for (const r of results) {
+          apiMessages.push({ role: 'tool', tool_call_id: r.id, content: r.result });
+        }
+        // Loop continues
+      } else {
+        const text: string = message.content || '';
+
+        if (onUsage) {
+          const totalTime = Date.now() - startTime;
+          onUsage(
+            { inputTokens: totalInput, outputTokens: totalOutput, totalTokens: totalInput + totalOutput },
+            { timeToFirstToken: totalTime, totalTime },
+          );
+        }
+        return text;
+      }
+    }
+
+    throw new Error('Tool calling loop exceeded maximum iterations (10)');
   },
 };

@@ -12,7 +12,9 @@ import { Accelerometer } from 'expo-sensors';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
-import { sendMessage, Message, AIModel } from '../../lib/ai-client';
+import { sendMessage, sendWithTools, Message, AIModel } from '../../lib/ai-client';
+import { getActiveTools, TOOL_DISPLAY } from '../../lib/tools/definitions';
+import { executeTool, ExecutorContext } from '../../lib/tools/executor';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
@@ -50,6 +52,7 @@ import {
 import { updateFieldProfile, getFieldProfile, formatProfileForContext } from '../../lib/intelligence/field-profile';
 import { getFieldNote } from '../../lib/field-notes';
 import { scheduleCognitiveWeather } from '../../lib/cognitive-weather';
+// Legacy tool imports — kept for non-tool-calling providers (Gemini, DeepSeek, Kimi)
 import { calculate, detectCalcIntent } from '../../lib/tools/calculator';
 import { readURL, detectURLIntent } from '../../lib/tools/url-reader';
 import { webSearch, formatSearchResults, detectSearchIntent } from '../../lib/tools/web-search';
@@ -280,6 +283,7 @@ export default function SolChat() {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeToolEvents, setActiveToolEvents] = useState<string[]>([]);
   const [currentMode, setCurrentMode] = useState<Mode>('ALBEDO');
   const [streamingText, setStreamingText] = useState('');
   const [currentEWS, setCurrentEWS] = useState<EmotionalState>('NEUTRAL');
@@ -653,6 +657,27 @@ export default function SolChat() {
     return () => sub.remove();
   }, []); // mount once — refs keep values fresh
 
+  // Export conversation as markdown to clipboard
+  const exportChat = useCallback(() => {
+    if (messages.length === 0) return;
+    const lines: string[] = [
+      `# Sol Conversation`,
+      `*Exported ${new Date().toLocaleString('en-NZ')}*`,
+      '',
+    ];
+    for (const m of messages) {
+      if (m.role === 'user') {
+        lines.push(`**You:** ${m.content}`);
+      } else {
+        const name = m.persona === 'veyra' ? 'Veyra' : m.persona === 'aura-prime' ? 'Aura Prime' : m.persona === 'headmaster' ? 'The Headmaster' : 'Sol';
+        lines.push(`**${name}:** ${m.content}`);
+      }
+      lines.push('');
+    }
+    Clipboard.setString(lines.join('\n'));
+    Alert.alert('Copied', 'Conversation copied to clipboard as markdown.');
+  }, [messages]);
+
   // Stop speech when tab loses focus
   useFocusEffect(useCallback(() => {
     return () => { Speech.stop(); setSpeakingId(null); };
@@ -754,10 +779,15 @@ export default function SolChat() {
               LQ {fieldCard.lq.toFixed(3)}
             </Text>
           )}
+          {messages.length > 0 && (
+            <TouchableOpacity onPress={exportChat} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ color: accent + 'AA', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>↑</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ),
     });
-  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router]);
+  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router, messages.length, exportChat]);
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
@@ -1196,6 +1226,8 @@ export default function SolChat() {
 
     // App context block — tells the AI what app it's in, who the user is, their progress
     let appContextBlock = '';
+    let streak = 0;
+    let fieldStage: string | null = null;
     try {
       const [studiedRaw, streakRaw, phaseRaw, curriculaRaw, interestRaw] = await Promise.all([
         AsyncStorage.getItem('school_studied_v1'),
@@ -1206,8 +1238,8 @@ export default function SolChat() {
       ]);
       const studiedCount = studiedRaw ? JSON.parse(studiedRaw).length : 0;
       const streakData = streakRaw ? JSON.parse(streakRaw) : null;
-      const streak = streakData?.count ?? 0;
-      const fieldStage = phaseRaw || null;
+      streak = streakData?.count ?? 0;
+      fieldStage = phaseRaw || null;
       let activeCurriculumName: string | null = null;
       if (curriculaRaw) {
         const curricula: Array<{ name: string; active?: boolean }> = JSON.parse(curriculaRaw);
@@ -1261,28 +1293,31 @@ export default function SolChat() {
     setCurrentEWS(detectedEWS);
     setIsNRMActive(nrmActive);
 
-    // Tool detection — run before sending to AI
+    // Legacy regex tool detection — only used for non-tool-calling providers (Gemini, DeepSeek, Kimi)
+    const useNativeTools = model.startsWith('claude') || model.startsWith('gpt');
     let toolContext = '';
-    const calcExpr = detectCalcIntent(text);
-    if (calcExpr) {
-      const result = calculate(calcExpr);
-      toolContext = result.ok
-        ? `[Calculator] ${calcExpr} = ${result.result}`
-        : `[Calculator error] ${result.error}`;
-    }
-    const urlTarget = detectURLIntent(text);
-    if (!toolContext && urlTarget) {
-      setLoading(true);
-      const result = await readURL(urlTarget);
-      toolContext = result.ok
-        ? `[URL Content: ${result.title || urlTarget}]\n${result.content.slice(0, 3000)}`
-        : `[URL error: ${result.error}]`;
-    }
-    const searchQuery = detectSearchIntent(text);
-    if (!toolContext && searchQuery) {
-      setLoading(true);
-      const result = await webSearch(searchQuery, braveKey);
-      toolContext = formatSearchResults(result);
+    if (!useNativeTools) {
+      const calcExpr = detectCalcIntent(text);
+      if (calcExpr) {
+        const result = calculate(calcExpr);
+        toolContext = result.ok
+          ? `[Calculator] ${calcExpr} = ${result.result}`
+          : `[Calculator error] ${result.error}`;
+      }
+      const urlTarget = detectURLIntent(text);
+      if (!toolContext && urlTarget) {
+        setLoading(true);
+        const result = await readURL(urlTarget);
+        toolContext = result.ok
+          ? `[URL Content: ${result.title || urlTarget}]\n${result.content.slice(0, 3000)}`
+          : `[URL error: ${result.error}]`;
+      }
+      const searchQuery = detectSearchIntent(text);
+      if (!toolContext && searchQuery) {
+        setLoading(true);
+        const result = await webSearch(searchQuery, braveKey);
+        toolContext = formatSearchResults(result);
+      }
     }
 
     const frameworkContext = buildFrameworkContext(detectedMode, detectedEWS, nrmActive, persona);
@@ -1319,14 +1354,56 @@ export default function SolChat() {
     try {
       let fullResponse = '';
       let lastRender = 0;
-      const sendResult = await sendMessage(apiMessages, systemPrompt, apiKey, model, (chunk) => {
-        fullResponse += chunk;
-        const now = Date.now();
-        if (now - lastRender > 16) { // batch renders to ~60fps
-          lastRender = now;
-          setStreamingText(fullResponse);
+      let sendResult: { text: string; tokenUsage?: any; timings?: any };
+
+      if (useNativeTools) {
+        // Native tool calling — Anthropic / OpenAI
+        const tools = getActiveTools({ hasBraveKey: !!braveKey });
+        const execCtx: ExecutorContext = {
+          braveKey: braveKey || undefined,
+          userName: userName || undefined,
+          appMode: appMode || undefined,
+          persona,
+          streak,
+          fieldStage: fieldStage || undefined,
+        };
+        setActiveToolEvents([]);
+        sendResult = await sendWithTools(
+          apiMessages, systemPrompt, apiKey, model, tools,
+          async (calls) => {
+            const results = await Promise.all(calls.map(c => executeTool(c, execCtx)));
+            setActiveToolEvents(prev => [...prev, ...results.map(r => r.displayText)]);
+            return results;
+          },
+          (toolName) => {
+            const label = TOOL_DISPLAY[toolName] || toolName;
+            setActiveToolEvents(prev => [...prev, label]);
+          },
+          tokenBudget, temperature,
+        );
+        fullResponse = sendResult.text;
+        setActiveToolEvents([]);
+        // Fake-stream the tool-call response word by word
+        {
+          const words = fullResponse.split(' ');
+          let streamed = '';
+          for (const word of words) {
+            streamed += (streamed ? ' ' : '') + word;
+            setStreamingText(streamed);
+            await new Promise(r => setTimeout(r, 16));
+          }
         }
-      }, currentStreamSpeed, tokenBudget, temperature);
+      } else {
+        // Streaming path — Gemini, DeepSeek, Kimi
+        sendResult = await sendMessage(apiMessages, systemPrompt, apiKey, model, (chunk) => {
+          fullResponse += chunk;
+          const now = Date.now();
+          if (now - lastRender > 16) { // batch renders to ~60fps
+            lastRender = now;
+            setStreamingText(fullResponse);
+          }
+        }, currentStreamSpeed, tokenBudget, temperature);
+      }
 
       // Strip framework context echo if model repeated the injected prefix
       fullResponse = stripFrameworkEcho(fullResponse);
@@ -1581,9 +1658,25 @@ export default function SolChat() {
       }
 
     } catch (err: any) {
-      const msg = err?.message || String(err) || 'Unknown error';
-      console.error('Sol send error:', msg);
-      Alert.alert('Sol Error', msg);
+      const raw = err?.message || String(err) || 'Unknown error';
+      console.error('Sol send error:', raw);
+      const lower = raw.toLowerCase();
+      let title = 'Sol Error';
+      let body = raw;
+      if (lower.includes('401') || lower.includes('invalid') || lower.includes('api key') || lower.includes('unauthorized')) {
+        title = 'API Key Problem';
+        body = 'Your key was rejected. Go to Settings → check the key for your active provider is correct and saved.';
+      } else if (lower.includes('429') || lower.includes('rate limit') || lower.includes('quota') || lower.includes('too many')) {
+        title = 'Rate Limit Reached';
+        body = 'You\'ve hit the limit for this provider. Wait a minute, or switch to a different provider in Settings.';
+      } else if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection') || lower.includes('timeout') || lower.includes('econnrefused')) {
+        title = 'No Connection';
+        body = 'Can\'t reach the AI. Check your internet connection and try again.';
+      } else if (lower.includes('no api key') || lower.includes('no key')) {
+        title = 'No API Key';
+        body = 'Add a key in Settings. Gemini is free — aistudio.google.com/apikey';
+      }
+      Alert.alert(title, body);
     } finally {
       setLoading(false);
     }
@@ -2315,9 +2408,15 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           ) : (
             <View style={styles.typingDots}>
               <ActivityIndicator size="small" color={accent} />
-              <Text style={styles.typingText}>
-                {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : 'Sol'} is thinking...
-              </Text>
+              {activeToolEvents.length > 0 ? (
+                <Text style={styles.typingText}>
+                  {activeToolEvents[activeToolEvents.length - 1]}...
+                </Text>
+              ) : (
+                <Text style={styles.typingText}>
+                  {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : 'Sol'} is thinking...
+                </Text>
+              )}
             </View>
           )}
         </View>

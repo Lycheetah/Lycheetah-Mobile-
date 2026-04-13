@@ -467,8 +467,8 @@ export default function MysterySchoolScreen() {
     setStudiedSubjects(newStudied);
 
     // Progression gates — check unlock thresholds
-    const allStudied = await getStudiedSubjects();
-    const totalStudied = allStudied.length;
+    const studiedAfterMark = await getStudiedSubjects();
+    const totalStudied = studiedAfterMark.length;
     if (totalStudied === 5) setUnlockBanner('seeker');
     else if (totalStudied === 25) setUnlockBanner('adept');
 
@@ -485,7 +485,11 @@ export default function MysterySchoolScreen() {
     setStudyLoading(true);
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
-      if (!apiKey) { setStudyLoading(false); return; }
+      if (!apiKey) {
+        setStudyLoading(false);
+        Alert.alert('No API Key', 'Sol needs a key to teach. Add a free Gemini key in Settings — it takes 30 seconds.\n\naistudio.google.com/apikey', [{ text: 'Go to Settings', onPress: () => router.push('/(tabs)/settings') }, { text: 'Later', style: 'cancel' }]);
+        return;
+      }
       const systemPrompt = buildTeacherPrompt(subject, host, ctx, 'intro', 'balanced', isWayfarer);
       const triggerMsg: Message = { role: 'user', content: 'Begin the lesson.' };
       const result = await sendMessage([triggerMsg], systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
@@ -525,7 +529,11 @@ export default function MysterySchoolScreen() {
 
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
-      if (!apiKey) { setStudyLoading(false); return; }
+      if (!apiKey) {
+        setStudyLoading(false);
+        Alert.alert('No API Key', 'Add a key in Settings to continue. Free Gemini key at aistudio.google.com/apikey', [{ text: 'OK' }]);
+        return;
+      }
       const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth, isWayfarer);
       const apiMessages: Message[] = updated.map(m => ({ role: m.role, content: m.content }));
       const result = await sendMessage(apiMessages, systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
@@ -1517,7 +1525,7 @@ export default function MysterySchoolScreen() {
                           setSynthesisLoading(domain.id);
                           try {
                             const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
-                            if (!apiKey) { setSynthesisLoading(null); return; }
+                            if (!apiKey) { setSynthesisLoading(null); Alert.alert('No API Key', 'Add a key in Settings to generate your synthesis.', [{ text: 'OK' }]); return; }
                             const res = await sendMessage(
                               [{ role: 'user', content: `The student has studied: ${studied.map(s => s.name).join(', ')} in ${domain.label}. Write a 3-4 sentence synthesis of what they now understand. Be honest about gaps. No preamble.` }],
                               'You are the Headmaster. Synthesize the student\'s learning with precision and honesty. 3-4 sentences. No flattery.',

@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Platform, TextInput, KeyboardAvoidingView, ScrollView, Animated,
+  Platform, TextInput, KeyboardAvoidingView, ScrollView, Animated, Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,7 +9,37 @@ import { SOL_THEME } from '../constants/theme';
 import { saveUserName, saveProviderKey, savePersona } from '../lib/storage';
 import { useAppMode, AppMode } from '../lib/app-mode';
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
+
+const QUICK_PATHS = [
+  {
+    id: 'thinking',
+    glyph: '⊚',
+    title: 'Thinking Partner',
+    desc: 'Daily questions, journaling, working through ideas out loud.',
+    mode: 'wayfarer' as AppMode,
+    persona: 'sol',
+    color: SOL_THEME.primary,
+  },
+  {
+    id: 'study',
+    glyph: '𝔏',
+    title: 'Study Buddy',
+    desc: 'Deep learning, Mystery School subjects, structured knowledge.',
+    mode: 'seeker' as AppMode,
+    persona: 'headmaster',
+    color: SOL_THEME.headmaster,
+  },
+  {
+    id: 'growth',
+    glyph: '✦',
+    title: 'Growth Journal',
+    desc: 'Self-reflection, field tracking, insight over time.',
+    mode: 'seeker' as AppMode,
+    persona: 'aura-prime',
+    color: SOL_THEME.auraPrime,
+  },
+];
 
 const PERSONAS_SEEKER = [
   {
@@ -137,6 +167,12 @@ export default function OnboardingScreen() {
   const next = () => goTo(Math.min(step + 1, TOTAL_STEPS - 1));
   const back = () => goTo(Math.max(step - 1, 0));
 
+  const handleQuickStart = async (path: typeof QUICK_PATHS[0]) => {
+    await setMode(path.mode);
+    setSelectedPersona(path.persona);
+    goTo(3); // skip mode + persona steps, land on domain picker
+  };
+
   const handleModeSelect = async (m: AppMode) => {
     await setMode(m);
     next();
@@ -187,8 +223,43 @@ export default function OnboardingScreen() {
           showsVerticalScrollIndicator={false}
         >
 
-          {/* STEP 0 — Mode Selection */}
+          {/* STEP 0 — Quick Start Paths */}
           {step === 0 && (
+            <View style={styles.stepContainer}>
+              <Text style={styles.bigGlyph}>◌</Text>
+              <Text style={styles.title}>QUICK START</Text>
+              <Text style={styles.subtitle}>How do you want to use Sol?</Text>
+              <Text style={[styles.bodyText, { marginBottom: 20 }]}>
+                Pick a path to pre-configure your experience. You can change everything later.
+              </Text>
+
+              {QUICK_PATHS.map(path => (
+                <TouchableOpacity
+                  key={path.id}
+                  style={[styles.modeCard, { borderColor: path.color + '88', marginBottom: 10 }]}
+                  onPress={() => handleQuickStart(path)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.modeGlyph, { color: path.color }]}>{path.glyph}</Text>
+                  <Text style={[styles.modeCardTitle, { color: path.color }]}>{path.title}</Text>
+                  <Text style={styles.modeCardDesc}>{path.desc}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                style={{ marginTop: 16, alignItems: 'center', paddingVertical: 12 }}
+                onPress={next}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                  Choose your own path →
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* STEP 1 — Mode Selection */}
+          {step === 1 && (
             <View style={styles.stepContainer}>
               <Text style={styles.bigGlyph}>◌</Text>
               <Text style={styles.title}>SOL</Text>
@@ -238,8 +309,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 1 — Welcome (mode-adapted) */}
-          {step === 1 && (
+          {/* STEP 2 — Welcome (mode-adapted) */}
+          {step === 2 && (
             <View style={styles.stepContainer}>
               {isAdept ? (
                 <>
@@ -332,8 +403,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 2 — Domain interest picker */}
-          {step === 2 && (
+          {/* STEP 3 — Domain interest picker */}
+          {step === 3 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>01 / 04</Text>
               <Text style={styles.stepTitle}>
@@ -387,8 +458,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 3 — Choose persona */}
-          {step === 3 && (
+          {/* STEP 4 — Choose persona */}
+          {step === 4 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>02 / 04</Text>
               <Text style={styles.stepTitle}>
@@ -441,12 +512,28 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 4 — API Key */}
-          {step === 4 && (
+          {/* STEP 5 — API Key */}
+          {step === 5 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>03 / 04</Text>
               <Text style={styles.stepTitle}>Connect the intelligence</Text>
               <Text style={styles.stepSubtitle}>Gemini is free. No credit card. 30 seconds.</Text>
+
+              {/* How to get a key */}
+              <View style={{ width: '100%', backgroundColor: SOL_THEME.surface, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: SOL_THEME.primary + '33' }}>
+                <Text style={{ color: SOL_THEME.primary, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>HOW TO GET A FREE KEY</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20, marginBottom: 12 }}>
+                  {'1. Tap the button below\n2. Sign in with Google\n3. Tap "Create API Key"\n4. Copy and paste it here'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL('https://aistudio.google.com/apikey')}
+                  style={{ backgroundColor: SOL_THEME.primary + '22', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: SOL_THEME.primary + '55', alignItems: 'center' }}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ color: SOL_THEME.primary, fontSize: 13, fontWeight: '700' }}>Open Google AI Studio →</Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.fieldBlock}>
                 <Text style={styles.fieldLabel}>GEMINI API KEY <Text style={styles.freeTag}>FREE</Text></Text>
                 <View style={styles.keyRow}>
@@ -465,14 +552,13 @@ export default function OnboardingScreen() {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.keyHint}>
-                  aistudio.google.com/apikey — it's free and instant.{'\n'}
-                  You can also add OpenAI, Anthropic, Mistral in Settings.
+                  You can also add OpenAI, Anthropic, or Mistral in Settings.
                 </Text>
               </View>
               {!geminiKey.trim() && (
                 <View style={styles.warnBlock}>
                   <Text style={{ fontSize: 13 }}>⚠</Text>
-                  <Text style={styles.warnText}>Without a key Sol cannot respond. You can add one in Settings later, but nothing will work until you do.</Text>
+                  <Text style={styles.warnText}>Without a key Sol cannot respond. You can add one in Settings at any time.</Text>
                 </View>
               )}
               <View style={styles.navRow}>
@@ -491,8 +577,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 5 — Name + Enter */}
-          {step === 5 && (
+          {/* STEP 6 — Name + Enter */}
+          {step === 6 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>04 / 04</Text>
               <Text style={[styles.bigGlyph, { fontSize: 44, marginBottom: 10 }]}>{persona.glyph}</Text>

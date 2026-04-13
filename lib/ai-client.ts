@@ -1,5 +1,7 @@
 // Multi-provider AI client — unified interface
 // Backed by provider registry: Gemini, Anthropic, OpenAI, DeepSeek, Kimi
+import type { ToolDefinition, ToolCall, ToolResult } from './tools/definitions';
+export type { ToolDefinition, ToolCall, ToolResult } from './tools/definitions';
 
 export type MessageImage = {
   base64: string;
@@ -81,6 +83,40 @@ export async function sendMessage(
     },
     tokenBudget,
     temperature,
+  );
+
+  return { text, tokenUsage: capturedUsage, timings: capturedTimings };
+}
+
+// sendWithTools — uses native tool calling for Anthropic/OpenAI, falls back to sendMessage for others
+export async function sendWithTools(
+  messages: Message[],
+  systemPrompt: string,
+  apiKey: string,
+  model: AIModel,
+  tools: ToolDefinition[],
+  executeTools: (calls: ToolCall[]) => Promise<ToolResult[]>,
+  onToolStart?: (toolName: string) => void,
+  tokenBudget: number = 4096,
+  temperature: number = 0.9,
+): Promise<SendResult> {
+  if (!apiKey?.trim()) throw new Error('No API key provided');
+
+  const { getProviderForModel } = await import('./providers/registry');
+  const provider = getProviderForModel(model);
+
+  if (!provider.sendWithTools) {
+    // Provider doesn't support tool calling — fall back to regular send
+    return sendMessage(messages, systemPrompt, apiKey, model, undefined, 'normal', undefined, tokenBudget, temperature);
+  }
+
+  let capturedUsage: TokenUsage | undefined;
+  let capturedTimings: ResponseTimings | undefined;
+
+  const text = await provider.sendWithTools(
+    messages, systemPrompt, apiKey, model, tools, executeTools, onToolStart,
+    (usage, timings) => { capturedUsage = usage; capturedTimings = timings; },
+    tokenBudget, temperature,
   );
 
   return { text, tokenUsage: capturedUsage, timings: capturedTimings };

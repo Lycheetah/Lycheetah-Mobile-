@@ -7,6 +7,7 @@ import {
 import { useRouter } from 'expo-router';
 import { getCognitiveWeatherEnabled, setCognitiveWeatherEnabled, getCognitiveWeatherHour, setCognitiveWeatherHour } from '../../lib/cognitive-weather';
 import { getWeirdQEnabled, setWeirdQEnabled, getWeirdQHour, setWeirdQHour } from '../../lib/weird-questions';
+import { getStreakReminderEnabled, setStreakReminderEnabled, getStreakReminderHour, setStreakReminderHour } from '../../lib/streak-reminder';
 import { SOL_THEME } from '../../constants/theme';
 import { useAppMode } from '../../lib/app-mode';
 import { AIModel } from '../../lib/ai-client';
@@ -27,7 +28,6 @@ import {
   getShowLamagueGloss, saveShowLamagueGloss,
   getSymbolRainEnabled, saveSymbolRainEnabled,
   getPremium, savePremium,
-  getStudiedSubjects,
 } from '../../lib/storage';
 
 export default function SettingsScreen() {
@@ -53,12 +53,13 @@ export default function SettingsScreen() {
   const [chaosMode, setChaosMode] = useState(false);
   const [weirdQEnabled, setWeirdQEnabled_] = useState(false);
   const [weirdQHour, setWeirdQHour_] = useState(9);
+  const [streakReminderOn, setStreakReminderOn] = useState(false);
+  const [streakReminderHour, setStreakReminderHour_] = useState(19);
   const [language, setLanguage_] = useState('English');
   const [lamagueGloss, setLamagueGloss] = useState(false);
   const [symbolRainOn, setSymbolRainOn] = useState(true);
   const [premiumOn, setPremiumOn] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [studiedCount, setStudiedCount] = useState(0);
 
   useEffect(() => {
     getModel().then(m => {
@@ -80,11 +81,12 @@ export default function SettingsScreen() {
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
     getWeirdQEnabled().then(setWeirdQEnabled_);
     getWeirdQHour().then(setWeirdQHour_);
+    getStreakReminderEnabled().then(setStreakReminderOn);
+    getStreakReminderHour().then(setStreakReminderHour_);
     getLanguage().then(setLanguage_);
     getShowLamagueGloss().then(setLamagueGloss);
     getSymbolRainEnabled().then(setSymbolRainOn);
     getPremium().then(setPremiumOn);
-    getStudiedSubjects().then(s => setStudiedCount(s.length));
     Promise.all(PROVIDERS.map(p => getProviderKey(p.id).then(k => ({ id: p.id, key: k || '' }))))
       .then(results => {
         const keys: Record<string, string> = {};
@@ -393,6 +395,40 @@ export default function SettingsScreen() {
         </View>
       )}
 
+      {/* STREAK REMINDER */}
+      <Text style={styles.sectionTitle}>🔥 STREAK REMINDER</Text>
+      <Text style={styles.sectionNote}>A daily nudge to keep your streak alive. One message is all it takes.</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Text style={{ color: SOL_THEME.text, fontSize: 14 }}>Daily reminder</Text>
+        <TouchableOpacity
+          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: streakReminderOn ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: streakReminderOn ? accentColor : SOL_THEME.border }}
+          onPress={async () => {
+            const next = !streakReminderOn;
+            setStreakReminderOn(next);
+            await setStreakReminderEnabled(next);
+            if (next) Alert.alert('🔥 Streak Reminder', 'Sol will nudge you each evening to keep the current alive.');
+          }}
+        >
+          <Text style={{ color: streakReminderOn ? accentColor : SOL_THEME.textMuted, fontSize: 13, fontWeight: '700' }}>{streakReminderOn ? 'ON' : 'OFF'}</Text>
+        </TouchableOpacity>
+      </View>
+      {streakReminderOn && (
+        <View style={{ marginBottom: 16 }}>
+          <Text style={[styles.sectionNote, { marginBottom: 8 }]}>Delivery hour (24h): {streakReminderHour}:00</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {[16, 17, 18, 19, 20, 21].map(h => (
+              <TouchableOpacity
+                key={h}
+                style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: streakReminderHour === h ? accentColor + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: streakReminderHour === h ? accentColor : SOL_THEME.border }}
+                onPress={async () => { setStreakReminderHour_(h); await setStreakReminderHour(h); }}
+              >
+                <Text style={{ color: streakReminderHour === h ? accentColor : SOL_THEME.textMuted, fontSize: 12 }}>{h}:00</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* LANGUAGE */}
       {/* EXPERIENCE MODE */}
       <Text style={styles.sectionTitle}>◌ EXPERIENCE MODE</Text>
@@ -420,37 +456,17 @@ export default function SettingsScreen() {
           </View>
           {mode === 'seeker' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Mystical language, full framework visible. Sol speaks in the field. The Mystery School opens.</Text>}
         </TouchableOpacity>
-        {studiedCount < 25 ? (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => Alert.alert('✦ ADEPT — LOCKED', `Study ${25 - studiedCount} more subject${25 - studiedCount === 1 ? '' : 's'} in the Mystery School to unlock Adept mode.\n\nAdept mode activates the full Sol Protocol — CASCADE layers, AURA invariants, field signatures.`, [{ text: 'Continue Studying', style: 'default' }])}
-            style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface, opacity: 0.6 }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <Text style={{ fontSize: 20, color: SOL_THEME.textMuted }}>✦</Text>
-              <Text style={{ color: SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontWeight: '700' }}>LOCKED</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ flex: 1, height: 3, backgroundColor: SOL_THEME.border, borderRadius: 2 }}>
-                <View style={{ width: `${Math.min((studiedCount / 25) * 100, 100)}%`, height: 3, backgroundColor: '#9B59B6', borderRadius: 2 }} />
-              </View>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{studiedCount}/25</Text>
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => setMode('adept')}
-            style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'adept' ? '#9B59B6' : SOL_THEME.border, backgroundColor: mode === 'adept' ? '#9B59B611' : SOL_THEME.surface }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'adept' ? 6 : 0 }}>
-              <Text style={{ fontSize: 20, color: '#9B59B6' }}>✦</Text>
-              <Text style={{ color: mode === 'adept' ? '#9B59B6' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
-              {mode === 'adept' && <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
-            </View>
-            {mode === 'adept' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs. For practitioners who know the framework.</Text>}
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          onPress={() => setMode('adept')}
+          style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'adept' ? '#9B59B6' : SOL_THEME.border, backgroundColor: mode === 'adept' ? '#9B59B611' : SOL_THEME.surface }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'adept' ? 6 : 0 }}>
+            <Text style={{ fontSize: 20, color: '#9B59B6' }}>✦</Text>
+            <Text style={{ color: mode === 'adept' ? '#9B59B6' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>ADEPT</Text>
+            {mode === 'adept' && <Text style={{ color: '#9B59B6', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
+          </View>
+          {mode === 'adept' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs. For practitioners who know the framework.</Text>}
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>

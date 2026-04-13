@@ -1,5 +1,7 @@
 import { Message } from '../ai-client';
 import { AIProvider, TokenUsage, ResponseTimings } from './types';
+import type { ToolDefinition, ToolCall, ToolResult } from '../tools/definitions';
+import { toAnthropicTool } from '../tools/definitions';
 
 export const AnthropicProvider: AIProvider = {
   id: 'anthropic',
@@ -98,5 +100,98 @@ export const AnthropicProvider: AIProvider = {
       );
     }
     return json.content[0].text;
+  },
+
+  async sendWithTools(messages, systemPrompt, apiKey, model, tools, executeTools, onToolStart, onUsage, tokenBudget = 8192, temperature = 0.9) {
+    const maxTokens = Math.min(Math.max(1, isNaN(tokenBudget) ? 4096 : tokenBudget), 8192);
+    const startTime = Date.now();
+    const anthropicTools = tools.map(toAnthropicTool);
+
+    // Build mutable message array — extended through each tool loop iteration
+    const apiMessages: any[] = messages.map(m => ({
+      role: m.role,
+      content: m.image
+        ? [
+            { type: 'image', source: { type: 'base64', media_type: m.image.mimeType, data: m.image.base64 } },
+            { type: 'text', text: m.content },
+          ]
+        : m.content,
+    }));
+
+    let totalInput = 0;
+    let totalOutput = 0;
+
+    for (let iter = 0; iter < 10; iter++) {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model, max_tokens: maxTokens, temperature,
+          system: systemPrompt,
+          tools: anthropicTools,
+          tool_choice: { type: 'auto' },
+          messages: apiMessages,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as any)?.error?.message || `Anthropic error ${res.status}`);
+      }
+
+      const json = await res.json();
+      if (json.usage) {
+        totalInput += json.usage.input_tokens || 0;
+        totalOutput += json.usage.output_tokens || 0;
+      }
+
+      if (json.stop_reason === 'tool_use') {
+        const toolUseBlocks: any[] = json.content.filter((b: any) => b.type === 'tool_use');
+
+        // Notify UI before execution
+        for (const block of toolUseBlocks) {
+          onToolStart?.(block.name);
+        }
+
+        // Execute all tool calls (parallel)
+        const calls: ToolCall[] = toolUseBlocks.map((b: any) => ({ id: b.id, name: b.name, input: b.input }));
+        const results: ToolResult[] = await executeTools(calls);
+
+        // Append assistant turn (full content array including tool_use blocks)
+        apiMessages.push({ role: 'assistant', content: json.content });
+
+        // Append tool results as a user turn
+        apiMessages.push({
+          role: 'user',
+          content: results.map(r => ({
+            type: 'tool_result',
+            tool_use_id: r.id,
+            content: r.result,
+          })),
+        });
+        // Loop continues
+      } else {
+        // end_turn — extract text and return
+        const text: string = json.content
+          .filter((b: any) => b.type === 'text')
+          .map((b: any) => b.text as string)
+          .join('');
+
+        if (onUsage) {
+          const totalTime = Date.now() - startTime;
+          onUsage(
+            { inputTokens: totalInput, outputTokens: totalOutput, totalTokens: totalInput + totalOutput },
+            { timeToFirstToken: totalTime, totalTime },
+          );
+        }
+        return text;
+      }
+    }
+
+    throw new Error('Tool calling loop exceeded maximum iterations (10)');
   },
 };

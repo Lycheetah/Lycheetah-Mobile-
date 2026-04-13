@@ -1,4 +1,5 @@
 import { Message } from '../ai-client';
+import type { ToolDefinition, ToolCall, ToolResult } from '../tools/definitions';
 
 export type ProviderTier = 'free' | 'paid' | 'freemium';
 
@@ -34,6 +35,19 @@ export interface AIProvider {
     model: string,
     onChunk?: (text: string) => void,
     streamSpeed?: 'fast' | 'normal' | 'slow',
+    onUsage?: (usage: TokenUsage, timings: ResponseTimings) => void,
+    tokenBudget?: number,
+    temperature?: number,
+  ): Promise<string>;
+  // Native tool calling — Anthropic + OpenAI only
+  sendWithTools?(
+    messages: Message[],
+    systemPrompt: string,
+    apiKey: string,
+    model: string,
+    tools: ToolDefinition[],
+    executeTools: (calls: ToolCall[]) => Promise<ToolResult[]>,
+    onToolStart?: (toolName: string) => void,
     onUsage?: (usage: TokenUsage, timings: ResponseTimings) => void,
     tokenBudget?: number,
     temperature?: number,
