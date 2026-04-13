@@ -17,7 +17,7 @@ const QUICK_PATHS = [
     glyph: '⊚',
     title: 'Thinking Partner',
     desc: 'Daily questions, journaling, working through ideas out loud.',
-    mode: 'wayfarer' as AppMode,
+    mode: 'seeker' as AppMode,
     persona: 'sol',
     color: SOL_THEME.primary,
   },
@@ -68,32 +68,6 @@ const PERSONAS_SEEKER = [
   },
 ];
 
-const PERSONAS_WAYFARER = [
-  {
-    id: 'sol', glyph: '⊚', name: 'Sol', color: SOL_THEME.primary,
-    role: 'Warm and thoughtful',
-    desc: 'Meets you where you are. Helps you think things through with clarity and care.',
-    sample: '"I\'m here to think with you. What\'s on your mind?"',
-  },
-  {
-    id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
-    role: 'Patient teacher',
-    desc: 'Deep knowledge delivered calmly. Ideal for learning, exploration, and building understanding over time.',
-    sample: '"Every great mind started with a single question. What\'s yours?"',
-  },
-  {
-    id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra,
-    role: 'Precise and direct',
-    desc: 'Gets to the point. No fluff. Ideal for problem-solving and thinking clearly under pressure.',
-    sample: '"Tell me what you\'re trying to figure out. I\'ll help you get there."',
-  },
-  {
-    id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime,
-    role: 'Rigorous and honest',
-    desc: 'Checks every claim. Tells you what it actually thinks. Truth before reassurance — always.',
-    sample: '"I\'ll tell you what I actually think. Where do you want to start?"',
-  },
-];
 
 const PERSONAS_ADEPT = [
   {
@@ -150,10 +124,10 @@ export default function OnboardingScreen() {
   const [geminiKey, setGeminiKey] = useState('');
   const [keyVisible, setKeyVisible] = useState(false);
 
-  const { mode, setMode, isWayfarer, isAdept } = useAppMode();
+  const { mode, setMode, isAdept } = useAppMode();
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  const personas = isAdept ? PERSONAS_ADEPT : isWayfarer ? PERSONAS_WAYFARER : PERSONAS_SEEKER;
+  const personas = isAdept ? PERSONAS_ADEPT : PERSONAS_SEEKER;
   const persona = personas.find(p => p.id === selectedPersona) ?? personas[0];
 
   const goTo = (next: number) => {
@@ -269,19 +243,6 @@ export default function OnboardingScreen() {
               </Text>
 
               <TouchableOpacity
-                style={[styles.modeCard, { borderColor: '#4A9EFF88' }]}
-                onPress={() => handleModeSelect('wayfarer')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.modeGlyph, { color: '#4A9EFF' }]}>◦</Text>
-                <Text style={[styles.modeCardTitle, { color: '#4A9EFF' }]}>WAYFARER</Text>
-                <Text style={styles.modeCardDesc}>
-                  Clean and warm. Plain language, no jargon.
-                  Mindfulness, psychology, philosophy — start here if this is new to you.
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
                 style={[styles.modeCard, { borderColor: SOL_THEME.primary + '88', marginTop: 10 }]}
                 onPress={() => handleModeSelect('seeker')}
                 activeOpacity={0.8}
@@ -340,34 +301,6 @@ export default function OnboardingScreen() {
                     <Text style={styles.primaryButtonText}>Enter the field →</Text>
                   </TouchableOpacity>
                 </>
-              ) : isWayfarer ? (
-                <>
-                  <Text style={styles.bigGlyph}>◦</Text>
-                  <Text style={styles.title}>SOL</Text>
-                  <Text style={styles.atmospheric}>Welcome.</Text>
-                  <Text style={styles.bodyText}>
-                    A thinking partner and a place to learn.{'\n\n'}
-                    Sol helps you think clearly, feel heard, and grow in whatever direction you choose.
-                    The Learn tab holds 17 areas of study — mindfulness, psychology, philosophy,
-                    the body, ancient wisdom, and more.{'\n\n'}
-                    Your path through them is yours alone.
-                  </Text>
-                  <View style={styles.twoCol}>
-                    <View style={[styles.pillCard, { borderColor: SOL_THEME.primary + '55' }]}>
-                      <Text style={{ color: SOL_THEME.primary, fontSize: 18, marginBottom: 4 }}>⊚</Text>
-                      <Text style={[styles.pillLabel, { color: SOL_THEME.primary }]}>YOUR GUIDE</Text>
-                      <Text style={styles.pillDesc}>AI partner. 4 voices. Always honest.</Text>
-                    </View>
-                    <View style={[styles.pillCard, { borderColor: SOL_THEME.headmaster + '55' }]}>
-                      <Text style={{ color: SOL_THEME.headmaster, fontSize: 18, marginBottom: 4 }}>𝔏</Text>
-                      <Text style={[styles.pillLabel, { color: SOL_THEME.headmaster }]}>THE SCHOOL</Text>
-                      <Text style={styles.pillDesc}>17 areas. Deep topics. Your path.</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity style={styles.primaryButton} onPress={next}>
-                    <Text style={styles.primaryButtonText}>Explore →</Text>
-                  </TouchableOpacity>
-                </>
               ) : (
                 <>
                   <Text style={styles.bigGlyph}>⊚</Text>
@@ -407,13 +340,9 @@ export default function OnboardingScreen() {
           {step === 3 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>01 / 04</Text>
-              <Text style={styles.stepTitle}>
-                {isWayfarer ? 'What calls to you?' : 'Where does your interest pull?'}
-              </Text>
+              <Text style={styles.stepTitle}>Where does your interest pull?</Text>
               <Text style={styles.stepSubtitle}>
-                {isWayfarer
-                  ? 'Pick the areas that draw you most.\nYour guide will remember.'
-                  : 'Select the domains you\'re drawn to.\nThe field will take note.'}
+                {'Select the domains you\'re drawn to.\nThe field will take note.'}
               </Text>
               <View style={styles.domainGrid}>
                 {DOMAINS.map(d => {
@@ -449,9 +378,7 @@ export default function OnboardingScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={next}>
                   <Text style={styles.primaryButtonText}>
-                    {selectedDomains.size > 0
-                      ? (isWayfarer ? 'Choose your voice →' : 'Choose your guide →')
-                      : 'Skip →'}
+                    {selectedDomains.size > 0 ? 'Choose your guide →' : 'Skip →'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -462,9 +389,7 @@ export default function OnboardingScreen() {
           {step === 4 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>02 / 04</Text>
-              <Text style={styles.stepTitle}>
-                {isWayfarer ? 'Choose your voice' : 'Choose your guide'}
-              </Text>
+              <Text style={styles.stepTitle}>Choose your guide</Text>
               <Text style={styles.stepSubtitle}>You can switch any time in Settings.</Text>
               <View style={styles.personaGrid}>
                 {personas.map(p => {
@@ -583,7 +508,7 @@ export default function OnboardingScreen() {
               <Text style={styles.stepLabel}>04 / 04</Text>
               <Text style={[styles.bigGlyph, { fontSize: 44, marginBottom: 10 }]}>{persona.glyph}</Text>
               <Text style={[styles.stepTitle, { color: persona.color }]}>
-                {isWayfarer ? `${persona.name} is here.` : `${persona.name} is ready.`}
+                {`${persona.name} is ready.`}
               </Text>
               <Text style={styles.stepSubtitle}>What should {persona.name} call you?</Text>
               <View style={styles.fieldBlock}>
@@ -606,9 +531,7 @@ export default function OnboardingScreen() {
                 </View>
               )}
               <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 20, lineHeight: 18 }}>
-                {isWayfarer
-                  ? `Your space is ready.\nStart when you are.`
-                  : `The field is ready.\nThe school is open.\nThe Work begins now.`}
+                {`The field is ready.\nThe school is open.\nThe Work begins now.`}
               </Text>
               <View style={styles.navRow}>
                 <TouchableOpacity style={styles.backButton} onPress={back}>
@@ -619,9 +542,7 @@ export default function OnboardingScreen() {
                   onPress={handleBegin}
                 >
                   <Text style={[styles.primaryButtonText, { color: SOL_THEME.background }]}>
-                    {isWayfarer
-                      ? (name.trim() ? `Begin as ${name.trim()} →` : 'Begin →')
-                      : (name.trim() ? `Enter as ${name.trim()} →` : 'Enter the Field →')}
+                    {name.trim() ? `Enter as ${name.trim()} →` : 'Enter the Field →'}
                   </Text>
                 </TouchableOpacity>
               </View>

@@ -75,7 +75,6 @@ function getDomainArcPhase(studiedInDomain: number): ArcPhase {
 function buildTeacherPrompt(
   subject: Subject, host: string, fieldContext: string,
   arcPhase: ArcPhase = 'intro', studentDepth: 'shallow' | 'deep' | 'balanced' = 'balanced',
-  isWayfarer = false,
 ): string {
   const arcGuidance = {
     intro: 'Open with 1-2 sentences of contextual grounding. Present the single most important core concept with precision.',
@@ -86,9 +85,6 @@ function buildTeacherPrompt(
       : 'Offer a reflection that connects this subject to the student\'s broader path. Be honest if they\'re missing something.',
     advanced: 'The student is ready for the edge. Advance to the most nuanced aspect of this subject. Do not simplify.',
   }[arcPhase];
-  const wayfarerInstruction = isWayfarer
-    ? `\n\nLANGUAGE: Plain and warm. No alchemical terms, mystical jargon, framework labels (AURA, CASCADE, Nigredo, field coherence, etc.), or symbolic sign-offs. Teach this subject in clear, everyday language. Be a knowledgeable friend, not a mystery school initiator.`
-    : '';
   return `You are ${TEACHER_NAMES[host]}, teaching "${subject.name}" in the Sol Mystery School.
 
 [Session Arc: ${arcPhase.toUpperCase()}] ${arcGuidance}
@@ -99,14 +95,14 @@ ${subject.traditions ? `Traditions: ${subject.traditions.join(', ')}` : ''}
 Description: ${subject.description}
 ${fieldContext ? `\n${fieldContext}` : ''}
 
-You are the teacher here. Stay on this subject. Build lesson by lesson — one idea at a time. Do not repeat what has already been covered. Be the ${TEACHER_NAMES[host]} — not an assistant. End each response with ONE question or invitation.${wayfarerInstruction}`;
+You are the teacher here. Stay on this subject. Build lesson by lesson — one idea at a time. Do not repeat what has already been covered. Be the ${TEACHER_NAMES[host]} — not an assistant. End each response with ONE question or invitation.`;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function MysterySchoolScreen() {
   const router = useRouter();
-  const { t, isWayfarer, mode, setMode } = useAppMode();
+  const { t, mode, setMode } = useAppMode();
 
   // Navigation state
   const [schoolView, setSchoolView] = useState<SchoolView>('home');
@@ -490,7 +486,7 @@ export default function MysterySchoolScreen() {
         Alert.alert('No API Key', 'Sol needs a key to teach. Add a free Gemini key in Settings — it takes 30 seconds.\n\naistudio.google.com/apikey', [{ text: 'Go to Settings', onPress: () => router.push('/(tabs)/settings') }, { text: 'Later', style: 'cancel' }]);
         return;
       }
-      const systemPrompt = buildTeacherPrompt(subject, host, ctx, 'intro', 'balanced', isWayfarer);
+      const systemPrompt = buildTeacherPrompt(subject, host, ctx, 'intro', 'balanced');
       const triggerMsg: Message = { role: 'user', content: 'Begin the lesson.' };
       const result = await sendMessage([triggerMsg], systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
       const opener = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
@@ -534,7 +530,7 @@ export default function MysterySchoolScreen() {
         Alert.alert('No API Key', 'Add a key in Settings to continue. Free Gemini key at aistudio.google.com/apikey', [{ text: 'OK' }]);
         return;
       }
-      const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth, isWayfarer);
+      const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth);
       const apiMessages: Message[] = updated.map(m => ({ role: m.role, content: m.content }));
       const result = await sendMessage(apiMessages, systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
       const reply = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
@@ -1085,12 +1081,10 @@ export default function MysterySchoolScreen() {
               <View style={{ marginBottom: 14, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.headmaster + '55', backgroundColor: SOL_THEME.headmaster + '08', alignItems: 'center' }}>
                 <Text style={{ color: SOL_THEME.headmaster, fontSize: 28, marginBottom: 8 }}>𝔏</Text>
                 <Text style={{ color: SOL_THEME.text, fontSize: 15, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>
-                  {isWayfarer ? "You're here. Start anywhere." : 'The school is open.'}
+                  {'The school is open.'}
                 </Text>
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: dailySuggestion ? 14 : 0 }}>
-                  {isWayfarer
-                    ? 'Pick any topic below — your guide will meet you there and build a lesson around it.'
-                    : 'Choose a domain and the Headmaster guides you through it. Begin with Foundation — or let the field choose.'}
+                  {'Choose a domain and the Headmaster guides you through it. Begin with Foundation — or let the field choose.'}
                 </Text>
                 {dailySuggestion && (
                   <TouchableOpacity
@@ -1120,7 +1114,7 @@ export default function MysterySchoolScreen() {
                 <Text style={{ color: dailySuggestion.domain.color, fontSize: 20 }}>{dailySuggestion.domain.glyph}</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 2 }}>
-                    {isWayfarer ? "◦ TODAY'S SUGGESTION" : "⊙ TODAY'S SUBJECT"}
+                    {"⊙ TODAY'S SUBJECT"}
                   </Text>
                   <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>{dailySuggestion.subject.name}</Text>
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{t(dailySuggestion.domain.label)} · {t(LAYER_LABELS[dailySuggestion.subject.layer])}</Text>
@@ -1137,7 +1131,7 @@ export default function MysterySchoolScreen() {
                    schoolNotice.type === 'cluster' ? '⊙ THE SCHOOL NOTICES' :
                    schoolNotice.type === 'gap' ? '⊙ STRUCTURAL GAP DETECTED' :
                    schoolNotice.type === 'ready' ? '⊙ YOU ARE READY' :
-                   isWayfarer ? '◦ RECOMMENDED FOR YOU' : '⊙ RECOMMENDED FOR YOU NOW'}
+                   '⊙ RECOMMENDED FOR YOU NOW'}
                 </Text>
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 10 }}>{schoolNotice.message}</Text>
                 <View style={{ gap: 8 }}>
@@ -1366,9 +1360,7 @@ export default function MysterySchoolScreen() {
 
             <View style={{ marginTop: 32, paddingTop: 16, borderTopWidth: 1, borderTopColor: SOL_THEME.border, alignItems: 'center' }}>
               <Text style={{ fontSize: 12, color: SOL_THEME.textMuted, textAlign: 'center', lineHeight: 20, fontStyle: 'italic' }}>
-                {isWayfarer
-                  ? `Learning is not a place you arrive at.\nIt is a way of moving through the world.`
-                  : `The Mystery School is not a place you graduate from.\nIt is a way of seeing that, once learned, cannot be unlearned.`}
+                {`The Mystery School is not a place you graduate from.\nIt is a way of seeing that, once learned, cannot be unlearned.`}
               </Text>
             </View>
           </>

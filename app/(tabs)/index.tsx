@@ -279,7 +279,7 @@ function statusColor(status: string, accent: string): string {
 }
 
 export default function SolChat() {
-  const { mode: appMode, isWayfarer } = useAppMode();
+  const { mode: appMode } = useAppMode();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -482,7 +482,7 @@ export default function SolChat() {
 
   // Task 9: triggerSymbolRain accepts optional count (default 12) and opacity override
   function triggerSymbolRain(count?: number, opacityOverride?: number) {
-    if (!symbolRainEnabled || isWayfarer) return;
+    if (!symbolRainEnabled) return;
     const glyphs = premiumEnabled
       ? (PERSONA_RAIN_GLYPHS[persona] || PERSONA_RAIN_GLYPHS.sol)
       : PERSONA_RAIN_GLYPHS.sol;
@@ -2178,7 +2178,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             })() : (
               <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } }}>{body}</Markdown>
             )}
-            {signature && showSignatures && !isWayfarer && (
+            {signature && showSignatures && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
                 <Text selectable style={[styles.signatureText, { color: accent }]}>{signature}</Text>
               </View>
@@ -2202,8 +2202,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               </View>
             )}
 
-            {/* AURA row — tap to expand audit trail (Seeker only) */}
-            {!isUser && aura && !isWayfarer && (
+            {/* AURA row — tap to expand audit trail */}
+            {!isUser && aura && (
               <TouchableOpacity
                 onPress={() => {
                   setExpandedAura(expandedAura === item.id ? null : item.id);
@@ -2334,8 +2334,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               ))}
             </View>
           )}
-          {/* #69 LAMAGUE Symbol Glossary — opt-in, Seeker only */}
-          {!isUser && showLamagueGloss && !isWayfarer && (() => {
+          {/* #69 LAMAGUE Symbol Glossary — opt-in */}
+          {!isUser && showLamagueGloss && (() => {
             const detected = LAMAGUE_SPECIFIC.filter(({ sym }) => body.includes(sym));
             if (detected.length === 0) return null;
             return (

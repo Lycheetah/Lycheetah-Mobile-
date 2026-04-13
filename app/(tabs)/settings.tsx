@@ -432,19 +432,8 @@ export default function SettingsScreen() {
       {/* LANGUAGE */}
       {/* EXPERIENCE MODE */}
       <Text style={styles.sectionTitle}>◌ EXPERIENCE MODE</Text>
-      <Text style={styles.sectionNote}>Three doors into the same building. The AI voice changes with each.</Text>
+      <Text style={styles.sectionNote}>Two doors into the same building. The AI voice changes with each.</Text>
       <View style={{ gap: 8, marginBottom: 20 }}>
-        <TouchableOpacity
-          onPress={() => setMode('wayfarer')}
-          style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.border, backgroundColor: mode === 'wayfarer' ? '#4A9EFF11' : SOL_THEME.surface }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: mode === 'wayfarer' ? 6 : 0 }}>
-            <Text style={{ fontSize: 20, color: '#4A9EFF' }}>◦</Text>
-            <Text style={{ color: mode === 'wayfarer' ? '#4A9EFF' : SOL_THEME.textMuted, fontWeight: '700', fontSize: 12, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', flex: 1 }}>WAYFARER</Text>
-            {mode === 'wayfarer' && <Text style={{ color: '#4A9EFF', fontSize: 10, fontWeight: '700' }}>ACTIVE</Text>}
-          </View>
-          {mode === 'wayfarer' && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 17 }}>Plain language, warm framing. Sol speaks as a friendly thinking partner. No jargon required.</Text>}
-        </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setMode('seeker')}
           style={{ padding: 14, borderRadius: 12, borderWidth: 1.5, borderColor: mode === 'seeker' ? SOL_THEME.primary : SOL_THEME.border, backgroundColor: mode === 'seeker' ? SOL_THEME.primary + '11' : SOL_THEME.surface }}
