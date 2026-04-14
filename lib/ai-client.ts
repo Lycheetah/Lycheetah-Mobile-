@@ -88,6 +88,46 @@ export async function sendMessage(
   return { text, tokenUsage: capturedUsage, timings: capturedTimings };
 }
 
+// Free tier proxy — routes through Cloudflare Worker when no API key is set
+const FREE_TIER_PROXY = 'https://sol-main-proxy.banduabusiness.workers.dev/';
+
+export async function sendViaFreeTier(
+  messages: Message[],
+  systemPrompt: string,
+  deviceId: string,
+): Promise<{ text: string; limitReached: boolean; remaining: number }> {
+  const payload = {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+    ],
+    temperature: 0.9,
+    max_tokens: 2000,
+  };
+
+  const response = await fetch(FREE_TIER_PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Device-ID': deviceId,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.status === 429) {
+    return { text: '', limitReached: true, remaining: 0 };
+  }
+
+  if (!response.ok) {
+    throw new Error(`Proxy error ${response.status}`);
+  }
+
+  const remaining = parseInt(response.headers.get('X-Messages-Remaining') ?? '0');
+  const data = await response.json();
+  const text = data.choices?.[0]?.message?.content ?? '';
+  return { text, limitReached: false, remaining };
+}
+
 // sendWithTools — uses native tool calling for Anthropic/OpenAI, falls back to sendMessage for others
 export async function sendWithTools(
   messages: Message[],

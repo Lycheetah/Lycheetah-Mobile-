@@ -12,7 +12,7 @@ import { Accelerometer } from 'expo-sensors';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
-import { sendMessage, sendWithTools, Message, AIModel } from '../../lib/ai-client';
+import { sendMessage, sendWithTools, sendViaFreeTier, Message, AIModel } from '../../lib/ai-client';
 import { getActiveTools, TOOL_DISPLAY } from '../../lib/tools/definitions';
 import { executeTool, ExecutorContext } from '../../lib/tools/executor';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
@@ -47,7 +47,7 @@ import {
   getFontFamily, getBubbleGlow, getShowSignatures, getShowTokenBadge, getShowMetabolism,
   getLanguage, getShowLamagueGloss, getSymbolRainEnabled,
   getPendingSubjectContext, clearPendingSubjectContext,
-  getPremium,
+  getPremium, getFreeTierCount, incrementFreeTierCount, getDeviceId,
 } from '../../lib/storage';
 import { updateFieldProfile, getFieldProfile, formatProfileForContext } from '../../lib/intelligence/field-profile';
 import { getFieldNote } from '../../lib/field-notes';
@@ -335,6 +335,9 @@ export default function SolChat() {
   const [symbolRainEnabled, setSymbolRainEnabled] = useState(true);
   const [premiumEnabled, setPremiumEnabled] = useState(false);
   const [chaosMode, setChaosMode] = useState(false);
+  const [freeTierCount, setFreeTierCount] = useState(0);
+  const [freeTierLimitReached, setFreeTierLimitReached] = useState(false);
+  const FREE_TIER_LIMIT = 10;
   const [councilFired, setCouncilFired] = useState(false);
   const [fieldInsightActive, setFieldInsightActive] = useState(false);
   const [fieldPulseActive, setFieldPulseActive] = useState(false);
@@ -944,6 +947,7 @@ export default function SolChat() {
     getShowLamagueGloss().then(v => setShowLamagueGloss(v));
     getSymbolRainEnabled().then(v => setSymbolRainEnabled(v));
     getPremium().then(v => setPremiumEnabled(v));
+    getFreeTierCount().then(c => { setFreeTierCount(c); if (c >= 10) setFreeTierLimitReached(true); });
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
     AsyncStorage.getItem('sol_initiated').then(v => { if (!v) setShowInitiation(true); });
     AsyncStorage.getItem('sol_aura_explained').then(v => { if (v) setAuraExplainerShown(true); });
@@ -1185,10 +1189,72 @@ export default function SolChat() {
       : 'API';
 
     if (!apiKey || !apiKey.trim()) {
-      Alert.alert(
-        `No ${provider} Key`,
-        `Go to Settings and add your ${provider} API key first.`
-      );
+      // Free tier path — no API key set
+      if (freeTierLimitReached) {
+        Alert.alert(
+          'Free limit reached',
+          'You have used your 10 free messages for today. Add an API key in Settings to continue.'
+        );
+        return;
+      }
+
+      // Build system prompt and context as normal, then send via proxy
+      const variant = await getVariant();
+      const basePrompt = resolvePrompt(selectBasePrompt(persona, variant, appMode), userName);
+      const fieldProfile = await getFieldProfile();
+      const profileLine = formatProfileForContext(fieldProfile);
+      const contextBlock = [
+        profileLine ? profileLine : '',
+        contextMemory.length > 0 ? `[User Context]\n${contextMemory.map(m => `• ${m}`).join('\n')}` : '',
+        projectContext.trim() ? `[Project Context]\n${projectContext.trim().slice(0, 800)}` : '',
+      ].filter(Boolean).join('\n\n');
+      const styleInstruction = getStyle(replyStyle).instruction;
+      const freeSystemPrompt = `${getCompiledSpec(persona)}\n\n${styleInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}`;
+
+      const userMsg: DisplayMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: text,
+        mode: detectMode(text),
+        persona,
+      };
+      const updatedMessages = [...messages, userMsg];
+      setMessages(updatedMessages);
+      setInput('');
+      setLoading(true);
+
+      try {
+        const deviceId = await getDeviceId();
+        const apiMessages: Message[] = updatedMessages.map(m => ({ role: m.role, content: m.content }));
+        const result = await sendViaFreeTier(apiMessages, freeSystemPrompt, deviceId);
+
+        if (result.limitReached) {
+          setFreeTierLimitReached(true);
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: "You have reached your 10 free messages for today. Add an API key in Settings to keep going.",
+          } as DisplayMessage]);
+        } else {
+          const newCount = await incrementFreeTierCount();
+          setFreeTierCount(newCount);
+          if (newCount >= FREE_TIER_LIMIT) setFreeTierLimitReached(true);
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: result.text,
+            mode: 'RUBEDO' as Mode,
+            persona,
+          } as DisplayMessage]);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Something went wrong';
+        const isOffline = msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch');
+        Alert.alert(isOffline ? 'No connection' : 'Error', isOffline ? 'Check your internet and try again.' : msg);
+        setMessages(prev => prev.slice(0, -1));
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -2659,6 +2725,28 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         </View>
       )}
 
+      {/* Free tier banner — shown when no API key is set */}
+      {!freeTierLimitReached && freeTierCount > 0 && (
+        <TouchableOpacity
+          style={styles.freeTierBanner}
+          onPress={() => router.push('/settings')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.freeTierText}>
+            {FREE_TIER_LIMIT - freeTierCount} free {FREE_TIER_LIMIT - freeTierCount === 1 ? 'message' : 'messages'} left today — add your key in Settings for unlimited →
+          </Text>
+        </TouchableOpacity>
+      )}
+      {freeTierLimitReached && (
+        <TouchableOpacity
+          style={[styles.freeTierBanner, styles.freeTierLimitBanner]}
+          onPress={() => router.push('/settings')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.freeTierText}>Daily free limit reached — add your key in Settings to continue →</Text>
+        </TouchableOpacity>
+      )}
+
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -3817,6 +3905,15 @@ const styles = StyleSheet.create({
   clearButton: { padding: 4 },
   clearText: { fontSize: 14, color: SOL_THEME.textMuted },
   messageList: { padding: 12, paddingBottom: 8 },
+  freeTierBanner: {
+    backgroundColor: '#1A1000',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#3A2800',
+  },
+  freeTierLimitBanner: { backgroundColor: '#1A0A00', borderBottomColor: '#5A2000' },
+  freeTierText: { fontSize: 11, color: '#F5A623', textAlign: 'center' },
   messageRow: {
     flexDirection: 'row',
     marginBottom: 12,

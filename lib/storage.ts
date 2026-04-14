@@ -361,3 +361,31 @@ export async function getActiveKey(): Promise<string | null> {
   const provider = getProviderFromModel(model as any);
   return getProviderKey(provider);
 }
+
+// Free tier — 10 messages/day, resets at midnight
+const FREE_TIER_KEY = 'sol_free_tier_count';
+
+export async function getFreeTierCount(): Promise<number> {
+  const raw = await AsyncStorage.getItem(FREE_TIER_KEY);
+  if (!raw) return 0;
+  const { date, count } = JSON.parse(raw);
+  const today = new Date().toISOString().split('T')[0];
+  return date === today ? count : 0;
+}
+
+export async function incrementFreeTierCount(): Promise<number> {
+  const today = new Date().toISOString().split('T')[0];
+  const current = await getFreeTierCount();
+  const newCount = current + 1;
+  await AsyncStorage.setItem(FREE_TIER_KEY, JSON.stringify({ date: today, count: newCount }));
+  return newCount;
+}
+
+export async function getDeviceId(): Promise<string> {
+  const KEY = 'sol_device_id';
+  const existing = await AsyncStorage.getItem(KEY);
+  if (existing) return existing;
+  const id = `sol-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  await AsyncStorage.setItem(KEY, id);
+  return id;
+}
