@@ -3,7 +3,7 @@
 
 A constitutional AI mobile app built on the open-source [Lycheetah Framework](https://github.com/Lycheetah) by Mackenzie Conor James Clark. Not a chatbot wrapper — a transparent architecture you can watch running.
 
-**Current release: v3.22.0 — "The Launch Build"** · April 13, 2026
+**Current release: v3.24.0** · April 24, 2026
 
 ---
 
@@ -12,7 +12,8 @@ A constitutional AI mobile app built on the open-source [Lycheetah Framework](ht
 Most AI apps give you a chat window. Sol gives you a framework.
 
 - **4 personas** — Sol · Veyra · Aura Prime · Headmaster — each with a distinct voice, role, and system architecture
-- **3 experience modes** — Wayfarer (plain language) · Seeker (full field) · Adept (full protocol, CASCADE + AURA active)
+- **2 experience modes** — Seeker (full field) · Adept (full protocol, CASCADE + AURA active)
+- **Free tier** — 15 messages/day with no API key required. Add your own key for unlimited use.
 - **5 AI providers** — Gemini (free) · Claude · GPT-4o · Mistral · OpenRouter — your keys, your data, nothing stored remotely
 - **8 real tools** — Wikipedia · DuckDuckGo · Web Search · URL reader · Calculator · Save Insight · Datetime · Subject Search — wired at the API level for Claude and OpenAI
 - **AURA scoring** — every response scored live against 7 constitutional invariants
@@ -28,13 +29,16 @@ Most AI apps give you a chat window. Sol gives you a framework.
 
 ## Quick Start
 
-**Free — no credit card needed:**
+**No account needed — just install and open.**
+
+Sol includes 15 free messages per day via the Sol proxy. No API key, no sign-up, no credit card. Open the app and start.
+
+**For unlimited use:** Add your own API key in Settings.
 
 1. Get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (Google sign-in, instant)
-2. Download the APK from [Releases](https://github.com/Lycheetah/Lycheetah-Mobile-/releases)
-3. Enable "Install from unknown sources" on Android → install → paste key in Settings
+2. Open Settings → paste your key → unlimited messages
 
-**Other providers:** Add keys for Claude, OpenAI, Mistral, or OpenRouter in Settings at any time.
+**Other providers:** Claude, OpenAI, Mistral, and OpenRouter are all supported. Your keys never leave your device.
 
 ---
 
@@ -42,8 +46,7 @@ Most AI apps give you a chat window. Sol gives you a framework.
 
 | Mode | Who it's for |
 |------|-------------|
-| **WAYFARER** | New to the framework. Plain language, warm framing, no jargon. |
-| **SEEKER** | Comfortable with mystical and philosophical language. Full field visible. |
+| **SEEKER** | Comfortable with philosophical and mystical language. Full field visible. |
 | **ADEPT** | Practitioners who know CASCADE and AURA. Full protocol active, signed outputs. |
 
 Switch any time in Settings. No lock, no gate.
