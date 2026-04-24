@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../constants/theme';
 import { AppModeProvider } from '../lib/app-mode';
+import { SkinProvider } from '../lib/premium/SkinContext';
 
 const ONBOARDING_KEY = 'lycheetah_onboarded';
 
@@ -22,23 +23,25 @@ export default function RootLayout() {
   if (onboarded === null) return null; // splash still showing
 
   return (
-    <AppModeProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: SOL_THEME.background },
-          headerTintColor: SOL_THEME.primary,
-          headerTitleStyle: { color: SOL_THEME.text },
-          contentStyle: { backgroundColor: SOL_THEME.background },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="onboarding"
-          options={{ headerShown: false, gestureEnabled: false }}
-        />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
-    </AppModeProvider>
+    <SkinProvider>
+      <AppModeProvider>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: SOL_THEME.background },
+            headerTintColor: SOL_THEME.primary,
+            headerTitleStyle: { color: SOL_THEME.text },
+            contentStyle: { backgroundColor: SOL_THEME.background },
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="onboarding"
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+      </AppModeProvider>
+    </SkinProvider>
   );
 }

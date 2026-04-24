@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sol",
     "slug": "lycheetah-mobile",
-    "version": "3.24.0",
+    "version": "4.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -26,7 +26,7 @@
         "backgroundColor": "#0A0A0A"
       },
       "package": "com.lycheetah.sol",
-      "versionCode": 24,
+      "versionCode": 25,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
