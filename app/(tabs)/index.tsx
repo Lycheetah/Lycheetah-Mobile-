@@ -337,7 +337,7 @@ export default function SolChat() {
   const [chaosMode, setChaosMode] = useState(false);
   const [freeTierCount, setFreeTierCount] = useState(0);
   const [freeTierLimitReached, setFreeTierLimitReached] = useState(false);
-  const FREE_TIER_LIMIT = 10;
+  const FREE_TIER_LIMIT = 15;
   const [councilFired, setCouncilFired] = useState(false);
   const [fieldInsightActive, setFieldInsightActive] = useState(false);
   const [fieldPulseActive, setFieldPulseActive] = useState(false);
