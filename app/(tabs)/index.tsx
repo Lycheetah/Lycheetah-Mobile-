@@ -1195,7 +1195,7 @@ export default function SolChat() {
       if (freeTierLimitReached) {
         Alert.alert(
           'Free limit reached',
-          'You have used your 10 free messages for today. Add an API key in Settings to continue.'
+          `You have used your ${FREE_TIER_LIMIT} free messages for today. Add an API key in Settings to continue.`
         );
         return;
       }
@@ -1235,7 +1235,7 @@ export default function SolChat() {
           setMessages(prev => [...prev, {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: "You have reached your 10 free messages for today. Add an API key in Settings to keep going.",
+            content: `You have reached your ${FREE_TIER_LIMIT} free messages for today. Add an API key in Settings to keep going.`,
           } as DisplayMessage]);
         } else {
           const newCount = await incrementFreeTierCount();
