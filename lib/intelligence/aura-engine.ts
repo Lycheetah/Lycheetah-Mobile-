@@ -52,7 +52,7 @@ export type AURAMetrics = {
   VTR: TriAxialResult;   // Value Transfer Ratio — VTR = Value/Friction, threshold > 1.5
   PAI: TriAxialResult;   // Protective Alignment Index — PAI = 0.90 - violations×0.10, threshold > 0.80
   composite: number;     // 0–100 weighted composite
-  audit: AURAAuditTrail; // full constitutional decision record
+  audit?: AURAAuditTrail; // full constitutional decision record
 };
 
 // ─── INVARIANT TESTS ────────────────────────────────────────────────────────

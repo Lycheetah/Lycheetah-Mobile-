@@ -93,7 +93,7 @@ export function buildFrameworkContext(
   mode: Mode,
   ews: EmotionalState,
   isNRM: boolean,
-  persona: 'sol' | 'veyra' | 'aura-prime' = 'sol',
+  persona: 'sol' | 'veyra' | 'aura-prime' | 'headmaster' = 'sol',
 ): string {
   const interval = EWM_INTERVALS[ews];
   let personaLabel: string;

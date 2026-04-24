@@ -1,0 +1,23 @@
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_ANON_KEY EXPO_PUBLIC_SUPABASE_URL
+Starting project at C:\Users\thedo\lycheetah-mobile
+Starting Metro Bundler
+
+The following packages should be updated for best compatibility with the installed expo version:
+  @expo/metro-runtime@55.0.7 - expected version: ~55.0.9
+  expo@55.0.9 - expected version: ~55.0.14
+  expo-constants@55.0.11 - expected version: ~55.0.13
+  expo-haptics@55.0.9 - expected version: ~55.0.14
+  expo-image-picker@55.0.14 - expected version: ~55.0.18
+  expo-local-authentication@55.0.11 - expected version: ~55.0.13
+  expo-notifications@55.0.16 - expected version: ~55.0.18
+  expo-router@55.0.8 - expected version: ~55.0.12
+  expo-secure-store@55.0.9 - expected version: ~55.0.13
+  expo-sensors@55.0.11 - expected version: ~55.0.13
+  expo-speech@55.0.11 - expected version: ~55.0.13
+  expo-status-bar@55.0.4 - expected version: ~55.0.5
+  expo-updates@55.0.16 - expected version: ~55.0.20
+  @types/react@19.1.17 - expected version: ~19.2.10
+Your project may not work correctly until you install the expected versions of the packages.
+Waiting on http://localhost:8081
+Logs for your project will appear below.

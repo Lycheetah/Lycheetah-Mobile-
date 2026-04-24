@@ -147,7 +147,7 @@ export async function sendWithTools(
 
   if (!provider.sendWithTools) {
     // Provider doesn't support tool calling — fall back to regular send
-    return sendMessage(messages, systemPrompt, apiKey, model, undefined, 'normal', undefined, tokenBudget, temperature);
+    return sendMessage(messages, systemPrompt, apiKey, model, undefined, 'normal', tokenBudget, temperature);
   }
 
   let capturedUsage: TokenUsage | undefined;

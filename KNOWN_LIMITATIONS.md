@@ -101,4 +101,4 @@ Early transparency about limitations builds more trust than overclaiming. The ha
 
 ---
 
-*Last updated: 2026-04-02 (v1.2.0)*
+*Last updated: 2026-04-24 (v3.24.0)*

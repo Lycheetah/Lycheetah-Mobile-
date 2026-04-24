@@ -148,6 +148,7 @@ type DisplayMessage = Message & {
   isNRM?: boolean;
   persona?: Persona;
   imageUri?: string;
+  timestamp?: number;
   modelConfidence?: number; // self-reported by model via [CONF:X]
   council?: boolean; // v3.15 — render as 4-panel Council bubble
 };
@@ -790,7 +791,8 @@ export default function SolChat() {
         </View>
       ),
     });
-  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router, messages.length, exportChat]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, auraHeaderAnim, router, messages.length, exportChat]); // accent intentionally omitted — forward ref safe at runtime
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
@@ -1044,7 +1046,7 @@ export default function SolChat() {
       const mimeType: 'image/jpeg' | 'image/png' = asset.mimeType?.includes('png') ? 'image/png' : 'image/jpeg';
       const scanPrompt = 'You are a symbolic analyst trained in sacred geometry, alchemy, LAMAGUE symbolic language, and archetypal pattern recognition. Examine this image carefully. Identify any symbolic, geometric, alchemical, or meaningful patterns present. For each pattern found: (1) Name the pattern. (2) Map to the nearest LAMAGUE symbol if applicable (from: Ao, Φ↑, Ψ, ∅, ⊛, ◈, ↯, ⊗, →, ⟲, ✧, ∞, △, ∘, ⊕) or write "no direct LAMAGUE match". (3) Give a 1-sentence insight about what this pattern means in the context of consciousness and sovereign intelligence. Be concise. If no symbolic patterns are present, say so plainly.';
       const res = await sendMessage(
-        [{ role: 'user', content: scanPrompt, imageData: { base64: asset.base64 || '', mimeType } }],
+        [{ role: 'user', content: scanPrompt, image: { base64: asset.base64 || '', mimeType } }],
         'You are a symbolic pattern analyst. Respond in structured plain text.',
         apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 300, 0.5,
       );
@@ -1856,7 +1858,7 @@ STRONGEST MOMENT: [quote or describe the clearest, most load-bearing exchange]
 WEAKEST MOMENT: [where reasoning was thinnest or most hedged]
 WHAT REMAINS: [what question or tension this conversation didn't resolve]
 FIELD VERDICT: [NIGREDO / ALBEDO / CITRINITAS / RUBEDO — which stage this conversation reached and why]`;
-      const result = await sendMessage([], `Audit this conversation:\n\n${transcript}`, apiKey, model, undefined, systemPrompt);
+      const result = await sendMessage([], `Audit this conversation:\n\n${transcript}`, apiKey, model);
       const auditText = result.text.replace(/\[CONF:[^\]]+\]/, '').trim();
       const auditMsg: DisplayMessage = {
         id: Date.now().toString(),
@@ -1907,7 +1909,7 @@ CHAOS
 (max 2 bullets, or "none" if clean)
 
 DISTILLATION VERDICT: [one sentence — what this conversation actually was about at its core]`;
-      const result = await sendMessage([], `Distill this conversation:\n\n${transcript}`, apiKey, model, undefined, systemPrompt);
+      const result = await sendMessage([], `Distill this conversation:\n\n${transcript}`, apiKey, model);
       const distillText = result.text.replace(/\[CONF:[^\]]+\]/, '').trim();
       const distillMsg: DisplayMessage = {
         id: Date.now().toString(),
@@ -2209,7 +2211,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               const mdFont = fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15;
               if (!parsed) {
                 return (
-                  <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: mdFont } }}>{body}</Markdown>
+                  <Markdown style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: mdFont } }}>{body}</Markdown>
                 );
               }
               const panels = [
@@ -2242,7 +2244,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 </View>
               );
             })() : (
-              <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } }}>{body}</Markdown>
+              <Markdown style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } }}>{body}</Markdown>
             )}
             {signature && showSignatures && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
@@ -3460,7 +3462,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           returnKeyType="send"
           blurOnSubmit={false}
           onSubmitEditing={send}
-          onLongPress={input.length === 0 ? handleFortuneCookie : undefined}
         />
         <TouchableOpacity style={styles.imageButton} onPress={() => setShowToolsRow(v => !v)}>
           <Text style={[styles.imageButtonText, { color: showToolsRow ? accent : SOL_THEME.textMuted, fontSize: 18 }]}>···</Text>
@@ -3664,7 +3665,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           </View>
           {lastAuraFull ? (
             <>
-              {(Object.entries(lastAuraFull.audit.invariants) as [string, any][]).map(([name, record]) => (
+              {(Object.entries(lastAuraFull.audit?.invariants ?? {}) as [string, any][]).map(([name, record]) => (
                 <View key={name} style={{ flexDirection: 'row', marginBottom: 12, gap: 10 }}>
                   <Text style={{ fontSize: 14, color: record.passed ? '#4CAF50' : SOL_THEME.error, width: 16 }}>
                     {record.passed ? '✓' : '✗'}

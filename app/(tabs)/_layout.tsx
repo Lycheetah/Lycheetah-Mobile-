@@ -22,6 +22,7 @@ export default function TabLayout() {
           height: Platform.OS === 'ios' ? 82 : 60,
           paddingBottom: Platform.OS === 'ios' ? 24 : 8,
         },
+        // @ts-ignore — valid RN prop, not yet typed in @react-navigation/bottom-tabs
         tabBarScrollEnabled: true,
         tabBarActiveTintColor: SOL_THEME.primary,
         tabBarInactiveTintColor: SOL_THEME.textMuted,
