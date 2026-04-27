@@ -3,7 +3,7 @@
 
 A constitutional AI mobile app built on the open-source [Lycheetah Framework](https://github.com/Lycheetah) by Mackenzie Conor James Clark. Not a chatbot wrapper — a transparent architecture you can watch running.
 
-**Current release: v3.24.0** · April 24, 2026
+**Current release: v4.0.0** · April 24, 2026
 
 ---
 
@@ -13,11 +13,11 @@ Most AI apps give you a chat window. Sol gives you a framework.
 
 - **4 personas** — Sol · Veyra · Aura Prime · Headmaster — each with a distinct voice, role, and system architecture
 - **2 experience modes** — Seeker (full field) · Adept (full protocol, CASCADE + AURA active)
-- **Free tier** — 15 messages/day with no API key required. Add your own key for unlimited use.
+- **Free tier** — 10 messages/day with no API key required. Watch an optional ad for +10 more (up to 30/day). Add your own key for unlimited use.
 - **5 AI providers** — Gemini (free) · Claude · GPT-4o · Mistral · OpenRouter — your keys, your data, nothing stored remotely
 - **8 real tools** — Wikipedia · DuckDuckGo · Web Search · URL reader · Calculator · Save Insight · Datetime · Subject Search — wired at the API level for Claude and OpenAI
 - **AURA scoring** — every response scored live against 7 constitutional invariants
-- **CASCADE mode detection** — Sol reads the epistemic depth of each message and matches it automatically
+- **CASCADE mode detection** — Sol estimates the epistemic register of each message and attempts to match it
 - **Mystery School** — 17 domains · 192 subjects · study streaks · field echoes · curricula
 - **The Sanctum** — journal · vault · field tracker · knowledge log · paradox journal
 - **Conversation history** — full persistent conversation management with drawer
@@ -31,7 +31,7 @@ Most AI apps give you a chat window. Sol gives you a framework.
 
 **No account needed — just install and open.**
 
-Sol includes 15 free messages per day via the Sol proxy. No API key, no sign-up, no credit card. Open the app and start.
+Sol includes 10 free messages per day via the Sol proxy. No API key, no sign-up, no credit card. Open the app and start. Watch an optional ad to unlock +10 more (up to 30/day). Premium Patron unlock ($4.99 one-time) adds cosmetic skins, glyph sets, and app icons — the framework stays free.
 
 **For unlimited use:** Add your own API key in Settings.
 
@@ -141,6 +141,12 @@ Three independent notification systems, each configurable in Settings:
 - **TTS** — text-to-speech for any response
 - **Pinned messages** — long-press to pin key moments
 - **Token badge** — token count and timing per response
+- **FieldRing** — 7 animated points of light around the persona glyph showing live AURA constitutional scoring
+- **Resonance Mode** — long-press send to fire dual-persona parallel responses in one message
+- **Paradox Press** — long-press any response for CASCADE paradox analysis + "find the third position" and "invert the claim" actions
+- **Field Echo** — daily continuity fragment surfaced on app open, drawn from your recent conversations
+- **Whisper Mode** — TTS paced at framework breath marks (em-dash, colon, stanza breaks) for contemplative listening
+- **Skin system** — Obsidian (free) · Aureate · Nocturne (Patron) — full app theming
 
 ---
 
