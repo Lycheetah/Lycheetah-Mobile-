@@ -3,6 +3,12 @@
 
 ---
 
+## 2026-06-11 — v3.26.0 (Session: The Build)
+**Shipped:** git init · biometric cleanup · Supabase graceful fallback · daily cap + watch-ad · companion moods · vigil in Sanctum · weekly letter render · pattern notice · field profile erase · today's dives in Sanctum · Library UI overhaul · Sanctum UI overhaul  
+**Post:** `posts/2026-06-11-v3.26.0.md`
+
+---
+
 ## 2026-04-02 — v1.1.0 (Phase 1)
 **Shipped:** Markdown rendering · Return key sends · NIGREDO red · Context leak fix · Legacy cleanup  
 **Post:** `posts/2026-04-02-v1.1.md`
