@@ -1383,7 +1383,7 @@ export default function MysterySchoolScreen() {
             }}
             style={{ paddingVertical: 14, borderRadius: 12, backgroundColor: domainColor, alignItems: 'center' }}
             activeOpacity={0.8}>
-            <Text style={{ color: '#000', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>{HOST_GLYPHS[selectedTeacher || host]} Study with {HOST_NAMES[selectedTeacher || host]}</Text>
+            <Text style={{ color: '#000', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>{HOST_GLYPHS[selectedTeacher || host]} Enter Classroom · {HOST_NAMES[selectedTeacher || host]}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={async () => {
@@ -2665,6 +2665,9 @@ export default function MysterySchoolScreen() {
                 <Text style={{ color: bc + 'AA', fontSize: 12, marginBottom: 4, textAlign: 'center' }}>
                   {breathPending.domain?.label || 'Open Seat'} · {HOST_NAMES[teacherId] || teacherId}
                 </Text>
+                <Text style={{ color: bc + '88', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1, marginBottom: 6, fontWeight: '700' }}>
+                  DEDICATED CLASSROOM · SCHOOL TAB
+                </Text>
                 <Text style={{ color: '#FFFFFF44', fontSize: 11, fontStyle: 'italic', marginBottom: 28, textAlign: 'center', lineHeight: 17 }}>
                   Arrive here. Set aside what you were doing.{'\n'}The subject is waiting.
                 </Text>
@@ -2676,7 +2679,7 @@ export default function MysterySchoolScreen() {
                   }}
                   style={{ width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: bc, alignItems: 'center', marginBottom: 10 }}
                   activeOpacity={0.85}>
-                  <Text style={{ color: '#000', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>I'm ready →</Text>
+                  <Text style={{ color: '#000', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>Open the classroom →</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setBreathPending(null)} style={{ paddingVertical: 10 }}>
                   <Text style={{ color: '#FFFFFF33', fontSize: 12 }}>Not now</Text>
