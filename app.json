@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Sol",
+    "slug": "lycheetah-mobile",
+    "version": "3.26.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "updates": {
+      "enabled": false
+    },
+    "scheme": "lycheetah",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lycheetah.sol"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A0A"
+      },
+      "package": "com.lycheetah.sol",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#F5A623",
+          "defaultChannel": "cognitive-weather"
+        }
+      ],
+      "expo-local-authentication"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "44b13ecb-1531-452e-83d3-4b73201c8300"
+      }
+    },
+    "owner": "suzanalyc"
+  }
+}
