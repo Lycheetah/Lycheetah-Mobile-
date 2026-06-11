@@ -3,6 +3,12 @@
 
 ---
 
+## 2026-06-11 — v3.27.0 (Session 2: Magister)
+**Shipped:** Headmaster → Magister rename · ★ Saved subjects on school home · Tools tray labels · Onboarding rework · Sanctum field greeting + empty CTA · Library 2-row tabs · Codex help expanded  
+**Post:** `posts/2026-06-11-v3.27.0.md`
+
+---
+
 ## 2026-06-11 — v3.26.0 (Session: The Build)
 **Shipped:** git init · biometric cleanup · Supabase graceful fallback · daily cap + watch-ad · companion moods · vigil in Sanctum · weekly letter render · pattern notice · field profile erase · today's dives in Sanctum · Library UI overhaul · Sanctum UI overhaul  
 **Post:** `posts/2026-06-11-v3.26.0.md`
