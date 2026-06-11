@@ -4,7 +4,7 @@ import {
   StyleSheet, Alert, Platform, Share, Animated, Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, router } from 'expo-router';
 import { SOL_THEME } from '../../constants/theme';
 import { getAccentColor, getActiveKey, getModel, getFieldJournalSummaries, saveFieldJournalSummaries } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
@@ -387,6 +387,17 @@ export default function SanctumScreen() {
       {/* TODAY */}
       {section === 'today' && (
         <>
+          {/* Field greeting — always visible */}
+          {(() => {
+            const q = SHRINE_QUOTES[new Date().getDay() % SHRINE_QUOTES.length];
+            return (
+              <View style={{ marginBottom: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                <Text style={{ color: accentColor, fontSize: 20, lineHeight: 26, marginTop: 2 }}>{q.sigil}</Text>
+                <Text style={{ flex: 1, color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 19, fontStyle: 'italic' }}>{q.text}</Text>
+              </View>
+            );
+          })()}
+
           <Text style={[styles.label, { color: accentColor }]}>{intentionLabel()}</Text>
           <Text style={styles.note}>What do you intend to bring forth today?</Text>
           <TextInput
@@ -601,6 +612,39 @@ export default function SanctumScreen() {
               {dayReportLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The Headmaster is reading the field…</Text>}
               {dayReport && <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>{dayReport.text}</Text>}
               {!dayReport && !dayReportLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Field data available — tap Generate to receive your report.</Text>}
+            </View>
+          )}
+
+          {/* Empty day CTA — only when nothing has happened today */}
+          {todayDives.length === 0 && !vigil && !lqHistory.some(p => p.date === todayKey()) && (
+            <View style={{ marginVertical: 10, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>THE FIELD IS OPEN</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: accentColor + '55', backgroundColor: accentColor + '0C' }}
+                  onPress={() => router.push('/(tabs)/school' as any)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ color: accentColor, fontSize: 16, marginBottom: 3 }}>𝔏</Text>
+                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>SCHOOL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border }}
+                  onPress={() => router.push('/(tabs)' as any)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 16, marginBottom: 3 }}>⊚</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>SOL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border }}
+                  onPress={() => setSection('journal')}
+                  activeOpacity={0.75}
+                >
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 16, marginBottom: 3 }}>✎</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>JOURNAL</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 

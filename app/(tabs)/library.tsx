@@ -749,18 +749,31 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         </ScrollView>
       </View>
 
-      {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ flexDirection: 'row' }}>
-        {([['forge', '⚗ FORGE'], ['cascade', 'SCORE'], ['probe', 'PROBE'], ['cementer', 'CEMENT'], ['library', `SAVED${library.length > 0 ? ` (${library.length})` : ''}`], ['glossary', 'GLOSSARY'], ['community', '⊞ COMMONS']] as const).map(([t, label]) => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.tab, view === t && { borderBottomColor: accentColor, borderBottomWidth: 2 }]}
-            onPress={() => { setView(t); setSelectedEntry(null); }}
-          >
-            <Text style={[styles.tabText, view === t && { color: accentColor }]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Tabs — two rows so all are visible */}
+      <View style={[styles.tabs, { paddingBottom: 0 }]}>
+        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: SOL_THEME.border }}>
+          {([['forge', '⚗ FORGE'], ['cascade', 'SCORE'], ['probe', 'PROBE'], ['cementer', 'CEMENT']] as const).map(([t, label]) => (
+            <TouchableOpacity
+              key={t}
+              style={[{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: view === t ? accentColor : 'transparent' }]}
+              onPress={() => { setView(t); setSelectedEntry(null); }}
+            >
+              <Text style={[styles.tabText, view === t && { color: accentColor }]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: SOL_THEME.border }}>
+          {([['library', `SAVED${library.length > 0 ? ` (${library.length})` : ''}`], ['glossary', 'GLOSSARY'], ['community', '⊞ COMMONS']] as const).map(([t, label]) => (
+            <TouchableOpacity
+              key={t}
+              style={[{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: view === t ? accentColor : 'transparent' }]}
+              onPress={() => { setView(t); setSelectedEntry(null); }}
+            >
+              <Text style={[styles.tabText, view === t && { color: accentColor }]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       {/* FORGE VIEW */}
       {view === 'forge' && (

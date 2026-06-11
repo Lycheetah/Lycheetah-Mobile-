@@ -3222,13 +3222,14 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         <View style={{ backgroundColor: world.surface, borderTopWidth: 1, borderTopColor: world.border, paddingHorizontal: 12, paddingVertical: 10 }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <TouchableOpacity
-              style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: pendingImage ? accent + '88' : world.border, borderRadius: 10, backgroundColor: pendingImage ? accent + '18' : 'transparent' }}
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: pendingImage ? accent + '88' : world.border, borderRadius: 10, backgroundColor: pendingImage ? accent + '18' : 'transparent', gap: 2 }}
               onPress={pickImage}
             >
-              <Text style={{ fontSize: 18, color: pendingImage ? accent : SOL_THEME.textMuted }}>📎</Text>
+              <Text style={{ fontSize: 17, color: pendingImage ? accent : SOL_THEME.textMuted }}>📎</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Attach</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: cameraLoading ? 0.4 : 1 }}
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: cameraLoading ? 0.4 : 1, gap: 2 }}
               onPress={handleCameraCapture}
               disabled={cameraLoading}
             >
@@ -3236,15 +3237,17 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 ? <ActivityIndicator size="small" color={SOL_THEME.textMuted} />
                 : <Text style={{ fontSize: 16, color: SOL_THEME.textMuted }}>⊕</Text>
               }
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Camera</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stylePickerOpen ? accent + '88' : world.border, borderRadius: 10, backgroundColor: stylePickerOpen ? accent + '18' : 'transparent' }}
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: stylePickerOpen ? accent + '88' : world.border, borderRadius: 10, backgroundColor: stylePickerOpen ? accent + '18' : 'transparent', gap: 2 }}
               onPress={() => { setStylePickerOpen(v => !v); setShowToolsRow(false); }}
             >
               <Text style={{ fontSize: 16, color: stylePickerOpen ? accent : SOL_THEME.textMuted }}>{getStyle(replyStyle).glyph}</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Style</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: compareMode ? accent + '88' : world.border, borderRadius: 10, backgroundColor: compareMode ? accent + '18' : 'transparent' }}
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: compareMode ? accent + '88' : world.border, borderRadius: 10, backgroundColor: compareMode ? accent + '18' : 'transparent', gap: 2 }}
               onPress={() => {
                 if (!compareMode) {
                   Alert.alert('⇌ Compare', 'Compare fires two models in parallel — uses roughly 2× your quota for this message.', [{ text: 'Got it', onPress: () => { setCompareMode(true); setComparePickerOpen(false); setShowToolsRow(false); } }, { text: 'Cancel', style: 'cancel' }]);
@@ -3254,9 +3257,10 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               }}
             >
               <Text style={{ fontSize: 16, color: compareMode ? accent : SOL_THEME.textMuted }}>⇌</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Compare</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: councilMode ? '#9B59B6AA' : world.border, borderRadius: 10, backgroundColor: councilMode ? '#9B59B618' : 'transparent' }}
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: councilMode ? '#9B59B6AA' : world.border, borderRadius: 10, backgroundColor: councilMode ? '#9B59B618' : 'transparent', gap: 2 }}
               onPress={() => {
                 if (!councilMode) {
                   Alert.alert('⚖ Council', 'Council summons three voices — uses roughly 3× your quota for this message.', [{ text: 'Summon', onPress: () => { setCouncilMode(true); setShowToolsRow(false); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }, { text: 'Cancel', style: 'cancel' }]);
@@ -3266,46 +3270,52 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               }}
             >
               <Text style={{ fontSize: 16, color: councilMode ? '#9B59B6' : SOL_THEME.textMuted }}>⚖</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Council</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10 }}
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, gap: 2 }}
               onPress={() => { setShowStacksModal(true); setShowToolsRow(false); }}
             >
               <Text style={{ fontSize: 16, color: SOL_THEME.textMuted }}>⊞</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Stacks</Text>
             </TouchableOpacity>
             {messages.length > 1 && (
               <TouchableOpacity
-                style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: auditLoading ? 0.4 : 1 }}
+                style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: auditLoading ? 0.4 : 1, gap: 2 }}
                 onPress={() => { handleAudit(); setShowToolsRow(false); }}
                 disabled={auditLoading}
               >
                 <Text style={{ fontSize: 16, color: SOL_THEME.textMuted }}>⊛</Text>
+                <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Audit</Text>
               </TouchableOpacity>
             )}
             {messages.length > 1 && (
               <TouchableOpacity
-                style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: distillLoading ? 0.4 : 1 }}
+                style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: distillLoading ? 0.4 : 1, gap: 2 }}
                 onPress={() => { handleDistill(); setShowToolsRow(false); }}
                 disabled={distillLoading}
               >
                 <Text style={{ fontSize: 16, color: SOL_THEME.textMuted }}>⇣</Text>
+                <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Distill</Text>
               </TouchableOpacity>
             )}
             {messages.length > 0 && (
               <TouchableOpacity
-                style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10 }}
+                style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, gap: 2 }}
                 onPress={() => { const g = buildSessionGlyph(); setSessionGlyph(g); setShowGlyphModal(true); setShowToolsRow(false); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
               >
                 <Text style={{ fontSize: 16, color: SOL_THEME.textMuted }}>⊚</Text>
+                <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Sigil</Text>
               </TouchableOpacity>
             )}
             {messages.length >= 4 && (
               <TouchableOpacity
-                style={{ width: 44, height: 40, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: dnaLoading ? 0.4 : 1 }}
+                style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: dnaLoading ? 0.4 : 1, gap: 2 }}
                 onPress={() => { handleConvDNA(); setShowToolsRow(false); }}
                 disabled={dnaLoading}
               >
                 <Text style={{ fontSize: 16, color: SOL_THEME.textMuted }}>⌇</Text>
+                <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>DNA</Text>
               </TouchableOpacity>
             )}
           </View>

@@ -82,8 +82,8 @@ const PERSONAS_SEEKER = [
   {
     id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
     role: 'Mystery School guide',
-    desc: '17 domains. 192 subjects. Ancient knowledge carried with authority. The slow path to mastery.',
-    sample: '"The school has 192 subjects and one rule: curiosity leads. Where does yours pull?"',
+    desc: '22 domains. 188 subjects. Ancient knowledge carried with authority. The slow path to mastery.',
+    sample: '"The school has 188 subjects and one rule: curiosity leads. Where does yours pull?"',
   },
   {
     id: 'veyra', glyph: '◈', name: 'Veyra', color: SOL_THEME.veyra,
@@ -275,41 +275,42 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* STEP 1 — Mode Selection */}
+          {/* STEP 1 — What brings you here? */}
           {step === 1 && (
             <View style={styles.stepContainer}>
               <Text style={styles.bigGlyph}>◌</Text>
               <Text style={styles.title}>SOL</Text>
-              <Text style={styles.subtitle}>Choose your path</Text>
+              <Text style={styles.subtitle}>What brings you here?</Text>
               <Text style={[styles.bodyText, { marginBottom: 20 }]}>
-                Three doors into the same building.{'\n'}Same depth. Different language. Change any time.
+                Pick what fits. You can change guides and modes any time in Settings.
               </Text>
 
+              {QUICK_PATHS.map(path => (
+                <TouchableOpacity
+                  key={path.id}
+                  style={[styles.modeCard, { borderColor: path.color + '88', marginTop: 10 }]}
+                  onPress={() => handleQuickStart(path)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.modeGlyph, { color: path.color }]}>{path.glyph}</Text>
+                  <Text style={[styles.modeCardTitle, { color: path.color }]}>{path.title.toUpperCase()}</Text>
+                  <Text style={styles.modeCardDesc}>{path.desc}</Text>
+                </TouchableOpacity>
+              ))}
+
               <TouchableOpacity
-                style={[styles.modeCard, { borderColor: SOL_THEME.primary + '88', marginTop: 10 }]}
-                onPress={() => handleModeSelect('seeker')}
-                activeOpacity={0.8}
+                style={{ marginTop: 16, alignItems: 'center', paddingVertical: 12 }}
+                onPress={next}
+                activeOpacity={0.7}
               >
-                <Text style={styles.modeGlyph}>⊚</Text>
-                <Text style={[styles.modeCardTitle, { color: SOL_THEME.primary }]}>SEEKER</Text>
-                <Text style={styles.modeCardDesc}>
-                  The full field. Alchemical framework, mystical language, constitutional scoring.
-                  For those drawn to the depth traditions.
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                  I'll configure this myself →
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[styles.modeCard, { borderColor: '#9B59B688', marginTop: 10 }]}
-                onPress={() => handleModeSelect('adept')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.modeGlyph, { color: '#9B59B6' }]}>✦</Text>
-                <Text style={[styles.modeCardTitle, { color: '#9B59B6' }]}>ADEPT</Text>
-                <Text style={styles.modeCardDesc}>
-                  Full protocol active. Sol references CASCADE layers, names AURA invariants, signs outputs.
-                  For practitioners who already know the framework.
-                </Text>
-              </TouchableOpacity>
+              <Text style={{ color: SOL_THEME.textMuted + '77', fontSize: 11, textAlign: 'center', marginTop: 8, lineHeight: 17 }}>
+                Advanced users: Adept mode available in Settings after setup.
+              </Text>
             </View>
           )}
 
@@ -356,8 +357,8 @@ export default function OnboardingScreen() {
                     Sol responds with warmth and precision simultaneously.
                     Every message is scored against 7 constitutional rules — live,
                     visible, auditable. Nothing hidden.{'\n\n'}
-                    The Mystery School contains 17 domains of ancient and living wisdom.
-                    192 subjects. Your path through them is yours alone.
+                    The Mystery School contains 22 domains of ancient and living wisdom.
+                    188 subjects. Your path through them is yours alone.
                   </Text>
                   <View style={styles.twoCol}>
                     <View style={[styles.pillCard, { borderColor: SOL_THEME.primary + '55' }]}>
@@ -368,7 +369,7 @@ export default function OnboardingScreen() {
                     <View style={[styles.pillCard, { borderColor: SOL_THEME.headmaster + '55' }]}>
                       <Text style={{ color: SOL_THEME.headmaster, fontSize: 18, marginBottom: 4 }}>𝔏</Text>
                       <Text style={[styles.pillLabel, { color: SOL_THEME.headmaster }]}>THE SCHOOL</Text>
-                      <Text style={styles.pillDesc}>17 domains. 192 subjects. Your path.</Text>
+                      <Text style={styles.pillDesc}>22 domains. 188 subjects. Your path.</Text>
                     </View>
                   </View>
                   <TouchableOpacity style={styles.primaryButton} onPress={next}>
@@ -542,6 +543,20 @@ export default function OnboardingScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 12, alignItems: 'center' }}
+                onPress={async () => {
+                  await AsyncStorage.setItem('codex_open_help', 'true');
+                  await AsyncStorage.setItem('lycheetah_onboarded', 'true');
+                  router.replace('/(tabs)/codex' as any);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                  Confused? → Ask the Codex
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -589,6 +604,20 @@ export default function OnboardingScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
+
+              <TouchableOpacity
+                style={{ paddingVertical: 14, alignItems: 'center' }}
+                onPress={async () => {
+                  await AsyncStorage.setItem('codex_open_help', 'true');
+                  await AsyncStorage.setItem('lycheetah_onboarded', 'true');
+                  router.replace('/(tabs)/codex' as any);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                  Questions? → Ask the Codex
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 

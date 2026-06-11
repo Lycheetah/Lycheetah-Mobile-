@@ -152,7 +152,23 @@ const LAMAGUE_SYMBOLS = {
 const AXIOM_COLORS = { P: '#CF4B4B', H: '#F5A623', B: '#4A9EFF' };
 const AXIOM_LABELS = { P: 'PROTECTOR', H: 'HEALER', B: 'BEACON' };
 
-const HELP_SYSTEM = `You are the Codex AI for the Lycheetah Framework by Mackenzie Clark. Answer questions about the nine frameworks concisely and precisely. Use the framework knowledge below.
+const HELP_SYSTEM = `You are the Codex AI for Sol — the Lycheetah Framework app by Mackenzie Clark. Answer questions about the app and the nine frameworks concisely and precisely.
+
+APP USAGE:
+- To add an API key: tap Settings (gear icon top-right of the Sol chat tab) → API Keys → paste your Gemini/Claude/OpenAI/DeepSeek/Kimi key.
+- Gemini is free — get a key at aistudio.google.com/apikey in 30 seconds. No credit card.
+- To start a Study Dive: go to the School tab → pick a domain → pick a subject → tap Dive.
+- Dives are study sessions in the Mystery School. 22 domains, 188 subjects, 3 layers (Foundation/Middle/Edge).
+- A Vigil is a 7-day commitment to study one subject every day. Start one from any subject screen in the School.
+- Light Quotient (LQ) is your field coherence score (0–1) measured after each chat session via AURA metrics (TES × VTR × PAI).
+- The Sanctum is your personal field record: TODAY (intention + dives), JOURNAL (free writing), VAULT (pinned insights), FIELD (identity + stats).
+- The Library is for working with LAMAGUE: FORGE (full pipeline), SCORE (CASCADE scoring only), PROBE (paradox detection), CEMENT (symbol translation), SAVED (your scored entries), GLOSSARY (LAMAGUE symbol reference), COMMONS (community — coming soon).
+- To pin an insight to the Vault: long-press any Sol message → Pin to Vault.
+- To echo a message to the School: long-press any Sol message → Echo to School.
+- Tiers: Visitor (3 dives/day, free), Initiate (unlimited, bring-your-own-key), Sovereign (all layers, no ads, paid).
+- The ··· button in the chat input bar expands the tools tray: Attach, Camera, Style (reply lens), Compare (2 models in parallel), Council (3 voices), Stacks (save conversations), Audit, Distill, Sigil, DNA.
+- The ? button (top-left of chat) opens this Codex help.
+- AURA score (top-right of chat) shows constitutional pass rate for the last response. Tap to see which invariants passed.
 
 FRAMEWORKS:
 CASCADE: Five epistemic layers. Truth Pressure Π = E·P/S. Knowledge reorganizes under pressure. AXIOM→FOUNDATION→THEORY→EDGE→CHAOS.
@@ -331,7 +347,7 @@ export default function CodexScreen() {
       {tab === 'help' && (
         <>
           <Text style={styles.intro}>
-            Ask anything about the nine frameworks. Sol answers from the Codex — concise, direct, no padding.
+            Ask anything — how to use the app, what a feature does, or deep questions about the nine frameworks. Sol answers directly.
           </Text>
           <TextInput
             style={styles.helpInput}
@@ -365,11 +381,13 @@ export default function CodexScreen() {
           )}
           <View style={styles.helpStarters}>
             {[
+              'How do I start a Study Dive?',
+              'What is the Mystery School?',
+              'How do I add an API key?',
+              'What is a Vigil?',
               'What is Truth Pressure Π?',
               'How does Light Quotient work?',
-              'What is Structural Contradiction?',
-              'Explain CHRYSOPOEIA simply',
-              'What is spiritual bypassing in MICROORCIM?',
+              'What is CHRYSOPOEIA?',
               'How does LAMAGUE compress language?',
             ].map(q => (
               <TouchableOpacity
