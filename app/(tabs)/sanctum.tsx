@@ -112,6 +112,9 @@ export default function SanctumScreen() {
   // Vigil
   const [vigil, setVigil] = useState<{ subjectName: string; domainGlyph: string; domainColor: string; startDate: string } | null>(null);
 
+  // Today's dives
+  const [todayDives, setTodayDives] = useState<Array<{ subjectName: string; domainGlyph: string; domainColor: string; domainLabel: string; durationSec: number }>>([]);
+
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
@@ -155,6 +158,15 @@ export default function SanctumScreen() {
 
     const vigilRaw = await AsyncStorage.getItem('sol_vigil');
     if (vigilRaw) { try { setVigil(JSON.parse(vigilRaw)); } catch {} }
+
+    const diveRaw = await AsyncStorage.getItem('sol_dive_log');
+    if (diveRaw) {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const all = JSON.parse(diveRaw) as Array<{ subjectName: string; domainGlyph: string; domainColor: string; domainLabel: string; durationSec: number; date: string }>;
+        setTodayDives(all.filter(d => d.date === today).slice(0, 5));
+      } catch {}
+    }
 
     // Day Report — load cached report for today
     const dayReportRaw = await AsyncStorage.getItem(`sol_day_report_${todayKey()}`);
@@ -453,6 +465,24 @@ export default function SanctumScreen() {
               </View>
             );
           })()}
+
+          {/* Today's School Dives */}
+          {todayDives.length > 0 && (
+            <View style={{ marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 10 }}>⊚ TODAY IN THE SCHOOL</Text>
+              <View style={{ gap: 8 }}>
+                {todayDives.map((d, i) => (
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <Text style={{ color: d.domainColor, fontSize: 18 }}>{d.domainGlyph}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>{d.subjectName}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{d.domainLabel}{d.durationSec ? ` · ${Math.round(d.durationSec / 60)} min` : ''}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* LQ History Sparkline */}
           {lqHistory.length >= 2 && (() => {
@@ -822,7 +852,21 @@ export default function SanctumScreen() {
             {/* Sovereign Stats card */}
             {fieldProfile && (fieldProfile.totalMessages > 0 || fieldProfile.studySessions > 0 || masteredDomains.length > 0) && (
               <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '06', marginBottom: 16 }}>
-                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>{'SOVEREIGN STATS'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>{'FIELD PROFILE'}</Text>
+                  <TouchableOpacity
+                    onPress={() => Alert.alert('Erase Field Profile', 'This will clear all tracked preferences, depth patterns, and top domains. Your dive log and messages are not affected.', [
+                      { text: 'Erase', style: 'destructive', onPress: async () => {
+                        await AsyncStorage.removeItem('sol_field_profile');
+                        setFieldProfile(null);
+                      }},
+                      { text: 'Cancel', style: 'cancel' },
+                    ])}
+                    style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: SOL_THEME.error + '55' }}
+                  >
+                    <Text style={{ color: SOL_THEME.error, fontSize: 10 }}>Erase</Text>
+                  </TouchableOpacity>
+                </View>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
                   {fieldProfile.totalMessages > 0 && (
                     <View style={{ alignItems: 'center' }}>
