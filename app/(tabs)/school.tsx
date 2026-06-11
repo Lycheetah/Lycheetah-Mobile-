@@ -38,11 +38,11 @@ type Curriculum = { id: string; name: string; subjects: string[]; created: strin
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const TEACHER_GLYPHS: Record<string, string> = { sol: '⊚', headmaster: '⊙', veyra: '◈', 'aura-prime': '✦' };
-const TEACHER_NAMES: Record<string, string> = { sol: 'Sol', headmaster: 'Headmaster', veyra: 'Veyra', 'aura-prime': 'Aura-Prime' };
+const TEACHER_NAMES: Record<string, string> = { sol: 'Sol', headmaster: 'Magister', veyra: 'Veyra', 'aura-prime': 'Aura-Prime' };
 const TEACHER_COLORS: Record<string, string> = { sol: '#F5A623', headmaster: '#E8C76A', veyra: '#4A9EFF', 'aura-prime': '#9B59B6' };
 const HOST_PERSONAS = ['sol', 'headmaster', 'veyra', 'aura-prime'] as const;
-const HOST_GLYPHS: Record<string, string> = { sol: '⊚', headmaster: '⊙', veyra: '◈', 'aura-prime': '✦' };
-const HOST_NAMES: Record<string, string> = { sol: 'Sol', headmaster: 'Headmaster', veyra: 'Veyra', 'aura-prime': 'Aura-Prime' };
+const HOST_GLYPHS: Record<string, string> = { sol: '⊚', headmaster: '𝔏', veyra: '◈', 'aura-prime': '✦' };
+const HOST_NAMES: Record<string, string> = { sol: 'Sol', headmaster: 'Magister', veyra: 'Veyra', 'aura-prime': 'Aura-Prime' };
 
 const STAGE_GUIDANCE: Record<string, string> = {
   NEOPHYTE: 'Foundation subjects recommended — build the base.',
@@ -904,7 +904,7 @@ export default function MysterySchoolScreen() {
       name: topic,
       domain: 'Open Seat',
       layer: 'FOUNDATION',
-      description: `A free-form study session on "${topic}". The Headmaster will guide you through this topic drawing on the full field — traditions, frameworks, and direct inquiry.`,
+      description: `A free-form study session on "${topic}". Magister will guide you through this topic drawing on the full field — traditions, frameworks, and direct inquiry.`,
     };
     // Save to custom subjects
     const updated = [syntheticSubject, ...customSubjects.filter(s => s.name !== topic)].slice(0, 30);
@@ -1387,13 +1387,16 @@ export default function MysterySchoolScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={async () => {
-              await savePersona('headmaster');
-              await savePendingSubject(`PARADOX DETECTED: What is the deepest truth about ${activeSubjectDetail.name}? Go beyond the surface — what do the traditions reveal that isn't spoken directly?`);
+              const teacher = selectedTeacher || host;
+              await savePersona(teacher as any);
+              await savePendingSubject(`What is the deepest truth about ${activeSubjectDetail.name}? Go beyond the surface — what do the traditions reveal that most people miss?`);
               router.push('/(tabs)/');
             }}
             style={{ paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: domainColor + '44', alignItems: 'center' }}
             activeOpacity={0.7}>
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontWeight: '600' }}>⬇ Deepen in Sol</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontWeight: '600' }}>
+              {HOST_GLYPHS[selectedTeacher || host]} Ask {HOST_NAMES[selectedTeacher || host]} to go deeper
+            </Text>
           </TouchableOpacity>
 
           {/* Vigil button */}
@@ -1485,6 +1488,38 @@ export default function MysterySchoolScreen() {
                 <Text style={{ color: SOL_THEME.headmaster, fontSize: 11, fontWeight: '700' }}>Random</Text>
               </TouchableOpacity>
             </View>
+
+            {/* ★ Saved subjects quick-access */}
+            {subjectFavorites.size > 0 && (() => {
+              const allSubjectsFlat = MYSTERY_SCHOOL_DOMAINS.flatMap(d => d.subjects.map(s => ({ subject: s, domain: d })));
+              const saved = allSubjectsFlat.filter(({ subject }) => subjectFavorites.has(subject.name));
+              return (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>★ SAVED SUBJECTS</Text>
+                  {saved.map(({ subject, domain }) => {
+                    const sessionCount = subjectSessionCounts[subject.name] || 0;
+                    return (
+                      <TouchableOpacity
+                        key={subject.name}
+                        onPress={() => { setSelectedDomain(domain); openSubjectDetail(subject, domain); }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: domain.color + '44', backgroundColor: domain.color + '08', marginBottom: 8 }}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={{ color: domain.color, fontSize: 22 }}>{domain.glyph}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{subject.name}</Text>
+                          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 2 }}>{domain.label} · {sessionCount > 0 ? `${sessionCount} session${sessionCount !== 1 ? 's' : ''}` : subject.layer}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+                          <Text style={{ color: domain.color, fontSize: 12, fontWeight: '700' }}>Dive →</Text>
+                          {sessionCount > 0 && <Text style={{ color: '#4CAF50', fontSize: 9 }}>✓ studied</Text>}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
+            })()}
 
             {/* Night Ledger ambient banner — midnight to 4am */}
             {(() => {
@@ -1594,7 +1629,7 @@ export default function MysterySchoolScreen() {
                   {'The school is open.'}
                 </Text>
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: dailySuggestion ? 14 : 0 }}>
-                  {'Choose a domain and the Headmaster guides you through it. Begin with Foundation — or let the field choose.'}
+                  {'Choose a domain and Magister guides you through it. Begin with Foundation — or let the field choose.'}
                 </Text>
                 {dailySuggestion && (
                   <TouchableOpacity
@@ -2119,7 +2154,7 @@ export default function MysterySchoolScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    {isLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The Headmaster is reading your path…</Text>}
+                    {isLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>Magister is reading your path…</Text>}
                     {synth && <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20 }}>{synth}</Text>}
                     {!synth && !isLoading && <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, marginTop: 4 }}>{studied.length} subjects studied — tap Synthesize for your field report.</Text>}
                   </View>

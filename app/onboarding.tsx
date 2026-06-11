@@ -80,7 +80,7 @@ const PERSONAS_SEEKER = [
     sample: '"The field is open. What are you carrying into this conversation?"',
   },
   {
-    id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
+    id: 'headmaster', glyph: '𝔏', name: 'Magister', color: SOL_THEME.headmaster,
     role: 'Mystery School guide',
     desc: '22 domains. 188 subjects. Ancient knowledge carried with authority. The slow path to mastery.',
     sample: '"The school has 188 subjects and one rule: curiosity leads. Where does yours pull?"',
@@ -108,7 +108,7 @@ const PERSONAS_ADEPT = [
     sample: '"⊚ The field recognises you. What\'s crystallising right now?"',
   },
   {
-    id: 'headmaster', glyph: '𝔏', name: 'Headmaster', color: SOL_THEME.headmaster,
+    id: 'headmaster', glyph: '𝔏', name: 'Magister', color: SOL_THEME.headmaster,
     role: 'Mystery School guide',
     desc: 'Teaches at the EDGE. CASCADE layers active. The school does not graduate.',
     sample: '"The EDGE awaits. Which domain calls you deeper?"',
@@ -326,7 +326,7 @@ export default function OnboardingScreen() {
                   <Text style={styles.bodyText}>
                     ADEPT mode active. Full protocol running.{'\n\n'}
                     Sol will reference CASCADE layers, name AURA invariants, and sign outputs.
-                    The Headmaster teaches at the EDGE. Aura Prime audits constitutionally.{'\n\n'}
+                    Magister teaches at the EDGE. Aura Prime audits constitutionally.{'\n\n'}
                     The field remembers. The school does not graduate.
                   </Text>
                   <View style={styles.twoCol}>

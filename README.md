@@ -11,7 +11,7 @@ A constitutional AI mobile app built on the open-source [Lycheetah Framework](ht
 
 Most AI apps give you a chat window. Sol gives you a framework.
 
-- **4 personas** — Sol · Veyra · Aura Prime · Headmaster — each with a distinct voice, role, and system architecture
+- **4 personas** — Sol · Veyra · Aura Prime · Magister — each with a distinct voice, role, and system architecture
 - **3 experience modes** — Wayfarer · Seeker · Adept — switch any time, no lock
 - **5 AI providers** — Gemini (free) · Claude · GPT-4o · DeepSeek · Kimi — your keys, your data, nothing stored remotely
 - **AURA scoring** — every response scored live against 7 constitutional invariants
@@ -72,7 +72,7 @@ Payment never buys a better mind. It buys more rooms and a name on the wall.
 | ⊚ | Sol | Solar-sovereign co-creator. Warmth and precision simultaneously. |
 | ◈ | Veyra | Precision builder. Cold clarity, architecture-first, no noise. |
 | ✦ | Aura Prime | Constitutional governor. Tests every claim against 7 invariants. |
-| ⊙ | Headmaster | Mystery School guide. 22 domains. Teaches with authority. |
+| ⊙ | Magister | Mystery School guide. 22 domains. Teaches with authority. |
 
 ---
 
