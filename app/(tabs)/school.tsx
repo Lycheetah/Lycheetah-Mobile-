@@ -239,6 +239,7 @@ export default function MysterySchoolScreen() {
 
   // #80 Weekly dive synthesis letter
   const [weeklyDiveLetter, setWeeklyDiveLetter] = useState<{ weekOf: string; text: string } | null>(null);
+  const [weeklyLetterExpanded, setWeeklyLetterExpanded] = useState(false);
   // #88 Sol pattern notice (once/week)
   const [patternNotice, setPatternNotice] = useState<string | null>(null);
 
@@ -1785,29 +1786,26 @@ export default function MysterySchoolScreen() {
             )}
 
             {/* Weekly Synthesis letter — collapsible */}
-            {weeklyDiveLetter && (() => {
-              const [expanded, setExpanded] = React.useState(false);
-              return (
-                <TouchableOpacity
-                  onPress={() => setExpanded(e => !e)}
-                  style={{ marginBottom: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.headmaster + '55', backgroundColor: SOL_THEME.headmaster + '08', overflow: 'hidden' }}
-                  activeOpacity={0.85}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
-                    <Text style={{ color: SOL_THEME.headmaster, fontSize: 18 }}>✉</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 2 }}>WEEKLY SYNTHESIS</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>Week of {weeklyDiveLetter.weekOf}</Text>
-                    </View>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>{expanded ? '▲' : '▼'}</Text>
+            {weeklyDiveLetter && (
+              <TouchableOpacity
+                onPress={() => setWeeklyLetterExpanded(e => !e)}
+                style={{ marginBottom: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.headmaster + '55', backgroundColor: SOL_THEME.headmaster + '08', overflow: 'hidden' }}
+                activeOpacity={0.85}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
+                  <Text style={{ color: SOL_THEME.headmaster, fontSize: 18 }}>✉</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 2 }}>WEEKLY SYNTHESIS</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>Week of {weeklyDiveLetter.weekOf}</Text>
                   </View>
-                  {expanded && (
-                    <View style={{ paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: SOL_THEME.headmaster + '22' }}>
-                      <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 22, marginTop: 12, fontStyle: 'italic' }}>{weeklyDiveLetter.text}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })()}
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>{weeklyLetterExpanded ? '▲' : '▼'}</Text>
+                </View>
+                {weeklyLetterExpanded && (
+                  <View style={{ paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: SOL_THEME.headmaster + '22' }}>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 22, marginTop: 12, fontStyle: 'italic' }}>{weeklyDiveLetter.text}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Global search */}
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: SOL_THEME.surface, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, paddingHorizontal: 12, marginBottom: 14, gap: 8 }}>
