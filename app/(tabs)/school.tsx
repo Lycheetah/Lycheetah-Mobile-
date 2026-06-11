@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../../constants/theme';
+import { canWatchAd, showRewardedAd } from '../../lib/ads';
 import { useAppMode } from '../../lib/app-mode';
 import {
   MYSTERY_SCHOOL_DOMAINS, SubjectDomain, Subject, SubjectLayer,
@@ -563,6 +564,52 @@ export default function MysterySchoolScreen() {
   // ─── Study Session Logic ───────────────────────────────────────────────────
 
   const enterStudySession = async (subject: Subject, domain: SubjectDomain | null, hostOverride?: string, depth?: 'quick' | 'full') => {
+    // Daily cap — free users get 3 dives/day; Sovereign unlimited
+    if (!isSovereign) {
+      const today = new Date().toISOString().split('T')[0];
+      const capRaw = await AsyncStorage.getItem('sol_daily_cap');
+      const cap: { date: string; count: number } = capRaw ? JSON.parse(capRaw) : { date: '', count: 0 };
+      const todayCount = cap.date === today ? cap.count : 0;
+      if (todayCount >= 3) {
+        const adAvail = await canWatchAd();
+        if (adAvail) {
+          Alert.alert(
+            'The School rests',
+            'Three dives today. Watch a short clip to unlock one more — or return tomorrow.\n\nSovereign study is unlimited.',
+            [
+              {
+                text: 'Watch a clip',
+                onPress: async () => {
+                  const result = await showRewardedAd();
+                  if (result.rewarded) {
+                    const newCount = todayCount + 1;
+                    await AsyncStorage.setItem('sol_daily_cap', JSON.stringify({ date: today, count: newCount }));
+                    enterStudySession(subject, domain, hostOverride, depth);
+                  } else {
+                    Alert.alert('Ad unavailable', "The clip didn't load. Try again in a moment.");
+                  }
+                },
+              },
+              { text: 'Unlock Sovereign', onPress: () => router.push('/(tabs)/settings') },
+              { text: 'Return tomorrow', style: 'cancel' },
+            ]
+          );
+        } else {
+          Alert.alert(
+            'The School rests',
+            "You've reached today's limit of 3 dives. Sovereign study is unlimited — or return at sunrise.",
+            [
+              { text: 'Unlock Sovereign', onPress: () => router.push('/(tabs)/settings') },
+              { text: 'Return tomorrow', style: 'cancel' },
+            ]
+          );
+        }
+        return;
+      }
+      // Increment cap count before entering session
+      await AsyncStorage.setItem('sol_daily_cap', JSON.stringify({ date: today, count: todayCount + 1 }));
+    }
+
     const host = hostOverride || getDailyHost(subject.name);
     setStudyHost(host);
     setActiveStudySubject(subject);
@@ -1715,6 +1762,52 @@ export default function MysterySchoolScreen() {
                 </View>
               )}
             </View>
+
+            {/* Pattern notice — Sol-voiced pattern banner, dismissible, max once/week */}
+            {patternNotice && (
+              <View style={{ marginBottom: 14, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.primary + '55', backgroundColor: SOL_THEME.primary + '08' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                  <Text style={{ color: SOL_THEME.primary, fontSize: 18 }}>◑</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: SOL_THEME.primary, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 4 }}>SOL NOTICES A PATTERN</Text>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20 }}>{patternNotice}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      setPatternNotice(null);
+                      await AsyncStorage.setItem('sol_pattern_dismissed', new Date().toISOString().split('T')[0]);
+                    }}
+                    style={{ padding: 4 }}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Weekly Synthesis letter — collapsible */}
+            {weeklyDiveLetter && (() => {
+              const [expanded, setExpanded] = React.useState(false);
+              return (
+                <TouchableOpacity
+                  onPress={() => setExpanded(e => !e)}
+                  style={{ marginBottom: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.headmaster + '55', backgroundColor: SOL_THEME.headmaster + '08', overflow: 'hidden' }}
+                  activeOpacity={0.85}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10 }}>
+                    <Text style={{ color: SOL_THEME.headmaster, fontSize: 18 }}>✉</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 2 }}>WEEKLY SYNTHESIS</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>Week of {weeklyDiveLetter.weekOf}</Text>
+                    </View>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>{expanded ? '▲' : '▼'}</Text>
+                  </View>
+                  {expanded && (
+                    <View style={{ paddingHorizontal: 14, paddingBottom: 14, borderTopWidth: 1, borderTopColor: SOL_THEME.headmaster + '22' }}>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 22, marginTop: 12, fontStyle: 'italic' }}>{weeklyDiveLetter.text}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })()}
 
             {/* Global search */}
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: SOL_THEME.surface, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, paddingHorizontal: 12, marginBottom: 14, gap: 8 }}>

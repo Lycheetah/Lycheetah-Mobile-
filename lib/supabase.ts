@@ -1,7 +1,10 @@
 // Supabase REST API — no client library needed, avoids React Native bundler issues
+// When env vars are absent, all functions return graceful disabled states (no crash, no silent fail)
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+
+export const supabaseConfigured = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 const HEADERS = {
   'apikey': SUPABASE_ANON_KEY,
@@ -27,6 +30,7 @@ export type SharedEntry = {
 };
 
 export async function shareEntry(entry: SharedEntry): Promise<{ error: string | null }> {
+  if (!supabaseConfigured) return { error: 'The Field is not yet open. Coming soon.' };
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/shared_entries`, {
       method: 'POST',
@@ -53,6 +57,7 @@ export type CementExpression = {
 };
 
 export async function shareCementBlock(block: CementExpression): Promise<{ error: string | null }> {
+  if (!supabaseConfigured) return { error: 'The Field is not yet open. Coming soon.' };
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/cement_expressions`, {
       method: 'POST',
@@ -70,6 +75,7 @@ export async function shareCementBlock(block: CementExpression): Promise<{ error
 }
 
 export async function fetchSharedFeed(limit = 50): Promise<{ data: SharedEntry[]; error: string | null }> {
+  if (!supabaseConfigured) return { data: [], error: null };
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/shared_entries?order=created_at.desc&limit=${limit}`,

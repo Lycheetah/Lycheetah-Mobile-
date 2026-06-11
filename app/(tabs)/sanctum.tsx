@@ -109,6 +109,9 @@ export default function SanctumScreen() {
   const [editingIdentity, setEditingIdentity] = useState(false);
   const [identityDraft, setIdentityDraft] = useState({ name: '', glyph: '⊚', bio: '' });
 
+  // Vigil
+  const [vigil, setVigil] = useState<{ subjectName: string; domainGlyph: string; domainColor: string; startDate: string } | null>(null);
+
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
@@ -149,6 +152,9 @@ export default function SanctumScreen() {
     if (profileRaw) { try { setFieldProfile(JSON.parse(profileRaw)); } catch {} }
     if (masteredRaw) { try { setMasteredDomains(JSON.parse(masteredRaw)); } catch {} }
     if (identityRaw) { try { const id = JSON.parse(identityRaw); setIdentity(id); setIdentityDraft(id); } catch {} }
+
+    const vigilRaw = await AsyncStorage.getItem('sol_vigil');
+    if (vigilRaw) { try { setVigil(JSON.parse(vigilRaw)); } catch {} }
 
     // Day Report — load cached report for today
     const dayReportRaw = await AsyncStorage.getItem(`sol_day_report_${todayKey()}`);
@@ -420,6 +426,29 @@ export default function SanctumScreen() {
                       )}
                     </View>
                   ) : null}
+                </View>
+              </View>
+            );
+          })()}
+
+          {/* Active Vigil — shown in Today section */}
+          {vigil && (() => {
+            const daysElapsed = Math.floor((Date.now() - new Date(vigil.startDate).getTime()) / 86400000);
+            const daysLeft = Math.max(0, 7 - daysElapsed);
+            const progress = Math.min(1, daysElapsed / 7);
+            const dayLabel = daysElapsed === 0 ? 'Day 1' : `Day ${daysElapsed + 1}`;
+            return (
+              <View style={{ marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: vigil.domainColor + '55', backgroundColor: vigil.domainColor + '0C' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <Text style={{ color: vigil.domainColor, fontSize: 22 }}>{vigil.domainGlyph}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: vigil.domainColor, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 2 }}>◎ VIGIL · {dayLabel} of 7</Text>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{vigil.subjectName}</Text>
+                  </View>
+                  <Text style={{ color: vigil.domainColor, fontSize: 12, fontWeight: '700' }}>{daysLeft}d left</Text>
+                </View>
+                <View style={{ height: 3, borderRadius: 2, backgroundColor: vigil.domainColor + '22', overflow: 'hidden' }}>
+                  <View style={{ width: `${progress * 100}%`, height: '100%', backgroundColor: vigil.domainColor + 'BB', borderRadius: 2 }} />
                 </View>
               </View>
             );

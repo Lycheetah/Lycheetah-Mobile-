@@ -26,10 +26,7 @@
         "backgroundColor": "#0A0A0A"
       },
       "package": "com.lycheetah.sol",
-      "permissions": [
-        "android.permission.USE_BIOMETRIC",
-        "android.permission.USE_FINGERPRINT"
-      ]
+      "permissions": []
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,7 +40,6 @@
           "defaultChannel": "cognitive-weather"
         }
       ],
-      "expo-local-authentication"
     ],
     "extra": {
       "eas": {

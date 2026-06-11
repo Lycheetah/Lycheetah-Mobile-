@@ -314,6 +314,8 @@ export default function SolChat() {
   const [welcomeMsg, setWelcomeMsg] = useState<string | null>(null);
   const [companionEnabled, setCompanionEnabled] = useState(true);
   const [companionGlyph, setCompanionGlyph] = useState('✦');
+  const [companionMood, setCompanionMood] = useState<'dormant' | 'present' | 'lit' | 'transcendent'>('present');
+  const [companionPhrase, setCompanionPhrase] = useState<string | null>(null);
   const [showTimestamps, setShowTimestamps] = useState(false);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
   const [fieldNote] = useState(() => getFieldNote('sol'));
@@ -794,6 +796,39 @@ export default function SolChat() {
       }
     }).catch(() => {});
   }, [messages.length]));
+
+  // Companion mood — computed from usage data; no reproach for absence (CLAUDE.md §XXVI)
+  useFocusEffect(useCallback(() => {
+    (async () => {
+      const [diveRaw, lqRaw] = await Promise.all([
+        AsyncStorage.getItem('sol_dive_log'),
+        AsyncStorage.getItem('sanctum_lq_history'),
+      ]);
+      const dives: Array<{ date: string }> = diveRaw ? JSON.parse(diveRaw) : [];
+      const now = Date.now();
+      const weekAgo = now - 7 * 86400000;
+      const divesThisWeek = dives.filter(d => new Date(d.date).getTime() > weekAgo).length;
+      const lqHistory: Array<{ lq: number; date: string }> = lqRaw ? JSON.parse(lqRaw) : [];
+      const recentLQ = lqHistory.slice(-7);
+      const avgLQ = recentLQ.length > 0 ? recentLQ.reduce((s, p) => s + p.lq, 0) / recentLQ.length : 0;
+      const lastMessageDate = messages.length > 0 ? now : 0;
+      const daysSinceChat = lastMessageDate === 0 ? 4 : Math.floor((now - lastMessageDate) / 86400000);
+
+      let mood: typeof companionMood = 'present';
+      if (avgLQ >= 0.85) mood = 'transcendent';
+      else if (divesThisWeek >= 5) mood = 'lit';
+      else if (daysSinceChat >= 3) mood = 'dormant';
+      setCompanionMood(mood);
+    })();
+  }, [messages.length]));
+
+  // Sync companion animation style to mood (only when not manually overridden)
+  useEffect(() => {
+    const moodStyle: Record<typeof companionMood, 'pulse' | 'bounce' | 'breathe'> = {
+      dormant: 'pulse', present: 'pulse', lit: 'bounce', transcendent: 'breathe',
+    };
+    setCompanionAnimStyle(moodStyle[companionMood]);
+  }, [companionMood]);
 
   // Companion animation
   useEffect(() => {
@@ -2099,152 +2134,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
     if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setLongPressMenu({ content, isAssistant, msgPersona, msgId, aura, tokenUsage, timings, msgMode });
   };
-  const _handleLongPressLegacy = (content: string, isAssistant: boolean, msgPersona: Persona = 'sol', msgId?: string, aura?: AURAMetrics, tokenUsage?: any, timings?: any, msgMode?: Mode) => {
-    const isPinned = msgId ? pinnedIds.includes(msgId) : false;
-    Alert.alert('Message', undefined, [
-      { text: 'Copy', onPress: () => { Clipboard.setString(content); } },
-      ...(isAssistant && msgId ? [{ text: speakingId === msgId ? '⊚ Stop Reading' : '⊚ Read Aloud', onPress: () => handleSpeak(msgId, content, msgMode) }] : []),
-      ...(isAssistant && messages.length >= 5 ? [{
-        text: '📌 Pin to Vault',
-        onPress: async () => {
-          const vaultRaw = await AsyncStorage.getItem('sanctum_vault');
-          const vault: { id: string; text: string; date: string }[] = vaultRaw ? JSON.parse(vaultRaw) : [];
-          const snippet = content.slice(0, 320);
-          const personaLabel = getPersonaLabel(msgPersona);
-          vault.unshift({ id: Date.now().toString(), text: snippet, date: `${new Date().toLocaleDateString()} · ${personaLabel}` });
-          await AsyncStorage.setItem('sanctum_vault', JSON.stringify(vault.slice(0, 50)));
-          Alert.alert('📌 Pinned to Vault', 'Find it in Sanctum → Vault.');
-        },
-      }] : []),
-      ...(isAssistant && paradoxFlags?.[msgId || '']?.p ? [{
-        text: '⚡ Resolve Paradox',
-        onPress: () => {
-          const excerpt = content.slice(0, 120).replace(/\n/g, ' ');
-          setInput(`The paradox I'm holding: "${excerpt}" — help me find the third position.`);
-        },
-      }] : []),
-      ...(isAssistant && aura && aura.passed >= 6 ? [{
-        text: '✦ Echo to School',
-        onPress: () => {
-          const { MYSTERY_SCHOOL_DOMAINS: MSD } = require('../../lib/mystery-school/subjects');
-          Alert.alert(
-            '✦ Echo to School',
-            'Which domain does this insight belong to?',
-            [
-              ...MSD.map((d: any) => ({
-                text: d.label,
-                onPress: async () => {
-                  const raw = await AsyncStorage.getItem('sol_school_echoes');
-                  const echoes: Record<string, { id: string; date: string; text: string }[]> = raw ? JSON.parse(raw) : {};
-                  if (!echoes[d.id]) echoes[d.id] = [];
-                  echoes[d.id].unshift({ id: Date.now().toString(), date: new Date().toLocaleDateString(), text: content.slice(0, 280) });
-                  echoes[d.id] = echoes[d.id].slice(0, 10);
-                  await AsyncStorage.setItem('sol_school_echoes', JSON.stringify(echoes));
-                  Alert.alert('✦ Echoed', `Insight added to ${d.label}.`);
-                },
-              })),
-              { text: 'Cancel', style: 'cancel' },
-            ]
-          );
-        },
-      }] : []),
-      ...(isAssistant && msgId && messages.length >= 5 ? [{
-        text: '◐ Reveal Shadow',
-        onPress: async () => {
-          if (!msgId) return;
-          setShadowLoading(msgId);
-          try {
-            const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
-            if (!apiKey) { setShadowLoading(null); return; }
-            const res = await sendMessage(
-              [{ role: 'user', content: `Analyse this response for its hidden layer. In exactly 3 lines:\n1. Hidden assumption: what the response takes for granted without stating\n2. Unspoken tension: what is being held back or avoided\n3. Structural contradiction: where the logic undermines itself\n\nBe precise and unflinching. No preamble.\n\nResponse to analyse:\n"${content.slice(0, 800)}"` }],
-              'You are a shadow analyst. Return exactly 3 lines starting with "1.", "2.", "3.". No other text.',
-              apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 200, 0.6,
-            );
-            setShadowReveals(prev => ({ ...prev, [msgId]: res.text.trim() }));
-          } catch { /* silent */ }
-          setShadowLoading(null);
-        },
-      }] : []),
-      {
-        text: '⊙ Save to Memory',
-        onPress: async () => {
-          const memRaw = await AsyncStorage.getItem('sol_memory_v1');
-          const mems: { id: string; text: string; date: string }[] = memRaw ? JSON.parse(memRaw) : [];
-          if (mems.length >= 30) { Alert.alert('Memory full', 'Max 30 memories. Remove some in Settings.'); return; }
-          const snippet = content.slice(0, 280);
-          mems.unshift({ id: Date.now().toString(), text: snippet, date: new Date().toLocaleDateString() });
-          await AsyncStorage.setItem('sol_memory_v1', JSON.stringify(mems));
-          Alert.alert('⊙ Saved to Memory', 'This will be included in future conversations.');
-        },
-      },
-      ...(isAssistant ? [{
-        text: '✦ Mark Insightful',
-        onPress: async () => {
-          const insightRaw = await AsyncStorage.getItem('sol_insights');
-          const insights: { id: string; text: string; date: string; persona: string }[] = insightRaw ? JSON.parse(insightRaw) : [];
-          if (insights.length >= 50) { Alert.alert('Insights full', 'Max 50 insights.'); return; }
-          const snippet = content.slice(0, 320);
-          insights.unshift({ id: Date.now().toString(), text: snippet, date: new Date().toLocaleDateString(), persona: msgPersona });
-          await AsyncStorage.setItem('sol_insights', JSON.stringify(insights));
-          // Also inject into context memory so it informs future sessions
-          const memRaw = await AsyncStorage.getItem('sol_memory_v1');
-          const mems: { id: string; text: string; date: string }[] = memRaw ? JSON.parse(memRaw) : [];
-          if (mems.length < 30) {
-            mems.unshift({ id: (Date.now() + 1).toString(), text: `[Insight] ${snippet.slice(0, 200)}`, date: new Date().toLocaleDateString() });
-            await AsyncStorage.setItem('sol_memory_v1', JSON.stringify(mems));
-          }
-          if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          Alert.alert('✦ Marked as Insightful', 'Saved to field memory — will inform future sessions.');
-        },
-      }] : []),
-      ...(isAssistant ? [{
-        text: '↑ Share as Card',
-        onPress: () => {
-          const glyph = getPersonaGlyph(msgPersona);
-          const label = getPersonaLabel(msgPersona).toUpperCase();
-          const modeLine = msgMode ? ` · ${msgMode}` : '';
-          const auraLine = aura ? ` · AURA ${aura.passed}/${aura.total}` : '';
-          const excerpt = content.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim().slice(0, 300);
-          const card = [
-            `${glyph} ${label}${modeLine}${auraLine}`,
-            '',
-            excerpt + (content.length > 300 ? '…' : ''),
-            '',
-            '— Sol App · Lycheetah Framework',
-          ].join('\n');
-          Share.share({ message: card, title: `${label} · Sol` });
-        },
-      }] : []),
-      ...(msgId ? [{
-        text: messageReactions[msgId] ? `${messageReactions[msgId]} Remove reaction` : '◑ React',
-        onPress: () => {
-          if (messageReactions[msgId]) {
-            // Remove existing reaction
-            const updated = { ...messageReactions };
-            delete updated[msgId];
-            setMessageReactions(updated);
-            AsyncStorage.setItem('sol_message_reactions', JSON.stringify(updated)).catch(() => {});
-          } else {
-            Alert.alert('React', undefined, [
-              ...['❤', '✦', '⚡', '🔥', '◈'].map(g => ({
-                text: g,
-                onPress: async () => {
-                  const updated = { ...messageReactions, [msgId]: g };
-                  setMessageReactions(updated);
-                  await AsyncStorage.setItem('sol_message_reactions', JSON.stringify(updated));
-                  if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                },
-              })),
-              { text: 'Cancel', style: 'cancel' as const },
-            ]);
-          }
-        },
-      }] : []),
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
   const renderMessage = ({ item, index }: { item: DisplayMessage; index: number }) => {
     const isUser = item.role === 'user';
     const msgPersona: Persona = item.persona || 'sol';
@@ -3281,26 +3170,51 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         </View>
       )}
 
-      {/* Companion */}
+      {/* Companion — mood-aware, tappable */}
       {companionEnabled && (
-        <Animated.Text style={[
-          styles.companion,
-          {
-            color: accentColor,
-            opacity: companionAnimStyle === 'spin' ? 1 : companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-            transform: [
-              companionAnimStyle === 'bounce'
-                ? { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -8] }) }
-                : companionAnimStyle === 'spin'
-                ? { rotate: companionAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
-                : companionAnimStyle === 'breathe'
-                ? { scale: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }
-                : { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
-            ],
-          },
-        ]}>
-          {companionGlyph}
-        </Animated.Text>
+        <View style={{ alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => {
+              const phrases: Record<typeof companionMood, string[]> = {
+                dormant: ['The field is patient.', 'Everything studied persists.', 'Still here, quietly.'],
+                present: ["I'm here.", 'The field is open.', 'What are you thinking about?'],
+                lit: ['Something is taking root.', 'The work is moving.', 'A busy week in the school.'],
+                transcendent: ["You're at the edge of something.", 'The field is clear right now.', 'Rare clarity. Use it.'],
+              };
+              const pool = phrases[companionMood];
+              setCompanionPhrase(pool[Math.floor(Math.random() * pool.length)]);
+              setTimeout(() => setCompanionPhrase(null), 3000);
+            }}
+            activeOpacity={0.7}
+          >
+            <Animated.Text style={[
+              styles.companion,
+              {
+                color: accentColor,
+                opacity: companionAnimStyle === 'spin' ? 1 : companionAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: companionMood === 'dormant' ? [0.15, 0.4] : [0.3, 1],
+                }),
+                transform: [
+                  companionAnimStyle === 'bounce'
+                    ? { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -8] }) }
+                    : companionAnimStyle === 'spin'
+                    ? { rotate: companionAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }
+                    : companionAnimStyle === 'breathe'
+                    ? { scale: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] }) }
+                    : { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
+                ],
+              },
+            ]}>
+              {companionGlyph}
+            </Animated.Text>
+          </TouchableOpacity>
+          {companionPhrase && (
+            <Text style={{ color: accentColor, fontSize: 11, fontStyle: 'italic', opacity: 0.8, marginTop: 2, textAlign: 'center', maxWidth: 220 }}>
+              {companionPhrase}
+            </Text>
+          )}
+        </View>
       )}
 
       {/* Tools row — expands above input when ··· is tapped */}
