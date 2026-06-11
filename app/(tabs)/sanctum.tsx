@@ -71,6 +71,14 @@ const SHRINE_QUOTES = [
 function todayStr() {
   return new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
+function intentionLabel() {
+  const h = new Date().getHours();
+  if (h < 5) return 'NIGHT INTENTION';
+  if (h < 12) return 'MORNING INTENTION';
+  if (h < 17) return 'AFTERNOON INTENTION';
+  if (h < 21) return 'EVENING INTENTION';
+  return 'NIGHT INTENTION';
+}
 function todayKey() {
   return new Date().toISOString().split('T')[0];
 }
@@ -367,7 +375,10 @@ export default function SanctumScreen() {
             onPress={() => setSection(s)}
           >
             <Text style={[styles.sectionTabText, section === s && { color: accentColor }]}>
-              {s === 'today' ? 'TODAY' : s === 'journal' ? 'JOURNAL' : s === 'vault' ? 'VAULT' : 'FIELD'}
+              {s === 'today' ? 'TODAY'
+               : s === 'journal' ? (journal.length > 0 ? `JOURNAL (${journal.length})` : 'JOURNAL')
+               : s === 'vault' ? (vault.length > 0 ? `VAULT (${vault.length})` : 'VAULT')
+               : 'FIELD'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -376,7 +387,7 @@ export default function SanctumScreen() {
       {/* TODAY */}
       {section === 'today' && (
         <>
-          <Text style={[styles.label, { color: accentColor }]}>MORNING INTENTION</Text>
+          <Text style={[styles.label, { color: accentColor }]}>{intentionLabel()}</Text>
           <Text style={styles.note}>What do you intend to bring forth today?</Text>
           <TextInput
             style={styles.textArea}
@@ -639,7 +650,13 @@ export default function SanctumScreen() {
           </TouchableOpacity>
 
           {journal.length === 0 ? (
-            <Text style={styles.emptyNote}>Nothing recorded yet. Write anything — a dream, a question, a line that won't let go.</Text>
+            <View style={{ alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 }}>
+              <Text style={{ color: accentColor, fontSize: 28, marginBottom: 10 }}>✎</Text>
+              <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>The journal is empty.</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                Write anything — a dream, a question, something that won't let go. The journal doesn't judge what goes in.
+              </Text>
+            </View>
           ) : (
             journal.map(entry => (
               <View key={entry.id} style={[styles.entryCard, { borderColor: SOL_THEME.border }]}>
@@ -684,7 +701,13 @@ export default function SanctumScreen() {
           </View>
 
           {vault.length === 0 ? (
-            <Text style={styles.emptyNote}>The vault is sealed but empty. Pin the line that changed how you see something.</Text>
+            <View style={{ alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 }}>
+              <Text style={{ color: accentColor, fontSize: 28, marginBottom: 10 }}>📌</Text>
+              <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>The vault is empty.</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                Long-press any Sol response and tap Pin to Vault — or write directly above. Keep what changes how you see things.
+              </Text>
+            </View>
           ) : (
             vault.map(entry => (
               <View key={entry.id} style={[styles.vaultCard, { borderLeftColor: accentColor }]}>
@@ -739,6 +762,10 @@ export default function SanctumScreen() {
         }, 0);
         return (
           <>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 16 }}>
+              Your identity, field health scores, study profile, and activity over time.
+            </Text>
+
             {/* Identity Profile */}
             <View style={{ padding: 14, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '55', backgroundColor: accentColor + '0A', marginBottom: 16 }}>
               {!editingIdentity ? (

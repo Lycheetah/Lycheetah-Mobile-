@@ -751,7 +751,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
 
       {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ flexDirection: 'row' }}>
-        {([['forge', '⚗ FORGE'], ['cascade', 'CASCADE'], ['probe', 'PROBE'], ['cementer', 'CEMENTER'], ['library', `SAVED (${library.length})`], ['glossary', 'GLOSSARY'], ['community', 'COMMONS']] as const).map(([t, label]) => (
+        {([['forge', '⚗ FORGE'], ['cascade', 'SCORE'], ['probe', 'PROBE'], ['cementer', 'CEMENT'], ['library', `SAVED${library.length > 0 ? ` (${library.length})` : ''}`], ['glossary', 'GLOSSARY'], ['community', '⊞ COMMONS']] as const).map(([t, label]) => (
           <TouchableOpacity
             key={t}
             style={[styles.tab, view === t && { borderBottomColor: accentColor, borderBottomWidth: 2 }]}
@@ -873,9 +873,9 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
       {/* CASCADE VIEW */}
       {view === 'cascade' && !selectedEntry && (
         <>
-          <Text style={[styles.label, { color: accentColor }]}>PASTE TEXT</Text>
+          <Text style={[styles.label, { color: accentColor }]}>CASCADE SCORE</Text>
           <Text style={styles.note}>
-            CASCADE analyses the epistemic architecture — Foundation (invariants), Theory (frameworks), Edge (contradictions). Truth Pressure Π = E·P/S.
+            Scores the epistemic architecture of any text — how much is invariant fact (Foundation), working framework (Theory), or unresolved contradiction (Edge). Outputs Truth Pressure Π. Use the Forge for the full pipeline including LAMAGUE tagging.
           </Text>
           <TextInput
             style={[styles.textArea, { minHeight: 120 }]}
@@ -1040,9 +1040,9 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
       {/* CEMENTER VIEW */}
       {view === 'cementer' && !selectedCement && (
         <>
-          <Text style={[styles.label, { color: accentColor }]}>LAMAGUE CEMENTER</Text>
+          <Text style={[styles.label, { color: accentColor }]}>◈ CEMENT</Text>
           <Text style={styles.note}>
-            Type any phrase in English. Sol translates it into LAMAGUE notation — the symbolic language of the Lycheetah Framework. Save personal expressions and build your own vocabulary.
+            Type any phrase in English. Sol translates it into LAMAGUE notation — the symbolic language of the Lycheetah Framework. Save expressions and build your personal vocabulary.
           </Text>
 
           <TextInput
@@ -1215,7 +1215,13 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
             </>
           )}
           {library.length === 0 ? (
-            <Text style={styles.emptyNote}>Nothing saved yet. Paste any text into CASCADE — a theory, a claim, a fragment — and save what holds.</Text>
+            <View style={{ alignItems: 'center', paddingTop: 40, paddingHorizontal: 24 }}>
+              <Text style={{ color: accentColor, fontSize: 32, marginBottom: 12 }}>⊚</Text>
+              <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>The library is empty.</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                Run the Forge on any text — a theory, a claim, a draft. Save what scores well. The library holds what survives the test.
+              </Text>
+            </View>
           ) : (
             library
               .filter(e => activeFolder === 'ALL' || (e.folder || e.result.dominantLayer) === activeFolder)
@@ -1243,32 +1249,35 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         </>
       )}
 
-      {/* COMMUNITY FEED — frozen, placeholder only */}
+      {/* COMMONS — coming soon */}
       {view === 'community' && !selectedEntry && (
-        <View style={{ alignItems: 'center', paddingTop: 48, paddingHorizontal: 28 }}>
-          <Text style={{ fontSize: 44, marginBottom: 20 }}>⊞</Text>
-          <Text style={[styles.label, { color: accentColor, textAlign: 'center', letterSpacing: 3, marginBottom: 14 }]}>
-            THE COMMONS
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, alignItems: 'center' }}>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>⊞</Text>
+          <Text style={{ color: accentColor, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', fontSize: 12, letterSpacing: 3, marginBottom: 12, textAlign: 'center' }}>THE COMMONS</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, lineHeight: 22, textAlign: 'center', marginBottom: 28, maxWidth: 300 }}>
+            A shared hall where Forge entries, dive sessions, and LAMAGUE expressions travel beyond your device.{'\n\n'}The infrastructure is built. Opening when the first Founding Sovereigns arrive.
           </Text>
-          <Text style={[styles.note, { textAlign: 'center', lineHeight: 24, marginBottom: 8, fontSize: 14 }]}>
-            A shared hall, opening soon.
-          </Text>
-          <Text style={[styles.note, { textAlign: 'center', lineHeight: 22, marginBottom: 36, color: accentColor + 'BB' }]}>
-            Your Open Seats will travel.
-          </Text>
-          <View style={{ width: '100%', borderWidth: 1, borderColor: accentColor + '2A', borderRadius: 14, padding: 20, marginBottom: 28, backgroundColor: accentColor + '08' }}>
-            <Text style={[styles.label, { color: accentColor, marginBottom: 10, letterSpacing: 2 }]}>UNTIL THEN</Text>
-            <Text style={[styles.note, { lineHeight: 21 }]}>
-              Tag your screenshots, dives, and sessions with{' '}
-              <Text style={{ color: accentColor }}>#lycheetah</Text> or{' '}
-              <Text style={{ color: accentColor }}>#solapp</Text>
-              {' '}— that's where the Commons lives right now.
-            </Text>
-          </View>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', opacity: 0.35, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
+
+          {/* What will be here */}
+          {[
+            { glyph: '⚗', label: 'Shared Forge entries', desc: 'Truth Pressure scores from the community' },
+            { glyph: '◈', label: 'Cement blocks', desc: 'LAMAGUE expressions contributed by all users' },
+            { glyph: '⊚', label: 'Open Seat threads', desc: 'Study sessions shared from the School' },
+          ].map(item => (
+            <View key={item.label} style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '22', backgroundColor: accentColor + '06', marginBottom: 10 }}>
+              <Text style={{ color: accentColor, fontSize: 22 }}>{item.glyph}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', marginBottom: 2 }}>{item.label}</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{item.desc}</Text>
+              </View>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>Soon</Text>
+            </View>
+          ))}
+
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 20, opacity: 0.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
             YOUR PLACE IS KEPT
           </Text>
-        </View>
+        </ScrollView>
       )}
 
       {/* GLOSSARY VIEW */}
