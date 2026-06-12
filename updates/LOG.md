@@ -3,6 +3,12 @@
 
 ---
 
+## 2026-06-11 — v3.28.0 (Session 3: The Companion)
+**Shipped:** Full Companion tab (6 evolution stages, 4 moods, live data feed, animated creature, laws) · Framework Dictionary in Library (21 terms, searchable, expandable) · Context overflow guard in study sessions (last 12 messages only) · app.json 3.28.0  
+**Post:** `posts/2026-06-11-v3.28.0.md`
+
+---
+
 ## 2026-06-11 — v3.27.0 (Session 2: Magister)
 **Shipped:** Headmaster → Magister rename · ★ Saved subjects on school home · Tools tray labels · Onboarding rework · Sanctum field greeting + empty CTA · Library 2-row tabs · Codex help expanded  
 **Post:** `posts/2026-06-11-v3.27.0.md`

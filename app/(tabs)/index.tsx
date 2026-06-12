@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { compressForUpload } from '../../lib/image-compress';
 import { canWatchAd, showRewardedAd } from '../../lib/ads';
 import * as Haptics from 'expo-haptics';
@@ -297,6 +298,7 @@ export default function SolChat() {
   const [userName, setUserName] = useState('');
   const [conversationPassRates, setConversationPassRates] = useState<number[]>([]);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
+  const [pendingDoc, setPendingDoc] = useState<{ name: string; content: string; mimeType: string } | null>(null);
   const [expandedAura, setExpandedAura] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
@@ -1150,6 +1152,29 @@ export default function SolChat() {
     }
   }, []);
 
+  const pickDocument = useCallback(async () => {
+    const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, type: '*/*' });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    const MAX_CHARS = 20000;
+    const textTypes = ['text/', 'application/json', 'application/xml', 'application/csv', 'application/markdown'];
+    const isText = textTypes.some(t => (asset.mimeType || '').startsWith(t)) || /\.(txt|md|csv|json|xml|yaml|yml|log|ts|js|py|sh|html|css)$/i.test(asset.name || '');
+    let content = '';
+    if (isText) {
+      try {
+        const resp = await fetch(asset.uri);
+        const raw = await resp.text();
+        content = raw.length > MAX_CHARS ? raw.slice(0, MAX_CHARS) + '\n[... truncated]' : raw;
+      } catch {
+        content = '[Could not read file content]';
+      }
+    } else {
+      content = '[Binary file — content not readable]';
+    }
+    setPendingDoc({ name: asset.name || 'document', content, mimeType: asset.mimeType || 'application/octet-stream' });
+    if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [hapticsOn]);
+
   const handleCameraCapture = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -1542,10 +1567,14 @@ export default function SolChat() {
 
     if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    const docBlock = pendingDoc
+      ? `[ATTACHED FILE: ${pendingDoc.name}]\n\`\`\`\n${pendingDoc.content}\n\`\`\`\n\n`
+      : '';
+
     const userMsg: DisplayMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: text,
+      content: docBlock ? `${docBlock}${text}` : text,
       mode: detectedMode,
       isNRM: nrmActive,
       persona,
@@ -1558,6 +1587,7 @@ export default function SolChat() {
     setInput('');
     setTypingMode(null);
     setPendingImage(null);
+    setPendingDoc(null);
     setLoading(true);
     setStreamingText('');
 
@@ -3152,6 +3182,17 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         </View>
       )}
 
+      {/* Pending document indicator */}
+      {pendingDoc && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 7, borderTopWidth: 1, borderTopColor: accent + '44', backgroundColor: accent + '0D' }}>
+          <Text style={{ color: accent, fontSize: 15 }}>📄</Text>
+          <Text style={{ flex: 1, color: accent, fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{pendingDoc.name}</Text>
+          <TouchableOpacity onPress={() => setPendingDoc(null)} style={{ padding: 4 }}>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Field Report overlay */}
       {fieldReport && (
         <View style={[styles.fieldReportOverlay, { borderTopColor: accent }]}>
@@ -3227,6 +3268,13 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             >
               <Text style={{ fontSize: 17, color: pendingImage ? accent : SOL_THEME.textMuted }}>📎</Text>
               <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Attach</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: pendingDoc ? accent + '88' : world.border, borderRadius: 10, backgroundColor: pendingDoc ? accent + '18' : 'transparent', gap: 2 }}
+              onPress={pickDocument}
+            >
+              <Text style={{ fontSize: 17, color: pendingDoc ? accent : SOL_THEME.textMuted }}>📄</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Doc</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: world.border, borderRadius: 10, opacity: cameraLoading ? 0.4 : 1, gap: 2 }}

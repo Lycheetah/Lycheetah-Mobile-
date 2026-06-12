@@ -3,7 +3,7 @@
 
 A constitutional AI mobile app built on the open-source [Lycheetah Framework](https://github.com/Lycheetah) by Mackenzie Conor James Clark. Not a chatbot wrapper — a transparent architecture you can watch running.
 
-**Current release: v3.26.0 — "The Build"** · June 11, 2026
+**Current release: v3.28.0 — "The Companion"** · June 11, 2026
 
 ---
 

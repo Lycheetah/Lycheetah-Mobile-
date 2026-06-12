@@ -65,6 +65,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="companion"
+        options={{
+          title: 'COMPANION',
+          tabBarLabel: 'Companion',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="✦" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="library"
         options={{
           title: 'LIBRARY',

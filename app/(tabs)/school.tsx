@@ -32,7 +32,7 @@ type DiveRecord = { id: string; subjectName: string; domainLabel: string; domain
 type ArcPhase = 'intro' | 'concept' | 'question' | 'reflection' | 'advanced';
 type FieldStage = 'NEOPHYTE' | 'ADEPT' | 'MASTER' | 'HIEROPHANT' | 'AVATAR' | null;
 type SchoolLayer = 'FOUNDATION' | 'MIDDLE' | 'EDGE';
-type SchoolView = 'home' | 'domain' | 'subject' | 'curriculum' | 'notes' | 'dive-log';
+type SchoolView = 'home' | 'domain' | 'subject' | 'curriculum' | 'notes' | 'dive-log' | 'locator';
 type Curriculum = { id: string; name: string; subjects: string[]; created: string };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -725,7 +725,8 @@ export default function MysterySchoolScreen() {
         return;
       }
       const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth);
-      const apiMessages: Message[] = updated.map(m => ({ role: m.role, content: m.content }));
+      const trimmed = updated.slice(-12);
+      const apiMessages: Message[] = trimmed.map(m => ({ role: m.role, content: m.content }));
       const result = await sendMessage(apiMessages, systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
       const reply = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
       setStudyMessages(prev => [...prev, { role: 'assistant', content: reply }]);
@@ -1591,8 +1592,13 @@ export default function MysterySchoolScreen() {
                         <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{d.subjectName}</Text>
                         <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 1 }}>{d.domainLabel} · {TEACHER_NAMES[d.teacher] || d.teacher} · {d.date}</Text>
                       </View>
-                      <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: LAYER_COLORS[d.layer] + '22' }}>
-                        <Text style={{ color: LAYER_COLORS[d.layer], fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{LAYER_LABELS[d.layer]}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        {d.timeOfDay === 'night' && (
+                          <Text style={{ color: '#7B8CDE', fontSize: 11, opacity: 0.8 }}>◎</Text>
+                        )}
+                        <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: LAYER_COLORS[d.layer] + '22' }}>
+                          <Text style={{ color: LAYER_COLORS[d.layer], fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{LAYER_LABELS[d.layer]}</Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   ))}
@@ -2552,8 +2558,11 @@ export default function MysterySchoolScreen() {
                               )}
                             </View>
                           </View>
-                          <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: LAYER_COLORS[d.layer] + '22' }}>
-                            <Text style={{ color: LAYER_COLORS[d.layer], fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{LAYER_LABELS[d.layer]}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                            {(() => { const ts = parseInt(d.id, 10); const h = isNaN(ts) ? -1 : new Date(ts).getHours(); return (h >= 0 && h < 4) ? <Text style={{ color: '#7B8CDE', fontSize: 11, opacity: 0.8 }}>◎</Text> : null; })()}
+                            <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: LAYER_COLORS[d.layer] + '22' }}>
+                              <Text style={{ color: LAYER_COLORS[d.layer], fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>{LAYER_LABELS[d.layer]}</Text>
+                            </View>
                           </View>
                         </TouchableOpacity>
                       );
