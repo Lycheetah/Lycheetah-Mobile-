@@ -7,6 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SOL_THEME } from '../../constants/theme';
 import * as Haptics from 'expo-haptics';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { CreatureSvg } from '../../components/CreatureSvg';
 import { sendMessage } from '../../lib/ai-client';
 import { getProviderKey, getActiveKey, getModel } from '../../lib/storage';
@@ -1490,6 +1492,8 @@ export default function CompanionScreen() {
   const [eating,       setEating]       = useState(false);
   const [recentDives,  setRecentDives]  = useState<Array<{ subjectName: string; domainLabel: string }>>([]);
   const [inventory,    setInventory]    = useState<string[]>([]);
+  const [uploadedDoc,  setUploadedDoc]  = useState<{ name: string; excerpt: string; date: string } | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   const phraseAnim      = useRef(new Animated.Value(0)).current;
   const relicAnim       = useRef(new Animated.Value(0)).current;
@@ -1666,6 +1670,10 @@ export default function CompanionScreen() {
       try { setLoreCodex(get('sol_lore_codex') ? JSON.parse(get('sol_lore_codex')!) : []); } catch {}
       setLamagueSt(get('sol_lamague_state'));
       try { setLiveLore(get('sol_companion_live_lore') ? JSON.parse(get('sol_companion_live_lore')!) : []); } catch {}
+      try {
+        const docRaw = await AsyncStorage.getItem('sol_uploaded_doc');
+        if (docRaw) setUploadedDoc(JSON.parse(docRaw));
+      } catch {}
 
       // Dream fragment — fires once per day if we have a last dive with domain
       if (dives.length > 0) {
@@ -1791,6 +1799,26 @@ export default function CompanionScreen() {
     } catch { return null; }
   };
 
+  const handleUploadDoc = async () => {
+    try {
+      setUploadLoading(true);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/plain', 'text/markdown', 'text/x-markdown', '*/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      const content = await FileSystem.readAsStringAsync(asset.uri);
+      const excerpt = content.replace(/\s+/g, ' ').trim().slice(0, 2000);
+      const doc = { name: asset.name, excerpt, date: todayDateKey() };
+      setUploadedDoc(doc);
+      await AsyncStorage.setItem('sol_uploaded_doc', JSON.stringify(doc));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch { /* silent — user may cancel */ } finally {
+      setUploadLoading(false);
+    }
+  };
+
   const generateDailyLore = async () => {
     try {
       const todayK = todayDateKey();
@@ -1801,15 +1829,19 @@ export default function CompanionScreen() {
       const diveCtx = recentDives.length > 0
         ? `The student recently studied: ${recentDives.slice(0, 3).map(d => d.subjectName).join(', ')}.`
         : 'The student has not yet dived today.';
+      const docCtx = uploadedDoc
+        ? ` The student also uploaded a document: "${uploadedDoc.name}". Excerpt: ${uploadedDoc.excerpt.slice(0, 400)}`
+        : '';
       const seeds = [
         `${archetype.name} notices something about the student's recent work.`,
         `A fragment surfaces from ${archetype.name}'s memory about this stage of the Work.`,
         `${archetype.name} reflects on what it means to be at the ${stageData.name} stage.`,
         `Something from the field today catches ${archetype.name}'s attention.`,
+        ...(uploadedDoc ? [`${archetype.name} has been studying the student's uploaded document.`] : []),
       ];
       const seed = seeds[Math.floor(Math.random() * seeds.length)];
       const result = await sendMessage(
-        [{ role: 'user', content: `${seed} ${diveCtx} Write ONE lore fragment (max 20 words). Cryptic. In character. No explanation.` }],
+        [{ role: 'user', content: `${seed} ${diveCtx}${docCtx} Write ONE lore fragment (max 20 words). Cryptic. In character. No explanation.` }],
         `You are ${archetype.name}, ${archetype.title}. ${archetype.desc}`,
         key, model as any, undefined, 'fast', 80,
       );
@@ -3180,7 +3212,17 @@ export default function CompanionScreen() {
           {/* Companion Lore */}
           <View onLayout={e => { loreY.current = e.nativeEvent.layout.y; }}
             style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:'#1A1A26' }}>
-            <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10 }}>LORE · {stageData.name}</Text>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>LORE · {stageData.name}</Text>
+              <TouchableOpacity onPress={handleUploadDoc} disabled={uploadLoading}
+                style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:8, paddingVertical:3,
+                  borderRadius:6, borderWidth:1, borderColor: uploadedDoc ? color+'44' : '#1A1A26',
+                  backgroundColor: uploadedDoc ? color+'0A' : 'transparent' }}>
+                <Text style={{ color: uploadedDoc ? color : '#333344', fontSize:8, fontFamily:mono }}>
+                  {uploadLoading ? '···' : uploadedDoc ? `↑ ${uploadedDoc.name.slice(0,16)}${uploadedDoc.name.length>16?'…':''}` : '↑ upload'}
+                </Text>
+              </TouchableOpacity>
+            </View>
             {liveLore.slice(0,5).map((l,i) => (
               <View key={i} style={{ borderLeftWidth:2, borderLeftColor:color+'55', paddingLeft:10, marginBottom:10 }}>
                 <Text style={{ color:SOL_THEME.text, fontSize:12, lineHeight:19, fontStyle:'italic' }}>{l.text}</Text>
