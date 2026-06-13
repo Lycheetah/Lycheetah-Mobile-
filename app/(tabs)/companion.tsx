@@ -1051,6 +1051,7 @@ function CompanionScene({
   const entityFadeAnim   = useRef(new Animated.Value(1)).current;
   const victoryFlash     = useRef(new Animated.Value(0)).current;
   const particleAnims    = useRef(Array.from({ length: P_COUNT }, () => new Animated.Value(0))).current;
+  const fogAnims         = useRef(Array.from({ length: 4 }, () => new Animated.Value(0))).current;
   const entitySlideAnim  = useRef(new Animated.Value(120)).current;  // enemy entrance
   const entityHitFlash   = useRef(new Animated.Value(0)).current;    // red hit flash
   const entityScaleAnim  = useRef(new Animated.Value(1)).current;    // death shrink
@@ -1120,6 +1121,25 @@ function CompanionScene({
       Animated.timing(skyAnim, { toValue: 0, duration: 5000, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
     ]));
     loop.start(); return () => loop.stop();
+  }, []);
+
+  // Layered mist — 4 independent loops at different speeds/delays for depth parallax
+  useEffect(() => {
+    const cfgs = [
+      { dur: 9000, delay: 0 },
+      { dur: 13000, delay: 2200 },
+      { dur: 7500, delay: 1000 },
+      { dur: 11500, delay: 3600 },
+    ];
+    const loops = cfgs.map(({ dur, delay }, i) => {
+      const loop = Animated.loop(Animated.sequence([
+        Animated.timing(fogAnims[i], { toValue: 1, duration: dur, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(fogAnims[i], { toValue: 0, duration: dur * 1.15, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ]));
+      const t = setTimeout(() => loop.start(), delay);
+      return { loop, t };
+    });
+    return () => loops.forEach(({ loop, t }) => { loop.stop(); clearTimeout(t); });
   }, []);
 
   useEffect(() => {
@@ -1254,6 +1274,26 @@ function CompanionScene({
       <View style={{ position:'absolute', top:0, right:0, width:24, height:SCENE_H, backgroundColor:'#000000', opacity:0.12 }} pointerEvents="none" />
       {/* Bottom dark fade — grounding only, no colour */}
       <View style={{ position:'absolute', bottom:0, left:0, right:0, height:SCENE_H*0.10, backgroundColor:'#000000', opacity:0.35 }} pointerEvents="none" />
+
+      {/* Layered mist bands — mid-depth, independent drift, archetype-tinted */}
+      {[
+        { yFrac: 0.12, h: 48, op: 0.038, amp: 0.28, fi: 0 },
+        { yFrac: 0.42, h: 30, op: 0.026, amp: 0.20, fi: 1 },
+        { yFrac: 0.65, h: 38, op: 0.032, amp: 0.35, fi: 2 },
+        { yFrac: 0.28, h: 22, op: 0.018, amp: 0.18, fi: 3 },
+      ].map(({ yFrac, h, op, amp, fi }, i) => (
+        <Animated.View key={`mist-${i}`} pointerEvents="none" style={{
+          position: 'absolute',
+          top: yFrac * SCENE_H - h / 2,
+          left: -SCREEN_W * 0.25,
+          width: SCREEN_W * 1.6,
+          height: h,
+          borderRadius: h / 2,
+          backgroundColor: color,
+          opacity: op,
+          transform: [{ translateX: fogAnims[fi].interpolate({ inputRange: [0, 1], outputRange: [0, SCREEN_W * amp] }) }],
+        }} />
+      ))}
 
       {/* Concentric pulsing rings behind creature */}
       {[{ anim:ring3Anim, op:ring3Op, sc:ring3Scale, sz:220, col:color, bw:0.5 },
