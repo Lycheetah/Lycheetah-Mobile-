@@ -28,20 +28,32 @@ export type Message = {
   model?: string; // which model produced this message
 };
 
-export type Provider = 'gemini' | 'anthropic' | 'openai' | 'deepseek' | 'kimi';
+export type Provider = 'gemini' | 'anthropic' | 'openai' | 'deepseek' | 'kimi' | 'nvidia';
 export type GeminiModel = 'gemini-2.5-flash' | 'gemini-2.5-flash-lite' | 'gemini-2.5-pro' | 'gemini-3.1-flash-lite-preview';
 export type AnthropicModel = 'claude-haiku-4-5-20251001' | 'claude-sonnet-4-6' | 'claude-opus-4-6' | 'claude-opus-4-8' | 'claude-fable-5';
 export type OpenAIModel = 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4.1-mini' | 'gpt-4.1-nano';
 export type DeepSeekModel = 'deepseek-chat' | 'deepseek-reasoner';
 export type KimiModel = 'moonshot-v1-8k' | 'moonshot-v1-32k';
-export type AIModel = GeminiModel | AnthropicModel | OpenAIModel | DeepSeekModel | KimiModel;
+export type NvidiaModel =
+  | 'meta/llama-3.1-8b-instruct' | 'openai/gpt-oss-20b' | 'stepfun-ai/step-3.7-flash'
+  | 'google/gemma-3n-e2b-it' | 'moonshotai/kimi-k2.6'
+  | 'meta/llama-3.3-70b-instruct' | 'google/gemma-4-31b-it' | 'nvidia/llama-3.3-nemotron-super-49b-v1'
+  | 'minimaxai/minimax-m2.7' | 'bytedance/seed-oss-36b-instruct'
+  | 'mistralai/mistral-medium-3.5-128b' | 'mistralai/mistral-small-4-119b-2603'
+  | 'qwen/qwen3.5-122b-a10b' | 'openai/gpt-oss-120b' | 'deepseek-ai/deepseek-v4-flash'
+  | 'meta/llama-4-maverick-17b-128e-instruct' | 'qwen/qwen3-next-80b-a3b-instruct'
+  | 'meta/llama-3.2-90b-vision-instruct' | 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1' | 'qwen/qwen3.5-397b-a17b'
+  | 'nvidia/nemotron-3-super-120b-a12b' | 'nvidia/nemotron-3-ultra-550b-a55b' | 'mistralai/mistral-large-3-675b-instruct-2512';
+export type AIModel = GeminiModel | AnthropicModel | OpenAIModel | DeepSeekModel | KimiModel | NvidiaModel;
 
 export function getProviderFromModel(model: AIModel): Provider {
   if (model.startsWith('gemini')) return 'gemini';
   if (model.startsWith('claude')) return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1')) return 'openai';
-  if (model.startsWith('deepseek')) return 'deepseek';
+  if (model.startsWith('deepseek-chat') || model.startsWith('deepseek-reasoner')) return 'deepseek';
   if (model.startsWith('moonshot')) return 'kimi';
+  // All NVIDIA NIM models — identified by org/ prefix pattern
+  if (model.includes('/')) return 'nvidia';
   return 'gemini';
 }
 

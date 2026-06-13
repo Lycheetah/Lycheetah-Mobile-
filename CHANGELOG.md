@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.29.0] — 2026-06-13
+
+### Added
+- **Companion Screen — full rebuild**: 6 archetype spirits each with unique personality, dialogue, and visual identity
+- **Gemini character art**: hand-crafted SVG art for all 6 companions — CHAOS (fire sovereign), OBSIDIAN (shadow traveller), AURORA (crystal knight), SOLFORM (golden scholar-golem), CRIMSON (blood alchemist), VOID (void oracle)
+- **AI Talk panel**: tap your companion to open a live chat — companion speaks in its own voice, mood-aware, draws on your recent school dives
+- **Live phrase generation**: companion generates a fresh phrase on every tap via AI
+- **Mood system**: 5 moods (AWAKE, DREAMING, FIERCE, STILL, CRYPTIC) with mood-reactive SVG eye overlays and archetype-specific phrases
+- **Sanctum field verse**: AI-generated verse loads on Sanctum entry, time-of-day aware
+- **NVIDIA NIM provider**: 6th AI provider added — 28 free models including Nemotron, Llama 4, Qwen, DeepSeek V4, Mistral, Gemma, GPT OSS and more
+- **Evolution stage system**: companions evolve across 6 stages with progressive visual development
+- **Scene backgrounds**: archetype-specific scene imagery with layered visual effects
+
+### Changed
+- Scene background opacity reduced to near-transparent — effects sit over colour rather than competing with it
+- All AI calls routed through active provider system — no more hardcoded model endpoints
+- Default model migrated from GLM-5.1 (down) to DeepSeek — works out of the box with dev key
+- Dead model auto-migration: stored models that are offline are replaced automatically on load
+- EAS build migrated to new Expo account
+
+### Fixed
+- AI Talk and Sanctum verse were hardcoded to NVIDIA GLM-5.1 — broken when model went down; now uses `getActiveKey()` + `getModel()` universally
+- Critical: `sendMessage` calls were passing token budget as temperature argument (80/200 as temp) — caused NVIDIA to reject every request with a parse error
+- Companion characters all showing same art — stage switch logic corrected; stage 1 now maps to full character art for release
+
+---
+
 ## [3.24.0] — 2026-06-10
 
 ### Added

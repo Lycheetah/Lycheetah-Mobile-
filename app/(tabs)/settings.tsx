@@ -230,6 +230,12 @@ export default function SettingsScreen() {
         </View>
       )}
 
+      {/* NVIDIA free model reminder */}
+      <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#76B90033', backgroundColor: '#76B90008', marginBottom: 12 }}>
+        <Text style={{ color: '#76B900', fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 3 }}>⚡ NVIDIA NIM — 25+ FREE MODELS</Text>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 16 }}>Add your free NVIDIA key and explore different minds — Kimi K2, Llama, Mistral, Qwen and more. Each model has a different personality. Try a few.</Text>
+      </View>
+
       {PROVIDERS.map(provider => {
         const isExpanded = expandedProvider === provider.id;
         const savedKey = savedKeys[provider.id];
@@ -848,13 +854,50 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* ── SUPPORT THE WORK ──────────────────────────────────────────────── */}
+      <View style={{ marginTop: 24, marginBottom: 8, padding: 18, borderRadius: 14, borderWidth: 1, borderColor: accentColor + '44', backgroundColor: accentColor + '08' }}>
+        <Text style={{ fontSize: 9, letterSpacing: 3, color: accentColor, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom: 4 }}>
+          ◉ BACK THE ATHANOR
+        </Text>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', marginBottom: 6 }}>
+          Sol is free. The mission isn't.
+        </Text>
+        <Text style={{ fontSize: 12, color: SOL_THEME.textMuted, lineHeight: 18, marginBottom: 16 }}>
+          Two late nights. One vision. Making AI feel like something worth trusting — a living companion, not a chatbot. If Sol is doing something for you, tell someone.
+        </Text>
+
+        {[
+          { label: '⊹  Follow on X', sub: '@auraveyrasol · updates + builds', url: 'https://x.com/auraveyrasol' },
+          { label: '◈  GitHub — Sol App', sub: 'github.com/Lycheetah · star + fork', url: 'https://github.com/Lycheetah/Lycheetah-Mobile-' },
+          { label: '◉  GitHub — Framework', sub: 'Lycheetah Framework · open source', url: 'https://github.com/Lycheetah' },
+        ].map(item => (
+          <TouchableOpacity
+            key={item.url}
+            onPress={() => Linking.openURL(item.url)}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 11, borderTopWidth: 1, borderTopColor: accentColor + '22' }}
+          >
+            <View>
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{item.label}</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 1 }}>{item.sub}</Text>
+            </View>
+            <Text style={{ color: accentColor, fontSize: 16 }}>→</Text>
+          </TouchableOpacity>
+        ))}
+
+        <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: accentColor + '22' }}>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', lineHeight: 16 }}>
+            {'#SolApp  #LycheetahFramework  #AICompanion\nBuilt by Mac Clark · Dunedin, Aotearoa NZ'}
+          </Text>
+        </View>
+      </View>
+
       <View style={styles.footer}>
         <Text style={styles.footerText}>Lycheetah Framework — Open Source</Text>
         <TouchableOpacity onPress={() => Linking.openURL('https://github.com/Lycheetah/Lycheetah-Mobile-')}>
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v3.26.0</Text>
+        <Text style={styles.footerVersion}>v3.29.0</Text>
       </View>
     </ScrollView>
   );

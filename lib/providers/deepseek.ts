@@ -6,10 +6,10 @@ export const DeepSeekProvider: AIProvider = {
   label: 'DeepSeek',
   color: '#7B68EE',
   keyPlaceholder: 'sk-...',
-  keyHint: 'Free credits on signup · platform.deepseek.com',
+  keyHint: '5M free tokens on signup · no credit card · platform.deepseek.com',
   models: [
-    { id: 'deepseek-chat',     label: 'DeepSeek Chat',     tier: 'freemium', note: 'FREE CREDITS · Fast · Best value' },
-    { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner', tier: 'freemium', note: 'FREE CREDITS · R1 · Deep reasoning' },
+    { id: 'deepseek-chat',     label: 'DeepSeek Chat',     tier: 'free', note: 'FREE · 5M tokens on signup · Fast · Best value' },
+    { id: 'deepseek-reasoner', label: 'DeepSeek Reasoner', tier: 'free', note: 'FREE · 5M tokens on signup · R1 · Deep reasoning' },
   ],
   async send(messages, systemPrompt, apiKey, model, onChunk, _streamSpeed = 'normal', onUsage, tokenBudget = 8192, temperature = 0.9) {
     const startTime = Date.now();

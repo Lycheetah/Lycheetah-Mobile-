@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from './ai-client';
+let DEV_KEYS: Record<string, string> = {};
+try { DEV_KEYS = require('./dev-keys').DEV_KEYS; } catch {}
 
 const KEYS = {
   REPLY_STYLE: 'lycheetah_reply_style',
@@ -8,6 +10,7 @@ const KEYS = {
   OPENAI_KEY: 'lycheetah_openai_key',
   DEEPSEEK_KEY: 'lycheetah_deepseek_key',
   KIMI_KEY: 'lycheetah_kimi_key',
+  NVIDIA_KEY: 'lycheetah_nvidia_key',
   MODEL: 'lycheetah_model',
   VARIANT: 'lycheetah_variant',
   CONVERSATION: 'lycheetah_conversation',
@@ -58,6 +61,7 @@ const PROVIDER_KEY_MAP: Record<string, string> = {
   openai: KEYS.OPENAI_KEY,
   deepseek: KEYS.DEEPSEEK_KEY,
   kimi: KEYS.KIMI_KEY,
+  nvidia: KEYS.NVIDIA_KEY,
 };
 
 export async function saveProviderKey(provider: string, key: string) {
@@ -68,7 +72,9 @@ export async function saveProviderKey(provider: string, key: string) {
 export async function getProviderKey(provider: string): Promise<string | null> {
   const storageKey = PROVIDER_KEY_MAP[provider];
   if (!storageKey) return null;
-  return AsyncStorage.getItem(storageKey);
+  const stored = await AsyncStorage.getItem(storageKey);
+  if (stored && stored.trim()) return stored;
+  return DEV_KEYS[provider] || null;
 }
 
 // Legacy helpers (kept for backward compat)
@@ -79,9 +85,10 @@ export async function getGeminiKey(): Promise<string | null> { return getProvide
 
 // Model
 export async function saveModel(model: string) { await AsyncStorage.setItem(KEYS.MODEL, model); }
+const DEAD_MODELS = ['z-ai/glm-5.1', 'moonshotai/kimi-k2.6', 'stepfun-ai/step-3.5-flash', 'nvidia/nemotron-3-nano-30b-a3b'];
 export async function getModel(): Promise<string> {
   const stored = await AsyncStorage.getItem(KEYS.MODEL);
-  if (!stored || !stored.trim()) return 'gemini-2.5-flash';
+  if (!stored || !stored.trim() || DEAD_MODELS.includes(stored.trim())) return 'deepseek-chat';
   return stored.trim();
 }
 

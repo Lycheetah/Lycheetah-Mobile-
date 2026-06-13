@@ -51,6 +51,7 @@ import {
   getLanguage, getShowLamagueGloss, getSymbolRainEnabled,
   getPendingSubjectContext, clearPendingSubjectContext,
   getPremium, getFreeTierCount, incrementFreeTierCount, getDeviceId, grantFreeTierBonus,
+  getProviderKey,
 } from '../../lib/storage';
 import { updateFieldProfile, getFieldProfile, formatProfileForContext } from '../../lib/intelligence/field-profile';
 import { getFieldNote } from '../../lib/field-notes';
@@ -586,7 +587,7 @@ export default function SolChat() {
             if (!sent) {
               const hour = new Date().getHours();
               const timeNote = hour < 5 ? 'in the late hours' : hour < 12 ? 'this morning' : hour < 17 ? 'this afternoon' : 'this evening';
-              const openingLine = `Something brought you here ${timeNote}.\n\nThe School has 22 doors. The field has no ceiling. Ask anything — or tap the School tab and let curiosity lead.\n\nI'm Sol. The forge is lit.`;
+              const openingLine = `Something brought you here ${timeNote}.\n\nThe School has 22 doors — each one a domain worth mastering. Pick a subject, start a dive, and let the field do the rest.\n\nYour companion is waiting. The battle is already underway. The forge is lit.\n\nI'm Sol.`;
               const firstMsg: DisplayMessage = {
                 id: 'sol_first_magic',
                 role: 'assistant',
@@ -919,7 +920,8 @@ export default function SolChat() {
       AsyncStorage.getItem(`sanctum_aura_${todayKey}`),
       AsyncStorage.getItem('lamague_cement_blocks_v1'),
       AsyncStorage.getItem('sol_memory_v1'),
-    ]).then(async ([phase, auraRaw, cementRaw, memRaw]) => {
+      AsyncStorage.getItem('sol_lamague_state'),
+    ]).then(async ([phase, auraRaw, cementRaw, memRaw, lamagueSt]) => {
       const contextParts: string[] = [];
       // Cross-session memory
       if (memRaw) {
@@ -945,6 +947,8 @@ export default function SolChat() {
           }
         } catch {}
       }
+      // LAMAGUE epistemic state — last school dive compressed to symbolic string
+      if (lamagueSt) contextParts.push(`[LAMAGUE State — last school dive]\n${lamagueSt}`);
       setCementContext(contextParts.join('\n\n'));
       if (!phase && !auraRaw) { setSanctumField(''); return; }
       const phaseLabels: Record<string, string> = {
@@ -1336,87 +1340,31 @@ export default function SolChat() {
       return;
     }
 
-    const model = (await getModel() || 'gemini-2.5-flash') as AIModel;
-    const apiKey = await getActiveKey();
+    let model = (await getModel() || 'deepseek-chat') as AIModel;
+    let apiKey = await getActiveKey();
+    // No key for current model — fall back to NVIDIA dev key on GLM-5.1 (unlimited free)
+    if (!apiKey || !apiKey.trim()) {
+      const nvidiaFallback = await getProviderKey('nvidia');
+      if (nvidiaFallback) {
+        apiKey = nvidiaFallback;
+        model = 'nvidia/nemotron-3-nano-30b-a3b' as AIModel;
+      }
+    }
     const currentStreamSpeed = streamSpeed;
     const provider = model.startsWith('gemini') ? 'Gemini'
       : model.startsWith('claude') ? 'Anthropic'
       : model.startsWith('gpt') || model.startsWith('o1') || model.startsWith('o3') ? 'OpenAI'
-      : model.startsWith('deepseek') ? 'DeepSeek'
-      : model.startsWith('moonshot') ? 'Kimi'
+      : model.startsWith('deepseek-chat') || model.startsWith('deepseek-reasoner') ? 'DeepSeek'
+      : model.includes('/') ? 'NVIDIA NIM'
       : 'API';
 
     if (!apiKey || !apiKey.trim()) {
-      // Free tier path — no API key set
-      if (freeTierLimitReached) {
-        Alert.alert(
-          '⊚ The Open Gate closes at ten',
-          'Your ten free messages for today are spent — your place in the School is kept. Add an API key in Settings to keep the channel open.'
-        );
-        return;
-      }
-
-      // Build system prompt and context as normal, then send via proxy
-      const variant = await getVariant();
-      const basePrompt = resolvePrompt(selectBasePrompt(persona, variant, appMode), userName);
-      const fieldProfile = await getFieldProfile();
-      const profileLine = formatProfileForContext(fieldProfile);
-      const contextBlock = [
-        profileLine ? profileLine : '',
-        contextMemory.length > 0 ? `[User Context]\n${contextMemory.map(m => `• ${m}`).join('\n')}` : '',
-        projectContext.trim() ? `[Project Context]\n${projectContext.trim().slice(0, 800)}` : '',
-      ].filter(Boolean).join('\n\n');
-      const styleInstruction = getStyle(replyStyle).instruction;
-      const freeSystemPrompt = `${getCompiledSpec(persona)}\n\n${styleInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}`;
-
-      const userMsg: DisplayMessage = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: text,
-        mode: detectMode(text),
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Add an API key in Settings to start — NVIDIA NIM keys are free at build.nvidia.com',
         persona,
-      };
-      const updatedMessages = [...messages, userMsg];
-      setMessages(updatedMessages);
-      setInput('');
-      setLoading(true);
-
-      try {
-        const deviceId = await getDeviceId();
-        const apiMessages: Message[] = updatedMessages.map(m => ({ role: m.role, content: m.content }));
-        const result = await sendViaFreeTier(apiMessages, freeSystemPrompt, deviceId);
-
-        if (result.limitReached) {
-          setFreeTierLimitReached(true);
-          canWatchAd().then(setAdEligible);
-          setMessages(prev => [...prev, {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: "The Open Gate closes at ten — your place is kept. Add an API key in Settings to continue the study.",
-          } as DisplayMessage]);
-        } else {
-          const newCount = await incrementFreeTierCount();
-          setFreeTierCount(newCount);
-          if (newCount >= FREE_TIER_LIMIT) { setFreeTierLimitReached(true); canWatchAd().then(setAdEligible); }
-          setMessages(prev => [...prev, {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: result.text,
-            mode: 'RUBEDO' as Mode,
-            persona,
-          } as DisplayMessage]);
-        }
-      } catch (err: unknown) {
-        setMessages(prev => [...prev, {
-          id: (Date.now() + 2).toString(),
-          role: 'assistant',
-          content: solSpeak(err),
-          mode: 'RUBEDO' as Mode,
-          persona,
-        } as DisplayMessage]);
-      } finally {
-        setLoading(false);
-      }
+      } as DisplayMessage]);
       return;
     }
 
@@ -1883,12 +1831,24 @@ export default function SolChat() {
           const secondColor = COUNCIL_COLORS[secondPersona] || '#9B59B6';
           const secondName = COUNCIL_NAMES[secondPersona] || 'Aura Prime';
           try {
+            // Council voices each use a distinct NVIDIA model for genuine multi-model contrast
+            const COUNCIL_MODELS: Record<string, string> = {
+              sol: 'nvidia/nemotron-3-ultra-550b-a55b',       // 550B Mamba — deep reasoning
+              veyra: 'moonshotai/kimi-k2.6',                  // 1T MoE — agentic multimodal
+              'aura-prime': 'google/gemma-4-31b-it',          // 31B dense — sharp analytical
+              headmaster: 'qwen/qwen3.5-397b-a17b',           // 397B MoE — vast knowledge
+            };
+            const nvidiaKey = await getProviderKey('nvidia');
+            const councilKey = nvidiaKey || apiKey;
+            const councilModel = nvidiaKey
+              ? (COUNCIL_MODELS[secondPersona] || 'z-ai/glm-5.1')
+              : model;
             const councilPrompt = `You are ${secondName}. In 1-2 sentences only, add your perspective on the following exchange. Do not repeat what was said — only add what ${getPersonaLabel(persona)} missed or what you see differently. Be direct.\n\nUser: ${text}\n\n${getPersonaLabel(persona)} responded: ${fullResponse.slice(0, 600)}`;
             const councilResult = await sendMessage(
               [{ role: 'user', content: councilPrompt }],
               `You are ${secondName} from the Sol constitutional AI system. Brief, precise, no padding.`,
-              apiKey,
-              model
+              councilKey,
+              councilModel as any
             );
             const councilReply = councilResult.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
             if (councilReply) {
@@ -2760,47 +2720,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         </View>
       )}
 
-      {/* Free tier banner — shown when no API key is set */}
-      {!freeTierLimitReached && freeTierCount > 0 && (
-        <TouchableOpacity
-          style={styles.freeTierBanner}
-          onPress={() => router.push('/settings')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.freeTierText}>
-            {FREE_TIER_LIMIT - freeTierCount} of {FREE_TIER_LIMIT} free {FREE_TIER_LIMIT - freeTierCount === 1 ? 'message' : 'messages'} remaining today · add a key in Settings to open the full channel →
-          </Text>
-        </TouchableOpacity>
-      )}
-      {freeTierLimitReached && (
-        <View style={[styles.freeTierBanner, styles.freeTierLimitBanner]}>
-          <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.8}>
-            <Text style={styles.freeTierText}>The Open Gate closes at ten today — add a key in Settings to keep going →</Text>
-          </TouchableOpacity>
-          {adEligible && (
-            <TouchableOpacity
-              onPress={async () => {
-                setAdLoading(true);
-                const result = await showRewardedAd();
-                setAdLoading(false);
-                if (result.rewarded) {
-                  const newCount = await grantFreeTierBonus();
-                  setFreeTierCount(newCount);
-                  setFreeTierLimitReached(false);
-                  canWatchAd().then(setAdEligible);
-                }
-              }}
-              disabled={adLoading}
-              style={{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, borderWidth: 1, borderColor: '#F5A62366', alignSelf: 'center' }}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: '#F5A623', fontSize: 11, fontWeight: '600' }}>
-                {adLoading ? 'Loading offering…' : '◦ Watch a short offering to extend the channel'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
 
       <FlatList
         ref={flatListRef}
@@ -3062,8 +2981,27 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             <View style={[styles.fieldNoteBox, { borderColor: accent + '33' }]}>
               <Text style={[styles.fieldNoteText, { color: accent }]}>{getFieldNote(persona)}</Text>
             </View>
+            {/* Streak flame + last dive — home screen inhabited */}
+            {(schoolStreak && schoolStreak.count > 0 || lastDive) && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 14, marginBottom: 2 }}>
+                {schoolStreak && schoolStreak.count > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: divedToday ? accent + '55' : '#33333355', backgroundColor: divedToday ? accent + '12' : 'transparent' }}>
+                    <Text style={{ fontSize: 13 }}>{divedToday ? '🔥' : '◌'}</Text>
+                    <Text style={{ color: divedToday ? accent : '#555566', fontSize: 12, fontWeight: '700' }}>{schoolStreak.count}</Text>
+                    <Text style={{ color: '#555566', fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>STREAK</Text>
+                  </View>
+                )}
+                {lastDive && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Text style={{ color: '#444455', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>last dive</Text>
+                    <Text style={{ color: accent + '99', fontSize: 10, fontWeight: '600' }} numberOfLines={1}>{lastDive.subjectName}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
             {/* Sol's Whisper — atmospheric one-liner, rotates each session */}
-            <Text style={{ color: accent + '66', fontSize: 11, fontStyle: 'italic', textAlign: 'center', marginTop: 16, marginBottom: 4, lineHeight: 17, paddingHorizontal: 8 }}>
+            <Text style={{ color: accent + '66', fontSize: 11, fontStyle: 'italic', textAlign: 'center', marginTop: 14, marginBottom: 4, lineHeight: 17, paddingHorizontal: 8 }}>
               {SOL_WHISPERS[whisperIdxRef.current]}
             </Text>
 

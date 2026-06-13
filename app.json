@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sol",
     "slug": "lycheetah-mobile",
-    "version": "3.29.0",
+    "version": "3.30.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -39,13 +39,13 @@
           "color": "#F5A623",
           "defaultChannel": "cognitive-weather"
         }
-      ],
+      ]
     ],
     "extra": {
       "eas": {
-        "projectId": "44b13ecb-1531-452e-83d3-4b73201c8300"
+        "projectId": "55350e14-5cdc-4a5f-8a0e-735bca572dd3"
       }
     },
-    "owner": "suzanalyc"
+    "owner": "solveyra"
   }
 }

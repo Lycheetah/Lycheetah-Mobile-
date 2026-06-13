@@ -24,6 +24,7 @@ import {
 import { sendMessage, Message, AIModel, solSpeak } from '../../lib/ai-client';
 import { getRelevantEchoes, findResonanceLinks } from '../../lib/intelligence/field-memory';
 import { updateFieldProfile } from '../../lib/intelligence/field-profile';
+import { generateLAMAGUEState, saveLAMAGUEState } from '../../utils/lamague';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -177,6 +178,7 @@ export default function MysterySchoolScreen() {
   const [showSessionComplete, setShowSessionComplete] = useState(false);
   const sessionCompleteAnim = useRef(new Animated.Value(0)).current;
   const [sessionWhisper, setSessionWhisper] = useState<string | null>(null);
+  const [sessionAtk,    setSessionAtk]    = useState<number>(0);
   const shareCardRef = useRef<View>(null);
   const [shareLoading, setShareLoading] = useState(false);
 
@@ -821,6 +823,49 @@ export default function MysterySchoolScreen() {
         const updated = [record, ...log].slice(0, 20);
         AsyncStorage.setItem('sol_dive_log', JSON.stringify(updated)).catch(() => {});
         setDiveLog(updated);
+        // Generate LAMAGUE state string after dive — fire-and-forget
+        const diveCount = updated.length;
+        const cStage = diveCount >= 200 ? 5 : diveCount >= 100 ? 4 : diveCount >= 50 ? 3 : diveCount >= 20 ? 2 : diveCount >= 5 ? 1 : 0;
+        const todayKey = new Date().toISOString().split('T')[0];
+        Promise.all([
+          AsyncStorage.getItem(`sanctum_aura_${todayKey}`),
+          AsyncStorage.getItem('sol_school_streak'),
+        ]).then(([auraRaw, streakRaw]) => {
+          const aura = auraRaw ? JSON.parse(auraRaw) : null;
+          const lq = (aura?.tes && aura?.vtr && aura?.pai)
+            ? Math.pow(aura.tes * Math.min(aura.vtr / 1.5, 1) * aura.pai, 1 / 3)
+            : 0;
+          const streak = streakRaw ? JSON.parse(streakRaw).count : studyStreak;
+          const cMood = lq >= 0.9 ? 'transcendent' : lq >= 0.7 ? 'lit' : lq >= 0.4 ? 'present' : 'dormant';
+          setSessionAtk(Math.round(lq * 100));
+          const state = generateLAMAGUEState({
+            lq,
+            layer: record.layer,
+            subjectName: record.subjectName,
+            companionStage: cStage,
+            companionMood: cMood as 'dormant' | 'present' | 'lit' | 'transcendent',
+            streak,
+            messageCount: record.messageCount,
+          });
+          saveLAMAGUEState(state).catch(() => {});
+        }).catch(() => {});
+
+        // Live lore — generate one creature memory fragment from this dive
+        getActiveKey().then(async (apiKey) => {
+          if (!apiKey) return;
+          const conversationSample = studyMessages.slice(-6).map(m => `${m.role === 'user' ? 'Mac' : 'Teacher'}: ${m.content.slice(0, 120)}`).join('\n');
+          const prompt = `You are writing one sentence of creature lore for a living companion entity. The companion just absorbed a study session on "${record.subjectName}" in the ${record.domainLabel} domain. Duration: ${Math.round(record.durationSec / 60)} minutes. Here is the end of the session:\n\n${conversationSample}\n\nWrite exactly ONE sentence (max 25 words) of evocative lore describing what the creature absorbed or became from this session. Mythic, precise, no filler. No quotes. Just the sentence.`;
+          try {
+            const result = await sendMessage([{ role: 'user', content: prompt }], 'You write creature lore. One sentence. Mythic and precise.', apiKey, 'gemini-2.5-flash' as AIModel);
+            const loreText = result.text?.trim().replace(/^["']|["']$/g, '') || '';
+            if (loreText.length > 10) {
+              const loreRaw = await AsyncStorage.getItem('sol_companion_live_lore');
+              const existing: { text: string; subject: string; date: string }[] = loreRaw ? JSON.parse(loreRaw) : [];
+              const newEntry = { text: loreText, subject: record.subjectName, date: record.date };
+              await AsyncStorage.setItem('sol_companion_live_lore', JSON.stringify([newEntry, ...existing].slice(0, 20)));
+            }
+          } catch {}
+        }).catch(() => {});
       }).catch(() => {});
     }
     Animated.timing(sessionCompleteAnim, { toValue: 0, duration: 200, useNativeDriver: false }).start(() => {
@@ -1125,6 +1170,17 @@ export default function MysterySchoolScreen() {
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>{subjectSessionCounts[activeStudySubject?.name || ''] || 1}× studied</Text>
                 </View>
 
+                {/* ATK flash — LQ→power loop made visible */}
+                {sessionAtk > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 10, backgroundColor: domainColor + '18', borderWidth: 1, borderColor: domainColor + '44' }}>
+                    <Text style={{ color: domainColor, fontSize: 18, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⚔</Text>
+                    <View>
+                      <Text style={{ color: domainColor, fontSize: 13, fontWeight: '700', letterSpacing: 0.5 }}>+{sessionAtk} ATK</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>COMPANION POWERED</Text>
+                    </View>
+                  </View>
+                )}
+
                 {/* Teacher closing line */}
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic', textAlign: 'center', marginBottom: 8, lineHeight: 19, paddingHorizontal: 8 }}>{closingLine}</Text>
 
@@ -1337,7 +1393,7 @@ export default function MysterySchoolScreen() {
         </ScrollView>
 
         {/* Action bar */}
-        <View style={{ paddingHorizontal: 16, paddingVertical: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 12, borderTopWidth: 1, borderTopColor: domainColor + '33', backgroundColor: SOL_THEME.surface, gap: 10 }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 40, borderTopWidth: 1, borderTopColor: domainColor + '33', backgroundColor: SOL_THEME.surface, gap: 10 }}>
           {/* Teacher picker */}
           <View>
             <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, fontWeight: '700', marginBottom: 8 }}>CHOOSE TEACHER</Text>
@@ -1380,7 +1436,8 @@ export default function MysterySchoolScreen() {
           </View>
           <TouchableOpacity
             onPress={() => {
-              if (subjectDomain) setBreathPending({ subject: activeSubjectDetail, domain: subjectDomain, host: selectedTeacher || host, depth: diveDepth });
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              setBreathPending({ subject: activeSubjectDetail, domain: subjectDomain, host: selectedTeacher || host, depth: diveDepth });
             }}
             style={{ paddingVertical: 14, borderRadius: 12, backgroundColor: domainColor, alignItems: 'center' }}
             activeOpacity={0.8}>
@@ -1942,12 +1999,9 @@ export default function MysterySchoolScreen() {
               </View>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {MYSTERY_SCHOOL_DOMAINS.filter(d =>
-                domainFilter === 'all' ? true :
-                domainFilter === 'secular' ? d.category === 'secular' :
-                d.category !== 'secular'
-              ).map((domain) => {
-                const idx = MYSTERY_SCHOOL_DOMAINS.indexOf(domain);
+              {MYSTERY_SCHOOL_DOMAINS.map((domain, idx) => {
+                const visible = domainFilter === 'all' ? true : domainFilter === 'secular' ? domain.category === 'secular' : domain.category !== 'secular';
+                if (!visible) return null;
                 const studiedCount = domain.subjects.filter(s => studiedSubjects.has(s.name)).length;
                 const total = domain.subjects.length;
                 const pct = total > 0 ? studiedCount / total : 0;
@@ -2682,9 +2736,10 @@ export default function MysterySchoolScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     const { subject, domain, host, depth } = breathPending;
                     setBreathPending(null);
-                    enterStudySession(subject, domain, host, depth);
+                    setTimeout(() => enterStudySession(subject, domain, host, depth), 300);
                   }}
                   style={{ width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: bc, alignItems: 'center', marginBottom: 10 }}
                   activeOpacity={0.85}>

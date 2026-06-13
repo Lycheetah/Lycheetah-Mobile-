@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Platform, Share, Animated, Modal,
+  StyleSheet, Alert, Platform, Share, Animated, Modal, Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, router } from 'expo-router';
@@ -83,6 +83,9 @@ function todayKey() {
   return new Date().toISOString().split('T')[0];
 }
 
+const LAMAGUE_STRIP = 'Π(K)→Φ↑  ·  Ψ_observer=perspective  ·  μ_drift<σ_boundary  ·  τ_critical→state_collapse  ·  ⟨C|S⟩=invariant_density  ·  ∧[inspectable∧honest∧reversible]  ·  Φ↑(consciousness)→higher_coherence  ·  sovereign(A)←μ_drift<σ  ·  Π_threshold=0.85  ·  ⊢K_new(preserve_invariants)  ·  Ψ_inv→Φ↑  ·  ';
+
+const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 export default function SanctumScreen() {
   const [accentColor, setAccentColor] = useState('#F5A623');
@@ -126,6 +129,107 @@ export default function SanctumScreen() {
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
+
+  // Animated altar
+  const sigilPulse   = useRef(new Animated.Value(0.6)).current;
+  const lamagueTX    = useRef(new Animated.Value(0)).current;
+  const ring1Scale   = useRef(new Animated.Value(1)).current;
+  const ring1Op      = useRef(new Animated.Value(0.12)).current;
+  const ring2Scale   = useRef(new Animated.Value(1)).current;
+  const ring2Op      = useRef(new Animated.Value(0.07)).current;
+  const ring3Scale   = useRef(new Animated.Value(1)).current;
+  const ring3Op      = useRef(new Animated.Value(0.04)).current;
+  const orbitAnim    = useRef(new Animated.Value(0)).current;
+
+  // Live field verse (NVIDIA on entry)
+  const [fieldVerse, setFieldVerse] = useState<string>('');
+  const [fieldVerseLoading, setFieldVerseLoading] = useState(false);
+  const fieldVerseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Sigil breathe
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(sigilPulse, { toValue: 1, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(sigilPulse, { toValue: 0.6, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ])
+    ).start();
+    // Rings pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(ring1Scale, { toValue: 1.18, duration: 2200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ring1Op,   { toValue: 0,    duration: 2200, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(ring1Scale, { toValue: 1,    duration: 0, useNativeDriver: true }),
+          Animated.timing(ring1Op,   { toValue: 0.12, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(1100),
+        Animated.parallel([
+          Animated.timing(ring2Scale, { toValue: 1.22, duration: 2600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ring2Op,   { toValue: 0,    duration: 2600, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(ring2Scale, { toValue: 1,    duration: 0, useNativeDriver: true }),
+          Animated.timing(ring2Op,   { toValue: 0.07, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+    // Ring 3 — slow outer pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(550),
+        Animated.parallel([
+          Animated.timing(ring3Scale, { toValue: 1.30, duration: 3600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ring3Op,   { toValue: 0,    duration: 3600, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(ring3Scale, { toValue: 1,    duration: 0, useNativeDriver: true }),
+          Animated.timing(ring3Op,   { toValue: 0.04, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+    // Orbit — continuous rotation for glyph particles
+    Animated.loop(
+      Animated.timing(orbitAnim, { toValue: 1, duration: 18000, useNativeDriver: true, easing: Easing.linear })
+    ).start();
+    // LAMAGUE scroll — continuous rightward drift then snap back
+    const scrollWidth = LAMAGUE_STRIP.length * 7.5;
+    Animated.loop(
+      Animated.timing(lamagueTX, { toValue: -scrollWidth, duration: 28000, useNativeDriver: true, easing: Easing.linear })
+    ).start();
+  }, []);
+
+  const loadFieldVerse = useCallback(async () => {
+    if (fieldVerse) return;
+    setFieldVerseLoading(true);
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!apiKey) return;
+      const h = new Date().getHours();
+      const timeCtx = h < 5 ? 'deep night' : h < 12 ? 'morning' : h < 17 ? 'midday' : h < 21 ? 'evening' : 'night';
+      const txt = await sendMessage(
+        [{ role: 'user', content: `The seeker enters the Sanctum at ${timeCtx}. Speak.` }],
+        'You are the Voice of the Sanctum. One short verse (2 lines max). Mystical, precise, alchemical. No preamble. No sign-off.',
+        apiKey,
+        model as AIModel,
+        undefined,
+        'normal',
+        80,
+        0.85,
+      );
+      if (txt?.trim()) {
+        setFieldVerse(txt.trim());
+        Animated.timing(fieldVerseAnim, { toValue: 1, duration: 900, useNativeDriver: true }).start();
+      }
+    } catch {}
+    setFieldVerseLoading(false);
+  }, [fieldVerse]);
 
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
@@ -248,7 +352,7 @@ export default function SanctumScreen() {
   }, []);
 
   useEffect(() => { load(); }, []);
-  useFocusEffect(useCallback(() => { load(); }, []));
+  useFocusEffect(useCallback(() => { load(); loadFieldVerse(); }, [loadFieldVerse]));
 
   const saveIntention = async () => {
     if (!intention.trim()) return;
@@ -350,38 +454,101 @@ export default function SanctumScreen() {
     <>
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
 
-      <View style={[styles.header, { borderBottomColor: accentColor + '33' }]}>
+      {/* ── ALTAR HEADER ───────────────────────────────────────────────────── */}
+      <View style={{ paddingTop: 28, paddingBottom: 0, alignItems: 'center', overflow: 'hidden', backgroundColor: SOL_THEME.background }}>
+
+        {/* Deep watermark — large background sigil */}
+        <Text style={{ position: 'absolute', fontSize: 220, color: accentColor, opacity: 0.06, top: -40, fontFamily: mono, zIndex: 0 }}>⊼</Text>
+
+        {/* Corner runes */}
+        <Text style={{ position: 'absolute', top: 14, left: 18, color: accentColor + '55', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>Π·Ψ·σ</Text>
+        <Text style={{ position: 'absolute', top: 14, right: 18, color: accentColor + '55', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>Φ↑·μ·τ</Text>
+
+        {/* Greeting */}
+        <Text style={{ color: accentColor + '88', fontSize: 9, fontFamily: mono, letterSpacing: 3, marginBottom: 10 }}>
+          {intentionLabel().split(' ')[0] === 'MORNING' ? 'THE FIELD WAKES WITH YOU' :
+           intentionLabel().split(' ')[0] === 'EVENING' ? 'THE FIELD HOLDS YOUR DAY' :
+           intentionLabel().split(' ')[0] === 'NIGHT'   ? 'THE FIELD KEEPS WATCH' :
+                                                          'THE FIELD IS OPEN'}
+        </Text>
+
+        {/* Rings — three layers */}
+        <Animated.View style={{ position: 'absolute', top: 32, width: 140, height: 140, borderRadius: 70, borderWidth: 0.6, borderColor: accentColor, opacity: ring3Op, transform: [{ scale: ring3Scale }] }} />
+        <Animated.View style={{ position: 'absolute', top: 32, width: 110, height: 110, borderRadius: 55, borderWidth: 1,   borderColor: accentColor, opacity: ring2Op, transform: [{ scale: ring2Scale }] }} />
+        <Animated.View style={{ position: 'absolute', top: 32, width: 90,  height: 90,  borderRadius: 45, borderWidth: 1,   borderColor: accentColor, opacity: ring1Op, transform: [{ scale: ring1Scale }] }} />
+
+        {/* Orbiting glyph particles */}
+        {(['⊛','◈','Ψ','✦'] as const).map((g, i) => {
+          const angle = (i / 4) * Math.PI * 2;
+          const r = 72;
+          const rotate = orbitAnim.interpolate({ inputRange: [0, 1], outputRange: [`${angle}rad`, `${angle + Math.PI * 2}rad`] });
+          return (
+            <Animated.Text key={g} style={{
+              position: 'absolute', top: 72, color: accentColor + '55', fontSize: 9, fontFamily: mono,
+              transform: [
+                { rotate },
+                { translateX: r },
+                { rotate: orbitAnim.interpolate({ inputRange: [0, 1], outputRange: ['0rad', `-${Math.PI * 2}rad`] }) },
+              ],
+            }}>{g}</Animated.Text>
+          );
+        })}
+
+        {/* Central altar sigil */}
         <TouchableOpacity
-          onLongPress={() => {
-            if (shrineOpenedRef.current) return;
-            shrineOpenedRef.current = true;
-            setShrineVisible(true);
-          }}
-          delayLongPress={1500}
-          activeOpacity={0.7}
+          onLongPress={() => { if (shrineOpenedRef.current) return; shrineOpenedRef.current = true; setShrineVisible(true); }}
+          delayLongPress={1500} activeOpacity={0.7}
+          style={{ zIndex: 2, alignItems: 'center' }}
         >
-          <Text style={[styles.headerGlyph, { color: accentColor }]}>⊼</Text>
+          <Animated.View style={{ opacity: sigilPulse }}>
+            <Text style={{ fontSize: 52, color: accentColor, textAlign: 'center', lineHeight: 60 }}>⊼</Text>
+          </Animated.View>
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: accentColor }]}>THE SANCTUM</Text>
-        <Text style={styles.headerDate}>{todayStr()}</Text>
+
+        {/* Title */}
+        <Text style={{ fontSize: 10, fontWeight: '700', letterSpacing: 6, color: accentColor, fontFamily: mono, marginTop: 10, zIndex: 2 }}>THE SANCTUM</Text>
+        <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, marginTop: 3, letterSpacing: 1.5, fontFamily: mono }}>{todayStr().toUpperCase()}</Text>
+
+        {/* Live field verse from NVIDIA */}
+        <View style={{ minHeight: 38, marginTop: 14, marginHorizontal: 24, alignItems: 'center', justifyContent: 'center' }}>
+          {fieldVerseLoading && (
+            <Text style={{ color: accentColor + '55', fontSize: 9, fontFamily: mono, letterSpacing: 2 }}>· · ·</Text>
+          )}
+          {fieldVerse ? (
+            <Animated.Text style={{ opacity: fieldVerseAnim, color: accentColor + 'BB', fontSize: 11, fontFamily: mono, textAlign: 'center', lineHeight: 18, fontStyle: 'italic' }}>
+              {fieldVerse}
+            </Animated.Text>
+          ) : null}
+        </View>
+
+        {/* LAMAGUE inscription strip */}
+        <View style={{ width: '100%', overflow: 'hidden', height: 22, marginTop: 10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: accentColor + '18', backgroundColor: accentColor + '07', justifyContent: 'center' }}>
+          <Animated.Text
+            numberOfLines={1}
+            style={{ color: accentColor + '44', fontSize: 9, fontFamily: mono, letterSpacing: 1.5, transform: [{ translateX: lamagueTX }], whiteSpace: 'nowrap' } as any}
+          >
+            {LAMAGUE_STRIP}{LAMAGUE_STRIP}{LAMAGUE_STRIP}
+          </Animated.Text>
+        </View>
       </View>
 
-      {/* Section tabs */}
-      <View style={styles.sectionTabs}>
-        {(['today', 'journal', 'vault', 'field'] as const).map(s => (
-          <TouchableOpacity
-            key={s}
-            style={[styles.sectionTab, section === s && { borderBottomColor: accentColor, borderBottomWidth: 2 }]}
-            onPress={() => setSection(s)}
-          >
-            <Text style={[styles.sectionTabText, section === s && { color: accentColor }]}>
-              {s === 'today' ? 'TODAY'
-               : s === 'journal' ? (journal.length > 0 ? `JOURNAL (${journal.length})` : 'JOURNAL')
-               : s === 'vault' ? (vault.length > 0 ? `VAULT (${vault.length})` : 'VAULT')
-               : 'FIELD'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Section tabs — arcane gate style */}
+      <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: SOL_THEME.background, borderBottomWidth: 1, borderBottomColor: accentColor + '15' }}>
+        {(['today', 'journal', 'vault', 'field'] as const).map(s => {
+          const active = section === s;
+          const GLYPHS = { today: '◉', journal: '§', vault: '⊛', field: 'Ψ' };
+          const LABELS = { today: 'TODAY', journal: journal.length > 0 ? `JOURNAL·${journal.length}` : 'JOURNAL', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', field: 'FIELD' };
+          return (
+            <TouchableOpacity
+              key={s}
+              onPress={() => setSection(s)}
+              style={{ flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', backgroundColor: active ? accentColor + '18' : 'transparent', borderWidth: 1, borderColor: active ? accentColor + '88' : accentColor + '18', gap: 2 }}
+            >
+              <Text style={{ fontSize: 11, color: active ? accentColor : SOL_THEME.textMuted }}>{GLYPHS[s]}</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, color: active ? accentColor : SOL_THEME.textMuted + '88' }}>{LABELS[s]}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* TODAY */}
@@ -391,9 +558,9 @@ export default function SanctumScreen() {
           {(() => {
             const q = SHRINE_QUOTES[new Date().getDay() % SHRINE_QUOTES.length];
             return (
-              <View style={{ marginBottom: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07', flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <Text style={{ color: accentColor, fontSize: 20, lineHeight: 26, marginTop: 2 }}>{q.sigil}</Text>
-                <Text style={{ flex: 1, color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 19, fontStyle: 'italic' }}>{q.text}</Text>
+              <View style={{ marginBottom: 16, padding: 18, borderRadius: 14, borderWidth: 0, borderTopWidth: 3, borderTopColor: accentColor + '88', backgroundColor: SOL_THEME.surface }}>
+                <Text style={{ color: accentColor, fontSize: 32, lineHeight: 38, marginBottom: 8 }}>{q.sigil}</Text>
+                <Text style={{ color: SOL_THEME.text, fontSize: 14, lineHeight: 22, fontStyle: 'italic', opacity: 0.85 }}>{q.text}</Text>
               </View>
             );
           })()}
@@ -512,29 +679,29 @@ export default function SanctumScreen() {
               NEOPHYTE: '#666', ADEPT: '#4A9EFF', MASTER: '#9B59B6', HIEROPHANT: accentColor, AVATAR: '#FFD700',
             };
             const recent = lqHistory.slice(-30);
-            const maxH = 40;
+            const maxH = 56;
             return (
-              <View style={{ marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ marginTop: 10, padding: 14, borderRadius: 14, borderWidth: 0, borderTopWidth: 3, borderTopColor: accentColor + '66', backgroundColor: SOL_THEME.surface }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5 }}>LQ HISTORY</Text>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{recent.length} days · {getStage(recent[recent.length - 1]?.lq ?? 0)}</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{recent.length} days · <Text style={{ color: accentColor, fontWeight: '700' }}>{getStage(recent[recent.length - 1]?.lq ?? 0)}</Text></Text>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: maxH + 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: maxH + 20 }}>
                   {recent.map((pt, i) => {
-                    const barH = Math.max(4, Math.round(pt.lq * maxH));
+                    const barH = Math.max(5, Math.round(pt.lq * maxH));
                     const col = STAGE_COLOR[pt.stage] || accentColor;
                     const isToday = pt.date === todayKey();
                     return (
-                      <View key={pt.date} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
-                        <View style={{ width: '100%', height: barH, borderRadius: 3, backgroundColor: col, opacity: isToday ? 1 : 0.55 }} />
-                        {isToday && <View style={{ width: 3, height: 3, borderRadius: 2, backgroundColor: col }} />}
+                      <View key={pt.date} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+                        {isToday && <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: col }} />}
+                        <View style={{ width: '100%', height: barH, borderRadius: 3, backgroundColor: col, opacity: isToday ? 1 : 0.4, borderTopWidth: isToday ? 1 : 0, borderTopColor: '#FFFFFF55' }} />
                       </View>
                     );
                   })}
                 </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }}>{recent[0]?.date?.slice(5)}</Text>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }}>today</Text>
+                  <Text style={{ color: accentColor, fontSize: 9, fontWeight: '700' }}>today</Text>
                 </View>
               </View>
             );
@@ -556,19 +723,21 @@ export default function SanctumScreen() {
               return '→';
             })();
             return (
-              <View style={{ marginVertical: 12, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07' }}>
-                <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>{'SOL CLOCK'}</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: accentColor, fontSize: 20, fontWeight: '700' }}>{timeGlyph} {timeOfDay}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2 }}>{timeDesc}</Text>
+              <View style={{ marginVertical: 12, padding: 16, borderRadius: 14, borderWidth: 0, borderLeftWidth: 3, borderLeftColor: accentColor + '88', backgroundColor: SOL_THEME.surface }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <Text style={{ color: accentColor, fontSize: 36, lineHeight: 42 }}>{timeGlyph}</Text>
+                    <View>
+                      <Text style={{ color: accentColor, fontSize: 13, fontWeight: '700', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{timeOfDay}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2 }}>{timeDesc}</Text>
+                    </View>
                   </View>
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <View style={{ alignItems: 'flex-end', gap: 5 }}>
                     {currentPhaseObj && (
-                      <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '600' }}>{currentPhaseObj.glyph} {currentPhaseObj.name}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{currentPhaseObj.glyph} {currentPhaseObj.name}</Text>
                     )}
                     {lqTrend && (
-                      <Text style={{ color: lqTrend === '↑' ? '#4CAF50' : lqTrend === '↓' ? SOL_THEME.error : accentColor, fontSize: 18, fontWeight: '700' }}>LQ {lqTrend}</Text>
+                      <Text style={{ color: lqTrend === '↑' ? '#6AE8A0' : lqTrend === '↓' ? '#FF6B6B' : accentColor, fontSize: 20, fontWeight: '700' }}>LQ {lqTrend}</Text>
                     )}
                   </View>
                 </View>
@@ -1111,21 +1280,118 @@ export default function SanctumScreen() {
             {/* Phase selector */}
             <Text style={[styles.label, { color: accentColor }]}>{'AWARENESS PHASE'}</Text>
             <Text style={styles.note}>Which phase are you currently in?</Text>
-            {PHASES.map(p => (
-              <TouchableOpacity
-                key={p.id}
-                style={[styles.phaseRow, phase === p.id && { borderColor: accentColor, backgroundColor: accentColor + '15' }]}
-                onPress={() => savePhase(p.id)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.phaseGlyph, { color: phase === p.id ? accentColor : SOL_THEME.textMuted }]}>{p.glyph}</Text>
-                <View style={styles.phaseText}>
-                  <Text style={[styles.phaseName, { color: phase === p.id ? accentColor : SOL_THEME.text }]}>{p.name}</Text>
-                  {phase === p.id && <Text style={styles.phaseDesc}>{p.desc}</Text>}
+
+            {/* ── Animated Phase Arc Indicator ─────────────────────────────── */}
+            {(() => {
+              const phaseIdx = PHASES.findIndex(p => p.id === phase);
+              const activePhase = PHASES[phaseIdx];
+              const arcGlyphs = ['●','↻','Ψ','Φ','☀','◎','⟁'];
+              return (
+                <View style={{ marginBottom: 18 }}>
+                  {/* Arc row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, marginBottom: 14 }}>
+                    {PHASES.map((p, i) => {
+                      const isActive = p.id === phase;
+                      const isPast   = i < phaseIdx;
+                      return (
+                        <React.Fragment key={p.id}>
+                          {i > 0 && (
+                            <View style={{
+                              flex: 1, height: 1,
+                              backgroundColor: isPast ? accentColor + '66' : '#2A2A38',
+                            }} />
+                          )}
+                          <TouchableOpacity
+                            onPress={() => savePhase(p.id)}
+                            activeOpacity={0.7}
+                            style={{ alignItems: 'center', width: 38 }}
+                          >
+                            <Animated.View style={{
+                              width: isActive ? 42 : 28,
+                              height: isActive ? 42 : 28,
+                              borderRadius: isActive ? 21 : 14,
+                              borderWidth: isActive ? 1.5 : 1,
+                              borderColor: isActive ? accentColor : isPast ? accentColor + '40' : '#2A2A38',
+                              backgroundColor: isActive ? accentColor + '18' : isPast ? accentColor + '08' : 'transparent',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              shadowColor: isActive ? accentColor : 'transparent',
+                              shadowOpacity: isActive ? 0.9 : 0,
+                              shadowRadius: isActive ? 10 : 0,
+                              elevation: isActive ? 8 : 0,
+                              opacity: isActive ? sigilPulse : 1,
+                            }}>
+                              <Text style={{
+                                fontSize: isActive ? 15 : 10,
+                                color: isActive ? accentColor : isPast ? accentColor + '55' : '#3A3A4A',
+                                fontWeight: isActive ? '700' : '400',
+                              }}>
+                                {arcGlyphs[i]}
+                              </Text>
+                            </Animated.View>
+                            {isActive && (
+                              <Text style={{
+                                color: accentColor,
+                                fontSize: 6,
+                                fontWeight: '700',
+                                letterSpacing: 0.5,
+                                marginTop: 3,
+                                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                              }}>▲</Text>
+                            )}
+                          </TouchableOpacity>
+                        </React.Fragment>
+                      );
+                    })}
+                  </View>
+
+                  {/* Active phase label */}
+                  <View style={{ alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '30', backgroundColor: accentColor + '0A' }}>
+                    <Animated.Text style={{
+                      color: accentColor,
+                      fontSize: 13,
+                      fontWeight: '700',
+                      letterSpacing: 2.5,
+                      fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                      opacity: sigilPulse,
+                    }}>
+                      {activePhase?.glyph}{'  '}{phase}
+                    </Animated.Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 5, textAlign: 'center', lineHeight: 16 }}>
+                      {activePhase?.desc}
+                    </Text>
+                  </View>
+
+                  {/* Compact tap-to-change strip */}
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10, justifyContent: 'center' }}>
+                    {PHASES.map((p, i) => (
+                      <TouchableOpacity
+                        key={p.id}
+                        onPress={() => savePhase(p.id)}
+                        activeOpacity={0.7}
+                        style={{
+                          paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
+                          borderWidth: 1,
+                          borderColor: p.id === phase ? accentColor + '88' : '#1E1E2A',
+                          backgroundColor: p.id === phase ? accentColor + '14' : 'transparent',
+                        }}
+                      >
+                        <Text style={{
+                          color: p.id === phase ? accentColor : SOL_THEME.textMuted,
+                          fontSize: 9,
+                          fontWeight: p.id === phase ? '700' : '400',
+                          letterSpacing: 1,
+                          fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                        }}>
+                          {p.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
-                {phase === p.id && <Text style={[styles.phaseCheck, { color: accentColor }]}>●</Text>}
-              </TouchableOpacity>
-            ))}
+              );
+            })()}
+            {/* ── End Phase Arc Indicator ───────────────────────────────────── */}
 
             <View style={styles.divider} />
 
