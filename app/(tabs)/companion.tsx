@@ -2836,28 +2836,29 @@ export default function CompanionScreen() {
           {/* Stats chips row */}
           <View style={{ flexDirection:'row', gap:5, marginBottom:14 }}>
             {[
-              { l:'DIVES',  v:totalDives.toString() },
-              { l:'STREAK', v:streak>0?`${streak}d`:'—' },
-              { l:'LQ',     v:avgLQ>0?`${(avgLQ*100).toFixed(0)}%`:'—' },
-              { l:'WAVE',   v:`W${battle?.wave??1}` },
-              { l:'RELICS', v:earnedRelicData.length.toString() },
+              { l:'DIVES',  v:totalDives.toString(),                         hi: totalDives > 0 },
+              { l:'STREAK', v:streak>0?`${streak}d`:'—',                     hi: streak >= 3 },
+              { l:'LQ',     v:avgLQ>0?`${(avgLQ*100).toFixed(0)}%`:'—',     hi: avgLQ >= 0.7 },
+              { l:'WAVE',   v:`W${battle?.wave??1}`,                         hi: (battle?.wave??1) > 1 },
+              { l:'RELICS', v:earnedRelicData.length.toString(),              hi: earnedRelicData.length > 0 },
             ].map(s => (
-              <View key={s.l} style={{ flex:1, paddingVertical:8, borderRadius:8, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#0A0A10', alignItems:'center', gap:1 }}>
-                <Text style={{ color:'#333344', fontSize:6, letterSpacing:1, fontFamily:mono }}>{s.l}</Text>
-                <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{s.v}</Text>
+              <View key={s.l} style={{ flex:1, paddingVertical:9, borderRadius:8, borderWidth:1,
+                borderColor: s.hi ? color+'33' : '#1A1A26',
+                backgroundColor: s.hi ? color+'08' : '#0A0A10', alignItems:'center', gap:2 }}>
+                <Text style={{ color: s.hi ? color+'99' : '#333344', fontSize:6, letterSpacing:1, fontFamily:mono }}>{s.l}</Text>
+                <Text style={{ color: s.hi ? color : SOL_THEME.text, fontSize:14, fontWeight:'700', fontFamily:mono }}>{s.v}</Text>
               </View>
             ))}
           </View>
 
           {/* BATTLE PANEL ─────────────────────────── */}
           <View onLayout={e => { battleY.current = e.nativeEvent.layout.y; }}
-            style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1.5, borderColor:'#FF444444', backgroundColor:'#0C0000' }}>
+            style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1.5, borderColor:'#FF444433', backgroundColor:'#0C0000' }}>
 
             {/* Header */}
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setShowBattle(b=>!b); }}
-              style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:showBattle?10:0 }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ width:3, height:12, borderRadius:2, backgroundColor:'#FF6644' }} />
+                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#FF6644' }} />
                 <Text style={{ color:'#666677', fontSize:10, letterSpacing:2, fontFamily:mono }}>ENTROPY WAVES</Text>
                 {(battle?.wave??1)>1 && (
                   <View style={{ backgroundColor:'#FF440018', borderRadius:6, paddingHorizontal:6, paddingVertical:2 }}>
@@ -2865,13 +2866,18 @@ export default function CompanionScreen() {
                   </View>
                 )}
               </View>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <Text style={{ color:'#FF6666', fontSize:10, fontFamily:mono }}>W{battle?.wave??1} · {tokensLeft}t</Text>
-                <Text style={{ color:'#333344', fontSize:10 }}>{showBattle?'▲':'▼'}</Text>
+              {/* Token pips */}
+              <View style={{ flexDirection:'row', gap:4, alignItems:'center' }}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <View key={i} style={{ width:8, height:8, borderRadius:4,
+                    backgroundColor: i < tokensLeft ? color : '#1A1A26',
+                    shadowColor: i < tokensLeft ? color : 'transparent',
+                    shadowOpacity: 0.8, shadowRadius: 4, elevation: i < tokensLeft ? 3 : 0 }} />
+                ))}
               </View>
-            </TouchableOpacity>
+            </View>
 
-            {showBattle && battle && !battle.won && (() => {
+            {battle && !battle.won && (() => {
               const def = getEnemyDef(battle.entityName);
               const rc  = def.colour;
               const enemyImg = ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES];
@@ -2882,25 +2888,25 @@ export default function CompanionScreen() {
                 {spellMenuOpen && (
                   <TouchableOpacity activeOpacity={1} onPress={() => setSpellMenuOpen(false)}
                     style={{ position:'absolute', top:0, left:0, right:0, bottom:0, zIndex:20, justifyContent:'center' }}>
-                    <View style={{ backgroundColor:'#0A0014EE', borderRadius:12, borderWidth:1, borderColor:'#9966FF44', padding:12, margin:4 }}>
-                      <Text style={{ color:'#9966FF', fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:10, textAlign:'center' }}>CHOOSE SPELL</Text>
+                    <View style={{ backgroundColor:'#06060EEE', borderRadius:14, borderWidth:1.5, borderColor:color+'44', padding:14, margin:4 }}>
+                      <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:12, textAlign:'center' }}>✦ SPELLS</Text>
                       {spells.map(sp => {
                         const canCast = tokensLeft >= sp.cost;
                         return (
                           <TouchableOpacity key={sp.id} onPress={() => canCast && handleSpell(sp)} disabled={!canCast}
-                            style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:9, paddingHorizontal:10, marginBottom:6, borderRadius:8, borderWidth:1,
-                              borderColor: canCast ? '#9966FF55' : '#22223355', backgroundColor: canCast ? '#9966FF0E' : 'transparent' }}>
+                            style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:11, paddingHorizontal:12, marginBottom:7, borderRadius:10, borderWidth:1,
+                              borderColor: canCast ? color+'55' : '#22223355', backgroundColor: canCast ? color+'0E' : 'transparent' }}>
                             <View style={{ flex:1 }}>
-                              <Text style={{ color: canCast ? '#CC99FF' : '#444455', fontSize:11, fontFamily:mono, fontWeight:'700' }}>{sp.name}</Text>
-                              <Text style={{ color: canCast ? '#88668888' : '#22223366', fontSize:9, fontFamily:mono, marginTop:2 }}>{sp.fx}</Text>
+                              <Text style={{ color: canCast ? SOL_THEME.text : '#444455', fontSize:12, fontFamily:mono, fontWeight:'700' }}>{sp.name}</Text>
+                              <Text style={{ color: canCast ? color+'77' : '#22223366', fontSize:9, fontFamily:mono, marginTop:3 }}>{sp.fx}</Text>
                             </View>
-                            <View style={{ paddingHorizontal:7, paddingVertical:3, borderRadius:5, borderWidth:1, borderColor: canCast ? '#9966FF88' : '#33334488', backgroundColor: canCast ? '#9966FF18' : 'transparent' }}>
-                              <Text style={{ color: canCast ? '#9966FF' : '#444455', fontSize:10, fontFamily:mono }}>{sp.cost}T</Text>
+                            <View style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:6, borderWidth:1, borderColor: canCast ? color+'88' : '#33334488', backgroundColor: canCast ? color+'18' : 'transparent' }}>
+                              <Text style={{ color: canCast ? color : '#444455', fontSize:11, fontFamily:mono, fontWeight:'700' }}>{sp.cost}T</Text>
                             </View>
                           </TouchableOpacity>
                         );
                       })}
-                      <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:4 }}>TAP OUTSIDE TO CANCEL</Text>
+                      <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:6 }}>TAP OUTSIDE TO CANCEL</Text>
                     </View>
                   </TouchableOpacity>
                 )}
@@ -2921,8 +2927,10 @@ export default function CompanionScreen() {
                       <Text style={{ color:rc, fontSize:12, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{battle.entityName.toUpperCase()}</Text>
                       {battle.enemyStunned && <Text style={{ color:'#FFBB00', fontSize:8, fontFamily:mono }}>STUNNED</Text>}
                     </View>
-                    <View style={{ height:5, backgroundColor:'#1A0000', borderRadius:3, overflow:'hidden' }}>
-                      <View style={{ height:5, width:`${Math.round((battle.entityHP/battle.maxHP)*100)}%` as any, backgroundColor:rc, borderRadius:3 }} />
+                    <View style={{ height:8, backgroundColor:'#1A0000', borderRadius:4, overflow:'hidden' }}>
+                      <View style={{ height:8, width:`${Math.round((battle.entityHP/battle.maxHP)*100)}%` as any,
+                        backgroundColor:rc, borderRadius:4,
+                        shadowColor:rc, shadowOpacity:0.7, shadowRadius:4, elevation:2 }} />
                     </View>
                     <Text style={{ color:rc+'88', fontSize:8, fontFamily:mono }}>{battle.entityHP}/{battle.maxHP} HP</Text>
                   </View>
@@ -2943,43 +2951,48 @@ export default function CompanionScreen() {
                       {battle.playerHP}/{battle.maxPlayerHP}
                     </Text>
                   </View>
-                  <View style={{ height:5, backgroundColor:'#001A00', borderRadius:3, overflow:'hidden' }}>
-                    <View style={{ height:5, width:`${Math.round((battle.playerHP/battle.maxPlayerHP)*100)}%` as any,
-                      backgroundColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', borderRadius:3 }} />
+                  <View style={{ height:8, backgroundColor:'#001A00', borderRadius:4, overflow:'hidden' }}>
+                    <View style={{ height:8, width:`${Math.round((battle.playerHP/battle.maxPlayerHP)*100)}%` as any,
+                      backgroundColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', borderRadius:4,
+                      shadowColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88',
+                      shadowOpacity:0.6, shadowRadius:4, elevation:2 }} />
                   </View>
                 </View>
 
                 {/* 2×2 action grid */}
-                <View style={{ flexDirection:'row', gap:5, marginBottom:8 }}>
-                  <View style={{ flex:1, gap:5 }}>
+                <View style={{ flexDirection:'row', gap:6, marginBottom:8 }}>
+                  <View style={{ flex:1, gap:6 }}>
                     {([
-                      { id:'attack' as const, label:'⚔  FIGHT',  col:'#FF5544' },
-                      { id:'defend' as const, label:'◈  GUARD',  col:'#4488FF' },
+                      { id:'attack' as const, label:'⚔', name:'FIGHT',  col:'#FF5544' },
+                      { id:'defend' as const, label:'◈', name:'GUARD',  col:'#4488FF' },
                     ]).map(btn => (
                       <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={disabled}
-                        style={{ paddingVertical:11, borderRadius:8, borderWidth:1,
+                        style={{ paddingVertical:14, borderRadius:10, borderWidth:1.5,
                           borderColor: disabled ? '#1A1A1A' : btn.col+'66',
-                          backgroundColor: disabled ? 'transparent' : btn.col+'0F', alignItems:'center' }}>
-                        <Text style={{ color: disabled ? '#222233' : btn.col, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>
-                          {attackAnim && btn.id==='attack' ? ' · · · ' : btn.label}
+                          backgroundColor: disabled ? '#0A0A0A' : btn.col+'12', alignItems:'center', gap:2 }}>
+                        <Text style={{ color: disabled ? '#222233' : btn.col, fontSize:18, fontFamily:mono }}>
+                          {attackAnim && btn.id==='attack' ? '·' : btn.label}
+                        </Text>
+                        <Text style={{ color: disabled ? '#1A1A2A' : btn.col+'CC', fontSize:8, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>
+                          {attackAnim && btn.id==='attack' ? '···' : btn.name}
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <View style={{ flex:1, gap:5 }}>
+                  <View style={{ flex:1, gap:6 }}>
                     {([
-                      { id:'spell' as const, label:'✦  SPELL', col:'#9966FF' },
-                      { id:'item'  as const, label:'◦  ITEM',  col:'#44CC88' },
+                      { id:'spell' as const, label:'✦', name:'SPELL', col:color },
+                      { id:'item'  as const, label:'◦', name:'ITEM',  col:'#44CC88' },
                     ]).map(btn => {
                       const spellDis = btn.id==='spell' && (disabled || tokensLeft < Math.min(...spells.map(s=>s.cost)));
+                      const dis2 = btn.id==='spell' ? spellDis : disabled;
                       return (
-                        <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={btn.id==='spell'?spellDis:disabled}
-                          style={{ paddingVertical:11, borderRadius:8, borderWidth:1,
-                            borderColor: (btn.id==='spell'?spellDis:disabled) ? '#1A1A1A' : btn.col+'66',
-                            backgroundColor: (btn.id==='spell'?spellDis:disabled) ? 'transparent' : btn.col+'0F', alignItems:'center' }}>
-                          <Text style={{ color: (btn.id==='spell'?spellDis:disabled) ? '#222233' : btn.col, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>
-                            {btn.label}
-                          </Text>
+                        <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={dis2}
+                          style={{ paddingVertical:14, borderRadius:10, borderWidth:1.5,
+                            borderColor: dis2 ? '#1A1A1A' : btn.col+'66',
+                            backgroundColor: dis2 ? '#0A0A0A' : btn.col+'12', alignItems:'center', gap:2 }}>
+                          <Text style={{ color: dis2 ? '#222233' : btn.col, fontSize:18, fontFamily:mono }}>{btn.label}</Text>
+                          <Text style={{ color: dis2 ? '#1A1A2A' : btn.col+'CC', fontSize:8, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>{btn.name}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -2994,20 +3007,17 @@ export default function CompanionScreen() {
                         fontSize:8, fontFamily:mono, opacity:1-i*0.3 }}>{entry}</Text>
                     ))}
                   </View>
-                  <View style={{ alignItems:'flex-end', gap:3 }}>
-                    <Text style={{ color: tokensLeft<=1 ? '#FF5544' : '#444455', fontSize:8, fontFamily:mono }}>{tokensLeft}T LEFT</Text>
-                    {battle.wave>1 && (
-                      <TouchableOpacity onPress={handleRetreat}>
-                        <Text style={{ color:'#222233', fontSize:8, fontFamily:mono }}>↩ W1</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                  {battle.wave>1 && (
+                    <TouchableOpacity onPress={handleRetreat}>
+                      <Text style={{ color:'#222233', fontSize:8, fontFamily:mono }}>↩ W1</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </>);
             })()}
 
             {/* Wave cleared */}
-            {showBattle && battle?.won && (
+            {battle?.won && (
               <View style={{ alignItems:'center', gap:6, paddingVertical:10 }}>
                 <Text style={{ color:'#FF6644', fontSize:22, fontFamily:mono }}>✕ CLEARED</Text>
                 <Text style={{ color, fontSize:11, fontFamily:mono, letterSpacing:1 }}>WAVE {battle.wave} · +{battle.wave*20} XP</Text>
