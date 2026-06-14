@@ -369,28 +369,39 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <TouchableOpacity
-        activeOpacity={1}
-        onLongPress={async () => {
-          const next = !chaosMode;
-          setChaosMode(next);
-          await AsyncStorage.setItem('sol_chaos_mode', next ? 'true' : 'false');
-          Alert.alert(
-            next ? '↯ CHAOS MODE UNLOCKED' : '↯ CHAOS MODE DEACTIVATED',
-            next ? 'Sol will become more playful, symbolic, and unpredictable. Not harmful — just spicy.' : 'Sol returns to constitutional operation.',
-            [{ text: next ? 'Enter the Chaos' : 'Return to Order', style: 'default' }]
-          );
-        }}
-        delayLongPress={3000}
-      >
-        <Text style={[styles.sectionTitle, chaosMode && { color: '#E74C3C' }]}>
-          {chaosMode ? '↯ CHAOS MODE — ACTIVE' : '↯ CHAOS MODE'}
-        </Text>
-      </TouchableOpacity>
-      <Text style={styles.sectionNote}>{chaosMode ? 'Sol is operating in chaotic register. Hold section title 3s to deactivate.' : 'Hold this title for 3 seconds to unlock. Sol becomes playful, symbolic, unpredictable.'}</Text>
-      {chaosMode && (
-        <View style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E74C3C44', backgroundColor: '#E74C3C11', marginBottom: 16 }}>
-          <Text style={{ color: '#E74C3C', fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>↯ ACTIVE — Sol is in chaos mode</Text>
+      <Text style={[styles.sectionTitle, chaosMode && { color: '#E74C3C' }]}>
+        {chaosMode ? '↯ CHAOS MODE — ACTIVE' : '↯ CHAOS MODE'}
+      </Text>
+      <Text style={styles.sectionNote}>
+        {premiumOn
+          ? chaosMode ? 'Sol is operating in chaotic register. Pure trickster energy — symbolic, unpredictable, spicy.' : 'Sol becomes more playful, symbolic, and unpredictable. Constitutional truth stays — just unhinged delivery.'
+          : '↯ Sovereign exclusive. Pure chaos register — symbolic, unpredictable, unhinged delivery. Same truth, no filter.'}
+      </Text>
+      {premiumOn ? (
+        <TouchableOpacity
+          onPress={async () => {
+            const next = !chaosMode;
+            setChaosMode(next);
+            await AsyncStorage.setItem('sol_chaos_mode', next ? 'true' : 'false');
+            Alert.alert(
+              next ? '↯ CHAOS MODE' : '↯ CHAOS OFF',
+              next ? 'Sol enters chaotic register. Expect symbols, paradox, and trickster energy.' : 'Sol returns to constitutional operation.',
+              [{ text: next ? 'Enter the Chaos' : 'Return to Order' }]
+            );
+          }}
+          style={{ paddingVertical: 10, borderRadius: 8, borderWidth: 1.5,
+            borderColor: chaosMode ? '#E74C3C' : '#E74C3C55',
+            backgroundColor: chaosMode ? '#E74C3C18' : 'transparent',
+            alignItems: 'center', marginBottom: 16 }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ color: chaosMode ? '#E74C3C' : '#E74C3C88', fontWeight: '700', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
+            {chaosMode ? '↯ DEACTIVATE CHAOS' : '↯ ACTIVATE CHAOS'}
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <View style={{ paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E74C3C33', backgroundColor: '#E74C3C08', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={{ color: '#E74C3C55', fontWeight: '700', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>↯ SOVEREIGN ONLY</Text>
         </View>
       )}
 
@@ -725,6 +736,16 @@ export default function SettingsScreen() {
           </Text>
         </View>
       )}
+      {__DEV__ && (
+        <TouchableOpacity
+          onPress={async () => { await savePremium(!premiumOn); setPremiumOn(p => !p); }}
+          style={{ marginBottom: 8, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#F5A62366', alignItems: 'center' }}
+        >
+          <Text style={{ color: '#F5A623', fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+            {premiumOn ? '⊚ DEV: Revoke Sovereign' : '⊚ DEV: Grant Sovereign'}
+          </Text>
+        </TouchableOpacity>
+      )}
       <View style={{ marginTop: 4, marginBottom: 20, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: premiumOn ? '#F5A623AA' : '#F5A62344', backgroundColor: premiumOn ? '#F5A62310' : '#F5A62308' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
           <Text style={{ color: '#F5A623', fontSize: 14, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>⊚ SOVEREIGN SUPPORTER</Text>
@@ -867,7 +888,7 @@ export default function SettingsScreen() {
         </Text>
 
         {[
-          { label: '⊹  Follow on X', sub: '@auraveyrasol · updates + builds', url: 'https://x.com/auraveyrasol' },
+          { label: '⊹  Follow on X', sub: '@lycheetahlyc · updates + builds', url: 'https://x.com/lycheetahlyc' },
           { label: '◈  GitHub — Sol App', sub: 'github.com/Lycheetah · star + fork', url: 'https://github.com/Lycheetah/Lycheetah-Mobile-' },
           { label: '◉  GitHub — Framework', sub: 'Lycheetah Framework · open source', url: 'https://github.com/Lycheetah' },
         ].map(item => (

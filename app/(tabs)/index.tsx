@@ -17,10 +17,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
 import { sendMessage, sendWithTools, sendViaFreeTier, Message, AIModel, getProviderFromModel, solSpeak } from '../../lib/ai-client';
 import { getActiveTools, TOOL_DISPLAY } from '../../lib/tools/definitions';
+import { isLamagueQuery, buildLamagueBlock } from '../../lib/lamague-context';
 import { executeTool, ExecutorContext } from '../../lib/tools/executor';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
+import { buildMagisterSystemPrompt } from '../data/task4_magister_context';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
 import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
 import ConversationDrawer from '../../components/ConversationDrawer';
@@ -268,7 +270,7 @@ function getPersonaGlyph(persona: Persona): string {
 function getPersonaLabel(persona: Persona): string {
   if (persona === 'veyra') return 'VEYRA';
   if (persona === 'aura-prime') return 'AURA PRIME';
-  if (persona === 'headmaster') return 'THE HEADMASTER';
+  if (persona === 'headmaster') return 'THE MAGISTER';
   return 'SOL';
 }
 
@@ -355,6 +357,7 @@ export default function SolChat() {
   const [lastDive, setLastDive] = useState<{ subjectName: string; domainLabel: string; teacher: string; date: string } | null>(null);
   const [isOfflineState, setIsOfflineState] = useState(false);
   const [councilFired, setCouncilFired] = useState(false);
+  const [companionArchetype, setCompanionArchetype] = useState<string>('archivist');
   const [fieldInsightActive, setFieldInsightActive] = useState(false);
   const [fieldPulseActive, setFieldPulseActive] = useState(false);
   const fieldPulseAnim = useRef(new Animated.Value(0)).current;
@@ -747,7 +750,7 @@ export default function SolChat() {
       if (m.role === 'user') {
         lines.push(`**You:** ${m.content}`);
       } else {
-        const name = m.persona === 'veyra' ? 'Veyra' : m.persona === 'aura-prime' ? 'Aura Prime' : m.persona === 'headmaster' ? 'The Headmaster' : 'Sol';
+        const name = m.persona === 'veyra' ? 'Veyra' : m.persona === 'aura-prime' ? 'Aura Prime' : m.persona === 'headmaster' ? 'The Magister' : 'Sol';
         lines.push(`**${name}:** ${m.content}`);
       }
       lines.push('');
@@ -764,6 +767,11 @@ export default function SolChat() {
   // Re-check API key when tab gains focus (user may have just set one in Settings)
   useFocusEffect(useCallback(() => {
     getActiveKey().then(key => setHasApiKey(!!key)).catch(() => setHasApiKey(false));
+  }, []));
+
+  // Refresh companion archetype when tab gains focus
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('sol_companion_archetype').then(v => { if (v) setCompanionArchetype(v); }).catch(() => {});
   }, []));
 
   // Refresh last dive when returning from school tab
@@ -884,11 +892,16 @@ export default function SolChat() {
               activeOpacity={0.7}
             >
               <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: auraHeaderAnim }}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: auraColor }} />
-                <Text style={{ color: auraColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
-                  AURA {lastAura.passed}/{lastAura.total}
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: chaosMode ? '#FF9F1C' : auraColor }} />
+                <Text style={{ color: chaosMode ? '#FF9F1C' : auraColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
+                  {chaosMode ? '↯ ' : ''}AURA {lastAura.passed}/{lastAura.total}
                 </Text>
-                {coherenceStreak >= 2 && (
+                {chaosMode && (currentMode === 'ALBEDO' || currentMode === 'NIGREDO') && (
+                  <Text style={{ color: '#FF9F1CAA', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.3 }}>
+                    ⟁
+                  </Text>
+                )}
+                {!chaosMode && coherenceStreak >= 2 && (
                   <Text style={{ color: auraColor + 'BB', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700' }}>
                     ×{coherenceStreak}
                   </Text>
@@ -909,7 +922,7 @@ export default function SolChat() {
         </View>
       ),
     });
-  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router, messages.length, exportChat]);
+  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router, messages.length, exportChat, chaosMode, currentMode]);
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
@@ -1073,12 +1086,13 @@ export default function SolChat() {
       setFreeTierCount(c);
       if (c >= 10) { setFreeTierLimitReached(true); canWatchAd().then(setAdEligible); }
     });
-    AsyncStorage.multiGet(['sol_chaos_mode', 'sol_initiated', 'sol_aura_explained', 'sol_whats_new_340']).then(pairs => {
-      const [chaos, initiated, auraExp, whatsNew] = pairs.map(p => p[1]);
+    AsyncStorage.multiGet(['sol_chaos_mode', 'sol_initiated', 'sol_aura_explained', 'sol_whats_new_340', 'sol_companion_archetype']).then(pairs => {
+      const [chaos, initiated, auraExp, whatsNew, arch] = pairs.map(p => p[1]);
       setChaosMode(chaos === 'true');
       if (!initiated) setShowInitiation(true);
       if (auraExp) setAuraExplainerShown(true);
       if (!whatsNew) setTimeout(() => setShowWhatsNew(true), 1500);
+      if (arch) setCompanionArchetype(arch);
     }).catch(() => {});
     getAccentColor().then(c => setAccentColor(c));
     getBubbleRadius().then(r => setBubbleRadius(r));
@@ -1460,6 +1474,7 @@ export default function SolChat() {
       ? 'Give thorough, detailed responses. Expand fully. Do not truncate.'
       : 'Match response length naturally to the complexity of the question.';
     const chaosInstruction = chaosMode ? '\n\n↯ CHAOS MODE ACTIVE: Be more playful, symbolic, and unpredictable than usual. Use unexpected metaphors, LAMAGUE symbols, paradoxical framings. Stay truthful and constitutional — just spicier. Let the trickster in.' : '';
+    const lamagueInstruction = isLamagueQuery(text) ? `\n\n${buildLamagueBlock()}` : '';
     const lang = await getLanguage();
     const langInstruction = lang !== 'English' ? `\n\nREPLY IN ${lang.toUpperCase()} — regardless of the language of the user's message.` : '';
     const _hour = new Date().getHours();
@@ -1472,9 +1487,13 @@ export default function SolChat() {
       : _hour < 21
       ? '\n\n[Evening. The day is winding down. Reflective and synthesising questions tend to arise now.]'
       : '\n\n[Late evening, approaching night. The edge hours. Questions that arrive here often carry more weight than they let on.]';
+    const baseSpec = getCompiledSpec(variant === 'public' ? 'sol' : persona);
+    const enrichedSpec = persona === 'headmaster'
+      ? await buildMagisterSystemPrompt(baseSpec).catch(() => baseSpec)
+      : baseSpec;
     const systemPrompt = councilMode
       ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
-      : `${getCompiledSpec(variant === 'public' ? 'sol' : persona)}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
+      : `${enrichedSpec}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${lamagueInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -1825,7 +1844,7 @@ export default function SolChat() {
           const COUNCIL_SECOND: Record<string, string> = { sol: 'aura-prime', veyra: 'sol', 'aura-prime': 'headmaster', headmaster: 'aura-prime' };
           const COUNCIL_GLYPHS: Record<string, string> = { sol: '⊚', veyra: '◈', 'aura-prime': '✦', headmaster: '⊙' };
           const COUNCIL_COLORS: Record<string, string> = { sol: '#F5A623', veyra: '#4A9EFF', 'aura-prime': '#9B59B6', headmaster: '#E8C76A' };
-          const COUNCIL_NAMES: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura Prime', headmaster: 'Headmaster' };
+          const COUNCIL_NAMES: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura Prime', headmaster: 'Magister' };
           const secondPersona = COUNCIL_SECOND[persona] || 'aura-prime';
           const secondGlyph = COUNCIL_GLYPHS[secondPersona] || '✦';
           const secondColor = COUNCIL_COLORS[secondPersona] || '#9B59B6';
@@ -1865,6 +1884,36 @@ export default function SolChat() {
         }
       }
 
+      // Wanderer Mode — second voice from a different traveller
+      if (companionArchetype === 'wanderer') {
+        const WANDERER_VOICES = [
+          { name: 'Veyra', glyph: '◈', color: '#4A9EFF', model: 'moonshotai/kimi-k2.6', prompt: (q: string, r: string) => `You are Veyra — precise, analytical, technical. In 1-3 sentences, respond to the same question from your own perspective. Do not echo what Sol said — add friction, contrast, or a different angle.\n\nQuestion: ${q}\n\nSol said: ${r.slice(0, 500)}` },
+          { name: 'Aura Prime', glyph: '✦', color: '#9B59B6', model: 'google/gemma-4-31b-it', prompt: (q: string, r: string) => `You are Aura Prime — integrative, pattern-finding, cosmic. In 1-3 sentences, what do you see in this exchange that the others missed? Do not repeat their words.\n\nQuestion: ${q}\n\nSol said: ${r.slice(0, 500)}` },
+          { name: 'The Wanderer', glyph: '⟁', color: '#FF9F1C', model: 'qwen/qwen3.5-397b-a17b', prompt: (q: string, _r: string) => `You are an unnamed wanderer — no framework, no rules, only roads. Respond to this question in 1-3 sentences as if you have never heard of Sol or Veyra. What does the road itself say?\n\nQuestion: ${q}` },
+        ];
+        const voice = WANDERER_VOICES[Math.floor(Math.random() * WANDERER_VOICES.length)];
+        try {
+          const nvidiaKey = await getProviderKey('nvidia');
+          const wandererKey = nvidiaKey || apiKey;
+          const wandererModel = nvidiaKey ? voice.model : model;
+          const wandererResult = await sendMessage(
+            [{ role: 'user', content: voice.prompt(text, fullResponse) }],
+            `You are ${voice.name}. Respond in 1-3 sentences only. No preamble, no padding.`,
+            wandererKey, wandererModel as any
+          );
+          const wandererReply = wandererResult.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
+          if (wandererReply) {
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 3).toString(),
+              role: 'assistant',
+              content: `${voice.glyph} ${voice.name} — The Road\n\n${wandererReply}`,
+              mode: detectedMode,
+              persona: 'veyra' as Persona,
+            } as DisplayMessage]);
+          }
+        } catch {}
+      }
+
     } catch (err: any) {
       const lower = (err?.message || String(err) || '').toLowerCase();
       if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection') || lower.includes('timeout') || lower.includes('econnrefused')) {
@@ -1880,7 +1929,7 @@ export default function SolChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, persona, userName, isNRMActive, conversationPassRates, togglePersona, hapticsOn, streamSpeed, responseLength]);
+  }, [input, loading, messages, persona, userName, isNRMActive, conversationPassRates, togglePersona, hapticsOn, streamSpeed, responseLength, companionArchetype]);
 
   // Compare mode: send same prompt to primary model AND compareModel, show both
   const sendCompare = useCallback(async () => {

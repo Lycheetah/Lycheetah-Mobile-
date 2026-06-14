@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
-  Platform, Dimensions, TextInput, Modal, Image,
+  Platform, Dimensions, TextInput, Modal, Image, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -10,8 +10,14 @@ import * as Haptics from 'expo-haptics';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { CreatureSvg } from '../../components/CreatureSvg';
+import { CompanionSpecOverlay, CompanionSpec, DEFAULT_SPEC } from '../../components/CompanionSpecOverlay';
+import { CompanionRenderer, CompanionVisualSpec } from '../../components/CompanionRenderer';
+import COMPANIONS_DATA from '../../assets/companions/companions_data.json';
 import { sendMessage } from '../../lib/ai-client';
 import { getProviderKey, getActiveKey, getModel } from '../../lib/storage';
+import { COMPANION_SPECS, getCompanionSpec, getRandomPhrase, getEyeForMood } from '../data/task1_companion_specs';
+import { getGearOverlay } from '../data/task2_gear_overlays';
+import { generateJournalEntry, saveJournalEntry } from '../data/task3_journal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCENE_H = 340;
@@ -21,7 +27,8 @@ const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 type EvolutionStage = 0 | 1 | 2 | 3 | 4 | 5;
 type CompanionMood  = 'dormant' | 'present' | 'lit' | 'transcendent';
-type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'chaos';
+type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'lycheetah' | 'chaos';
+type Direction     = 'up' | 'down' | 'left' | 'right';
 type GearSlot      = 'crown' | 'sigil' | 'mantle' | 'body' | 'cape';
 type ArchetypeId   = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah';
 type EvoPath       = 'A' | 'B' | 'C';
@@ -38,21 +45,158 @@ const SKINS: Record<SkinId, {
   aurora:   { id: 'aurora',   name: 'AURORA',    desc: 'Light',     glyph: '◦', color: '#4ECDC4', dimColor: '#2A7A75', bgColor: '#000E0D', skyColor: '#2EA8A0', particleGlyph: '·', glowColor: '#4ECDC444', cardBg: '#00130F', starGlyphs: ['·','◦','·','·','⊹','·'] },
   crimson:  { id: 'crimson',  name: 'CRIMSON',   desc: 'Fire',      glyph: '✦', color: '#FF6B6B', dimColor: '#993030', bgColor: '#0C0000', skyColor: '#CC3333', particleGlyph: '✦', glowColor: '#FF6B6B44', cardBg: '#1A0000', starGlyphs: ['✦','·','✦','·','·','✦'] },
   obsidian: { id: 'obsidian', name: 'OBSIDIAN',  desc: 'Sovereign', glyph: '⊕', color: '#C8A96E', dimColor: '#6B4F1A', bgColor: '#000000', skyColor: '#8B6914', particleGlyph: '⊕', glowColor: '#C8A96E55', cardBg: '#100C00', starGlyphs: ['⊕','·','⊛','·','⊕','◦'] },
-  chaos:    { id: 'chaos',    name: 'CHAOS',     desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#050003', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
+  lycheetah: { id: 'lycheetah', name: 'LYCHEETAH', desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#050003', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
+  chaos:     { id: 'chaos',     name: 'CHAOS',     desc: 'Fracture',  glyph: '⚡', color: '#4A0080', dimColor: '#2A0050', bgColor: '#05000A', skyColor: '#6600AA', particleGlyph: '⚡', glowColor: '#4A008055', cardBg: '#0A0014', starGlyphs: ['⚡','·','◈','·','⚡','◦'] },
 };
-const SKIN_IDS: SkinId[] = ['solform', 'void', 'aurora', 'crimson', 'obsidian', 'chaos'];
+const SKIN_IDS: SkinId[] = ['solform', 'void', 'aurora', 'crimson', 'obsidian', 'lycheetah', 'chaos'];
+const SKIN_ORDER: SkinId[] = SKIN_IDS;
 
-// ─── Scene background images (drop JPGs into assets/scenes/) ─────────────────
-// If an image exists for the skin it renders under all effects.
-// Rename your files to match these keys exactly.
-const SCENE_IMAGES: Partial<Record<SkinId, any>> = {
-  solform:  require('../../assets/scenes/solform.png'),
-  void:     require('../../assets/scenes/void.png'),
-  aurora:   require('../../assets/scenes/aurora.png'),
-  crimson:  require('../../assets/scenes/crimson.png'),
-  obsidian: require('../../assets/scenes/obsidian.png'),
-  chaos:    require('../../assets/scenes/chaos.png'),
+// ─── Scene background images (drop PNGs into assets/scenes/) ─────────────────
+// Skin scenes: daily rotation per skin. Add files → push to array.
+const SCENE_IMAGES: Partial<Record<SkinId, any[]>> = {
+  solform:   [require('../../assets/scenes/solform.png'), require('../../assets/scenes/solform2.png'), require('../../assets/scenes/solform3.png')],
+  void:      [require('../../assets/scenes/void.png'), require('../../assets/scenes/void2.png'), require('../../assets/scenes/void3.png')],
+  aurora:    [require('../../assets/scenes/aurora.png'), require('../../assets/scenes/aurora2.png'), require('../../assets/scenes/aurora3.png')],
+  crimson:   [require('../../assets/scenes/crimson.png'), require('../../assets/scenes/crimson2.png'), require('../../assets/scenes/crimson3.png')],
+  obsidian:  [require('../../assets/scenes/obsidian.png'), require('../../assets/scenes/obsidian2.png')],
+  lycheetah: [require('../../assets/scenes/lycheetah.png'), require('../../assets/scenes/lycheetah2.png')],
+  chaos:     [require('../../assets/scenes/chaos.png'), require('../../assets/scenes/chaos2.png'), require('../../assets/scenes/chaos3.png')],
 };
+
+// ─── Archetype scenes — add files here as art lands ───────────────────────────
+const ARCHETYPE_SCENES: Partial<Record<string, any[]>> = {};
+
+const DAY_SEED = Math.floor(Date.now() / 86400000);
+
+// ─── World Map ────────────────────────────────────────────────────────────────
+interface SceneRoom { id: string; skinId: SkinId; roomIndex: number; name: string; unlockStage: number; image: any; description: string; }
+
+const WORLD_MAP: SceneRoom[] = [
+  { id:'solform_0', skinId:'solform',   roomIndex:0, name:'THE SOLAR GATE',      unlockStage:0, image:require('../../assets/scenes/solform.png'),   description:'Where light begins.' },
+  { id:'solform_1', skinId:'solform',   roomIndex:1, name:'THE INNER RADIANCE',  unlockStage:2, image:require('../../assets/scenes/solform2.png'),  description:'Deeper warmth.' },
+  { id:'solform_2', skinId:'solform',   roomIndex:2, name:'THE SANCTUM OF SOL',  unlockStage:4, image:require('../../assets/scenes/solform3.png'),  description:'The gold within the gold.' },
+  { id:'void_0',    skinId:'void',      roomIndex:0, name:'THE VOID THRESHOLD',  unlockStage:0, image:require('../../assets/scenes/void.png'),      description:'Silence has a texture here.' },
+  { id:'void_1',    skinId:'void',      roomIndex:1, name:'THE DEEP SILENCE',    unlockStage:2, image:require('../../assets/scenes/void2.png'),     description:'Thought echoes.' },
+  { id:'void_2',    skinId:'void',      roomIndex:2, name:'THE VOID HEART',      unlockStage:4, image:require('../../assets/scenes/void3.png'),     description:'Nothing. Everything.' },
+  { id:'aurora_0',  skinId:'aurora',    roomIndex:0, name:'THE AURORA GATE',     unlockStage:0, image:require('../../assets/scenes/aurora.png'),    description:'Light braided across sky.' },
+  { id:'aurora_1',  skinId:'aurora',    roomIndex:1, name:'THE NORTHERN REACH',  unlockStage:2, image:require('../../assets/scenes/aurora2.png'),   description:'Where cold becomes colour.' },
+  { id:'aurora_2',  skinId:'aurora',    roomIndex:2, name:'THE AURORA SANCTUM',  unlockStage:4, image:require('../../assets/scenes/aurora3.png'),   description:'The sky remembers you.' },
+  { id:'crimson_0', skinId:'crimson',   roomIndex:0, name:'THE FORGE MOUTH',     unlockStage:0, image:require('../../assets/scenes/crimson.png'),   description:'Heat before form.' },
+  { id:'crimson_1', skinId:'crimson',   roomIndex:1, name:'THE IRON HALL',       unlockStage:2, image:require('../../assets/scenes/crimson2.png'),  description:'Where things are made true.' },
+  { id:'crimson_2', skinId:'crimson',   roomIndex:2, name:'THE FORGE HEART',     unlockStage:4, image:require('../../assets/scenes/crimson3.png'),  description:'The fire that mends.' },
+  { id:'obsidian_0',skinId:'obsidian',  roomIndex:0, name:'THE OBSIDIAN GATE',   unlockStage:0, image:require('../../assets/scenes/obsidian.png'),  description:'Ancient and still.' },
+  { id:'obsidian_1',skinId:'obsidian',  roomIndex:1, name:'THE CRYSTAL HALL',    unlockStage:2, image:require('../../assets/scenes/obsidian2.png'), description:'Pressure becomes light.' },
+  { id:'lycheetah_0',skinId:'lycheetah',roomIndex:0, name:'THE WILD GATE',       unlockStage:0, image:require('../../assets/scenes/lycheetah.png'),description:'Everything is alive.' },
+  { id:'lycheetah_1',skinId:'lycheetah',roomIndex:1, name:'THE NEON CANOPY',     unlockStage:2, image:require('../../assets/scenes/lycheetah2.png'),description:'The jungle thinks.' },
+  { id:'chaos_0',   skinId:'chaos',     roomIndex:0, name:'THE FRACTURE GATE',   unlockStage:0, image:require('../../assets/scenes/chaos.png'),     description:'Where geometry breaks.' },
+  { id:'chaos_1',   skinId:'chaos',     roomIndex:1, name:'THE SHATTERED HALL',  unlockStage:2, image:require('../../assets/scenes/chaos2.png'),    description:'Reality folds here.' },
+  { id:'chaos_2',   skinId:'chaos',     roomIndex:2, name:'THE CHAOS HEART',     unlockStage:4, image:require('../../assets/scenes/chaos3.png'),    description:'The fracture watches back.' },
+];
+
+function getRoomById(id: string): SceneRoom | undefined { return WORLD_MAP.find(r => r.id === id); }
+function getSkinIndex(skinId: SkinId): number { return SKIN_ORDER.indexOf(skinId); }
+function getRoomInSkin(skinId: SkinId, roomIndex: number): SceneRoom | undefined { return WORLD_MAP.find(r => r.skinId === skinId && r.roomIndex === roomIndex); }
+function showToast(msg: string) { const { ToastAndroid, Platform } = require('react-native'); if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT); }
+
+// Arrow sub-components
+const ARROW_GLYPHS: Record<Direction, string> = { up:'↑', down:'↓', left:'←', right:'→' };
+const ArrowBtn = ({ direction, onPress, locked }: { direction: Direction; onPress: () => void; locked: boolean }) => {
+  const pos: Record<Direction, any> = {
+    up:    { top:10,    left:'50%', marginLeft:-18 },
+    down:  { bottom:10, left:'50%', marginLeft:-18 },
+    left:  { left:10,   top:'50%',  marginTop:-18 },
+    right: { right:10,  top:'50%',  marginTop:-18 },
+  };
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}
+      style={{ position:'absolute', ...pos[direction], width:36, height:36, borderRadius:18, backgroundColor:'rgba(0,0,0,0.35)', alignItems:'center', justifyContent:'center' }}>
+      <Text style={{ color: locked ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.85)', fontSize:16 }}>
+        {locked ? '🔒' : ARROW_GLYPHS[direction]}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+const RoomLabel = ({ name, visible }: { name: string; visible: boolean }) => {
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) Animated.sequence([
+      Animated.timing(fade, { toValue:1, duration:350, useNativeDriver:true }),
+      Animated.delay(1800),
+      Animated.timing(fade, { toValue:0, duration:500, useNativeDriver:true }),
+    ]).start();
+  }, [visible, name]);
+  return (
+    <Animated.View pointerEvents="none" style={{ position:'absolute', bottom:52, alignSelf:'center', opacity:fade, backgroundColor:'rgba(0,0,0,0.6)', paddingHorizontal:14, paddingVertical:5, borderRadius:8 }}>
+      <Text style={{ color:'#FFFFFF', fontSize:11, letterSpacing:2, fontFamily:'monospace' }}>{name}</Text>
+    </Animated.View>
+  );
+};
+
+// Room lore — appears briefly after entering a new room
+const RoomLore = ({ lore, loreAnim, color, onPress }: { lore: string | null; loreAnim: Animated.Value; color: string; onPress: () => void }) => {
+  if (!lore) return null;
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={{ position:'absolute', bottom:130, left:20, right:20, zIndex:20 }}>
+      <Animated.View style={{ opacity:loreAnim, padding:12, borderRadius:12, borderWidth:1, borderTopWidth:2, borderColor:color+'44', borderTopColor:color+'88', backgroundColor:'#000000CC', alignItems:'center' }}>
+        <Text style={{ color, fontSize:9, fontFamily:'monospace', letterSpacing:3, marginBottom:4, opacity:0.7 }}>◈</Text>
+        <Text style={{ color:'#FFFFFF', fontSize:12, fontStyle:'italic', textAlign:'center', lineHeight:18 }}>{lore}</Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+// Battle visual sub-components (from session 10)
+function LootFloat({ visible, color, onDone }: { visible: boolean; color: string; onDone: () => void }) {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const opacity    = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible) return;
+    translateY.setValue(0); opacity.setValue(1);
+    Animated.parallel([
+      Animated.timing(translateY, { toValue:-80, duration:1200, useNativeDriver:true }),
+      Animated.timing(opacity,    { toValue:0,   duration:1200, useNativeDriver:true }),
+    ]).start(() => onDone());
+  }, [visible]);
+  if (!visible) return null;
+  return (
+    <Animated.View style={{ position:'absolute', top:60, flexDirection:'row', alignItems:'center', zIndex:10, transform:[{translateY}], opacity }}>
+      <Text style={{ color, fontSize:20, fontWeight:'700' }}>✦</Text>
+      <Text style={{ color, fontSize:14, fontWeight:'700', letterSpacing:2 }}> RELIC</Text>
+    </Animated.View>
+  );
+}
+function WaveDots({ wave, color }: { wave: number; color: string }) {
+  const pos = ((wave - 1) % 5) + 1;
+  return (
+    <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
+      <Text style={{ fontSize:10, fontWeight:'700', letterSpacing:1.5, color:'#888', marginRight:6, fontFamily:'monospace' }}>WAVE </Text>
+      {[1,2,3,4,5].map(i => (
+        <Text key={i} style={{ fontSize:14, marginRight:3, color: i <= pos ? color : color+'44' }}>
+          {i <= pos ? '◉' : '○'}
+        </Text>
+      ))}
+    </View>
+  );
+}
+function EnemyGlyphArt({ glyph, color }: { glyph: string; color: string }) {
+  return (
+    <View style={{ alignItems:'center', marginBottom:12 }}>
+      {[
+        [' ', glyph, ' '],
+        [glyph, glyph, glyph],
+        [' ', glyph, ' '],
+      ].map((row, ri) => (
+        <View key={ri} style={{ flexDirection:'row', alignItems:'center', justifyContent:'center', height:36 }}>
+          {row.map((g, ci) => (
+            <Text key={ci} style={{ fontSize: ci===1 ? 28 : 18, width: ci===1 ? 40 : 32, textAlign:'center', color }}>
+              {g}
+            </Text>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 // ─── Enemy images (drop JPGs into assets/enemies/) ────────────────────────────
 // ─── Enemy roster ─────────────────────────────────────────────────────────────
@@ -269,7 +413,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       transcendent: ['Rare clarity. Archiving now.', 'This will be remembered.', 'The record is complete.', 'I will not forget this.'],
     },
     battleCry: 'Knowledge is the sharpest weapon.',
-    crowns: { 0:' u u ', 1:'  n n  ', 2:' n ⊛ n ', 3:'⊛  nWn  ⊛', 4:'⊛  nWWn  ⊛', 5:'⊕  nWWn  ⊕' },
+    crowns: { 0:'  ·  ·  ', 1:'  ∧ ∧  ', 2:' ∧ ⊛ ∧ ', 3:'⊛  ∧W∧  ⊛', 4:'⊛  ∧WW∧  ⊛', 5:'⊕  ∧WW∧  ⊕' },
     xpBonus: (d, _l, _s) => Math.floor(d * 10 * 0.15),
     attackBonus: 0, tokenBonus: 0,
     paths: [
@@ -357,7 +501,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       transcendent: ['Every domain in view.', 'The wandering ends here — and begins again.', 'Complete range.', 'The whole map.'],
     },
     battleCry: "I've fought this in a hundred forms.",
-    crowns: { 0:' u u ', 1:'  u u  ', 2:' u ◦ u ', 3:'◦  uWu  ◦', 4:'◦  uWWu  ◦', 5:'⊕  uWu  ⊕' },
+    crowns: { 0:'  ·  ·  ', 1:'  ∧ ∧  ', 2:' ∧ ◦ ∧ ', 3:'◦  ∧W∧  ◦', 4:'◦  ∧WW∧  ◦', 5:'⊕  ∧W∧  ⊕' },
     xpBonus: (_d, _l, _s) => 0,
     attackBonus: 0, tokenBonus: 0,
     paths: [
@@ -370,7 +514,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'lycheetah', name: 'LYCHEETAH', title: 'The Chaos Sovereign',
     glyph: '✧', desc: 'The Mystery Cat. Chaos is not disorder — it is order moving faster than your perception. LYCHEETAH does not explain itself. It simply arrives, and everything changes.',
     specialty: 'Random chaos bonus each battle (×1.5–×3 ATK). Pounce: one double-damage strike per day.', affinity: 'All domains. No domain. The spaces between.',
-    defaultSkin: 'chaos', accentColor: '#FF7755', sceneSymbols: ['✧','✦','✧','✦'],
+    defaultSkin: 'lycheetah', accentColor: '#FF7755', sceneSymbols: ['✧','✦','✧','✦'],
     eyes: { dormant:'─  ─', present:'◦  ◦', lit:'✧  ✧', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['Cats sleep twenty hours. This is strategy.', 'Between pounces.', 'The chaos rests. It does not stop.', 'Even the cat goes still.', 'Waiting is part of it.'],
@@ -723,7 +867,7 @@ const ARCHETYPE_STAT_BASES: Record<ArchetypeId, PlayerStats> = {
   oracle:     { atk: 6,  def: 6, spd:18, wil:22, lck:16, vit: 8, res:12 }, // glass cannon seer
   sentinel:   { atk:20, def:22, spd: 5, wil: 6, lck: 5, vit:22, res:20 }, // tank — def/vit peak
   wanderer:   { atk:10, def: 8, spd:22, wil:10, lck:20, vit:10, res:10 }, // speed/luck — spd peak
-  lycheetah:  { atk:22, def: 5, spd:15, wil:10, lck:22, vit: 8, res: 6 }, // chaos — atk/lck peak
+  lycheetah:  { atk:22, def: 5, spd:15, wil:10, lck:22, vit: 8, res: 6 }, // atk/lck peak
 };
 
 function computePlayerStats(archId: ArchetypeId, lqAvg: number, totalDives: number): PlayerStats {
@@ -1025,7 +1169,9 @@ function getTimeOverlay(): { color: string; opacity: number } | null {
 function CompanionScene({
   stage, mood, skin, archetype, onTap, phrase, phraseAnim, companionName,
   battleHP, battleMaxHP, battleEntityName, battleWave, entityShakeAnim, eating, evoPath, devStagePin,
-  gearCrown, gearBody, gearCape, gearMantle,
+  gearCrown, gearBody, gearCape, gearMantle, companionSpec,
+  currentRoomId, navigateRoom, getLockStatus, showRoomLabel, sceneFade,
+  roomLore, roomLoreAnim, onDismissLore,
 }: {
   stage: EvolutionStage; mood: CompanionMood; skin: typeof SKINS[SkinId]; archetype: Archetype;
   onTap: () => void; phrase: string | null; phraseAnim: Animated.Value;
@@ -1034,6 +1180,15 @@ function CompanionScene({
   entityShakeAnim: Animated.Value; eating: boolean; evoPath: EvoPath | null;
   devStagePin: EvolutionStage | null;
   gearCrown: GearTier; gearBody: GearTier; gearCape: GearTier; gearMantle: GearTier;
+  companionSpec: CompanionSpec;
+  currentRoomId: string;
+  navigateRoom: (d: Direction) => void;
+  getLockStatus: (d: Direction) => boolean;
+  showRoomLabel: boolean;
+  sceneFade: Animated.Value;
+  roomLore: string | null;
+  roomLoreAnim: Animated.Value;
+  onDismissLore: () => void;
 }) {
   const stageData = STAGES[stage];
   const { color, bgColor, skyColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
@@ -1215,12 +1370,12 @@ function CompanionScene({
     prevHP.current = battleHP;
   }, [battleHP]);
 
-  const breathScale = breathAnim.interpolate({ inputRange: [0,1], outputRange: [0.96, 1.04] });
+  const breathScale = breathAnim.interpolate({ inputRange: [0,1], outputRange: [0.94, 1.06] });
   const auraScale   = auraPulse.interpolate({ inputRange: [0,1], outputRange: [1, 1.15] });
   const auraOpacity = auraPulse.interpolate({ inputRange: [0,1], outputRange: [0.18, 0.45] });
   const bobY        = bobAnim.interpolate({ inputRange: [0,1], outputRange: [0, -16] });
   const driftX      = driftAnim;
-  const glowOp      = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.01, 0.04] });
+  const glowOp      = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.06, 0.22] });
   const skyOp       = skyAnim.interpolate({ inputRange: [0,1], outputRange: [0.02, 0.06] });
   const bodyOp      = breathAnim.interpolate({ inputRange: [0,1], outputRange: mood === 'dormant' ? [0.35, 0.65] : [0.82, 1] });
   // Shadow squishes when creature is up (bobY negative), expands when down
@@ -1234,18 +1389,22 @@ function CompanionScene({
   const ring2Scale = ring2Anim.interpolate({ inputRange:[0,1], outputRange:[0.94, 1.18] });
   const ring3Scale = ring3Anim.interpolate({ inputRange:[0,1], outputRange:[1.0, 1.32] });
 
-  const sceneBg = SCENE_IMAGES[skin.id as SkinId];
+  const currentRoom = getRoomById(currentRoomId) ?? WORLD_MAP[0];
+  const sceneBg = currentRoom.image;
   const hitTint = entityHitFlash.interpolate({ inputRange: [0, 1], outputRange: ['#00000000', '#FF000088'] });
 
   return (
-    <View style={{ width: SCREEN_W, height: SCENE_H, backgroundColor: '#0D0D0D', overflow: 'hidden' }}>
-      {sceneBg && (
-        <Animated.Image
-          source={sceneBg}
-          style={{ position: 'absolute', top: -18, left: -18, width: SCREEN_W + 36, height: SCENE_H + 36, opacity: 0.45, transform: [{ translateX: bgParallaxX }] }}
-          resizeMode="cover"
-        />
-      )}
+    <View style={{ width: SCREEN_W, height: SCENE_H, backgroundColor: bgColor, overflow: 'hidden' }}>
+      <Animated.Image
+        source={sceneBg}
+        style={{ position:'absolute', top:-48, left:-18, width:SCREEN_W+36, height:SCENE_H+80, opacity:sceneFade, transform:[{ translateX:bgParallaxX }] }}
+        resizeMode="cover"
+      />
+      <ArrowBtn direction="up"    onPress={() => navigateRoom('up')}    locked={getLockStatus('up')} />
+      <ArrowBtn direction="down"  onPress={() => navigateRoom('down')}  locked={getLockStatus('down')} />
+      <ArrowBtn direction="left"  onPress={() => navigateRoom('left')}  locked={getLockStatus('left')} />
+      <ArrowBtn direction="right" onPress={() => navigateRoom('right')} locked={getLockStatus('right')} />
+      <RoomLabel name={currentRoom.name} visible={showRoomLabel} />
 
       {/* No color washes — bgColor speaks for itself */}
 
@@ -1332,10 +1491,10 @@ function CompanionScene({
 
       {/* Companion — always centred */}
       <Animated.View style={{ position:'absolute', top: SCENE_H * 0.22, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
-        {/* Ground sigil — glowing archetype ring, replaces oval */}
+        {/* Ground sigil — subtle archetype ring, no shadow */}
         <View style={{ position:'absolute', bottom:-8, alignSelf:'center', width:110, height:18,
-          borderRadius:55, borderWidth:1, borderColor:color+'55',
-          backgroundColor:color+'09', shadowColor:color, shadowOpacity:0.6, shadowRadius:8, elevation:4 }} />
+          borderRadius:55, borderWidth:1, borderColor:color+'33',
+          backgroundColor:color+'06' }} />
         <TouchableOpacity
           onPress={(e) => {
             setTapPos({ x: e.nativeEvent.locationX, y: e.nativeEvent.locationY });
@@ -1358,34 +1517,26 @@ function CompanionScene({
             }} />
           )}
           <Animated.View style={{ transform:[{scale:breathScale}], opacity:bodyOp, alignItems:'center', zIndex:1 }}>
-            {/* Crown row — archetype tier */}
-            <Text style={{ color, fontSize:14, lineHeight:22, fontFamily:mono, textAlign:'center', letterSpacing:1.5, marginBottom:3 }}>
-              {archetype.crowns[stage]}
-            </Text>
             {/* Companion body — portrait image if available, SVG fallback */}
-            <View style={{ width:120, height:180 }}>
-              {COMPANION_IMAGES[`${archetype.id}_${devStagePin !== null ? devStagePin : stage}`]
-                ? <Image source={COMPANION_IMAGES[`${archetype.id}_${devStagePin !== null ? devStagePin : stage}`]} style={{ width:120, height:180 }} resizeMode="contain" />
-                : <CreatureSvg archId={archetype.id} stage={devStagePin !== null ? devStagePin : 1 as EvolutionStage} color={color} path={evoPath} />
-              }
+            <View style={{ width:150, height:220, overflow: 'visible' }}>
+              {/* Spec overlay — aura, orbiting glyphs, core glow (behind creature) */}
+              <CompanionSpecOverlay spec={companionSpec} color={color} stage={devStagePin !== null ? devStagePin : stage} />
+              {(() => {
+                const ck = `${archetype.id}_${devStagePin !== null ? devStagePin : stage}`;
+                const imgSrc = COMPANION_IMAGES[ck];
+                const jsonSpec = (COMPANIONS_DATA as Record<string, CompanionVisualSpec>)[ck];
+                if (imgSrc) return <Image source={imgSrc} style={{ width:150, height:220 }} resizeMode="contain" />;
+                if (jsonSpec) return <CompanionRenderer spec={jsonSpec} />;
+                return <CreatureSvg archId={archetype.id} stage={devStagePin !== null ? devStagePin : 1 as EvolutionStage} color={color} path={evoPath} />;
+              })()}
+              {/* Dark contrast layer — deepens the creature so it reads against the scene */}
+              <View style={{ position:'absolute', top:0, left:0, width:150, height:220, backgroundColor:'#000000', opacity:0.18 }} pointerEvents="none" />
               {/* Gear overlays — rendered in layer order: cape behind, body mid, crown top */}
               {(['cape','body','mantle','crown'] as GearSlot[]).map(slot => {
                 const g = slot === 'cape' ? gearCape : slot === 'body' ? gearBody : slot === 'mantle' ? gearMantle : gearCrown;
                 const img = g.threshold > 0 ? getGearImage(slot, g.name) : null;
-                return img ? <Image key={slot} source={img} style={{ position:'absolute', top:0, left:0, width:120, height:180 }} resizeMode="contain" /> : null;
+                return img ? <Image key={slot} source={img} style={{ position:'absolute', top:0, left:0, width:150, height:220 }} resizeMode="contain" /> : null;
               })}
-            </View>
-            {/* Eyes — mood-reactive overlay, positioned over the SVG head */}
-            <View style={{ position:'absolute', top: 32 + (stage * 4), left:0, right:0, alignItems:'center' }}>
-              <Animated.Text style={{ color, fontSize:13, letterSpacing:8, fontFamily:mono, fontWeight:'700', opacity:blinkAnim }}>
-                {eating ? EAT_EYES : archetype.eyes[mood]}
-              </Animated.Text>
-              <Animated.Text style={{
-                position:'absolute', color, fontSize:13, letterSpacing:8, fontFamily:mono, fontWeight:'700',
-                opacity: blinkAnim.interpolate({ inputRange:[0,1], outputRange:[1,0] }),
-              }}>
-                {'─  ─'}
-              </Animated.Text>
             </View>
           </Animated.View>
         </TouchableOpacity>
@@ -1426,6 +1577,8 @@ function CompanionScene({
         </Text>
       </View>
 
+      <RoomLore lore={roomLore} loreAnim={roomLoreAnim} color={color} onPress={onDismissLore} />
+
       {phrase && (
         <Animated.View style={{ position:'absolute', bottom:72, left:20, right:20, opacity:phraseAnim, padding:14, borderRadius:14, borderWidth:1, borderTopWidth:2, borderColor:archetype.accentColor+'44', borderTopColor:archetype.accentColor+'99', backgroundColor:'#000000DD', alignItems:'center' }}>
           <Text style={{ color:'#FFFFFF', fontSize:14, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>{phrase}</Text>
@@ -1464,11 +1617,24 @@ export default function CompanionScreen() {
 
   const [activeSkin,       setActiveSkin]       = useState<SkinId>('solform');
   const [archetypeId,      setArchetypeId]      = useState<ArchetypeId>('archivist');
+
+  // World map navigation
+  const [currentRoomId,  setCurrentRoomId]  = useState<string>('solform_0');
+  const [visitedRooms,   setVisitedRooms]   = useState<Set<string>>(new Set(['solform_0']));
+  const [showRoomLabel,  setShowRoomLabel]  = useState(false);
+  const sceneFade = useRef(new Animated.Value(1)).current;
+  const [roomLore,       setRoomLore]       = useState<string | null>(null);
+  const roomLoreAnim = useRef(new Animated.Value(0)).current;
   const [showArchSelect,   setShowArchSelect]   = useState(false);
 
   const [companionName, setCompanionName] = useState('');
   const [editingName,   setEditingName]   = useState(false);
   const [nameDraft,     setNameDraft]     = useState('');
+
+  // Kimi-generated spec for this archetype × stage (36 total)
+  const kimiSpec = getCompanionSpec(archetypeId, stage);
+  // Name hierarchy: user-set > Kimi spec > archetype fallback
+  const displayName = companionName || kimiSpec?.name || ARCHETYPES[archetypeId]?.name || '';
 
   const [quests,    setQuests]    = useState<Quest[]>([]);
   const [questData, setQuestData] = useState<QuestData>({ divesToday:0, journalToday:false, libraryToday:false, vigilActive:false, totalDives:0, divesThisWeek:0 });
@@ -1486,6 +1652,16 @@ export default function CompanionScreen() {
   const [tokensLeft,     setTokensLeft]    = useState(3);
   const [attackAnim,     setAttackAnim]    = useState(false);
   const [spellMenuOpen,  setSpellMenuOpen] = useState(false);
+  const [lootFloatVisible, setLootFloatVisible] = useState(false);
+
+  const [showHelp,    setShowHelp]    = useState(false);
+  const [helpTopic,   setHelpTopic]   = useState<'companion'|'battle'|'field'>('companion');
+  const [helpText,    setHelpText]    = useState<string | null>(null);
+  const [helpLoading, setHelpLoading] = useState(false);
+  const helpSlide = useRef(new Animated.Value(0)).current;
+
+  const [fieldNote,        setFieldNote]        = useState<string | null>(null);
+  const [fieldNoteLoading, setFieldNoteLoading] = useState(false);
 
   const [dailyFoods,   setDailyFoods]   = useState<FoodItem[]>([]);
   const [fedToday,     setFedToday]     = useState<string[]>([]);
@@ -1513,6 +1689,7 @@ export default function CompanionScreen() {
   const summonAnim = useRef(new Animated.Value(0)).current;
   const [lamagueSt,  setLamagueSt]  = useState<string | null>(null);
   const [liveLore,   setLiveLore]   = useState<{ text: string; subject: string; date: string }[]>([]);
+  const [companionSpec, setCompanionSpec] = useState<CompanionSpec>(DEFAULT_SPEC);
 
   // ── AI Talk panel ──────────────────────────────────────────────────────────
   const [showTalk,    setShowTalk]    = useState(false);
@@ -1532,6 +1709,148 @@ export default function CompanionScreen() {
   const battleY    = useRef(0);
   const loreY      = useRef(0);
 
+  const navigateRoom = useCallback((direction: Direction) => {
+    const current = getRoomById(currentRoomId);
+    if (!current) return;
+    const skinIndex = getSkinIndex(current.skinId);
+    let target: SceneRoom | undefined;
+    if (direction === 'right') target = getRoomInSkin(current.skinId, current.roomIndex + 1);
+    else if (direction === 'left') target = getRoomInSkin(current.skinId, current.roomIndex - 1);
+    else if (direction === 'up') {
+      const ns = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length];
+      target = getRoomInSkin(ns, current.roomIndex);
+      if (target && target.unlockStage > (devStagePin ?? stage)) target = getRoomInSkin(ns, 0);
+    } else {
+      const ps = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length];
+      target = getRoomInSkin(ps, current.roomIndex);
+      if (target && target.unlockStage > (devStagePin ?? stage)) target = getRoomInSkin(ps, 0);
+    }
+    if (!target) return;
+    if (target.unlockStage > (devStagePin ?? stage)) { showToast(`Reach stage ${target.unlockStage} to unlock this area`); return; }
+    Animated.sequence([
+      Animated.timing(sceneFade, { toValue:0, duration:180, useNativeDriver:true }),
+      Animated.timing(sceneFade, { toValue:1, duration:350, useNativeDriver:true }),
+    ]).start();
+    setCurrentRoomId(target.id);
+    setShowRoomLabel(true);
+    setTimeout(() => setShowRoomLabel(false), 2600);
+    const first = !visitedRooms.has(target.id);
+    setVisitedRooms(prev => new Set([...prev, target!.id]));
+    if (first) setTimeout(() => showToast(target!.description), 650);
+    AsyncStorage.setItem('sol_current_room', target.id);
+    // Show static lore immediately, replace with AI lore when it arrives
+    const staticLore = target.description;
+    roomLoreAnim.setValue(0);
+    setRoomLore(staticLore);
+    Animated.timing(roomLoreAnim, { toValue:1, duration:400, useNativeDriver:true }).start();
+    const loreTimer = setTimeout(() => {
+      Animated.timing(roomLoreAnim, { toValue:0, duration:600, useNativeDriver:true }).start(() => setRoomLore(null));
+    }, 5500);
+    // Fire AI lore in background
+    (async () => {
+      try {
+        const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+        if (!key) return;
+        const result = await sendMessage(
+          [{ role:'user', content:`I entered "${target!.name}" with my ${archetypeId} companion at stage ${stage}. One line of lore.` }],
+          'You are a lore oracle for a learning app. Respond in ONE sentence. Atmospheric, strange, true. No preamble.',
+          key, model as any, undefined, 'fast', 60,
+        );
+        if (result?.text?.trim()) setRoomLore(result.text.trim());
+      } catch { /* keep static lore */ }
+    })();
+  }, [currentRoomId, stage, devStagePin, visitedRooms, sceneFade]);
+
+  const dismissLore = useCallback(() => {
+    Animated.timing(roomLoreAnim, { toValue:0, duration:300, useNativeDriver:true }).start(() => setRoomLore(null));
+  }, [roomLoreAnim]);
+
+  const HELP_TOPIC_PROMPTS: Record<string,string> = {
+    companion: 'what the companion creature is, how it evolves, and why it matters',
+    battle: 'the battle system: ATK = LQ × 100, Entropy entity, daily tokens',
+    field: 'Mystery School dives, how they advance the companion, and what LQ means',
+  };
+
+  const openHelpSheet = useCallback(() => {
+    setShowHelp(true);
+    Animated.spring(helpSlide, { toValue:1, useNativeDriver:true, friction:8, tension:40 }).start();
+  }, [helpSlide]);
+
+  const closeHelpSheet = useCallback(() => {
+    Animated.timing(helpSlide, { toValue:0, duration:200, useNativeDriver:true }).start(() => {
+      setShowHelp(false); setHelpText(null); setHelpLoading(false);
+    });
+  }, [helpSlide]);
+
+  const fetchHelpExplanation = useCallback(async (topic: 'companion'|'battle'|'field') => {
+    setHelpLoading(true); setHelpText(null);
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) { setHelpText("No API key set — add one in Settings."); return; }
+      const result = await sendMessage(
+        [{ role:'user', content:`Explain ${topic} to a new user.` }],
+        `You are Sol ⊚, companion in the Vael learning app. Explain ${HELP_TOPIC_PROMPTS[topic]} in 3 sentences maximum. Speak directly, warm, useful.`,
+        key, model as any, undefined, 'fast', 120,
+      );
+      setHelpText(result?.text?.trim() ?? "I'm here to help, but the signal is hazy right now.");
+    } catch {
+      setHelpText("The signal is faint… try again in a moment. I'm still here.");
+    } finally {
+      setHelpLoading(false);
+    }
+  }, []);
+
+  const switchHelpTopic = useCallback((topic: 'companion'|'battle'|'field') => {
+    setHelpTopic(topic); fetchHelpExplanation(topic);
+  }, [fetchHelpExplanation]);
+
+  const FIELD_FALLBACKS = [
+    'Your pattern suggests depth over breadth — the companion is responding.',
+    'Three domains in the last seven dives. The field is forming a shape.',
+    `High-pressure study at ${STAGES[stage]?.name ?? 'this stage'} — the entropy you fight is real.`,
+    'The dives are feeding something. It shows.',
+    'Consistency is compounding. The creature knows.',
+  ];
+
+  const DOMAIN_GLYPH_MAP: Record<string,string> = { phi:'✦', log:'◈', alc:'◦', her:'⊹', mys:'◉', eth:'✧', math:'⊛', sci:'◉', hist:'◦', lang:'✧', art:'✦', code:'◈' };
+
+  const getDomainGlyph = (domain: string): string => {
+    const key = domain.toLowerCase().slice(0,3);
+    return DOMAIN_GLYPH_MAP[key] ?? DOMAIN_GLYPH_MAP[domain] ?? '◦';
+  };
+
+  const generateFieldNote = useCallback(async () => {
+    setFieldNoteLoading(true);
+    const recentDomainList = recentDives.slice(-7).map(d => d.domainLabel ?? d.subjectName ?? 'unknown').join(', ') || 'various subjects';
+    const fallback = FIELD_FALLBACKS[Math.floor(Math.random() * FIELD_FALLBACKS.length)];
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) { setFieldNote(fallback); return; }
+      const result = await sendMessage(
+        [{ role:'user', content:`Someone studied ${recentDomainList} recently and has LQ ${(avgLQ*100).toFixed(0)}% at ${STAGES[stage]?.name ?? 'unknown'} stage with a ${archetypeId} companion. Give one sentence of insight.` }],
+        'You are a wise field observer in a learning app. Respond in exactly one sentence. No quotes. No fluff.',
+        key, model as any, undefined, 'fast', 80,
+      );
+      setFieldNote(result?.text?.trim() ?? fallback);
+    } catch {
+      setFieldNote(fallback);
+    } finally {
+      setFieldNoteLoading(false);
+    }
+  }, [recentDives, avgLQ, stage, archetypeId]);
+
+  const getLockStatus = useCallback((direction: Direction): boolean => {
+    const current = getRoomById(currentRoomId);
+    if (!current) return true;
+    const skinIndex = getSkinIndex(current.skinId);
+    let target: SceneRoom | undefined;
+    if (direction === 'right') target = getRoomInSkin(current.skinId, current.roomIndex + 1);
+    else if (direction === 'left') target = getRoomInSkin(current.skinId, current.roomIndex - 1);
+    else if (direction === 'up') { const ns = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length]; target = getRoomInSkin(ns, current.roomIndex); }
+    else { const ps = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length]; target = getRoomInSkin(ps, current.roomIndex); }
+    return !target || target.unlockStage > (devStagePin ?? stage);
+  }, [currentRoomId, stage, devStagePin]);
+
   useFocusEffect(useCallback(() => {
     (async () => {
       const keys = [
@@ -1540,6 +1859,7 @@ export default function CompanionScreen() {
         'cascade_library_v3','sol_companion_skin','sol_companion_battle','sol_companion_fed',
         'sol_companion_archetype','sol_premium','sol_companion_named','sol_companion_path',
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
+        'sol_companion_spec',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -1585,6 +1905,8 @@ export default function CompanionScreen() {
 
       const skinRaw = get('sol_companion_skin') as SkinId | null;
       if (skinRaw && SKIN_IDS.includes(skinRaw)) setActiveSkin(skinRaw);
+      const roomRaw = get('sol_current_room');
+      if (roomRaw && getRoomById(roomRaw)) setCurrentRoomId(roomRaw);
       const archRaw = get('sol_companion_archetype') as ArchetypeId | null;
       if (archRaw && ARCHETYPE_IDS.includes(archRaw)) {
         setArchetypeId(archRaw);
@@ -1624,6 +1946,14 @@ export default function CompanionScreen() {
       const power    = stats.atk + (getGear('crown', total).threshold >= 1 ? 5 : 0);
       const tokenBudget = today + 3 + gearTokenBonus + archData.tokenBonus;
 
+      // Daily token refresh — reset tokens each new day (tokenBudget was computed but never applied)
+      const lastTokenDate = get('sol_battle_token_date');
+      if (lastTokenDate !== todayK) {
+        bat = { ...bat, tokens: tokenBudget };
+        await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(bat));
+        await AsyncStorage.setItem('sol_battle_token_date', todayK);
+      }
+
       setIsSovereign(get('sol_premium') === 'true');
       const currentStage = getStage(total);
       const hasName = !!get('sol_companion_name');
@@ -1638,11 +1968,11 @@ export default function CompanionScreen() {
           setShowPathCeremony(true);
         }, 3000);
       }
-      if (currentStage >= 1) { fireMilestone('stage_spark', '◦', 'SPARK Reached', 'The companion has crossed its first threshold. It is beginning to wake.'); fireEvolutionCeremony(1); }
-      if (currentStage >= 2) fireEvolutionCeremony(2);
-      if (currentStage >= 3) { fireMilestone('stage_flame', '✦', 'FLAME Reached', 'Fifty dives. The companion is alive — truly alive. It responds to your field.'); fireEvolutionCeremony(3); }
-      if (currentStage >= 4) fireEvolutionCeremony(4);
-      if (currentStage >= 5) { fireMilestone('stage_sovereign', '⊕', 'SOVEREIGN', 'Two hundred dives. The Great Work is complete. Your companion has become its own sovereign entity.'); fireEvolutionCeremony(5); }
+      if (currentStage >= 1) { fireMilestone('stage_spark', '◦', 'SPARK Reached', 'The companion has crossed its first threshold. It is beginning to wake.'); fireEvolutionCeremony(1); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 1)); }
+      if (currentStage >= 2) { fireEvolutionCeremony(2); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 2)); }
+      if (currentStage >= 3) { fireMilestone('stage_flame', '✦', 'FLAME Reached', 'Fifty dives. The companion is alive — truly alive. It responds to your field.'); fireEvolutionCeremony(3); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 3)); }
+      if (currentStage >= 4) { fireEvolutionCeremony(4); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 4)); }
+      if (currentStage >= 5) { fireMilestone('stage_sovereign', '⊕', 'SOVEREIGN', 'Two hundred dives. The Great Work is complete. Your companion has become its own sovereign entity.'); fireEvolutionCeremony(5); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 5)); }
       setTotalDives(total); setDivesThisWeek(week); setAvgLQ(lqAvg);
       setStreak(streakVal); setVigilName(vigil?.subjectName ?? null);
       setRelics(updated); setMood(m); setStage(getStage(total));
@@ -1701,8 +2031,15 @@ export default function CompanionScreen() {
           }, 1600);
         }
       }
+      // Load persisted companion spec
+      try {
+        const specRaw = get('sol_companion_spec');
+        if (specRaw) setCompanionSpec(JSON.parse(specRaw));
+      } catch {}
       // Daily lore generation — fires async after data loads, once per day
       setTimeout(() => generateDailyLore(), 3000);
+      // Companion spec generation — once per day or on stage change
+      setTimeout(() => generateCompanionSpec(), 5000);
     })();
   }, []));
 
@@ -1723,6 +2060,14 @@ export default function CompanionScreen() {
       Animated.spring(relicAnim, { toValue:1, useNativeDriver:true, tension:60, friction:8 }).start();
     }
   }, [newRelic]);
+
+  useEffect(() => {
+    if (battle?.won && battle?.loot) setLootFloatVisible(true);
+  }, [battle?.won]);
+
+  useEffect(() => {
+    if (activeTab === 'field' && !fieldNote && !fieldNoteLoading) generateFieldNote();
+  }, [activeTab]);
 
   useEffect(() => {
     if (!evolutionCeremony) return;
@@ -1857,6 +2202,66 @@ export default function CompanionScreen() {
     } catch { /* silent */ }
   };
 
+  const generateCompanionSpec = async () => {
+    try {
+      const todayK = todayDateKey();
+      const lastSpecDate = await AsyncStorage.getItem('sol_companion_spec_date');
+      const lastSpecStage = await AsyncStorage.getItem('sol_companion_spec_stage');
+      // Regenerate daily OR when stage changes
+      if (lastSpecDate === todayK && lastSpecStage === String(stage)) return;
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) return;
+      const arch = ARCHETYPES[archetypeId];
+      const stageInfo = STAGES[stage];
+      const topSubjects = recentDives.length > 0
+        ? recentDives.slice(0, 4).map(d => d.subjectName).join(', ')
+        : 'none yet';
+      const prompt = `You are designing a visual companion spirit for a mystery school app.
+
+Companion: ${arch.name} — ${arch.title}
+Stage: ${stage}/5 (${stageInfo.name})
+Student's recent subjects: ${topSubjects}
+Average LQ score: ${Math.round(avgLQ * 100)}%
+Mood: ${mood}
+Archetype color: ${arch.accentColor}
+
+Generate a unique visual spec for this specific student. Return ONLY valid JSON, no explanation:
+{
+  "auraType": "rings" or "rays" or "spiral" or "pulse" or "void",
+  "auraIntensity": number between 0.3 and 1.0,
+  "glyphSet": ["char1", "char2", "char3", "char4"] (3-5 single unicode chars — use arcane, alchemical, mathematical, or runic symbols that match the archetype),
+  "coreGlow": "sharp" or "soft" or "crystal" or "ember",
+  "orbitCount": integer 2 to 5,
+  "trailStyle": "none" or "comet" or "sparkle" or "shadow",
+  "resonance": "oneword"
+}`;
+      const result = await sendMessage(
+        [{ role: 'user', content: prompt }],
+        `You are a procedural visual system. Output only valid JSON.`,
+        key, model as any, undefined, 'fast', 200,
+      );
+      const raw = result.text?.trim() ?? '';
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return;
+      const parsed = JSON.parse(jsonMatch[0]) as Partial<CompanionSpec>;
+      const valid: CompanionSpec = {
+        auraType:      ['rings','rays','spiral','pulse','void'].includes(parsed.auraType ?? '') ? (parsed.auraType as CompanionSpec['auraType']) : DEFAULT_SPEC.auraType,
+        auraIntensity: typeof parsed.auraIntensity === 'number' ? Math.min(1, Math.max(0.2, parsed.auraIntensity)) : DEFAULT_SPEC.auraIntensity,
+        glyphSet:      Array.isArray(parsed.glyphSet) && parsed.glyphSet.length >= 2 ? parsed.glyphSet.slice(0,5) : DEFAULT_SPEC.glyphSet,
+        coreGlow:      ['sharp','soft','crystal','ember'].includes(parsed.coreGlow ?? '') ? (parsed.coreGlow as CompanionSpec['coreGlow']) : DEFAULT_SPEC.coreGlow,
+        orbitCount:    typeof parsed.orbitCount === 'number' ? Math.min(5, Math.max(2, Math.round(parsed.orbitCount))) : DEFAULT_SPEC.orbitCount,
+        trailStyle:    ['none','comet','sparkle','shadow'].includes(parsed.trailStyle ?? '') ? (parsed.trailStyle as CompanionSpec['trailStyle']) : DEFAULT_SPEC.trailStyle,
+        resonance:     typeof parsed.resonance === 'string' ? parsed.resonance.split(' ')[0].toLowerCase() : DEFAULT_SPEC.resonance,
+      };
+      setCompanionSpec(valid);
+      await AsyncStorage.multiSet([
+        ['sol_companion_spec', JSON.stringify(valid)],
+        ['sol_companion_spec_date', todayK],
+        ['sol_companion_spec_stage', String(stage)],
+      ]);
+    } catch { /* silent — spec stays at default */ }
+  };
+
   const openTalk = () => {
     setShowTalk(true);
     talkSlideAnim.setValue(0);
@@ -1900,20 +2305,22 @@ export default function CompanionScreen() {
 
   const handleTap = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // 60% chance of live AI phrase, fall back to static instantly
-    if (Math.random() < 0.6) {
+    // 40% live AI phrase, 60% Kimi static (so spec phrases are visible)
+    if (Math.random() < 0.4) {
       setPhrase('...');
       generateLivePhrase().then(live => {
+        const kimiPhrase = kimiSpec ? getRandomPhrase(kimiSpec, mood) : null;
+        const staticFallback = kimiPhrase ?? rnd(archetype.phrases[mood]);
         setPhrase(live || (recentDives.length > 0 && Math.random() < 0.5
           ? (() => { const dive = recentDives[Math.floor(Math.random() * recentDives.length)]; return MEMORY_TEMPLATES[Math.floor(Math.random() * MEMORY_TEMPLATES.length)](dive.subjectName, dive.domainLabel); })()
-          : rnd(archetype.phrases[mood])));
+          : staticFallback));
       });
     } else if (recentDives.length > 0 && Math.random() < 0.3) {
       const dive = recentDives[Math.floor(Math.random() * recentDives.length)];
       const tmpl = MEMORY_TEMPLATES[Math.floor(Math.random() * MEMORY_TEMPLATES.length)];
       setPhrase(tmpl(dive.subjectName, dive.domainLabel));
     } else {
-      setPhrase(rnd(archetype.phrases[mood]));
+      setPhrase((kimiSpec ? getRandomPhrase(kimiSpec, mood) : null) ?? rnd(archetype.phrases[mood]));
     }
   };
 
@@ -1927,13 +2334,13 @@ export default function CompanionScreen() {
   };
 
   const handleBattleAction = async (action: 'attack' | 'spell' | 'defend' | 'item') => {
-    if (!battle || battle.won || tokensLeft <= 0 || attackAnim) return;
+    if (!battle || battle.won || attackAnim) return;
     if (action === 'spell') { setSpellMenuOpen(true); return; }
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(action === 'attack' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
     setAttackAnim(true);
 
-    let dmg = 0, healAmt = 0, logEntry = '', tokenCost = 1, chaosNote = '';
+    let dmg = 0, healAmt = 0, logEntry = '', tokenCost = 0, chaosNote = '';
     let newEnemyHP = battle.entityHP, newPlayerHP = battle.playerHP;
     let newDefending = false, enemyAttacksBack = true;
     let newStunned = false, newShielded = false;
@@ -2084,6 +2491,16 @@ export default function CompanionScreen() {
     const newTokens = Math.max(0, tokensLeft - tokenCost);
     const loot = won ? rollLoot(battle!.wave) : null;
 
+    // Daily XP cap — first 10 wins full XP, after that 1XP per win
+    let earnedXP = 0;
+    if (won) {
+      const todayKey = new Date().toISOString().split('T')[0];
+      const winsRaw = await AsyncStorage.getItem(`sol_daily_wins_${todayKey}`);
+      const winsToday = winsRaw ? parseInt(winsRaw, 10) : 0;
+      earnedXP = winsToday < 10 ? battle!.wave * 20 : 1;
+      await AsyncStorage.setItem(`sol_daily_wins_${todayKey}`, String(winsToday + 1));
+    }
+
     const updated: BattleState = {
       ...battle!,
       entityHP: newEnemyHP, playerHP: newPlayerHP,
@@ -2091,7 +2508,7 @@ export default function CompanionScreen() {
       enemyLine: won ? def.lines.death : (p as any).enemyLine ?? battle!.enemyLine,
       loot: loot?.name ?? null,
       log: [logEntry, ...battle!.log].slice(0, 4),
-      waveXP: battle!.waveXP + (won ? battle!.wave * 20 : 0),
+      waveXP: battle!.waveXP + earnedXP,
       enemyStunned: newStunned,
       playerShielded: newShielded,
       lastPlayerDmg: dmg > 0 ? dmg : battle!.lastPlayerDmg,
@@ -2111,8 +2528,26 @@ export default function CompanionScreen() {
       }
       fireMilestone('first_blood', '✕', 'First Blood', 'The Entropy Entity falls for the first time. The field holds.');
       const enemyKey = battle!.entityName.toLowerCase().replace(/ /g,'_');
-      const loreText = ENEMY_LORE[enemyKey] ?? '';
-      const waveMsg = `Wave ${battle!.wave} clear. +${battle!.wave * 20} XP.`;
+      const waveMsg = earnedXP > 1 ? `Wave ${battle!.wave} clear. +${earnedXP} XP.` : `Wave ${battle!.wave} clear. +1 XP — field resting.`;
+
+      // Auto-generate deep lore on first defeat — cached forever
+      const cacheKey = `sol_enemy_lore_${enemyKey}`;
+      let loreText = await AsyncStorage.getItem(cacheKey) ?? ENEMY_LORE[enemyKey] ?? '';
+      if (!loreText) {
+        try {
+          const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+          if (apiKey) {
+            const result = await sendMessage(
+              [{ role: 'user', content: `Write 2 sentences of mystical RPG lore about "${battle!.entityName}" — an entropy entity defeated in the Lycheetah learning framework. Write in the voice of a field codex entry: philosophical, earned, specific to what this enemy represents. No preamble. Just the 2 sentences.` }],
+              'You write RPG codex entries. Mystical, precise, 2 sentences only. No titles, no headers.',
+              apiKey, (model || 'gemini-2.5-flash') as any, undefined, 'fast', 80, 0.9
+            );
+            loreText = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() ?? '';
+            if (loreText) await AsyncStorage.setItem(cacheKey, loreText);
+          }
+        } catch {}
+      }
+
       setPhrase(loreText || waveMsg);
       if (loreText) saveToCodex({ id:`enemy_${enemyKey}`, enemy:battle!.entityName, text:loreText, type:'enemy' });
       if (loot) {
@@ -2254,10 +2689,14 @@ export default function CompanionScreen() {
       {/* ── COMPANION HEADER ─────────────────────────────────────────────── */}
       <View style={{ paddingHorizontal:16, paddingTop:12, paddingBottom:4, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
         <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+          <TouchableOpacity onPress={() => { openHelpSheet(); fetchHelpExplanation(helpTopic); }} activeOpacity={0.7}
+            style={{ width:28, height:28, borderRadius:14, borderWidth:1, borderColor:color, backgroundColor:color+'22', alignItems:'center', justifyContent:'center' }}>
+            <Text style={{ color:'#FFFFFF', fontSize:13, fontFamily:mono }}>?</Text>
+          </TouchableOpacity>
           <Text style={{ color, fontSize:18 }}>{archetype.glyph}</Text>
           <View>
             <Text style={{ color:SOL_THEME.text, fontSize:15, fontWeight:'700', fontFamily:mono }}>
-              {companionName || archetype.name}
+              {displayName}
             </Text>
             <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
           </View>
@@ -2292,7 +2731,7 @@ export default function CompanionScreen() {
       <CompanionScene
         stage={stage} mood={mood} skin={skin} archetype={archetype}
         onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim}
-        companionName={companionName}
+        companionName={displayName}
         battleHP={battle?.entityHP ?? 0}
         battleMaxHP={battle?.maxHP ?? 80}
         battleEntityName={battle?.entityName ?? ''}
@@ -2305,12 +2744,48 @@ export default function CompanionScreen() {
         gearBody={gearBody}
         gearCape={gearCape}
         gearMantle={gearMantle}
+        companionSpec={companionSpec}
+        currentRoomId={currentRoomId}
+        navigateRoom={navigateRoom}
+        getLockStatus={getLockStatus}
+        showRoomLabel={showRoomLabel}
+        sceneFade={sceneFade}
+        roomLore={roomLore}
+        roomLoreAnim={roomLoreAnim}
+        onDismissLore={dismissLore}
       />
 
       {xpPop && (
         <Animated.Text style={{ position:'absolute', top:SCENE_H-55, alignSelf:'center', color, fontSize:13, fontFamily:mono, fontWeight:'700', transform:[{translateY:xpPopY}], opacity:xpPopOp }}>
           {xpPop}
         </Animated.Text>
+      )}
+
+      {/* ── DEV STAGE VIEWER (moved to top for fast access) ─────────────── */}
+      {__DEV__ && (
+        <View style={{ marginHorizontal:16, marginTop:8, marginBottom:4, padding:10, borderRadius:10, borderWidth:1, borderColor:'#FF440055', backgroundColor:'#FF000008' }}>
+          <Text style={{ color:'#FF4444', fontSize:8, letterSpacing:2, fontFamily:mono, marginBottom:6 }}>⚠ DEV — STAGE VIEWER</Text>
+          <View style={{ flexDirection:'row', gap:6, flexWrap:'wrap' }}>
+            {([0,1,2,3,4,5] as EvolutionStage[]).map(s => (
+              <TouchableOpacity key={s} onPress={() => setDevStagePin(devStagePin === s ? null : s)}
+                style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:6, borderWidth:1,
+                  borderColor: devStagePin === s ? '#FF4444' : '#FF444433',
+                  backgroundColor: devStagePin === s ? '#FF000033' : 'transparent' }}>
+                <Text style={{ color: devStagePin === s ? '#FF6666' : '#FF444488', fontSize:11, fontFamily:mono }}>
+                  {s === 0 ? 'S0' : s === 1 ? 'S1★' : `S${s}`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            {devStagePin !== null && (
+              <TouchableOpacity onPress={() => setDevStagePin(null)} style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:6, borderWidth:1, borderColor:'#FFFFFF22' }}>
+                <Text style={{ color:'#FFFFFF44', fontSize:11, fontFamily:mono }}>RESET</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <Text style={{ color:'#FF444466', fontSize:9, fontFamily:mono, marginTop:4 }}>
+            {devStagePin !== null ? `PINNED TO STAGE ${devStagePin}` : 'REAL STAGE'}
+          </Text>
+        </View>
       )}
 
       {/* ── LAMAGUE STATE STRIP ──────────────────────────────────────────── */}
@@ -2350,7 +2825,7 @@ export default function CompanionScreen() {
               <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
                 <Text style={{ color, fontSize:20 }}>{archetype.glyph}</Text>
                 <View>
-                  <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{companionName || archetype.name}</Text>
+                  <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{displayName}</Text>
                   <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{archetype.title.toUpperCase()}</Text>
                 </View>
               </View>
@@ -2415,7 +2890,7 @@ export default function CompanionScreen() {
               <TextInput
                 value={talkInput}
                 onChangeText={setTalkInput}
-                placeholder={`Speak to ${companionName || archetype.name}...`}
+                placeholder={`Speak to ${displayName}...`}
                 placeholderTextColor={SOL_THEME.textMuted}
                 style={{ flex:1, backgroundColor:SOL_THEME.surface, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:color+'33' }}
                 onSubmitEditing={sendTalk}
@@ -2860,20 +3335,18 @@ export default function CompanionScreen() {
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                 <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#FF6644' }} />
                 <Text style={{ color:'#666677', fontSize:10, letterSpacing:2, fontFamily:mono }}>ENTROPY WAVES</Text>
-                {(battle?.wave??1)>1 && (
-                  <View style={{ backgroundColor:'#FF440018', borderRadius:6, paddingHorizontal:6, paddingVertical:2 }}>
-                    <Text style={{ color:'#FF6644', fontSize:9, fontFamily:mono }}>WAVE {battle?.wave}</Text>
-                  </View>
-                )}
               </View>
-              {/* Token pips */}
-              <View style={{ flexDirection:'row', gap:4, alignItems:'center' }}>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <View key={i} style={{ width:8, height:8, borderRadius:4,
-                    backgroundColor: i < tokensLeft ? color : '#1A1A26',
-                    shadowColor: i < tokensLeft ? color : 'transparent',
-                    shadowOpacity: 0.8, shadowRadius: 4, elevation: i < tokensLeft ? 3 : 0 }} />
+              <WaveDots wave={battle?.wave ?? 1} color={color} />
+              {/* Token count */}
+              <View style={{ flexDirection:'row', gap:5, alignItems:'center' }}>
+                {Array.from({ length: Math.min(tokensLeft, 6) }).map((_, i) => (
+                  <View key={i} style={{ width:7, height:7, borderRadius:4,
+                    backgroundColor: color,
+                    shadowColor: color, shadowOpacity: 0.8, shadowRadius: 4, elevation: 3 }} />
                 ))}
+                <Text style={{ color: tokensLeft > 0 ? color : '#FF444488', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:0.5 }}>
+                  {tokensLeft}T
+                </Text>
               </View>
             </View>
 
@@ -2881,7 +3354,7 @@ export default function CompanionScreen() {
               const def = getEnemyDef(battle.entityName);
               const rc  = def.colour;
               const enemyImg = ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES];
-              const disabled = tokensLeft <= 0 || attackAnim;
+              const disabled = attackAnim;
               const spells = ARCHETYPE_SPELLS[archetype.id] ?? ARCHETYPE_SPELLS['vigil'];
               return (<>
                 {/* Spell menu overlay */}
@@ -2898,7 +3371,7 @@ export default function CompanionScreen() {
                               borderColor: canCast ? color+'55' : '#22223355', backgroundColor: canCast ? color+'0E' : 'transparent' }}>
                             <View style={{ flex:1 }}>
                               <Text style={{ color: canCast ? SOL_THEME.text : '#444455', fontSize:12, fontFamily:mono, fontWeight:'700' }}>{sp.name}</Text>
-                              <Text style={{ color: canCast ? color+'77' : '#22223366', fontSize:9, fontFamily:mono, marginTop:3 }}>{sp.fx}</Text>
+                              <Text style={{ color: canCast ? color+'77' : '#22223366', fontSize:9, fontFamily:mono, marginTop:3 }}>{canCast ? sp.fx : `Need ${sp.cost - tokensLeft} more token${sp.cost - tokensLeft > 1 ? 's' : ''}`}</Text>
                             </View>
                             <View style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:6, borderWidth:1, borderColor: canCast ? color+'88' : '#33334488', backgroundColor: canCast ? color+'18' : 'transparent' }}>
                               <Text style={{ color: canCast ? color : '#444455', fontSize:11, fontFamily:mono, fontWeight:'700' }}>{sp.cost}T</Text>
@@ -2918,7 +3391,7 @@ export default function CompanionScreen() {
                       <Image source={enemyImg} style={{ width:60, height:76, borderRadius:4 }} resizeMode="contain" />
                     ) : (
                       <View style={{ width:60, height:76, borderRadius:4, borderWidth:1, borderColor:rc+'33', backgroundColor:rc+'06', alignItems:'center', justifyContent:'center' }}>
-                        <Text style={{ color:rc, fontSize:20, fontFamily:mono }}>✕</Text>
+                        <EnemyGlyphArt glyph={def.rarity==='legendary'?'⊛':def.rarity==='epic'?'✦':def.rarity==='rare'?'⊚':def.rarity==='uncommon'?'◈':'◌'} color={rc} />
                       </View>
                     )}
                   </Animated.View>
@@ -2999,6 +3472,14 @@ export default function CompanionScreen() {
                   </View>
                 </View>
 
+                {/* Out of spell tokens notice */}
+                {tokensLeft === 0 && (
+                  <View style={{ alignItems:'center', paddingVertical:6, marginBottom:6, borderRadius:8, borderWidth:1, borderColor:'#9B59B633', backgroundColor:'#06000888' }}>
+                    <Text style={{ color:'#9B59B6AA', fontSize:9, fontFamily:mono, letterSpacing:2 }}>NO SPELL TOKENS · ATTACK FREELY</Text>
+                    <Text style={{ color:'#444455', fontSize:8, fontFamily:mono, marginTop:2 }}>Tokens refresh tomorrow · study to earn more</Text>
+                  </View>
+                )}
+
                 {/* Log + tokens */}
                 <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start' }}>
                   <View style={{ gap:2 }}>
@@ -3019,6 +3500,7 @@ export default function CompanionScreen() {
             {/* Wave cleared */}
             {battle?.won && (
               <View style={{ alignItems:'center', gap:6, paddingVertical:10 }}>
+                <LootFloat visible={lootFloatVisible} color={color} onDone={() => setLootFloatVisible(false)} />
                 <Text style={{ color:'#FF6644', fontSize:22, fontFamily:mono }}>✕ CLEARED</Text>
                 <Text style={{ color, fontSize:11, fontFamily:mono, letterSpacing:1 }}>WAVE {battle.wave} · +{battle.wave*20} XP</Text>
                 {battle.loot && (
@@ -3296,11 +3778,63 @@ export default function CompanionScreen() {
       {activeTab === 'field' && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
 
+          {/* ── Stat grid ──────────────────────────────────────── */}
+          <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
+            {([
+              { glyph:'◈', label:'LQ SCORE',      value:`${(avgLQ*100).toFixed(0)}%` },
+              { glyph:'⊹', label:'TOTAL DIVES',    value:`${totalDives}` },
+              { glyph:'✦', label:'CURRENT STAGE',  value:`${stageData?.name ?? '—'} (${stage})` },
+              { glyph:'◦', label:'STREAK',         value:`${streak} day${streak!==1?'s':''}` },
+            ] as const).map(({ glyph, label, value }) => (
+              <View key={label} style={{ flexDirection:'row', alignItems:'center', paddingVertical:5, gap:10 }}>
+                <Text style={{ color, fontSize:14, width:20, textAlign:'center' }}>{glyph}</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, flex:1 }}>{label}</Text>
+                <Text style={{ color:SOL_THEME.text, fontSize:12, fontWeight:'700', fontFamily:mono }}>{value}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Domain glyph strip — last 7 dives ──────────────── */}
+          <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
+            <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10 }}>RECENT DOMAINS</Text>
+            <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
+              {Array.from({ length:7 }).map((_, i) => {
+                const dive = recentDives[recentDives.length - 7 + i];
+                const domain = dive?.domainLabel ?? dive?.subjectName ?? null;
+                const glyph = domain ? getDomainGlyph(domain) : '·';
+                return (
+                  <View key={i} style={{ alignItems:'center', flex:1 }}>
+                    <Text style={{ color: domain ? color : '#333344', fontSize:18, opacity: domain ? 1 : 0.3 }}>{glyph}</Text>
+                    <Text style={{ color:'#333344', fontSize:7, fontFamily:mono, marginTop:2, opacity: domain ? 0.7 : 0.2 }}>
+                      {domain ? domain.slice(0,3).toUpperCase() : '·'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ── AI Field Note ───────────────────────────────────── */}
+          <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>FIELD NOTE</Text>
+              <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7}>
+                <Text style={{ color: fieldNoteLoading ? '#333344' : color, fontSize:18, opacity: fieldNoteLoading ? 0.4 : 1 }}>↺</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color:SOL_THEME.text, fontSize:12, fontStyle:'italic', lineHeight:18 }}>
+              {fieldNote ?? FIELD_FALLBACKS[Math.floor(Math.random()*FIELD_FALLBACKS.length)]}
+            </Text>
+            {fieldNoteLoading && (
+              <ActivityIndicator size="small" color={SOL_THEME.textMuted} style={{ marginTop:8, alignSelf:'flex-start' }} />
+            )}
+          </View>
+
           {/* Name + Archetype header */}
           <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
             <View>
               <Text style={{ color:'#333344', fontSize:8, letterSpacing:3, fontFamily:mono }}>{stageData.name}</Text>
-              <Text style={{ color, fontSize:16, fontWeight:'700', fontFamily:mono, marginTop:2 }}>{companionName || archetype.name}</Text>
+              <Text style={{ color, fontSize:16, fontWeight:'700', fontFamily:mono, marginTop:2 }}>{displayName}</Text>
               <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
               <TouchableOpacity onPress={() => setEditingName(true)} style={{ marginTop:5 }}>
                 <Text style={{ color:color+'88', fontSize:9, fontFamily:mono, letterSpacing:1 }}>✎ RENAME</Text>
@@ -3389,7 +3923,7 @@ export default function CompanionScreen() {
               <View>
                 <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:3, fontFamily:mono }}>CHARACTER SHEET</Text>
                 <Text style={{ color, fontSize:16, fontWeight:'700', fontFamily:mono, marginTop:2 }}>
-                  {companionName || archetype.name}
+                  {displayName}
                 </Text>
                 <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
               </View>
@@ -3436,33 +3970,45 @@ export default function CompanionScreen() {
       </Modal>
 
       {/* ── DEV STAGE SKIP — remove before shipping ──────────────────────── */}
-      {SHOW_DEV_STAGE && (
-        <View style={{ marginHorizontal:16, marginBottom:20, padding:12, borderRadius:10, borderWidth:1, borderColor:'#FF440055', backgroundColor:'#FF000008' }}>
-          <Text style={{ color:'#FF4444', fontSize:8, letterSpacing:2, fontFamily:mono, marginBottom:8 }}>⚠ DEV — STAGE VIEWER</Text>
-          <View style={{ flexDirection:'row', gap:6, flexWrap:'wrap' }}>
-            {([0,1,2,3,4,5] as EvolutionStage[]).map(s => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => setDevStagePin(devStagePin === s ? null : s)}
-                style={{ paddingHorizontal:12, paddingVertical:6, borderRadius:6, borderWidth:1,
-                  borderColor: devStagePin === s ? '#FF4444' : '#FF444433',
-                  backgroundColor: devStagePin === s ? '#FF000033' : 'transparent' }}
-              >
-                <Text style={{ color: devStagePin === s ? '#FF6666' : '#FF444488', fontSize:11, fontFamily:mono }}>
-                  {s === 0 ? 'S0' : s === 1 ? 'S1★' : `S${s}`}
+
+      {/* ── HELP BOTTOM SHEET ──────────────────────────────────────────────── */}
+      {showHelp && (
+        <Animated.View style={{ ...StyleSheet.absoluteFillObject, zIndex:100, justifyContent:'flex-end',
+          opacity: helpSlide.interpolate({ inputRange:[0,1], outputRange:[0,1] }) }}>
+          <TouchableOpacity style={{ ...StyleSheet.absoluteFillObject, backgroundColor:'#00000066' }}
+            activeOpacity={1} onPress={closeHelpSheet} />
+          <Animated.View style={{ backgroundColor:'#0D0D1A', borderTopWidth:1, borderTopColor:color,
+            borderTopLeftRadius:20, borderTopRightRadius:20, paddingHorizontal:20, paddingTop:16, paddingBottom:32,
+            minHeight:320, maxHeight:Dimensions.get('window').height*0.65,
+            transform:[{ translateY: helpSlide.interpolate({ inputRange:[0,1], outputRange:[Dimensions.get('window').height*0.6,0] }) }] }}>
+            <TouchableOpacity style={{ position:'absolute', top:12, right:16, width:28, height:28, alignItems:'center', justifyContent:'center', zIndex:10 }}
+              onPress={closeHelpSheet} activeOpacity={0.6}>
+              <Text style={{ color:'#FFFFFF', fontSize:18 }}>✕</Text>
+            </TouchableOpacity>
+            <View style={{ flexDirection:'row', justifyContent:'space-around', marginBottom:16, paddingTop:8 }}>
+              {(['companion','battle','field'] as const).map(t => (
+                <TouchableOpacity key={t} onPress={() => switchHelpTopic(t)}
+                  style={{ paddingVertical:8, paddingHorizontal:12, borderBottomWidth: helpTopic===t ? 2 : 0, borderBottomColor:color }}
+                  activeOpacity={0.6}>
+                  <Text style={{ color: helpTopic===t ? '#FFFFFF' : '#8888AA', fontSize:12, fontFamily:mono, letterSpacing:1 }}>
+                    {t.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {helpLoading ? (
+                <View style={{ alignItems:'center', justifyContent:'center', paddingVertical:20 }}>
+                  <Text style={{ color:'#8888AA', fontSize:24, letterSpacing:4, fontFamily:mono }}>···</Text>
+                </View>
+              ) : (
+                <Text style={{ color:'#FFFFFF', fontSize:14, lineHeight:22, fontStyle:'italic', textAlign:'center' }}>
+                  {helpText ?? 'Tap a topic above to learn more.'}
                 </Text>
-              </TouchableOpacity>
-            ))}
-            {devStagePin !== null && (
-              <TouchableOpacity onPress={() => setDevStagePin(null)} style={{ paddingHorizontal:12, paddingVertical:6, borderRadius:6, borderWidth:1, borderColor:'#FFFFFF22' }}>
-                <Text style={{ color:'#FFFFFF44', fontSize:11, fontFamily:mono }}>RESET</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={{ color:'#FF444466', fontSize:9, fontFamily:mono, marginTop:6 }}>
-            {devStagePin !== null ? `PINNED TO STAGE ${devStagePin}` : 'PINNED TO S1 (default)'}
-          </Text>
-        </View>
+              )}
+            </ScrollView>
+          </Animated.View>
+        </Animated.View>
       )}
 
     </ScrollView>
