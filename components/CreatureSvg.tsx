@@ -316,54 +316,54 @@ function renderTower(stage: EvolutionStage, p: object, p2: object, p3: object, l
     case 0: return ( // scholar seed — one floating book, single eye glow
       <G>
         {/* floating book */}
-        <Polygon points="32,70 50,60 68,70 50,80" fill={color+'22'} stroke={color} strokeWidth={1.2} />
+        <Polygon points="32,70 50,60 68,70 50,80" fill={color+'77'} stroke={color} strokeWidth={1.2} />
         <Line x1={50} y1={60} x2={50} y2={80} stroke={color} strokeWidth={0.8} fill="none" />
         <Line x1={32} y1={70} x2={68} y2={70} stroke={color} strokeWidth={0.8} fill="none" />
         {/* spine lines suggesting pages */}
         <Line x1={42} y1={64} x2={42} y2={76} stroke={color} strokeWidth={0.5} fill="none" opacity={0.5} />
         <Line x1={58} y1={64} x2={58} y2={76} stroke={color} strokeWidth={0.5} fill="none" opacity={0.5} />
         {/* single eye above */}
-        <Circle cx={50} cy={46} r={10} fill={color+'11'} stroke={color} strokeWidth={0.8} />
-        <Circle cx={50} cy={46} r={4}  fill={color+'44'} stroke="none" />
+        <Circle cx={50} cy={46} r={10} fill={color+'55'} stroke={color} strokeWidth={0.8} />
+        <Circle cx={50} cy={46} r={4}  fill={color+'99'} stroke="none" />
         <Circle cx={50} cy={46} r={2}  fill={color} stroke="none" />
         {/* connect eye to book */}
         <Line x1={50} y1={56} x2={50} y2={60} stroke={color} strokeWidth={0.6} fill="none" opacity={0.4} />
         {/* faint sigil diamond */}
-        <Polygon points="50,92 54,98 50,104 46,98" fill={color+'22'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="50,92 54,98 50,104 46,98" fill={color+'77'} stroke={color} strokeWidth={0.6} />
       </G>
     );
     case 1: return ( // unused — mapped to stage 5
-      <G><Circle cx={50} cy={75} r={20} fill={color+'22'} stroke={color} strokeWidth={1} /></G>
+      <G><Circle cx={50} cy={75} r={20} fill={color+'77'} stroke={color} strokeWidth={1} /></G>
     );
     case 2: return ( // scholar embryo — small robed body, head in hood, one book orbiting
       <G>
         {/* robe body — tiny */}
-        <Path d="M40 78 Q36 104 38 132 L62 132 Q64 104 60 78 Q56 72 50 70 Q44 72 40 78 Z" fill={color+'1A'} stroke={color} strokeWidth={0.9} />
+        <Path d="M40 78 Q36 104 38 132 L62 132 Q64 104 60 78 Q56 72 50 70 Q44 72 40 78 Z" fill={color+'66'} stroke={color} strokeWidth={0.9} />
         {/* head — hooded, barely visible */}
-        <Circle cx={50} cy={58} r={12} fill={color+'1A'} stroke={color} strokeWidth={0.9} />
-        <Path d="M38 58 Q40 46 50 44 Q60 46 62 58" fill={color+'11'} stroke={color} strokeWidth={0.6} />
+        <Circle cx={50} cy={58} r={12} fill={color+'66'} stroke={color} strokeWidth={0.9} />
+        <Path d="M38 58 Q40 46 50 44 Q60 46 62 58" fill={color+'55'} stroke={color} strokeWidth={0.6} />
         {/* single eye glow */}
         <Circle cx={50} cy={58} r={4} fill={color+'55'} stroke="none" />
         <Circle cx={50} cy={58} r={2} fill={color} stroke="none" />
         {/* one floating book — to the right */}
-        <Polygon points="68,52 80,46 86,52 74,58" fill={color+'22'} stroke={color} strokeWidth={0.8} />
+        <Polygon points="68,52 80,46 86,52 74,58" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         <Line x1={74} y1={46} x2={74} y2={58} stroke={color} strokeWidth={0.5} fill="none" />
         {/* faint connect line */}
         <Line x1={62} y1={58} x2={68} y2={52} stroke={color} strokeWidth={0.4} fill="none" opacity={0.4} />
         {/* sigil at feet */}
-        <Polygon points="50,128 55,134 50,140 45,134" fill={color+'33'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="50,128 55,134 50,140 45,134" fill={color+'88'} stroke={color} strokeWidth={0.6} />
         <Polygon points="50,126 56,136 50,144 44,136" fill="none" stroke={color} strokeWidth={0.4} />
       </G>
     );
     case 3: return ( // scholar youth — robed figure, crown fragments forming, two books
       <G>
         {/* robe */}
-        <Path d="M36 70 Q30 98 32 138 L68 138 Q70 98 64 70 Q57 62 50 60 Q43 62 36 70 Z" fill={color+'1A'} stroke={color} strokeWidth={0.9} />
-        <Path d="M39 72 Q34 100 36 134 L64 134 Q66 100 61 72 Z" fill={color+'11'} />
+        <Path d="M36 70 Q30 98 32 138 L68 138 Q70 98 64 70 Q57 62 50 60 Q43 62 36 70 Z" fill={color+'66'} stroke={color} strokeWidth={0.9} />
+        <Path d="M39 72 Q34 100 36 134 L64 134 Q66 100 61 72 Z" fill={color+'55'} />
         {/* chest sigil */}
-        <Polygon points="50,78 56,86 50,94 44,86" fill={color+'33'} stroke={color} strokeWidth={0.7} />
+        <Polygon points="50,78 56,86 50,94 44,86" fill={color+'88'} stroke={color} strokeWidth={0.7} />
         {/* head */}
-        <Circle cx={50} cy={46} r={13} fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Circle cx={50} cy={46} r={13} fill={color+'66'} stroke={color} strokeWidth={1} />
         {/* partial crown — two spires */}
         <Polygon points="42,34 44,22 46,34" fill={color+'66'} stroke={color} strokeWidth={0.7} />
         <Polygon points="54,34 56,22 58,34" fill={color+'66'} stroke={color} strokeWidth={0.7} />
@@ -373,29 +373,29 @@ function renderTower(stage: EvolutionStage, p: object, p2: object, p3: object, l
         <Circle cx={56} cy={46} r={3.5} fill={color+'55'} stroke="none" />
         <Circle cx={56} cy={46} r={1.8} fill={color} stroke="none" />
         {/* two floating books */}
-        <Polygon points="72,44 84,38 90,44 78,50" fill={color+'22'} stroke={color} strokeWidth={0.8} />
+        <Polygon points="72,44 84,38 90,44 78,50" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         <Line x1={78} y1={38} x2={78} y2={50} stroke={color} strokeWidth={0.5} fill="none" />
-        <Polygon points="10,62 22,56 28,62 16,68" fill={color+'22'} stroke={color} strokeWidth={0.8} />
+        <Polygon points="10,62 22,56 28,62 16,68" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         <Line x1={16} y1={56} x2={16} y2={68} stroke={color} strokeWidth={0.5} fill="none" />
         {/* arms suggested */}
         <Path d="M36 74 Q22 82 16 70" stroke={color} strokeWidth={2.5} strokeLinecap="round" fill="none" />
         <Path d="M64 74 Q78 82 84 70" stroke={color} strokeWidth={2.5} strokeLinecap="round" fill="none" />
         {/* floating sigil */}
-        <Polygon points="50,134 54,140 50,146 46,140" fill={color+'33'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="50,134 54,140 50,146 46,140" fill={color+'88'} stroke={color} strokeWidth={0.6} />
       </G>
     );
     case 4: return ( // scholar near-ascended — full robe, crown almost complete, books + staff embryo
       <G>
         {/* robe */}
-        <Path d="M34 66 Q28 96 30 140 L70 140 Q72 96 66 66 Q58 58 50 56 Q42 58 34 66 Z" fill={color+'1A'} stroke={color} strokeWidth={1} />
-        <Path d="M37 68 Q32 98 34 136 L66 136 Q68 98 63 68 Z" fill={color+'11'} />
+        <Path d="M34 66 Q28 96 30 140 L70 140 Q72 96 66 66 Q58 58 50 56 Q42 58 34 66 Z" fill={color+'66'} stroke={color} strokeWidth={1} />
+        <Path d="M37 68 Q32 98 34 136 L66 136 Q68 98 63 68 Z" fill={color+'55'} />
         {/* lapels */}
-        <Path d="M50 62 L40 74 L50 80 L60 74 Z" fill={color+'22'} stroke={color} strokeWidth={0.6} />
+        <Path d="M50 62 L40 74 L50 80 L60 74 Z" fill={color+'77'} stroke={color} strokeWidth={0.6} />
         {/* head */}
-        <Circle cx={50} cy={42} r={14} fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Circle cx={50} cy={42} r={14} fill={color+'66'} stroke={color} strokeWidth={1} />
         {/* crown — nearly complete, missing center spire */}
         <Polygon points="32,32 35,16 38,32" fill={color+'77'} stroke={color} strokeWidth={0.8} />
-        <Polygon points="44,30 50,12 56,30" fill={color+'44'} stroke={color} strokeWidth={0.7} />
+        <Polygon points="44,30 50,12 56,30" fill={color+'99'} stroke={color} strokeWidth={0.7} />
         <Polygon points="62,32 65,16 68,32" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         {/* eyes */}
         <Circle cx={44} cy={42} r={4} fill={color+'55'} stroke="none" />
@@ -403,22 +403,22 @@ function renderTower(stage: EvolutionStage, p: object, p2: object, p3: object, l
         <Circle cx={56} cy={42} r={4} fill={color+'55'} stroke="none" />
         <Circle cx={56} cy={42} r={2} fill={color} stroke="none" />
         {/* belt */}
-        <Rect x={37} y={86} width={26} height={4} rx={1} fill={color+'33'} stroke={color} strokeWidth={0.5} />
+        <Rect x={37} y={86} width={26} height={4} rx={1} fill={color+'88'} stroke={color} strokeWidth={0.5} />
         {/* proto-staff left */}
         <Line x1={18} y1={40} x2={14} y2={140} stroke={color} strokeWidth={2} strokeLinecap="round" fill="none" />
-        <Circle cx={18} cy={40} r={5} fill={color+'33'} stroke={color} strokeWidth={0.7} />
+        <Circle cx={18} cy={40} r={5} fill={color+'88'} stroke={color} strokeWidth={0.7} />
         <Circle cx={18} cy={40} r={2.5} fill={color} stroke="none" />
         {/* three floating books */}
-        <Polygon points="74,34 86,28 92,34 80,40" fill={color+'22'} stroke={color} strokeWidth={0.8} />
+        <Polygon points="74,34 86,28 92,34 80,40" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         <Line x1={80} y1={28} x2={80} y2={40} stroke={color} strokeWidth={0.5} fill="none" />
-        <Polygon points="76,58 88,52 94,58 82,64" fill={color+'22'} stroke={color} strokeWidth={0.8} />
+        <Polygon points="76,58 88,52 94,58 82,64" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         <Line x1={82} y1={52} x2={82} y2={64} stroke={color} strokeWidth={0.5} fill="none" />
-        <Polygon points="72,80 82,74 88,80 78,86" fill={color+'22'} stroke={color} strokeWidth={0.8} />
+        <Polygon points="72,80 82,74 88,80 78,86" fill={color+'77'} stroke={color} strokeWidth={0.8} />
         {/* arms */}
         <Path d="M34 70 Q20 78 16 68" stroke={color} strokeWidth={3} strokeLinecap="round" fill="none" />
         <Path d="M66 70 Q80 78 84 68" stroke={color} strokeWidth={3} strokeLinecap="round" fill="none" />
         {/* floating sigils */}
-        <Polygon points="50,136 54,142 50,148 46,142" fill={color+'44'} stroke={color} strokeWidth={0.7} />
+        <Polygon points="50,136 54,142 50,148 46,142" fill={color+'99'} stroke={color} strokeWidth={0.7} />
         <Polygon points="50,134 56,144 50,152 44,144" fill="none" stroke={color} strokeWidth={0.4} opacity={0.5} />
       </G>
     );
@@ -713,110 +713,110 @@ function renderFortress(stage: EvolutionStage, p: object, p2: object, p3: object
     case 0: return ( // crystal helm seed — floating helm, visor glow
       <G>
         {/* helm */}
-        <Path d="M36 56 L38 40 L50 36 L62 40 L64 56 L58 62 L50 64 L42 62 Z" fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Path d="M36 56 L38 40 L50 36 L62 40 L64 56 L58 62 L50 64 L42 62 Z" fill={color+'66'} stroke={color} strokeWidth={1} />
         {/* crest blade */}
         <Polygon points="50,22 53,36 50,38 47,36" fill={color+'66'} stroke={color} strokeWidth={0.7} />
         {/* visor glow */}
-        <Rect x={40} y={51} width={20} height={6} rx={1} fill={color+'33'} stroke={color} strokeWidth={0.5} />
+        <Rect x={40} y={51} width={20} height={6} rx={1} fill={color+'88'} stroke={color} strokeWidth={0.5} />
         <Rect x={42} y={52} width={16} height={4} rx={1} fill={color+'77'} stroke="none" />
         {/* small crystal shards orbiting */}
-        <Polygon points="24,48 28,44 30,50 26,52" fill={color+'44'} stroke={color} strokeWidth={0.6} />
-        <Polygon points="70,48 74,44 76,50 72,52" fill={color+'44'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="24,48 28,44 30,50 26,52" fill={color+'99'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="70,48 74,44 76,50 72,52" fill={color+'99'} stroke={color} strokeWidth={0.6} />
         {/* shadow under */}
-        <Ellipse cx={50} cy={120} rx={18} ry={4} fill={color+'11'} stroke="none" />
+        <Ellipse cx={50} cy={120} rx={18} ry={4} fill={color+'55'} stroke="none" />
       </G>
     );
     case 1: return ( // unused — mapped to stage 5
-      <G><Circle cx={50} cy={75} r={20} fill={color+'22'} stroke={color} strokeWidth={1} /></G>
+      <G><Circle cx={50} cy={75} r={20} fill={color+'77'} stroke={color} strokeWidth={1} /></G>
     );
     case 2: return ( // crystal knight torso assembling — helm + breastplate, no legs
       <G>
         {/* breastplate */}
-        <Path d="M34 72 L30 106 L50 112 L70 106 L66 72 Q58 64 50 62 Q42 64 34 72 Z" fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Path d="M34 72 L30 106 L50 112 L70 106 L66 72 Q58 64 50 62 Q42 64 34 72 Z" fill={color+'66'} stroke={color} strokeWidth={1} />
         {/* breastplate facet */}
-        <Path d="M50 72 L42 84 L50 90 L58 84 Z" fill={color+'22'} stroke={color} strokeWidth={0.6} />
+        <Path d="M50 72 L42 84 L50 90 L58 84 Z" fill={color+'77'} stroke={color} strokeWidth={0.6} />
         {/* frost cracks */}
         <Path d="M44 76 L48 82 M56 76 L52 82" stroke={color} strokeWidth={0.4} fill="none" opacity={0.6} />
         {/* pauldrons */}
-        <Path d="M30 70 L22 66 L20 78 L32 82 Z" fill={color+'22'} stroke={color} strokeWidth={0.7} />
-        <Path d="M70 70 L78 66 L80 78 L68 82 Z" fill={color+'22'} stroke={color} strokeWidth={0.7} />
+        <Path d="M30 70 L22 66 L20 78 L32 82 Z" fill={color+'77'} stroke={color} strokeWidth={0.7} />
+        <Path d="M70 70 L78 66 L80 78 L68 82 Z" fill={color+'77'} stroke={color} strokeWidth={0.7} />
         {/* helm */}
-        <Path d="M36 52 L38 36 L50 32 L62 36 L64 52 L58 60 L50 62 L42 60 Z" fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Path d="M36 52 L38 36 L50 32 L62 36 L64 52 L58 60 L50 62 L42 60 Z" fill={color+'66'} stroke={color} strokeWidth={1} />
         <Polygon points="50,18 53,32 50,34 47,32" fill={color+'77'} stroke={color} strokeWidth={0.7} />
-        <Rect x={41} y={47} width={18} height={5} rx={1} fill={color+'33'} stroke={color} strokeWidth={0.5} />
+        <Rect x={41} y={47} width={18} height={5} rx={1} fill={color+'88'} stroke={color} strokeWidth={0.5} />
         <Rect x={43} y={48} width={14} height={3} rx={1} fill={color+'88'} stroke="none" />
         {/* crystal fragment orbiting */}
-        <Polygon points="84,56 90,50 94,58 88,62" fill={color+'44'} stroke={color} strokeWidth={0.7} />
-        <Polygon points="6,56 12,50 16,58 10,62" fill={color+'44'} stroke={color} strokeWidth={0.7} />
+        <Polygon points="84,56 90,50 94,58 88,62" fill={color+'99'} stroke={color} strokeWidth={0.7} />
+        <Polygon points="6,56 12,50 16,58 10,62" fill={color+'99'} stroke={color} strokeWidth={0.7} />
         {/* glow pool */}
-        <Ellipse cx={50} cy={108} rx={22} ry={5} fill={color+'11'} stroke="none" />
+        <Ellipse cx={50} cy={108} rx={22} ry={5} fill={color+'55'} stroke="none" />
       </G>
     );
     case 3: return ( // crystal knight assembling — upper body + shield emerging, no greaves
       <G>
         {/* body armour */}
-        <Path d="M32 70 L26 108 L50 116 L74 108 L68 70 Q60 60 50 58 Q40 60 32 70 Z" fill={color+'1A'} stroke={color} strokeWidth={0.9} />
-        <Path d="M35 73 L30 106 L50 112 L70 106 L65 73 Z" fill={color+'11'} />
+        <Path d="M32 70 L26 108 L50 116 L74 108 L68 70 Q60 60 50 58 Q40 60 32 70 Z" fill={color+'66'} stroke={color} strokeWidth={0.9} />
+        <Path d="M35 73 L30 106 L50 112 L70 106 L65 73 Z" fill={color+'55'} />
         {/* breastplate facets */}
-        <Path d="M50 70 L40 82 L50 90 L60 82 Z" fill={color+'22'} stroke={color} strokeWidth={0.6} />
-        <Path d="M50 90 L38 100 L50 108 L62 100 Z" fill={color+'1A'} stroke={color} strokeWidth={0.5} />
+        <Path d="M50 70 L40 82 L50 90 L60 82 Z" fill={color+'77'} stroke={color} strokeWidth={0.6} />
+        <Path d="M50 90 L38 100 L50 108 L62 100 Z" fill={color+'66'} stroke={color} strokeWidth={0.5} />
         {/* frost crack detail */}
         <Path d="M42 74 L46 80 M58 74 L54 80 M40 92 L46 96 M60 92 L54 96" stroke={color} strokeWidth={0.4} fill="none" opacity={0.6} />
         {/* pauldrons */}
-        <Path d="M28 66 L18 62 L16 76 L30 80 Z" fill={color+'22'} stroke={color} strokeWidth={0.7} />
-        <Path d="M72 66 L82 62 L84 76 L70 80 Z" fill={color+'22'} stroke={color} strokeWidth={0.7} />
+        <Path d="M28 66 L18 62 L16 76 L30 80 Z" fill={color+'77'} stroke={color} strokeWidth={0.7} />
+        <Path d="M72 66 L82 62 L84 76 L70 80 Z" fill={color+'77'} stroke={color} strokeWidth={0.7} />
         {/* fauld plates starting */}
-        <Path d="M36 108 L32 124 L50 128 L68 124 L64 108 Z" fill={color+'1A'} stroke={color} strokeWidth={0.8} />
+        <Path d="M36 108 L32 124 L50 128 L68 124 L64 108 Z" fill={color+'66'} stroke={color} strokeWidth={0.8} />
         {/* helm */}
-        <Path d="M34 48 L36 30 L50 26 L64 30 L66 48 L60 56 L50 58 L40 56 Z" fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Path d="M34 48 L36 30 L50 26 L64 30 L66 48 L60 56 L50 58 L40 56 Z" fill={color+'66'} stroke={color} strokeWidth={1} />
         <Polygon points="50,12 54,26 50,28 46,26" fill={color+'88'} stroke={color} strokeWidth={0.8} />
-        <Rect x={41} y={43} width={18} height={5} rx={1} fill={color+'33'} stroke={color} strokeWidth={0.5} />
+        <Rect x={41} y={43} width={18} height={5} rx={1} fill={color+'88'} stroke={color} strokeWidth={0.5} />
         <Rect x={43} y={44} width={14} height={3} rx={1} fill={color+'99'} stroke="none" />
         {/* shield embryo — forming left side */}
-        <Path d="M10 72 L6 84 L8 100 L18 106 L20 84 L18 70 Z" fill={color+'1A'} stroke={color} strokeWidth={0.8} />
-        <Circle cx={14} cy={89} r={3} fill={color+'44'} stroke="none" />
+        <Path d="M10 72 L6 84 L8 100 L18 106 L20 84 L18 70 Z" fill={color+'66'} stroke={color} strokeWidth={0.8} />
+        <Circle cx={14} cy={89} r={3} fill={color+'99'} stroke="none" />
         {/* crystal shards orbiting */}
-        <Polygon points="86,44 92,38 96,46 90,50" fill={color+'44'} stroke={color} strokeWidth={0.7} />
-        <Polygon points="86,70 92,64 96,72 90,76" fill={color+'33'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="86,44 92,38 96,46 90,50" fill={color+'99'} stroke={color} strokeWidth={0.7} />
+        <Polygon points="86,70 92,64 96,72 90,76" fill={color+'88'} stroke={color} strokeWidth={0.6} />
         {/* glow pool */}
-        <Ellipse cx={50} cy={125} rx={26} ry={6} fill={color+'11'} stroke="none" />
+        <Ellipse cx={50} cy={125} rx={26} ry={6} fill={color+'55'} stroke="none" />
       </G>
     );
     case 4: return ( // crystal knight near-complete — full armour, shield solid, greaves starting
       <G>
         {/* body armour */}
-        <Path d="M30 66 L24 106 L50 116 L76 106 L70 66 Q60 56 50 54 Q40 56 30 66 Z" fill={color+'1A'} stroke={color} strokeWidth={0.9} />
-        <Path d="M33 69 L28 104 L50 112 L72 104 L67 69 Z" fill={color+'11'} />
+        <Path d="M30 66 L24 106 L50 116 L76 106 L70 66 Q60 56 50 54 Q40 56 30 66 Z" fill={color+'66'} stroke={color} strokeWidth={0.9} />
+        <Path d="M33 69 L28 104 L50 112 L72 104 L67 69 Z" fill={color+'55'} />
         {/* breastplate facets */}
-        <Path d="M50 66 L38 80 L50 88 L62 80 Z" fill={color+'22'} stroke={color} strokeWidth={0.6} />
-        <Path d="M50 88 L36 100 L50 110 L64 100 Z" fill={color+'1A'} stroke={color} strokeWidth={0.5} />
+        <Path d="M50 66 L38 80 L50 88 L62 80 Z" fill={color+'77'} stroke={color} strokeWidth={0.6} />
+        <Path d="M50 88 L36 100 L50 110 L64 100 Z" fill={color+'66'} stroke={color} strokeWidth={0.5} />
         <Path d="M42 70 L46 78 M58 70 L54 78 M40 90 L46 94 M60 90 L54 94" stroke={color} strokeWidth={0.4} fill="none" opacity={0.7} />
         {/* pauldrons */}
-        <Path d="M26 64 L16 60 L14 76 L28 80 Z" fill={color+'22'} stroke={color} strokeWidth={0.7} />
-        <Path d="M74 64 L84 60 L86 76 L72 80 Z" fill={color+'22'} stroke={color} strokeWidth={0.7} />
+        <Path d="M26 64 L16 60 L14 76 L28 80 Z" fill={color+'77'} stroke={color} strokeWidth={0.7} />
+        <Path d="M74 64 L84 60 L86 76 L72 80 Z" fill={color+'77'} stroke={color} strokeWidth={0.7} />
         {/* fauld plates */}
-        <Path d="M34 106 L28 126 L50 130 L72 126 L66 106 Z" fill={color+'1A'} stroke={color} strokeWidth={0.8} />
+        <Path d="M34 106 L28 126 L50 130 L72 126 L66 106 Z" fill={color+'66'} stroke={color} strokeWidth={0.8} />
         <Path d="M34 110 L28 126 M50 112 L50 130 M66 110 L72 126" stroke={color} strokeWidth={0.3} fill="none" opacity={0.5} />
         {/* greaves forming */}
-        <Rect x={37} y={130} width={10} height={14} rx={2} fill={color+'1A'} stroke={color} strokeWidth={0.7} />
-        <Rect x={53} y={130} width={10} height={14} rx={2} fill={color+'1A'} stroke={color} strokeWidth={0.7} />
+        <Rect x={37} y={130} width={10} height={14} rx={2} fill={color+'66'} stroke={color} strokeWidth={0.7} />
+        <Rect x={53} y={130} width={10} height={14} rx={2} fill={color+'66'} stroke={color} strokeWidth={0.7} />
         {/* helm */}
-        <Path d="M32 46 L34 26 L50 22 L66 26 L68 46 L62 54 L50 56 L38 54 Z" fill={color+'1A'} stroke={color} strokeWidth={1} />
+        <Path d="M32 46 L34 26 L50 22 L66 26 L68 46 L62 54 L50 56 L38 54 Z" fill={color+'66'} stroke={color} strokeWidth={1} />
         <Polygon points="50,8 54,22 50,24 46,22" fill={color+'99'} stroke={color} strokeWidth={0.8} />
-        <Rect x={41} y={40} width={18} height={5} rx={1} fill={color+'44'} stroke={color} strokeWidth={0.5} />
+        <Rect x={41} y={40} width={18} height={5} rx={1} fill={color+'99'} stroke={color} strokeWidth={0.5} />
         <Rect x={43} y={41} width={14} height={3} rx={1} fill={color+'AA'} stroke="none" />
         {/* shield — solid now */}
-        <Path d="M10 68 L6 82 L8 102 L18 108 L22 82 L20 66 Z" fill={color+'1A'} stroke={color} strokeWidth={0.8} />
+        <Path d="M10 68 L6 82 L8 102 L18 108 L22 82 L20 66 Z" fill={color+'66'} stroke={color} strokeWidth={0.8} />
         <Path d="M10 68 L20 66 L22 82 L16 98" stroke={color} strokeWidth={0.4} fill="none" opacity={0.6} />
-        <Circle cx={15} cy={88} r={4} fill={color+'33'} stroke="none" />
+        <Circle cx={15} cy={88} r={4} fill={color+'88'} stroke="none" />
         <Circle cx={15} cy={88} r={2} fill={color+'88'} stroke="none" />
         {/* crystal shards */}
         <Polygon points="86,40 92,34 96,42 90,46" fill={color+'55'} stroke={color} strokeWidth={0.7} />
-        <Polygon points="88,66 94,60 98,68 92,72" fill={color+'44'} stroke={color} strokeWidth={0.6} />
-        <Polygon points="86,88 92,82 96,90 90,94" fill={color+'33'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="88,66 94,60 98,68 92,72" fill={color+'99'} stroke={color} strokeWidth={0.6} />
+        <Polygon points="86,88 92,82 96,90 90,94" fill={color+'88'} stroke={color} strokeWidth={0.6} />
         {/* ambient frost glow */}
         <Circle cx={50} cy={88} r={42} fill={color+'05'} stroke="none" />
-        <Ellipse cx={50} cy={130} rx={28} ry={7} fill={color+'11'} stroke="none" />
+        <Ellipse cx={50} cy={130} rx={28} ry={7} fill={color+'55'} stroke="none" />
       </G>
     );
     default: return (
