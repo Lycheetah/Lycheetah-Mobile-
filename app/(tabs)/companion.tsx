@@ -1527,9 +1527,9 @@ function CompanionScene({
                 const jsonSpec = (COMPANIONS_DATA as Record<string, CompanionVisualSpec>)[ck];
                 if (imgSrc) return <Image source={imgSrc} style={{ width:150, height:220 }} resizeMode="contain" />;
                 if (jsonSpec) return <CompanionRenderer spec={jsonSpec} />;
-                return <CreatureSvg archId={archetype.id} stage={devStagePin !== null ? devStagePin : 1 as EvolutionStage} color={color} path={evoPath} />;
+                return <CreatureSvg archId={archetype.id} stage={devStagePin !== null ? devStagePin : stage as EvolutionStage} color={color} path={evoPath} />;
               })()}
-              {/* Dark contrast layer — deepens the creature so it reads against the scene */}
+              {/* Dark contrast layer */}
               <View style={{ position:'absolute', top:0, left:0, width:150, height:220, backgroundColor:'#000000', opacity:0.18 }} pointerEvents="none" />
               {/* Gear overlays — rendered in layer order: cape behind, body mid, crown top */}
               {(['cape','body','mantle','crown'] as GearSlot[]).map(slot => {
