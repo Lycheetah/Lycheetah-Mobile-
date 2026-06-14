@@ -16,24 +16,24 @@ interface Props {
 }
 
 export function CreatureSvg({ archId, stage, color, path }: Props) {
-  const f  = color + '55';
-  const f2 = color + '88';
-  const f3 = color + 'CC';
-  const sw = 2.0;
+  const f  = color + 'AA';
+  const f2 = color + 'DD';
+  const f3 = color + 'FF';
+  const sw = 2.5;
   const p  = { fill: f,  stroke: color, strokeWidth: sw } as const;
   const p2 = { fill: f2, stroke: color, strokeWidth: sw } as const;
   const p3 = { fill: color, stroke: 'none' } as const;
   const line     = { stroke: color, strokeWidth: sw,  fill: 'none' } as const;
-  const lineThin = { stroke: color, strokeWidth: 1.2, fill: 'none' } as const;
+  const lineThin = { stroke: color, strokeWidth: 1.5, fill: 'none' } as const;
   const epath = path ?? 'A';
 
   return (
     <Svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
       {/* dark contrast base so creature pops on any background */}
-      <Rect x={10} y={10} width={80} height={130} rx={14} fill="#000000AA" stroke="none" />
+      <Rect x={10} y={10} width={80} height={130} rx={14} fill="#000000CC" stroke="none" />
       {/* ambient glow rings */}
-      <Circle cx={50} cy={80} r={52} fill={color + '0A'} stroke="none" />
-      <Circle cx={50} cy={80} r={38} fill={color + '14'} stroke="none" />
+      <Circle cx={50} cy={80} r={52} fill={color + '18'} stroke="none" />
+      <Circle cx={50} cy={80} r={38} fill={color + '28'} stroke="none" />
       <G opacity={0.96}>
         {archId === 'lycheetah' && renderCat(stage, p, p2, p3, line, lineThin, color, f3, epath)}
         {archId === 'archivist' && renderTower(stage, p, p2, p3, line, color, epath)}

@@ -567,8 +567,8 @@ export default function MysterySchoolScreen() {
   // ─── Study Session Logic ───────────────────────────────────────────────────
 
   const enterStudySession = async (subject: Subject, domain: SubjectDomain | null, hostOverride?: string, depth?: 'quick' | 'full') => {
-    // Daily cap — free users get 3 dives/day; Sovereign unlimited
-    if (!isSovereign) {
+    // Daily cap — free users get 3 dives/day; Sovereign unlimited. Bypassed in dev.
+    if (!isSovereign && !__DEV__) {
       const today = new Date().toISOString().split('T')[0];
       const capRaw = await AsyncStorage.getItem('sol_daily_cap');
       const cap: { date: string; count: number } = capRaw ? JSON.parse(capRaw) : { date: '', count: 0 };
@@ -984,7 +984,7 @@ export default function MysterySchoolScreen() {
   if (activeStudySubject) {
     const hostColor = TEACHER_COLORS[studyHost] || SOL_THEME.headmaster;
     const hostGlyph = TEACHER_GLYPHS[studyHost] || '⊙';
-    const hostName = TEACHER_NAMES[studyHost] || 'Headmaster';
+    const hostName = TEACHER_NAMES[studyHost] || 'Magister';
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: SOL_THEME.background }}>
         <View style={{ borderBottomWidth: 1, borderBottomColor: hostColor + '33', backgroundColor: SOL_THEME.surface }}>
@@ -2678,7 +2678,7 @@ export default function MysterySchoolScreen() {
           activeOpacity={0.75}>
           <Text style={{ fontSize: 16, color: SOL_THEME.headmaster }}>⊙</Text>
           <Text style={{ color: SOL_THEME.headmaster, fontWeight: '700', fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>
-            {schoolView === 'domain' && selectedDomain ? `Study ${selectedDomain.label} with Headmaster` : 'Open Headmaster Session'}
+            {schoolView === 'domain' && selectedDomain ? `Study ${selectedDomain.label} with Magister` : 'Open Magister Session'}
           </Text>
         </TouchableOpacity>
       </View>
