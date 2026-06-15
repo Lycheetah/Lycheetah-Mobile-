@@ -1,5 +1,46 @@
 # Changelog
 
+## [3.32.0] — 2026-06-16
+
+### Added
+- **4 new companions** — CIPHER (∿ The Decoder, precision/LQ rewards), HERALD (⟡ The Voice, streak rewards), WEAVER (⌘ The Pattern-Maker, cross-domain breadth bonus), REVENANT (↺ The Returner, absence converts to bonus XP). All 10 companions now live in chooser
+- **Celtic Old Gods domain** (☘) — Tuatha Dé Danann, The Morrigan, Manannán mac Lir. Foundation/Middle/Edge subjects
+- **Tianxia domain** (天) — Chinese political cosmology, Five Relationships, Daoism + Wu Wei. Foundation/Middle/Edge subjects
+- **Each new companion**: 6 crown stages, 3 evolution paths, full stat bases, 3 unique spells, archetype phrases across all 4 moods
+
+### Fixed
+- **Companion fog removed** — foreground parallax layer (blurRadius:12 over sceneBg) was creating a visible fog wash. Removed
+- **Mid-layer tintColor removed** — was washing skin backgrounds on every scene change
+- **Companion opacity raised** — dormant 0.82–0.92, active 0.97–1.0 (was too transparent)
+- **Sovereign skin threshold** — 300 dives (was 200)
+- **Skin picker opacity** — removed dimming on locked skins (was applying 0.5 opacity tint)
+- **Veyra council model** — mistralmed (168s broken) → gemma (2.2s reasoning)
+- **"Mac Clark's" → "Lycheetah's"** throughout all library prompts
+
+### Changed
+- **Gear tab** — visual cards with ASCII art, archetype-specific overlays, progress bars. Crown/sigil/mantle full cards; body/cape compact rows
+- **Mystery School grid** — 3-column layout (was 2-column), smaller cards, less scroll
+- **Library tabs** — single row: CASCADE · Π · EXPLORE · SAVED · DICT. Explore view as hub
+- **WHAKAPAPA removed** — replaced by Celtic Old Gods + Tianxia
+
+---
+
+## [3.31.0] — 2026-06-14
+
+### Added
+- **Companion RPG battle system** — LQ×100 = ATK, daily Entropy entity (80HP), battle tokens, turn-based combat with stun/drain/shield/chaos/reflect spell types
+- **6 growth stages** — SEED → SPROUT → BLOOM → FORM → SOVEREIGN → TRANSCENDENT, driven by totalDives
+- **9 RPG feeding foods** with XP bonuses per food type
+- **LAMAGUE gear system** — Crown/Sigil/Mantle auto-unlocked by dive milestones, Body/Cape slots, archetype-specific overlays via getGearOverlay()
+- **Skin unlock system** — obsidian (50 dives), lycheetah (premium), sovereign (300 dives), solform/void/aurora/crimson base
+- **TALK tab** — live AI chat with companion in its own voice, mood-aware, draws on recent dives
+- **2.5D mid-layer parallax** — accelerometer-driven (tiltX × 24), opacity 0.22, blur 2
+- **LAMAGUE School** — Glyphbook (23 symbols, 8 classes, search), Lessons, Drills (flashcard quiz, 3 correct = mastered), Progress tracker
+- **Library tab rebuild** — single row tabs, Explore hub view
+- Settings simplified — NIM promo removed, DeepSeek behind dev toggle
+
+---
+
 ## [3.29.0] — 2026-06-13
 
 ### Added
