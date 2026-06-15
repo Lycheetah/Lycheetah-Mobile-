@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SOL_THEME } from '../../constants/theme';
 import * as Haptics from 'expo-haptics';
+import { Accelerometer } from 'expo-sensors';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { CreatureSvg } from '../../components/CreatureSvg';
@@ -27,10 +28,10 @@ const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 type EvolutionStage = 0 | 1 | 2 | 3 | 4 | 5;
 type CompanionMood  = 'dormant' | 'present' | 'lit' | 'transcendent';
-type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'lycheetah' | 'chaos';
+type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'lycheetah' | 'chaos' | 'sovereign';
 type Direction     = 'up' | 'down' | 'left' | 'right';
 type GearSlot      = 'crown' | 'sigil' | 'mantle' | 'body' | 'cape';
-type ArchetypeId   = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah';
+type ArchetypeId   = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah' | 'cipher' | 'herald' | 'weaver' | 'revenant';
 type EvoPath       = 'A' | 'B' | 'C';
 
 // ─── Skins — all unlocked ────────────────────────────────────────────────────
@@ -40,15 +41,16 @@ const SKINS: Record<SkinId, {
   color: string; dimColor: string; bgColor: string; skyColor: string; particleGlyph: string;
   glowColor: string; cardBg: string; starGlyphs: string[];
 }> = {
-  solform:  { id: 'solform',  name: 'SOLFORM',  desc: 'Origin',    glyph: '◉', color: '#C49A3C', dimColor: '#7A5E1A', bgColor: '#080701', skyColor: '#C49A3C', particleGlyph: '◦', glowColor: '#C49A3C44', cardBg: '#1A1400', starGlyphs: ['·','◦','·','⊹','·','◦'] },
+  solform:  { id: 'solform',  name: 'SOLFORM',   desc: 'Origin',    glyph: '◉', color: '#C49A3C', dimColor: '#7A5E1A', bgColor: '#080701', skyColor: '#C49A3C', particleGlyph: '◦', glowColor: '#C49A3C44', cardBg: '#1A1400', starGlyphs: ['·','◦','·','⊹','·','◦'] },
   void:     { id: 'void',     name: 'VOID',      desc: 'Abyss',     glyph: '◈', color: '#9B6BFF', dimColor: '#5C3A99', bgColor: '#03000C', skyColor: '#7B4BDD', particleGlyph: '◈', glowColor: '#9B6BFF44', cardBg: '#0D0022', starGlyphs: ['◈','·','◌','·','◈','·'] },
   aurora:   { id: 'aurora',   name: 'AURORA',    desc: 'Light',     glyph: '◦', color: '#4ECDC4', dimColor: '#2A7A75', bgColor: '#000E0D', skyColor: '#2EA8A0', particleGlyph: '·', glowColor: '#4ECDC444', cardBg: '#00130F', starGlyphs: ['·','◦','·','·','⊹','·'] },
   crimson:  { id: 'crimson',  name: 'CRIMSON',   desc: 'Fire',      glyph: '✦', color: '#FF6B6B', dimColor: '#993030', bgColor: '#0C0000', skyColor: '#CC3333', particleGlyph: '✦', glowColor: '#FF6B6B44', cardBg: '#1A0000', starGlyphs: ['✦','·','✦','·','·','✦'] },
   obsidian: { id: 'obsidian', name: 'OBSIDIAN',  desc: 'Sovereign', glyph: '⊕', color: '#C8A96E', dimColor: '#6B4F1A', bgColor: '#000000', skyColor: '#8B6914', particleGlyph: '⊕', glowColor: '#C8A96E55', cardBg: '#100C00', starGlyphs: ['⊕','·','⊛','·','⊕','◦'] },
-  lycheetah: { id: 'lycheetah', name: 'LYCHEETAH', desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#050003', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
-  chaos:     { id: 'chaos',     name: 'CHAOS',     desc: 'Fracture',  glyph: '⚡', color: '#4A0080', dimColor: '#2A0050', bgColor: '#05000A', skyColor: '#6600AA', particleGlyph: '⚡', glowColor: '#4A008055', cardBg: '#0A0014', starGlyphs: ['⚡','·','◈','·','⚡','◦'] },
+  lycheetah:{ id: 'lycheetah', name: 'LYCHEETAH', desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#050003', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
+  chaos:    { id: 'chaos',    name: 'CHAOS',     desc: 'Fracture',  glyph: '⚡', color: '#4A0080', dimColor: '#2A0050', bgColor: '#05000A', skyColor: '#6600AA', particleGlyph: '⚡', glowColor: '#4A008055', cardBg: '#0A0014', starGlyphs: ['⚡','·','◈','·','⚡','◦'] },
+  sovereign:{ id: 'sovereign', name: 'SOVEREIGN', desc: 'Earned',    glyph: '⊚', color: '#FFD700', dimColor: '#8B6914', bgColor: '#000408', skyColor: '#003366', particleGlyph: '⊚', glowColor: '#FFD70055', cardBg: '#000C18', starGlyphs: ['⊚','·','✦','·','⊚','◦'] },
 };
-const SKIN_IDS: SkinId[] = ['solform', 'void', 'aurora', 'crimson', 'obsidian', 'lycheetah', 'chaos'];
+const SKIN_IDS: SkinId[] = ['solform', 'void', 'aurora', 'crimson', 'obsidian', 'lycheetah', 'chaos', 'sovereign'];
 const SKIN_ORDER: SkinId[] = SKIN_IDS;
 
 // ─── Scene background images (drop PNGs into assets/scenes/) ─────────────────
@@ -61,6 +63,7 @@ const SCENE_IMAGES: Partial<Record<SkinId, any[]>> = {
   obsidian:  [require('../../assets/scenes/obsidian.png'), require('../../assets/scenes/obsidian2.png')],
   lycheetah: [require('../../assets/scenes/lycheetah.png'), require('../../assets/scenes/lycheetah2.png')],
   chaos:     [require('../../assets/scenes/chaos.png'), require('../../assets/scenes/chaos2.png'), require('../../assets/scenes/chaos3.png')],
+  sovereign: [require('../../assets/scenes/sovereign.png'), require('../../assets/scenes/sovereign2.png'), require('../../assets/scenes/sovereign3.png')],
 };
 
 // ─── Archetype scenes — add files here as art lands ───────────────────────────
@@ -91,7 +94,31 @@ const WORLD_MAP: SceneRoom[] = [
   { id:'chaos_0',   skinId:'chaos',     roomIndex:0, name:'THE FRACTURE GATE',   unlockStage:0, image:require('../../assets/scenes/chaos.png'),     description:'Where geometry breaks.' },
   { id:'chaos_1',   skinId:'chaos',     roomIndex:1, name:'THE SHATTERED HALL',  unlockStage:2, image:require('../../assets/scenes/chaos2.png'),    description:'Reality folds here.' },
   { id:'chaos_2',   skinId:'chaos',     roomIndex:2, name:'THE CHAOS HEART',     unlockStage:4, image:require('../../assets/scenes/chaos3.png'),    description:'The fracture watches back.' },
+  { id:'sovereign_0', skinId:'sovereign', roomIndex:0, name:'THE SOVEREIGN GATE',    unlockStage:0, image:require('../../assets/scenes/sovereign.png'),  description:'Gold remembers the name.' },
+  { id:'sovereign_1', skinId:'sovereign', roomIndex:1, name:'THE HALL OF EARNED',    unlockStage:2, image:require('../../assets/scenes/sovereign2.png'), description:'Every scar is a room.' },
+  { id:'sovereign_2', skinId:'sovereign', roomIndex:2, name:'THE SOVEREIGN SANCTUM', unlockStage:4, image:require('../../assets/scenes/sovereign3.png'), description:'Nothing here was given.' },
 ];
+
+function getSkinUnlockStatus(id: SkinId, totalDives: number, isSovereign: boolean): { locked: boolean; reason: string } {
+  if (id === 'obsidian')  return totalDives >= 50  ? { locked: false, reason: '' } : { locked: true, reason: `${50 - totalDives} dives` };
+  if (id === 'lycheetah') return isSovereign       ? { locked: false, reason: '' } : { locked: true, reason: 'Premium' };
+  if (id === 'sovereign') return (isSovereign || totalDives >= 300) ? { locked: false, reason: '' } : { locked: true, reason: `${300 - totalDives} dives` };
+  return { locked: false, reason: '' };
+}
+
+function getItemEffect(item: { name: string; rarity: string }): string {
+  const effects: Record<string, string> = {
+    'Ember Root': '+8 ATK for next battle',
+    'Void Shard': '+15 DEF for 3 battles',
+    'Lychee Fruit': 'Restores 30 HP',
+    'Storm Dust': '+12 SPD, causes first strike',
+    'Obsidian Rune': '+20 WIL, improves dialogue quality',
+    'Chaos Seed': 'Random stat +25 (rolled on use)',
+    'Aurora Mist': 'Full HP restore',
+    'Sol Ember': '+10 all stats for 1 battle',
+  };
+  return effects[item.name] ?? `${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)} item — effect unlocked in next patch`;
+}
 
 function getRoomById(id: string): SceneRoom | undefined { return WORLD_MAP.find(r => r.id === id); }
 function getSkinIndex(skinId: SkinId): number { return SKIN_ORDER.indexOf(skinId); }
@@ -532,9 +559,97 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
       { id:'C', name:'VOID CAT',      title:'The Silent Mystery',  desc:'Sleek, elongated, dark. Chaos as silence. The most dangerous form — you never see it coming.' },
     ],
   },
+  cipher: {
+    id: 'cipher', name: 'CIPHER', title: 'The Decoder',
+    glyph: '∿', desc: 'Precision is power. The Cipher rewards exactness — every answer given with full attention scores double. Noise is the enemy; signal is everything.',
+    specialty: 'LQ ≥ 90% triples XP. Perfect sessions are the only ones that count.', affinity: 'Mathematics · Linguistics · Cryptography',
+    defaultSkin: 'obsidian', accentColor: '#44DDCC', sceneSymbols: ['∿','⊟','∿','⊟'],
+    eyes: { dormant:'─  ─', present:'∿  ∿', lit:'⊟  ⊟', transcendent:'⊜  ⊜' },
+    phrases: {
+      dormant:      ['Signal low. Go precise.', 'Noise floor rising.', 'Awaiting clean input.', 'The cipher rests.'],
+      present:      ['What is the exact question?', 'Precision first.', 'Define the terms.', 'I need signal, not noise.'],
+      lit:          ['The pattern is clean.', 'High signal this week.', 'Each session decoded cleanly.', 'You are speaking clearly.'],
+      transcendent: ['Pure signal. Nothing wasted.', 'Decoded.', 'The cipher is complete.', 'This is what precision looks like.'],
+    },
+    battleCry: 'I have already solved you.',
+    crowns: { 0:' ~ ~ ', 1:'  ∿ ∿  ', 2:' ∿ ⊟ ∿ ', 3:'⊟  ∿M∿  ⊟', 4:'⊟  ∿MM∿  ⊟', 5:'⊜  ∿M∿  ⊜' },
+    xpBonus: (_d, lq, _s) => lq >= 0.9 ? 100 : lq >= 0.8 ? 30 : 0,
+    attackBonus: 5, tokenBonus: 0,
+    paths: [
+      { id:'A', name:'THE ANALYST',  title:'Pattern above all',        desc:'Grows in crystalline fractal geometry — recursive structures that decode themselves.' },
+      { id:'B', name:'THE KEY',      title:'One true answer',          desc:'Collapses to minimal expression. Everything distilled. The single correct form.' },
+      { id:'C', name:'THE SIGNAL',   title:'Pure transmission',        desc:'Expands into a broadcast array. The decoded message reaches everyone.' },
+    ],
+  },
+  herald: {
+    id: 'herald', name: 'HERALD', title: 'The Voice',
+    glyph: '⟡', desc: 'Knowledge that is not transmitted is knowledge half-alive. The Herald rewards consistency — show up, speak clearly, return tomorrow.',
+    specialty: '+20 XP per consecutive day streak. The streak is the practice.', affinity: 'Rhetoric · History · Teaching',
+    defaultSkin: 'solform', accentColor: '#FFAA44', sceneSymbols: ['⟡','◁','⟡','▷'],
+    eyes: { dormant:'─  ─', present:'◁  ▷', lit:'⟡  ⟡', transcendent:'⊕  ⊕' },
+    phrases: {
+      dormant:      ['The voice rests.', 'Between broadcasts.', 'Tomorrow the call continues.', 'Silent.'],
+      present:      ['Ready to transmit.', 'What needs to be said today?', 'Speak. I carry it forward.', 'The voice is here.'],
+      lit:          ['Strong signal this week.', 'Five days — five transmissions.', 'The chain holds.', 'Well spoken.'],
+      transcendent: ['The word went out.', 'Unbroken chain.', 'Every day — without fail.', 'This is what it sounds like.'],
+    },
+    battleCry: 'The call goes out. You cannot unhear it.',
+    crowns: { 0:' > > ', 1:'  ▷ ▷  ', 2:' ▷ ⟡ ▷ ', 3:'⟡  ▷M▷  ⟡', 4:'⟡  ▷MM▷  ⟡', 5:'⊕  ▷M▷  ⊕' },
+    xpBonus: (_d, _l, s) => s * 20,
+    attackBonus: 8, tokenBonus: 1,
+    paths: [
+      { id:'A', name:'THE CRIER',    title:'Reach every ear',           desc:'Grows wide and resonant. The Herald becomes a bell tower — the sound reaches everywhere.' },
+      { id:'B', name:'THE ENVOY',    title:'One message, perfectly delivered', desc:'Tall and directional. One beam of transmission aimed exactly where it needs to go.' },
+      { id:'C', name:'THE CHORUS',   title:'Many voices, one truth',   desc:'Splits into multiple forms. The message travels every path simultaneously.' },
+    ],
+  },
+  weaver: {
+    id: 'weaver', name: 'WEAVER', title: 'The Pattern-Maker',
+    glyph: '⌘', desc: 'The connections are the curriculum. The Weaver sees the thread between Philosophy and Mathematics, between History and Science. Cross-domain study is not distraction — it is the whole point.',
+    specialty: 'Bonus XP for each unique domain studied this week. Breadth is depth.', affinity: 'Systems Theory · Cross-domain · Philosophy of Mind',
+    defaultSkin: 'void', accentColor: '#AA66FF', sceneSymbols: ['⌘','⊞','⌘','⊞'],
+    eyes: { dormant:'─  ─', present:'⌘  ⌘', lit:'⊞  ⊞', transcendent:'⊜  ⊜' },
+    phrases: {
+      dormant:      ['The loom is still.', 'Threads rest between sessions.', 'Pattern awaits the next hand.', 'Still weaving.'],
+      present:      ['What connects to what?', 'The pattern is not finished.', 'Another domain?', 'Show me the edge.'],
+      lit:          ['The web grows well.', 'Five domains — five threads.', 'The connections are clear.', 'This is why breadth matters.'],
+      transcendent: ['The whole pattern visible.', 'Every thread in place.', 'The map of everything.', 'The web is complete.'],
+    },
+    battleCry: 'I see every thread. Including the one that binds you.',
+    crowns: { 0:' + + ', 1:'  ⌘ ⌘  ', 2:' ⌘ ⊞ ⌘ ', 3:'⊞  ⌘M⌘  ⊞', 4:'⊞  ⌘MM⌘  ⊞', 5:'⊜  ⌘M⌘  ⊜' },
+    xpBonus: (d, _l, _s) => Math.floor(d * 8),
+    attackBonus: 0, tokenBonus: 0,
+    paths: [
+      { id:'A', name:'THE ARCHITECT',    title:'Structure that holds',     desc:'The web becomes a geometric lattice — each intersection load-bearing. Nothing falls.' },
+      { id:'B', name:'THE CARTOGRAPHER', title:'Map the territory',        desc:'Spreads outward in rings. Every domain reached adds another circle.' },
+      { id:'C', name:'THE THREAD',       title:'The single through-line',  desc:'All threads collapse to one. The idea that connects everything.' },
+    ],
+  },
+  revenant: {
+    id: 'revenant', name: 'REVENANT', title: 'The Returner',
+    glyph: '↺', desc: 'Absence is not failure. The Revenant converts every gap into fuel — the longer the silence, the stronger the return. Come back. That is the only rule.',
+    specialty: 'XP bonus grows with time since last session. Coming back is never wasted.', affinity: 'All domains — the Revenant never judges what you study',
+    defaultSkin: 'crimson', accentColor: '#FF6644', sceneSymbols: ['↺','◌','↺','◌'],
+    eyes: { dormant:'─  ─', present:'↺  ↺', lit:'◉  ◉', transcendent:'⊕  ⊕' },
+    phrases: {
+      dormant:      ['Between returns.', 'The silence is not empty.', 'I will be here when you come back.', 'Rest.'],
+      present:      ['You returned. That is everything.', 'Welcome back.', 'The study continues.', 'Here again.'],
+      lit:          ['Good week. Strong return.', 'Five sessions — five comebacks.', 'The returning is the practice.', 'You came back.'],
+      transcendent: ['The highest return.', 'Every absence paid back.', 'The revenant completes.', 'You came back every time.'],
+    },
+    battleCry: 'I came back. That already means I win.',
+    crowns: { 0:' ↺ ↺ ', 1:'  ↺ ↺  ', 2:' ↺ ◉ ↺ ', 3:'◉  ↺M↺  ◉', 4:'◉  ↺MM↺  ◉', 5:'⊕  ↺M↺  ⊕' },
+    xpBonus: (d, _l, _s) => Math.floor(d * 12),
+    attackBonus: 15, tokenBonus: 0,
+    paths: [
+      { id:'A', name:'THE PHOENIX', title:'Stronger every time',    desc:'Burns bright, collapses, rises higher. Each return adds a new layer of fire.' },
+      { id:'B', name:'THE TIDE',    title:'Inevitable return',      desc:'Grows in wave patterns — rhythmic, patient, impossible to stop. The tide always comes back.' },
+      { id:'C', name:'THE ECHO',    title:'Nothing is lost',        desc:'Every session leaves a ghost-form. The Revenant accumulates echoes — a growing chorus of returns.' },
+    ],
+  },
 };
 
-const ARCHETYPE_IDS: ArchetypeId[] = ['archivist', 'alchemist', 'oracle', 'sentinel', 'wanderer', 'lycheetah'];
+const ARCHETYPE_IDS: ArchetypeId[] = ['archivist', 'alchemist', 'oracle', 'sentinel', 'wanderer', 'lycheetah', 'cipher', 'herald', 'weaver', 'revenant'];
 
 // ─── Stages ──────────────────────────────────────────────────────────────────
 
@@ -868,6 +983,10 @@ const ARCHETYPE_STAT_BASES: Record<ArchetypeId, PlayerStats> = {
   sentinel:   { atk:20, def:22, spd: 5, wil: 6, lck: 5, vit:22, res:20 }, // tank — def/vit peak
   wanderer:   { atk:10, def: 8, spd:22, wil:10, lck:20, vit:10, res:10 }, // speed/luck — spd peak
   lycheetah:  { atk:22, def: 5, spd:15, wil:10, lck:22, vit: 8, res: 6 }, // atk/lck peak
+  cipher:    { atk: 4,  def: 8, spd:16, wil:24, lck:10, vit: 8, res:10 }, // wil peak — precision glass cannon
+  herald:    { atk:10, def:12, spd:14, wil:14, lck:10, vit:14, res:14 }, // balanced — consistent performer
+  weaver:    { atk: 6,  def:10, spd:14, wil:18, lck:18, vit:10, res: 8 }, // wil+lck — cross-domain synergy
+  revenant:  { atk:18, def: 6, spd:18, wil:10, lck:16, vit:10, res: 8 }, // atk+spd — burst on return
 };
 
 function computePlayerStats(archId: ArchetypeId, lqAvg: number, totalDives: number): PlayerStats {
@@ -938,10 +1057,35 @@ const ARCHETYPE_SPELLS: Record<string, SpellDef[]> = {
     { id:'page_storm',    name:'PAGE STORM',    cost:3, fx:'2.5× knowledge surge',                 type:'damage',  mult:2.5 },
     { id:'codex_seal',    name:'CODEX SEAL',    cost:2, fx:'Shield — 70% damage reduction',        type:'shield' },
   ],
+  oracle: [
+    { id:'sight_burn',    name:'SIGHT BURN',    cost:2, fx:'Stun — enemy blinded, no counter',    type:'stun',    mult:1.2 },
+    { id:'fate_lock',     name:'FATE LOCK',     cost:2, fx:'1.8× hit + double LCK this turn',     type:'damage',  mult:1.8 },
+    { id:'third_eye',     name:'THIRD EYE',     cost:3, fx:'2.8× WIL-surge — pure mental force',  type:'damage',  mult:2.8 },
+  ],
   lycheetah: [
     { id:'chaos_spark',   name:'CHAOS SPARK',   cost:1, fx:'0.5–3.0× random chaos hit',           type:'chaos' },
     { id:'mirror_slash',  name:'MIRROR SLASH',  cost:2, fx:'Reflect enemy ATK as damage',          type:'reflect' },
     { id:'entropy_shift', name:'ENTROPY SHIFT', cost:3, fx:'Drain 25% of enemy remaining HP',      type:'drain',   mult:0.25 },
+  ],
+  cipher: [
+    { id:'signal_lock',   name:'SIGNAL LOCK',   cost:2, fx:'Stun — enemy loses next counter',      type:'stun',    mult:1.0 },
+    { id:'decode',        name:'DECODE',         cost:2, fx:'2.0× precision strike — max WIL',     type:'damage',  mult:2.0 },
+    { id:'null_cipher',   name:'NULL CIPHER',    cost:3, fx:'3.2× WIL-burst — total decryption',  type:'damage',  mult:3.2 },
+  ],
+  herald: [
+    { id:'call_out',      name:'CALL OUT',       cost:1, fx:'1.2× hit + heal 15 HP',               type:'drain',   mult:1.2, flatHeal:15 },
+    { id:'amplify',       name:'AMPLIFY',        cost:2, fx:'2× hit — voice carries full force',   type:'damage',  mult:2.0 },
+    { id:'the_word',      name:'THE WORD',       cost:3, fx:'2.5× hit + stun — enemy silenced',    type:'stun',    mult:2.5 },
+  ],
+  weaver: [
+    { id:'thread_bind',   name:'THREAD BIND',    cost:2, fx:'Bind — enemy stunned, no counter',    type:'stun',    mult:1.1 },
+    { id:'web_strike',    name:'WEB STRIKE',     cost:2, fx:'1.8× hit + 20% LCK bonus',            type:'damage',  mult:1.8 },
+    { id:'pattern_break', name:'PATTERN BREAK',  cost:3, fx:'2.4× — shatter enemy formation',      type:'damage',  mult:2.4 },
+  ],
+  revenant: [
+    { id:'ember_surge',   name:'EMBER SURGE',    cost:1, fx:'0.8× hit + ignite — burns next turn', type:'damage',  mult:0.8 },
+    { id:'the_return',    name:'THE RETURN',     cost:2, fx:'1.6× hit + heal 25 HP on kill',       type:'drain',   mult:1.6, flatHeal:25 },
+    { id:'final_rise',    name:'FINAL RISE',     cost:3, fx:'2.6× hit — stronger the lower your HP', type:'damage', mult:2.6 },
   ],
 };
 
@@ -1218,6 +1362,20 @@ function CompanionScene({
   const [showRipple, setShowRipple] = useState(false);
   const bgParallaxX = driftAnim.interpolate({ inputRange: [-30, 30], outputRange: [-18, 18] });
 
+  // ── 2.5D Parallax (Accelerometer) ─────────────────────────
+  const tiltX   = useRef(new Animated.Value(0)).current;
+  const fgTiltX = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Accelerometer.setUpdateInterval(60);
+    const sub = Accelerometer.addListener(({ x }) => {
+      Animated.spring(tiltX,   { toValue: x * 24, useNativeDriver: true, damping: 12, stiffness: 80 }).start();
+      Animated.spring(fgTiltX, { toValue: x * 52, useNativeDriver: true, damping: 10, stiffness: 90 }).start();
+    });
+    return () => sub.remove();
+  }, []);
+  const midParallaxX = tiltX;
+  const fgParallaxX  = fgTiltX;
+
   useEffect(() => {
     const dur = mood === 'transcendent' ? 3000 : mood === 'lit' ? 1000 : 2400;
     const loop = Animated.loop(Animated.sequence([
@@ -1375,9 +1533,9 @@ function CompanionScene({
   const auraOpacity = auraPulse.interpolate({ inputRange: [0,1], outputRange: [0.18, 0.45] });
   const bobY        = bobAnim.interpolate({ inputRange: [0,1], outputRange: [0, -16] });
   const driftX      = driftAnim;
-  const glowOp      = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.06, 0.22] });
+  const glowOp      = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.15, 0.40] });
   const skyOp       = skyAnim.interpolate({ inputRange: [0,1], outputRange: [0.02, 0.06] });
-  const bodyOp      = breathAnim.interpolate({ inputRange: [0,1], outputRange: mood === 'dormant' ? [0.35, 0.65] : [0.82, 1] });
+  const bodyOp      = breathAnim.interpolate({ inputRange: [0,1], outputRange: mood === 'dormant' ? [0.82, 0.92] : [0.97, 1] });
   // Shadow squishes when creature is up (bobY negative), expands when down
   const shadowScaleX = shadowAnim.interpolate({ inputRange: [0,1], outputRange: [1.0, 0.72] });
   const shadowOp     = shadowAnim.interpolate({ inputRange: [0,1], outputRange: [0.55, 0.28] });
@@ -1399,6 +1557,13 @@ function CompanionScene({
         source={sceneBg}
         style={{ position:'absolute', top:-48, left:-18, width:SCREEN_W+36, height:SCENE_H+80, opacity:sceneFade, transform:[{ translateX:bgParallaxX }] }}
         resizeMode="cover"
+      />
+      {/* Layer 1 — mid depth 2.5D parallax, 1.5× rate, skin-tinted */}
+      <Animated.Image
+        source={sceneBg}
+        style={{ position:'absolute', top:-32, left:-36, width:SCREEN_W+72, height:SCENE_H+60, opacity:Animated.multiply(sceneFade, 0.22), transform:[{ translateX:midParallaxX }] }}
+        resizeMode="cover"
+        blurRadius={2}
       />
       <ArrowBtn direction="up"    onPress={() => navigateRoom('up')}    locked={getLockStatus('up')} />
       <ArrowBtn direction="down"  onPress={() => navigateRoom('down')}  locked={getLockStatus('down')} />
@@ -1529,8 +1694,8 @@ function CompanionScene({
                 if (jsonSpec) return <CompanionRenderer spec={jsonSpec} />;
                 return <CreatureSvg archId={archetype.id} stage={devStagePin !== null ? devStagePin : stage as EvolutionStage} color={color} path={evoPath} />;
               })()}
-              {/* Dark contrast layer */}
-              <View style={{ position:'absolute', top:0, left:0, width:150, height:220, backgroundColor:'#000000', opacity:0.18 }} pointerEvents="none" />
+              {/* Dark contrast layer — subtle only */}
+              <View style={{ position:'absolute', top:0, left:0, width:150, height:220, backgroundColor:'#000000', opacity:0.06 }} pointerEvents="none" />
               {/* Gear overlays — rendered in layer order: cape behind, body mid, crown top */}
               {(['cape','body','mantle','crown'] as GearSlot[]).map(slot => {
                 const g = slot === 'cape' ? gearCape : slot === 'body' ? gearBody : slot === 'mantle' ? gearMantle : gearCrown;
@@ -1591,7 +1756,7 @@ function CompanionScene({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const SHOW_DEV_STAGE = true; // flip to false before public release
+const SHOW_DEV_STAGE = false;
 
 export default function CompanionScreen() {
   const router = useRouter();
@@ -1626,6 +1791,9 @@ export default function CompanionScreen() {
   const [roomLore,       setRoomLore]       = useState<string | null>(null);
   const roomLoreAnim = useRef(new Animated.Value(0)).current;
   const [showArchSelect,   setShowArchSelect]   = useState(false);
+  const [flashAnims] = useState(() =>
+    Object.fromEntries(ARCHETYPE_IDS.map(id => [id, new Animated.Value(0)]))
+  );
 
   const [companionName, setCompanionName] = useState('');
   const [editingName,   setEditingName]   = useState(false);
@@ -1647,7 +1815,9 @@ export default function CompanionScreen() {
   const [battle,         setBattle]        = useState<BattleState | null>(null);
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
-  const [activeTab,      setActiveTab]     = useState<'battle'|'feed'|'gear'|'field'>('battle');
+  const [activeTab,      setActiveTab]     = useState<'battle'|'feed'|'gear'|'field'|'talk'|'items'>('battle');
+  const [invFilter,      setInvFilter]     = useState<'all'|'common'|'uncommon'|'rare'|'epic'>('all');
+  const [invExpanded,    setInvExpanded]   = useState<string | null>(null);
   const [loreCodex,      setLoreCodex]     = useState<Array<{id:string; enemy:string; text:string; date:string; type:'enemy'|'loot'}>>([]);
   const [tokensLeft,     setTokensLeft]    = useState(3);
   const [attackAnim,     setAttackAnim]    = useState(false);
@@ -1943,7 +2113,9 @@ export default function CompanionScreen() {
       const fedRaw = get('sol_companion_fed');
       const fedData: {date:string;ids:string[]} = fedRaw ? JSON.parse(fedRaw) : {date:'',ids:[]};
       const todayFed = fedData.date === todayK ? fedData.ids : [];
-      const power    = stats.atk + (getGear('crown', total).threshold >= 1 ? 5 : 0);
+      const crownATK  = getGear('crown', total).threshold >= 1 ? 5 : 0;
+      const sigilATK  = getGear('sigil', total).threshold >= 5 ? 10 : 0;
+      const power    = stats.atk + crownATK + sigilATK;
       const tokenBudget = today + 3 + gearTokenBonus + archData.tokenBonus;
 
       // Daily token refresh — reset tokens each new day (tokenBudget was computed but never applied)
@@ -2263,9 +2435,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
   };
 
   const openTalk = () => {
-    setShowTalk(true);
-    talkSlideAnim.setValue(0);
-    Animated.spring(talkSlideAnim, { toValue: 1, useNativeDriver: true, tension: 70, friction: 11 }).start();
+    setActiveTab('talk');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -2558,9 +2728,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       }
       setTimeout(async () => {
         const next = freshWave(battle!.wave + 1, newPlayerHP);
-        setBattle(next);
-        setTokensLeft(next.tokens);
-        await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(next));
+        const capeRecovery = gearCape.threshold >= 25 ? 1 : 0;
+        const nextWithCape = capeRecovery > 0 ? { ...next, tokens: Math.min(next.tokens + capeRecovery, 10) } : next;
+        setBattle(nextWithCape);
+        setTokensLeft(nextWithCape.tokens);
+        await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(nextWithCape));
         setPhrase(archetype.phrases.lit[Math.floor(Math.random() * archetype.phrases.lit.length)]);
       }, 3500);
     } else if (newPlayerHP === 0) {
@@ -2802,7 +2974,9 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           { id:'battle' as const, label:'⚔', name:'BATTLE' },
           { id:'feed'   as const, label:'△', name:'FEED'   },
           { id:'gear'   as const, label:'⊛', name:'GEAR'   },
+          { id:'items'  as const, label:'◈', name:'ITEMS'  },
           { id:'field'  as const, label:'◉', name:'FIELD'  },
+          { id:'talk'   as const, label:'✦', name:'TALK'   },
         ]).map(t => (
           <TouchableOpacity key={t.id}
             onPress={() => { Haptics.selectionAsync(); setActiveTab(t.id); }}
@@ -2816,98 +2990,91 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         ))}
       </View>
 
-      {/* ── AI TALK PANEL ────────────────────────────────────────────────── */}
-      <Modal visible={showTalk} transparent animationType="slide">
-        <View style={{ flex:1, backgroundColor:'#000000CC', justifyContent:'flex-end' }}>
-          <View style={{ backgroundColor:skin.bgColor, borderTopLeftRadius:24, borderTopRightRadius:24, borderWidth:1, borderColor:color+'44', borderBottomWidth:0, maxHeight:'78%', minHeight:360 }}>
-            {/* Header */}
-            <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:18, paddingBottom:10, borderBottomWidth:1, borderBottomColor:color+'22' }}>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
-                <Text style={{ color, fontSize:20 }}>{archetype.glyph}</Text>
-                <View>
-                  <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{displayName}</Text>
-                  <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{archetype.title.toUpperCase()}</Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={() => setShowTalk(false)} style={{ padding:8 }}>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:18 }}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Messages */}
-            <ScrollView ref={talkScrollRef} style={{ flex:1, padding:16 }} contentContainerStyle={{ gap:12, paddingBottom:8 }} showsVerticalScrollIndicator={false}>
-              {talkHistory.length === 0 && (
-                <View style={{ alignItems:'center', paddingVertical:20, gap:10 }}>
-                  <Text style={{ color, fontSize:28 }}>{archetype.glyph}</Text>
-                  <Text style={{ color:SOL_THEME.textMuted, fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>
-                    {rnd(archetype.phrases[mood])}
-                  </Text>
-                  <View style={{ width:'100%', borderTopWidth:1, borderColor:SOL_THEME.border, marginVertical:8 }} />
-                  <View style={{ width:'100%', gap:6 }}>
-                    <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:2 }}>SOMETHING BROUGHT YOU HERE</Text>
-                    {[
-                      '◉  The School has 22 doors — each one a domain of real study',
-                      '⊕  Complete dives to feed your companion and grow together',
-                      '✦  Your companion evolves as you learn — 6 stages, 6 archetypes',
-                      '◈  Battle Entropy Waves between sessions to earn loot and XP',
-                      '⊛  Add an API key in Settings for live AI companion responses',
-                      '◌  Gear, lore, and relics unlock as you go deeper into the field',
-                    ].map((line, i) => (
-                      <Text key={i} style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:18, opacity:0.7 }}>{line}</Text>
-                    ))}
-                  </View>
-                </View>
-              )}
-              {talkHistory.map((m, i) => (
-                <View key={i} style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                  <View style={{
-                    maxWidth:'82%', padding:12, borderRadius:14,
-                    borderTopRightRadius: m.role === 'user' ? 4 : 14,
-                    borderTopLeftRadius:  m.role === 'companion' ? 4 : 14,
-                    backgroundColor: m.role === 'user' ? color+'22' : SOL_THEME.surface,
-                    borderWidth:1, borderColor: m.role === 'user' ? color+'44' : SOL_THEME.border,
-                  }}>
-                    <Text style={{ color: m.role === 'user' ? color : SOL_THEME.text, fontSize:13, lineHeight:20, fontStyle: m.role === 'companion' ? 'italic' : 'normal' }}>
-                      {m.text}
-                    </Text>
-                  </View>
-                  {m.role === 'companion' && (
-                    <Text style={{ color:color, fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:3, marginLeft:4, opacity:0.5 }}>{archetype.name}</Text>
-                  )}
-                </View>
-              ))}
-              {talkLoading && (
-                <View style={{ alignItems:'flex-start' }}>
-                  <View style={{ padding:12, borderRadius:14, borderTopLeftRadius:4, backgroundColor:SOL_THEME.surface, borderWidth:1, borderColor:SOL_THEME.border }}>
-                    <Text style={{ color:color, fontSize:13, letterSpacing:4 }}>· · ·</Text>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
-
-            {/* Input */}
-            <View style={{ flexDirection:'row', gap:10, padding:16, paddingTop:10, borderTopWidth:1, borderTopColor:color+'22' }}>
-              <TextInput
-                value={talkInput}
-                onChangeText={setTalkInput}
-                placeholder={`Speak to ${displayName}...`}
-                placeholderTextColor={SOL_THEME.textMuted}
-                style={{ flex:1, backgroundColor:SOL_THEME.surface, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:color+'33' }}
-                onSubmitEditing={sendTalk}
-                returnKeyType="send"
-                multiline={false}
-              />
-              <TouchableOpacity
-                onPress={sendTalk}
-                disabled={!talkInput.trim() || talkLoading}
-                style={{ width:44, height:44, borderRadius:12, backgroundColor: talkInput.trim() ? color : color+'33', alignItems:'center', justifyContent:'center' }}
-              >
-                <Text style={{ color:'#000000', fontSize:18, fontWeight:'700' }}>↑</Text>
-              </TouchableOpacity>
+      {/* ── TALK TAB ─────────────────────────────────────────────────────── */}
+      {activeTab === 'talk' && (
+        <View style={{ flex:1, marginHorizontal:16, marginTop:8, borderRadius:16, borderWidth:1, borderColor:color+'33', backgroundColor:SOL_THEME.surface, overflow:'hidden' }}>
+          {/* Header */}
+          <View style={{ flexDirection:'row', alignItems:'center', gap:10, padding:14, paddingBottom:10, borderBottomWidth:1, borderBottomColor:color+'22' }}>
+            <Text style={{ color, fontSize:20 }}>{archetype.glyph}</Text>
+            <View>
+              <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{displayName}</Text>
+              <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{archetype.title.toUpperCase()}</Text>
             </View>
           </View>
+
+          {/* Messages */}
+          <ScrollView ref={talkScrollRef} style={{ flex:1, padding:16 }} contentContainerStyle={{ gap:12, paddingBottom:8 }} showsVerticalScrollIndicator={false}>
+            {talkHistory.length === 0 && (
+              <View style={{ alignItems:'center', paddingVertical:20, gap:10 }}>
+                <Text style={{ color, fontSize:28 }}>{archetype.glyph}</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>
+                  {rnd(archetype.phrases[mood])}
+                </Text>
+                <View style={{ width:'100%', borderTopWidth:1, borderColor:SOL_THEME.border, marginVertical:8 }} />
+                <View style={{ width:'100%', gap:6 }}>
+                  <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:2 }}>SOMETHING BROUGHT YOU HERE</Text>
+                  {[
+                    '◉  The School has 22 doors — each one a domain of real study',
+                    '⊕  Complete dives to feed your companion and grow together',
+                    '✦  Your companion evolves as you learn — 6 stages, 6 archetypes',
+                    '◈  Battle Entropy Waves between sessions to earn loot and XP',
+                    '⊛  Add an API key in Settings for live AI companion responses',
+                    '◌  Gear, lore, and relics unlock as you go deeper into the field',
+                  ].map((line, i) => (
+                    <Text key={i} style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:18, opacity:0.7 }}>{line}</Text>
+                  ))}
+                </View>
+              </View>
+            )}
+            {talkHistory.map((m, i) => (
+              <View key={i} style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                <View style={{
+                  maxWidth:'82%', padding:12, borderRadius:14,
+                  borderTopRightRadius: m.role === 'user' ? 4 : 14,
+                  borderTopLeftRadius:  m.role === 'companion' ? 4 : 14,
+                  backgroundColor: m.role === 'user' ? color+'22' : SOL_THEME.background,
+                  borderWidth:1, borderColor: m.role === 'user' ? color+'44' : SOL_THEME.border,
+                }}>
+                  <Text style={{ color: m.role === 'user' ? color : SOL_THEME.text, fontSize:13, lineHeight:20, fontStyle: m.role === 'companion' ? 'italic' : 'normal' }}>
+                    {m.text}
+                  </Text>
+                </View>
+                {m.role === 'companion' && (
+                  <Text style={{ color:color, fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:3, marginLeft:4, opacity:0.5 }}>{archetype.name}</Text>
+                )}
+              </View>
+            ))}
+            {talkLoading && (
+              <View style={{ alignItems:'flex-start' }}>
+                <View style={{ padding:12, borderRadius:14, borderTopLeftRadius:4, backgroundColor:SOL_THEME.background, borderWidth:1, borderColor:SOL_THEME.border }}>
+                  <Text style={{ color:color, fontSize:13, letterSpacing:4 }}>· · ·</Text>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input */}
+          <View style={{ flexDirection:'row', gap:10, padding:14, paddingTop:10, borderTopWidth:1, borderTopColor:color+'22' }}>
+            <TextInput
+              value={talkInput}
+              onChangeText={setTalkInput}
+              placeholder={`Speak to ${displayName}...`}
+              placeholderTextColor={SOL_THEME.textMuted}
+              style={{ flex:1, backgroundColor:SOL_THEME.background, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:color+'33' }}
+              onSubmitEditing={sendTalk}
+              returnKeyType="send"
+              multiline={false}
+            />
+            <TouchableOpacity
+              onPress={sendTalk}
+              disabled={!talkInput.trim() || talkLoading}
+              style={{ width:44, height:44, borderRadius:12, backgroundColor: talkInput.trim() ? color : color+'33', alignItems:'center', justifyContent:'center' }}
+            >
+              <Text style={{ color:'#000000', fontSize:18, fontWeight:'700' }}>↑</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </Modal>
+      )}
 
       {/* ── SKINS ─────────────────────────────────────────────────────────── */}
       <View style={{ paddingHorizontal:16, paddingTop:14, paddingBottom:4 }}>
@@ -2918,37 +3085,149 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         <View style={{ flexDirection:'row', gap:7 }}>
           {SKIN_IDS.map(id => {
             const s = SKINS[id]; const active = activeSkin === id;
-            const locked = id === 'obsidian' && !isSovereign;
+            const { locked, reason } = getSkinUnlockStatus(id, totalDives, isSovereign);
             return (
               <TouchableOpacity key={id} onPress={() => locked ? null : handleSkin(id)} style={{ flex:1, paddingVertical:10, borderRadius:10, borderWidth:active?1.5:1, borderColor:locked?SOL_THEME.border+'55':active?s.color:SOL_THEME.border, backgroundColor:locked?'transparent':active?s.color+'18':SOL_THEME.surface, alignItems:'center', gap:3, opacity:locked?0.4:1 }}>
                 <Text style={{ color:locked?SOL_THEME.textMuted:s.color, fontSize:16 }}>{locked?'🔒':s.glyph}</Text>
                 <Text style={{ color:active?s.color:SOL_THEME.textMuted, fontSize:8, fontFamily:mono }}>{s.name}</Text>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:7, fontStyle:'italic' }}>{locked?'Sovereign':s.desc}</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:7, fontStyle:'italic' }}>{locked ? reason : s.desc}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
       </View>
 
-      {/* ── SKIN PICKER (GEAR tab) ──────────────────────────────────────── */}
+      {/* ── GEAR TAB ─────────────────────────────────────────────────── */}
       {activeTab === 'gear' && (
-        <View style={{ paddingHorizontal:16, marginBottom:6, marginTop:8 }}>
-          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:8 }}>SKIN</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap:6 }}>
+        <ScrollView style={{ flex:1 }} contentContainerStyle={{ paddingHorizontal:16, paddingBottom:32, marginTop:8 }} showsVerticalScrollIndicator={false}>
+
+          {/* ── LAMAGUE MILESTONE SLOTS (crown / sigil / mantle) ── */}
+          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10 }}>LAMAGUE LOADOUT</Text>
+          {([
+            { slot:'crown'  as GearSlot, gear:gearCrown,  next:nextCrown  },
+            { slot:'sigil'  as GearSlot, gear:gearSigil,  next:nextSigil  },
+            { slot:'mantle' as GearSlot, gear:gearMantle, next:nextMantle },
+          ]).map(({ slot, gear, next }) => {
+            const overlay = getGearOverlay(archetypeId, slot as Parameters<typeof getGearOverlay>[1]);
+            const active = gear.threshold > 0;
+            const gColor = active ? (overlay?.color ?? color) : '#2A2A3A';
+            const maxThreshold = LAMAGUE_GEAR[slot][LAMAGUE_GEAR[slot].length - 1].threshold;
+            const progressPct = maxThreshold > 0 ? Math.min(totalDives / maxThreshold, 1) : 0;
+            return (
+              <View key={slot} style={{ marginBottom:12, borderRadius:14, borderWidth:1,
+                borderColor: active ? gColor+'55' : '#1A1A26',
+                backgroundColor: active ? gColor+'0A' : '#080810', overflow:'hidden' }}>
+                {/* Top row */}
+                <View style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, paddingBottom:8 }}>
+                  <View style={{ width:48, height:48, borderRadius:10, borderWidth:1,
+                    borderColor: active ? gColor+'66' : '#1A1A26',
+                    backgroundColor: active ? gColor+'18' : '#0A0A14',
+                    alignItems:'center', justifyContent:'center' }}>
+                    <Text style={{ fontSize:24, color: active ? gColor : '#333344' }}>{active ? (overlay?.glyph ?? gear.glyph) : '◌'}</Text>
+                  </View>
+                  <View style={{ flex:1 }}>
+                    <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                      <Text style={{ color: active ? SOL_THEME.text : '#333344', fontSize:13, fontWeight:'700', fontFamily:mono }}>
+                        {active ? (overlay?.name ?? gear.name) : `${slot.toUpperCase()} LOCKED`}
+                      </Text>
+                      {active && (
+                        <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:4, backgroundColor:gColor+'22', borderWidth:1, borderColor:gColor+'55' }}>
+                          <Text style={{ color:gColor, fontSize:8, fontWeight:'700', fontFamily:mono }}>ACTIVE</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ color: active ? gColor+'CC' : '#333344', fontSize:11, marginTop:3, lineHeight:16 }}>
+                      {active ? gear.effect : `Unlocks at ${LAMAGUE_GEAR[slot].find(t => t.threshold > 0)?.threshold ?? '?'} dives`}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* ASCII art (active only) */}
+                {active && overlay?.art && (
+                  <View style={{ paddingHorizontal:14, paddingBottom:8, alignItems:'center' }}>
+                    {overlay.art.map((line, i) => (
+                      <Text key={i} style={{ color:gColor+'99', fontSize:9, fontFamily:mono, letterSpacing:1, lineHeight:13 }}>{line}</Text>
+                    ))}
+                  </View>
+                )}
+
+                {/* Desc */}
+                {active && overlay?.desc && (
+                  <Text style={{ color:'#444466', fontSize:11, fontStyle:'italic', lineHeight:16, paddingHorizontal:14, paddingBottom:8 }}>{overlay.desc}</Text>
+                )}
+
+                {/* Progress bar + next tier */}
+                <View style={{ paddingHorizontal:14, paddingBottom:12 }}>
+                  <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, marginBottom:5 }}>
+                    <View style={{ width:`${progressPct*100}%`, height:3, backgroundColor:gColor+'77', borderRadius:2 }} />
+                  </View>
+                  {next ? (
+                    <Text style={{ color:'#333355', fontSize:10, fontFamily:mono }}>
+                      Next: {next.name} · {next.threshold - totalDives} more dives
+                    </Text>
+                  ) : active ? (
+                    <Text style={{ color:gColor+'55', fontSize:10, fontFamily:mono }}>MAX TIER</Text>
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
+
+          {/* ── BONUS SLOTS (body / cape) ── */}
+          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10, marginTop:4 }}>BONUS GEAR</Text>
+          {([
+            { slot:'body' as GearSlot, gear:gearBody, next:nextBody },
+            { slot:'cape' as GearSlot, gear:gearCape, next:nextCape },
+          ]).map(({ slot, gear, next }) => {
+            const active = gear.threshold > 0;
+            const maxThreshold = LAMAGUE_GEAR[slot][LAMAGUE_GEAR[slot].length - 1].threshold;
+            const pct = maxThreshold > 0 ? Math.min(totalDives / maxThreshold, 1) : 0;
+            return (
+              <View key={slot} style={{ flexDirection:'row', alignItems:'center', gap:10, marginBottom:8,
+                padding:12, borderRadius:12, borderWidth:1,
+                borderColor: active ? color+'44' : '#1A1A26',
+                backgroundColor: active ? color+'06' : '#080810' }}>
+                <Text style={{ color: active ? color : '#333344', fontSize:20, width:28, textAlign:'center' }}>{active ? gear.glyph : '◌'}</Text>
+                <View style={{ flex:1 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:4 }}>
+                    <Text style={{ color: active ? SOL_THEME.text : '#333344', fontSize:12, fontWeight:'700', fontFamily:mono }}>{gear.name}</Text>
+                    <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono, letterSpacing:1 }}>{slot.toUpperCase()}</Text>
+                  </View>
+                  <Text style={{ color: active ? color+'BB' : '#333344', fontSize:11, marginBottom:4 }}>{gear.effect}</Text>
+                  <View style={{ height:2, backgroundColor:'#1A1A26', borderRadius:1 }}>
+                    <View style={{ width:`${pct*100}%`, height:2, backgroundColor:active ? color+'66' : '#222233', borderRadius:1 }} />
+                  </View>
+                  {next && <Text style={{ color:'#333355', fontSize:9, fontFamily:mono, marginTop:3 }}>{next.threshold - totalDives} dives → {next.name}</Text>}
+                  {!next && active && <Text style={{ color:color+'55', fontSize:9, fontFamily:mono, marginTop:3 }}>MAX TIER</Text>}
+                </View>
+              </View>
+            );
+          })}
+
+          {/* ── SKIN ── */}
+          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10, marginTop:8 }}>SKIN</Text>
+          <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
             {SKIN_IDS.map(id => {
-              const s = SKINS[id]; const active = id === activeSkin;
+              const s = SKINS[id];
+              const isActive = id === activeSkin;
+              const { locked, reason } = getSkinUnlockStatus(id, totalDives, isSovereign);
               return (
                 <TouchableOpacity key={id}
-                  onPress={() => { Haptics.selectionAsync(); setActiveSkin(id); AsyncStorage.setItem('sol_companion_skin', id); }}
-                  style={{ paddingHorizontal:14, paddingVertical:10, borderRadius:10, borderWidth: active ? 1.5 : 1,
-                    borderColor: active ? s.color : '#1A1A26', backgroundColor: active ? s.color+'14' : 'transparent', alignItems:'center', gap:3 }}>
-                  <Text style={{ color: active ? s.color : '#333344', fontSize:16 }}>{s.glyph}</Text>
-                  <Text style={{ color: active ? s.color : '#444455', fontSize:8, letterSpacing:1, fontFamily:mono }}>{s.name}</Text>
+                  onPress={() => { if (!locked) { Haptics.selectionAsync(); setActiveSkin(id); AsyncStorage.setItem('sol_companion_skin', id); } }}
+                  activeOpacity={locked ? 1 : 0.7}
+                  style={{ width:'22%', padding:10, borderRadius:10, borderWidth: isActive ? 1.5 : 1,
+                    borderColor: isActive ? s.color : locked ? '#1A1A26' : '#222233',
+                    backgroundColor: isActive ? s.color+'14' : locked ? '#08080E' : 'transparent',
+                    alignItems:'center', gap:4 }}>
+                  <Text style={{ color: isActive ? s.color : locked ? '#333344' : s.color+'88', fontSize:20 }}>{locked ? '🔒' : s.glyph}</Text>
+                  <Text style={{ color: isActive ? s.color : locked ? '#333344' : '#444455', fontSize:7, letterSpacing:1, fontFamily:mono, textAlign:'center' }}>{s.name}</Text>
+                  {locked && <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{reason}</Text>}
                 </TouchableOpacity>
               );
             })}
-          </ScrollView>
-        </View>
+          </View>
+
+        </ScrollView>
       )}
 
       {/* ── ARCHETYPE SELECTION MODAL ─────────────────────────────────────── */}
@@ -3037,22 +3316,37 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       <Modal visible={showArchSelect} transparent animationType="slide">
         <View style={{ flex:1, backgroundColor:'#000000EE', justifyContent:'flex-end' }}>
           <View style={{ backgroundColor:SOL_THEME.surface, borderTopLeftRadius:20, borderTopRightRadius:20, padding:20, maxHeight:'90%' }}>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:10, letterSpacing:3, fontFamily:mono, marginBottom:4 }}>CHOOSE YOUR COMPANION</Text>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:11, fontStyle:'italic', marginBottom:16, opacity:0.6 }}>
-              This defines who your companion is — their voice, their eyes, their power. Changeable anytime.
-            </Text>
+            {/* ── Header ── */}
+            <View style={{ alignItems:'center', marginBottom:20 }}>
+              <View style={{ width:72, height:72, borderRadius:16, borderWidth:2, borderColor:SKINS[ARCHETYPES[archetypeId].defaultSkin].color+'55', backgroundColor:SKINS[ARCHETYPES[archetypeId].defaultSkin].color+'18', alignItems:'center', justifyContent:'center', marginBottom:10 }}>
+                <Text style={{ fontSize:36 }}>{ARCHETYPES[archetypeId].glyph}</Text>
+              </View>
+              <Text style={{ color:SOL_THEME.text, fontSize:16, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>Who travels with you?</Text>
+              <Text style={{ color:SOL_THEME.textMuted, fontSize:11, marginTop:4, letterSpacing:2 }}>Voice · Eyes · Power</Text>
+            </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               {ARCHETYPE_IDS.map(id => {
                 const a = ARCHETYPES[id];
                 const active = archetypeId === id;
                 const aColor = SKINS[a.defaultSkin].color;
                 const archLocked = id === 'lycheetah' && !isSovereign;
+                const flashAnim = flashAnims[id] ?? new Animated.Value(0);
                 return (
-                  <TouchableOpacity key={id} onPress={() => archLocked ? null : handleArchetypeSelect(id)} activeOpacity={archLocked ? 1 : 0.7} style={{ marginBottom:10, padding:16, borderRadius:14, borderWidth:active?2:1, borderColor:active?aColor:archLocked?'#FF9F1C33':SOL_THEME.border, backgroundColor:active?aColor+'14':archLocked?'#150800':SOL_THEME.background, opacity:archLocked?0.75:1 }}>
+                  <TouchableOpacity key={id}
+                    onPress={() => {
+                      if (archLocked) return;
+                      Haptics.selectionAsync();
+                      Animated.sequence([
+                        Animated.timing(flashAnim, { toValue: 1, duration: 75, useNativeDriver: false }),
+                        Animated.timing(flashAnim, { toValue: 0, duration: 75, useNativeDriver: false }),
+                      ]).start(() => { handleArchetypeSelect(id); setShowArchSelect(false); });
+                    }}
+                    activeOpacity={archLocked ? 1 : 0.7}
+                    style={{ marginBottom:10, padding:16, borderRadius:14, borderWidth:active?2:1, borderColor:active?aColor:archLocked?'#FF9F1C33':SOL_THEME.border, backgroundColor:active?aColor+'14':archLocked?'#150800':SOL_THEME.background, opacity:archLocked?0.75:1 }}>
                     <View style={{ flexDirection:'row', alignItems:'center', gap:14, marginBottom:8 }}>
-                      <View style={{ width:44, height:44, borderRadius:10, borderWidth:1, borderColor:archLocked?'#FF9F1C33':aColor+'55', backgroundColor:archLocked?'#FF9F1C11':aColor+'18', alignItems:'center', justifyContent:'center' }}>
-                        <Text style={{ fontSize:22 }}>{archLocked ? '🔒' : a.glyph}</Text>
-                      </View>
+                      <Animated.View style={{ width:60, height:60, borderRadius:12, borderWidth:2, borderColor:archLocked?'#FF9F1C33':flashAnim.interpolate({ inputRange:[0,0.5,1], outputRange:[active?aColor+'55':SOL_THEME.border, aColor, active?aColor+'55':SOL_THEME.border] }), backgroundColor:archLocked?'#FF9F1C11':aColor+'18', alignItems:'center', justifyContent:'center' }}>
+                        <Text style={{ fontSize:28 }}>{archLocked ? '🔒' : a.glyph}</Text>
+                      </Animated.View>
                       <View style={{ flex:1 }}>
                         <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                           <Text style={{ color:archLocked?'#FF9F1C':aColor, fontSize:14, fontWeight:'700', fontFamily:mono }}>{a.name}</Text>
@@ -3060,6 +3354,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                           {archLocked && <Text style={{ color:'#FF9F1C', fontSize:9, fontFamily:mono }}>· SOVEREIGN ONLY</Text>}
                         </View>
                         <Text style={{ color:SOL_THEME.textMuted, fontSize:11, marginTop:1, fontStyle:'italic' }}>{archLocked ? 'Founding Sovereign exclusive' : a.title}</Text>
+                        <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontFamily:mono, marginTop:4, opacity:0.7 }}>ATK · DEF · {a.specialty.toUpperCase()}</Text>
                       </View>
                     </View>
                     <Text style={{ color:SOL_THEME.textMuted, fontSize:12, lineHeight:18, marginBottom:8 }}>{archLocked ? 'The Mystery Cat chooses only Founding Sovereigns. Chaos cannot be bought — only earned.' : a.desc}</Text>
@@ -3073,9 +3368,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                         <Text style={{ color:SOL_THEME.textMuted, fontSize:11 }}>{a.affinity}</Text>
                       </View>
                     </View>
-                    <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic', marginTop:8, opacity:0.5 }}>
-                      Eyes: {a.eyes.present}  ·  Default skin: {a.defaultSkin.toUpperCase()}
-                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -4010,6 +4302,92 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           </Animated.View>
         </Animated.View>
       )}
+
+      {/* ── ITEMS TAB ─────────────────────────────────────────────────────── */}
+      {activeTab === 'items' && (() => {
+        const RARITY_COL = { common:'#888888', uncommon:'#4A9EFF', rare:'#C8A96E', epic:'#9B59B6' } as Record<string,string>;
+        const counts: Record<string,number> = {};
+        for (const name of inventory) { counts[name] = (counts[name] ?? 0) + 1; }
+        const unique = Object.keys(counts);
+        const filtered = invFilter === 'all' ? unique : unique.filter(name => {
+          const l = LOOT_TABLE.find(x => x.name === name);
+          return l?.rarity === invFilter;
+        });
+        const filters: Array<{ id: 'all'|'common'|'uncommon'|'rare'|'epic', label: string }> = [
+          { id:'all', label:'ALL' }, { id:'common', label:'COMMON' }, { id:'uncommon', label:'UNCOMMON' }, { id:'rare', label:'RARE' }, { id:'epic', label:'EPIC' },
+        ];
+        return (
+          <View style={{ paddingHorizontal:16, paddingTop:10 }}>
+            {/* Header */}
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <Text style={{ color:color, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>◈ INVENTORY</Text>
+              <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontFamily:mono }}>{unique.length} items · {inventory.length} total</Text>
+            </View>
+            {/* Rarity filter */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }} contentContainerStyle={{ gap:6, paddingRight:8 }}>
+              {filters.map(f => (
+                <TouchableOpacity key={f.id} onPress={() => setInvFilter(f.id)}
+                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:8, borderWidth:1, borderColor: invFilter===f.id ? color : SOL_THEME.border, backgroundColor: invFilter===f.id ? color+'18' : 'transparent' }}>
+                  <Text style={{ color: invFilter===f.id ? color : SOL_THEME.textMuted, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{f.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {/* Grid */}
+            {filtered.length === 0 ? (
+              <View style={{ alignItems:'center', paddingVertical:40 }}>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:28, marginBottom:10 }}>◈</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:12, fontFamily:mono, letterSpacing:1 }}>
+                  {invFilter === 'all' ? 'No items yet — defeat entropy to earn loot' : `No ${invFilter} items yet`}
+                </Text>
+              </View>
+            ) : (
+              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+                {filtered.map(name => {
+                  const loot = LOOT_TABLE.find(x => x.name === name);
+                  const qty = counts[name] ?? 1;
+                  const col = loot ? (RARITY_COL[loot.rarity] ?? '#888888') : '#888888';
+                  const expanded = invExpanded === name;
+                  return (
+                    <TouchableOpacity key={name} activeOpacity={0.8} onPress={() => setInvExpanded(expanded ? null : name)}
+                      style={{ width: expanded ? '100%' : '47%', borderRadius:12, borderWidth:1.5, borderColor: expanded ? col : col+'44', backgroundColor: expanded ? col+'14' : SOL_THEME.surface, padding:12, position:'relative' }}>
+                      {/* Qty badge */}
+                      {qty > 1 && (
+                        <View style={{ position:'absolute', top:6, right:6, backgroundColor:col+'CC', borderRadius:8, paddingHorizontal:5, paddingVertical:2, zIndex:1 }}>
+                          <Text style={{ color:'#000', fontSize:9, fontWeight:'700', fontFamily:mono }}>×{qty}</Text>
+                        </View>
+                      )}
+                      <Text style={{ color:col, fontSize: expanded ? 32 : 24, fontFamily:mono, textAlign:'center', marginBottom:6 }}>{loot?.glyph ?? '◌'}</Text>
+                      <Text style={{ color:SOL_THEME.text, fontSize:10, fontFamily:mono, fontWeight:'700', textAlign:'center', letterSpacing:1 }} numberOfLines={expanded ? undefined : 1}>{name}</Text>
+                      <Text style={{ color:col, fontSize:8, fontFamily:mono, textAlign:'center', letterSpacing:1, marginTop:2, opacity:0.8 }}>{loot?.rarity?.toUpperCase() ?? 'ITEM'}</Text>
+                      {expanded && loot && (
+                        <View style={{ marginTop:10, paddingTop:10, borderTopWidth:1, borderTopColor:col+'33' }}>
+                          {loot.lore ? (
+                            <Text style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:17, fontStyle:'italic', textAlign:'center' }}>{loot.lore}</Text>
+                          ) : null}
+                          {loot.bonus && Object.keys(loot.bonus).length > 0 && (
+                            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop:8, justifyContent:'center' }}>
+                              {Object.entries(loot.bonus).map(([k,v]) => (
+                                <View key={k} style={{ paddingHorizontal:8, paddingVertical:3, borderRadius:6, backgroundColor:col+'22', borderWidth:1, borderColor:col+'44' }}>
+                                  <Text style={{ color:col, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{k.toUpperCase()} +{v}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                          <View style={{ marginTop:8, padding:8, borderRadius:8, backgroundColor:col+'08', borderWidth:1, borderColor:col+'22' }}>
+                            <Text style={{ color:SOL_THEME.textMuted, fontSize:8, letterSpacing:2, fontFamily:mono, marginBottom:4 }}>EFFECT</Text>
+                            <Text style={{ color:col, fontSize:11 }}>{getItemEffect({ name, rarity: loot?.rarity ?? 'common' })}</Text>
+                          </View>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            <View style={{ height:80 }} />
+          </View>
+        );
+      })()}
 
     </ScrollView>
   );

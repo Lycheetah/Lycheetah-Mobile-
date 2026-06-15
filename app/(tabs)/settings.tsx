@@ -62,6 +62,8 @@ export default function SettingsScreen() {
   const [premiumOn, setPremiumOn] = useState(false);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [devMode, setDevMode] = useState(false);
+  const [devTapCount, setDevTapCount] = useState(0);
 
   useEffect(() => {
     getModel().then(m => {
@@ -210,11 +212,20 @@ export default function SettingsScreen() {
       </TouchableOpacity>
 
       {/* ─── AI PROVIDERS ─── */}
-      <SectionDivider label="AI PROVIDERS" glyph="⊙" />
+      <TouchableOpacity
+        onPress={() => {
+          const next = devTapCount + 1;
+          setDevTapCount(next);
+          if (next >= 5) { setDevMode(d => !d); setDevTapCount(0); }
+        }}
+        activeOpacity={1}
+      >
+        <SectionDivider label="AI PROVIDERS" glyph="⊙" />
+      </TouchableOpacity>
 
       <View style={styles.freeBanner}>
         <Text style={styles.freeBannerTitle}>★ START FREE</Text>
-        <Text style={styles.freeBannerBody}>Gemini is free via Google AI Studio. DeepSeek gives free credits on signup.</Text>
+        <Text style={styles.freeBannerBody}>Please test the free models below — Gemini, NVIDIA NIM (Llama, Mistral, Qwen, Kimi), and more. Each has a different feel.</Text>
         <TouchableOpacity onPress={() => Linking.openURL('https://aistudio.google.com/apikey')}>
           <Text style={styles.freeBannerLink}>Get Gemini key → aistudio.google.com</Text>
         </TouchableOpacity>
@@ -230,13 +241,13 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {/* NVIDIA free model reminder */}
-      <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#76B90033', backgroundColor: '#76B90008', marginBottom: 12 }}>
-        <Text style={{ color: '#76B900', fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 3 }}>⚡ NVIDIA NIM — 25+ FREE MODELS</Text>
-        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 16 }}>Add your free NVIDIA key and explore different minds — Kimi K2, Llama, Mistral, Qwen and more. Each model has a different personality. Try a few.</Text>
-      </View>
+      {devMode && (
+        <View style={{ padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#FF000033', backgroundColor: '#FF000008', marginBottom: 8 }}>
+          <Text style={{ color: '#FF4444', fontSize: 9, letterSpacing: 2 }}>◈ DEV MODE — all providers visible</Text>
+        </View>
+      )}
 
-      {PROVIDERS.map(provider => {
+      {PROVIDERS.filter(p => devMode || p.id !== 'deepseek').map(provider => {
         const isExpanded = expandedProvider === provider.id;
         const savedKey = savedKeys[provider.id];
         const hasKey = !!savedKey;
