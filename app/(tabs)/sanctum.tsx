@@ -126,6 +126,14 @@ export default function SanctumScreen() {
   // Today's dives
   const [todayDives, setTodayDives] = useState<Array<{ subjectName: string; domainGlyph: string; domainColor: string; domainLabel: string; durationSec: number }>>([]);
 
+  // Companion live state
+  const [sanctumTotalDives, setSanctumTotalDives] = useState(0);
+  const [sanctumArchetype, setSanctumArchetype] = useState('');
+  const [sanctumStage, setSanctumStage] = useState(0);
+  const [sanctumLamagueMastery, setSanctumLamagueMastery] = useState(0);
+  const [sanctumBattleWave, setSanctumBattleWave] = useState(0);
+  const [sanctumGearTier, setSanctumGearTier] = useState(0);
+
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
@@ -279,6 +287,34 @@ export default function SanctumScreen() {
         setTodayDives(all.filter(d => d.date === today).slice(0, 5));
       } catch {}
     }
+
+    // Companion live state
+    try {
+      const [archRaw, lamRaw, batRaw, invRaw] = await Promise.all([
+        AsyncStorage.getItem('sol_companion_archetype'),
+        AsyncStorage.getItem('sol_lamague_progress'),
+        AsyncStorage.getItem('sol_companion_battle'),
+        AsyncStorage.getItem('sol_dive_log'),
+      ]);
+      const diveAll = invRaw ? JSON.parse(invRaw) : [];
+      setSanctumTotalDives(diveAll.length);
+      const STAGE_THRESHOLDS = [0, 5, 25, 50, 100, 200];
+      const stg = STAGE_THRESHOLDS.reduce((s, t, i) => diveAll.length >= t ? i : s, 0);
+      setSanctumStage(stg);
+      if (archRaw) setSanctumArchetype(archRaw);
+      if (lamRaw) {
+        const lam = JSON.parse(lamRaw);
+        setSanctumLamagueMastery(lam.masteredSymbols?.length ?? 0);
+      }
+      if (batRaw) {
+        const bat = JSON.parse(batRaw);
+        setSanctumBattleWave(bat.wave ?? 1);
+      }
+      // Gear tier: highest unlocked tier across all slots (simple proxy = total dives)
+      const d = diveAll.length;
+      const GEAR_MILESTONE = d >= 150 ? 4 : d >= 100 ? 3 : d >= 50 ? 2 : d >= 10 ? 1 : 0;
+      setSanctumGearTier(GEAR_MILESTONE);
+    } catch {}
 
     // Day Report — load cached report for today
     const dayReportRaw = await AsyncStorage.getItem(`sol_day_report_${todayKey()}`);
@@ -672,6 +708,53 @@ export default function SanctumScreen() {
               </View>
             </View>
           )}
+
+          {/* Companion Pulse Card */}
+          {sanctumTotalDives > 0 && (() => {
+            const STAGE_GLYPHS = ['○', '◌', '◎', '⊚', '✦', '⊕'];
+            const STAGE_NAMES  = ['SEED', 'SPARK', 'FLAME', 'FORGE', 'SOVEREIGN', 'ASCENDANT'];
+            const ARCH_GLYPHS: Record<string, string> = { archivist:'◎', alchemist:'⟲', oracle:'◈', sentinel:'⊞', wanderer:'↗', vigil:'◎', lycheetah:'⧟' };
+            const stageGlyph = STAGE_GLYPHS[sanctumStage] ?? '◌';
+            const stageName  = STAGE_NAMES[sanctumStage]  ?? 'SEED';
+            const archGlyph  = sanctumArchetype ? (ARCH_GLYPHS[sanctumArchetype] ?? '✦') : '✦';
+            const lamPct     = Math.round((sanctumLamagueMastery / 40) * 100);
+            const mono_      = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+            return (
+              <View style={{ marginTop: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07' }}>
+                <Text style={{ color: accentColor, fontSize: 10, fontFamily: mono_, fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>◆ COMPANION STATUS</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
+                  <View style={{ alignItems: 'center', minWidth: 54 }}>
+                    <Text style={{ color: accentColor, fontSize: 22, fontFamily: mono_ }}>{stageGlyph}</Text>
+                    <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>{stageName}</Text>
+                  </View>
+                  <View style={{ alignItems: 'center', minWidth: 54 }}>
+                    <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{sanctumTotalDives}</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>DIVES</Text>
+                  </View>
+                  <View style={{ alignItems: 'center', minWidth: 54 }}>
+                    <Text style={{ color: accentColor, fontSize: 22, fontFamily: mono_ }}>{archGlyph}</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>{sanctumArchetype ? sanctumArchetype.toUpperCase().slice(0, 6) : 'NONE'}</Text>
+                  </View>
+                  <View style={{ alignItems: 'center', minWidth: 54 }}>
+                    <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>⚔{sanctumBattleWave}</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>WAVE</Text>
+                  </View>
+                  {sanctumLamagueMastery > 0 && (
+                    <View style={{ alignItems: 'center', minWidth: 54 }}>
+                      <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{lamPct}%</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>LAMAGUE</Text>
+                    </View>
+                  )}
+                  {sanctumGearTier > 0 && (
+                    <View style={{ alignItems: 'center', minWidth: 54 }}>
+                      <Text style={{ color: accentColor, fontSize: 22, fontFamily: mono_ }}>{'◌◦⊚✦⊕'[sanctumGearTier - 1] ?? '◦'}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>GEAR T{sanctumGearTier}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          })()}
 
           {/* LQ History Sparkline */}
           {lqHistory.length >= 2 && (() => {

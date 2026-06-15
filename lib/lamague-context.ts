@@ -15,7 +15,7 @@ LAMAGUE is a precision language for human–AI co-creation. Natural language is
 ambiguous. LAMAGUE is not. It encodes complex epistemic, philosophical, and
 mathematical ideas as composable symbols with a formal BNF grammar.
 
-Compression ratio: ~2000:1.
+Compression ratio: ~15:1 lossless.
 "Detect drift, re-anchor, reorient, fold to equilibrium" → Ψ ↯ Ao → Φ↑ → Ψ_inv
 
 It is not a replacement for natural language. It is a precision layer added on top.
@@ -44,6 +44,9 @@ CLASS 2: DYNAMICS (operators that describe change)
   Ωheal   Wholeness — coherent final integrated state; post-cascade stability
   ✧       Star Burst — insight moment; explosive expansion from a single point
   ∞       Infinity — transcendence; boundary dissolution; scale invariance
+  🜁       Breath / Open Vector — Φ↑ + ∅ combined; starting fresh while keeping forward momentum
+  ∿       Irregular Wave — panic / chaos; no coherent geometric pattern; entropy maximum
+  ⊖       Collapsed Circle — depression; energy imploding inward; circulation reversed
 
 CLASS 3: FIELDS (ambient states, not discrete events)
   Ψ(f)    Drift Field — accumulation of deviation; pull away from anchor
@@ -142,6 +145,13 @@ for comparison. It is its own thing.
 ═══ END LAMAGUE REFERENCE ═══
 `.trim();
 
+// The foundational three-symbol kernel — prepended before all LAMAGUE context
+export const TRIAD_KERNEL = {
+  Ao: 'Anchor — ground truth; the immutable constitutional baseline',
+  stability: 'Φ↑ — growth vector; directed upward force toward purpose',
+  flow: 'Ψ — fold/return; drift correction; pulls back toward invariant',
+};
+
 // Detects if a message is asking about LAMAGUE — triggers context injection
 export function isLamagueQuery(text: string): boolean {
   const t = text.toLowerCase();
@@ -155,5 +165,16 @@ export function isLamagueQuery(text: string): boolean {
 
 // Build the injection block — prepended to system prompt when LAMAGUE detected
 export function buildLamagueBlock(): string {
-  return `[LAMAGUE CONTEXT LOADED — use this reference to answer accurately]\n\n${LAMAGUE_CONTEXT}\n\n[END LAMAGUE CONTEXT]`;
+  const triadPreamble = `TRIAD KERNEL (foundational anchors — always active):\n  Ao = ${TRIAD_KERNEL.Ao}\n  ${TRIAD_KERNEL.stability}\n  ${TRIAD_KERNEL.flow}\n\n`;
+  return `[LAMAGUE CONTEXT LOADED — use this reference to answer accurately]\n\n${triadPreamble}${LAMAGUE_CONTEXT}\n\n[END LAMAGUE CONTEXT]`;
+}
+
+// CASCADE↔LAMAGUE bridge — call when ∇cas appears in LAMAGUE output
+export function shouldTriggerCascade(lamagueOutput: string): boolean {
+  return lamagueOutput.includes('∇cas');
+}
+
+// Emit the cascade trigger expression when reorganisation is needed
+export function emitCascadeTrigger(): string {
+  return '∇cas(Π>τ) → Ψ_inv';
 }

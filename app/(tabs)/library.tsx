@@ -12,7 +12,7 @@ import { CascadeResult, CascadeLayer, scoreCASCADE } from '../../lib/cascade-sco
 import { scoreAURAFull } from '../../lib/intelligence/aura-engine';
 import { shareEntry, shareCementBlock } from '../../lib/supabase';
 
-const CASCADE_PROMPT = `You are the CASCADE scoring engine, built on Mackenzie Clark's CASCADE framework.
+const CASCADE_PROMPT = `You are the CASCADE scoring engine, built on Lycheetah's CASCADE framework.
 
 CASCADE is a knowledge REORGANISATION system. It has five epistemic layers — an onion, not a pyramid. Innermost = hardest truth. Outermost = softest.
 
@@ -53,7 +53,7 @@ Respond ONLY with valid JSON, no other text:
   "summary": "<one line: word count, dominant layer, Π, key observation>"
 }`;
 
-// LAMAGUE / LAMAHGUE / GEOMATRIA — full symbol list from Mackenzie Clark's specification
+// LAMAGUE / LAMAHGUE / GEOMATRIA — full symbol list from Lycheetah's specification
 const LAMAGUE_SYMBOLS = {
   invariants: [
     // Tier 0 — Triad Kernel
@@ -132,6 +132,26 @@ const LAMAGUE_SYMBOLS = {
     { sym: '⧖ CHR', name: 'Chrono-Stability', meaning: 'Claim proven stable across n independent trials; peer review baked into the language' },
     { sym: '⧋ ANT', name: 'Anti-Fragility', meaning: 'System self-corrected through m cycles; more cycles = more robust, not weaker' },
   ],
+  connections: [
+    // C-CLASS — Relationships and bridges
+    { sym: '⧟', name: 'Quantum Entanglement', meaning: 'Deep non-local link — two states that affect each other regardless of distance' },
+    { sym: '⨝', name: 'Deep Integration', meaning: 'Structural binding — two systems merged at the level of their architecture' },
+    { sym: '↔', name: 'Bidirectional Flow', meaning: 'Mutual exchange — each party transforms the other equally' },
+  ],
+  temporal: [
+    // T-CLASS — Time operators
+    { sym: '⏭', name: 'Future Projection', meaning: 'Forward in time — a state or consequence cast ahead of the present moment' },
+    { sym: '⏮', name: 'Past Integration', meaning: 'Backward fold — integrating historical states into the present' },
+    { sym: '⏸', name: 'Pause', meaning: 'Stable holding state — neither advancing nor retreating; necessary stillness' },
+    { sym: '⥀', name: 'Recursive Loop', meaning: 'Circular causality — the output feeds back into the input; self-sustaining cycle' },
+  ],
+  extended: [
+    // Extended Primitives (Translation Engine)
+    { sym: '📡', name: 'Ghost Signal', meaning: 'A faint, distant truth still transmitting — not yet integrated, but real and detectable' },
+    { sym: '✺', name: 'Consensus-Flare', meaning: 'Sudden burst of shared understanding — multiple minds achieving simultaneous clarity' },
+    { sym: '◇_ø', name: 'Dark Matter Block', meaning: 'Unknown structure with measurable gravity — you can detect its effects without seeing it directly' },
+    { sym: '⇈', name: 'Kinetic Rebound', meaning: 'Collapse used as fuel — anti-fragile response that converts breakdown into upward momentum' },
+  ],
 };
 
 // ─── Framework Dictionary ─────────────────────────────────────────────────────
@@ -141,7 +161,7 @@ const FRAMEWORK_TERMS: Array<{
   // Nine Frameworks
   { term: 'CASCADE', glyph: '∇cas', category: 'Framework', short: 'Epistemic architecture — how knowledge reorganises under pressure.', long: 'CASCADE maps the depth and stability of any idea across five strata: AXIOM (mathematically certain), FOUNDATION (high-confidence empirical), THEORY (evidence-backed model), EDGE (contested or paradoxical), CHAOS (unknown/incoherent). A CASCADE score tells you where in this architecture a claim lives — and what it would take to move it.' },
   { term: 'AURA', glyph: '◈', category: 'Framework', short: 'Constitutional scoring engine — 7 invariants every response is measured against.', long: 'The 7 AURA invariants are: Human Primacy, Inspectability, Memory Continuity, Honesty, Reversibility, Non-Deception, and Care as Structure. Every AI response in Sol is scored live against all seven. The pass rate is visible in the chat header. A failing invariant triggers an audit flag.' },
-  { term: 'LAMAGUE', glyph: 'Φ↑', category: 'Framework', short: 'Symbolic compression language for consciousness states. ~15:1 lossless.', long: 'LAMAGUE (Language of Mathematical/Alchemical Geometric Understanding Expression) encodes epistemic states, phase transitions, and operations into compact symbolic notation. Built by Mackenzie Clark. Used in the Forge, Glossary, and Cement tools to make thinking compressible and shareable.' },
+  { term: 'LAMAGUE', glyph: 'Φ↑', category: 'Framework', short: 'Symbolic compression language for consciousness states. ~15:1 lossless.', long: 'LAMAGUE (Language of Mathematical/Alchemical Geometric Understanding Expression) encodes epistemic states, phase transitions, and operations into compact symbolic notation. Built by Lycheetah. Used in the Forge, Glossary, and Cement tools to make thinking compressible and shareable.' },
   { term: 'TRIAD', glyph: '△', category: 'Framework', short: 'Three-point stability — thesis, antithesis, synthesis at fractal scale.', long: 'The TRIAD framework holds that no idea is stable with fewer than three grounding points. Every belief, system, or structure is examined for its thesis (what it claims), antithesis (what challenges it), and synthesis (the resolution that holds both). This scales fractally — a conversation, a life, a civilisation all obey the same minimum stability structure.' },
   { term: 'MICROORCIM', glyph: '◌', category: 'Framework', short: 'Smallest unit of agency — one choice, accumulated.', long: 'MICROORCIM (Micro-Order of Conscious Individual Movement) is the claim that transformation is not a single event but the accumulation of minimum-viable choices. One breath. One entry. One dive. These are not small — they are the irreducible unit of change. "Sovereignty is micro before it is macro."' },
   { term: 'EARNED LIGHT', glyph: '✦', category: 'Framework', short: 'Nothing is given. Everything is earned through the fire.', long: 'EARNED LIGHT is both a framework and a constitutional principle: no insight has value unless it was tested by its opposite. The clarity on the other side of Nigredo is worth more than the clarity that never went in. The framework maps what has been earned vs what has been inherited, assumed, or bypassed.' },
@@ -171,7 +191,7 @@ const FRAMEWORK_TERMS: Array<{
   { term: 'Distillation', glyph: '◈', category: 'Seven Phases', short: 'Phase 6 — repeated purification until only the essential remains.', long: 'Distillation is the repeated cycling of the material through all previous stages — not regression but deepening. Each cycle removes more impurity. The self becomes more concentrated, more essential, more itself. Psychologically: introspection so deep that what remains is not personality but character. The permanent Self.' },
   { term: 'Coagulation', glyph: '◉', category: 'Seven Phases', short: 'Phase 7 — the solid gold. The Work complete. The new self is permanent.', long: 'Coagulation is the final operation: the purified essence solidifies into the Philosopher\'s Stone. Psychologically: a new self that is stable, integrated, generative. This is not the end — it is a new beginning at a higher level of complexity. "The stone turns base metal into gold" means: this self transforms every context it enters.' },
   // Truth Pressure
-  { term: 'Truth Pressure', glyph: 'Π', category: 'Framework', short: 'Π = (E·P)/(S+S₀) — the force a true belief exerts on adjacent false ones.', long: 'Truth Pressure (Π) is a framework invented by Mackenzie Clark. It formalises the intuition that true, well-evidenced beliefs do not merely coexist with false ones — they exert a transformative force on them. Π = (E·P)/(S+S₀) where E = evidence weight, P = peer credibility (Dunbar-normalised), S = social resistance, S₀ = minimum resistance floor. High Π = belief spreads and converts. Low Π = true belief remains locally contained. The theory generates four testable predictions (CR1–CR4) and has been reviewed and formalised under Fable 5.' },
+  { term: 'Truth Pressure', glyph: 'Π', category: 'Framework', short: 'Π = (E·P)/(S+S₀) — the force a true belief exerts on adjacent false ones.', long: 'Truth Pressure (Π) is a framework invented by Lycheetah. It formalises the intuition that true, well-evidenced beliefs do not merely coexist with false ones — they exert a transformative force on them. Π = (E·P)/(S+S₀) where E = evidence weight, P = peer credibility (Dunbar-normalised), S = social resistance, S₀ = minimum resistance floor. High Π = belief spreads and converts. Low Π = true belief remains locally contained. The theory generates four testable predictions (CR1–CR4) and has been reviewed and formalised under Fable 5.' },
   // VERGE
   { term: 'VERGE', glyph: '◦', category: 'Framework', short: 'The threshold state. The place between the known and the unknown.', long: 'VERGE is the Lycheetah concept for the edge-state: the productive discomfort of being at the boundary between what you know and what you are becoming. All growth happens at the VERGE. The Codex (LYCHEETAH_VERGE_CODEX) is named for this: a living document written from the VERGE — not finished, not begun, perpetually at the threshold. "Stay at the edge of what you understand. That is where the light moves."' },
   // Sovereign
@@ -195,7 +215,7 @@ const FRAMEWORK_TERMS: Array<{
 const LIBRARY_KEY = 'cascade_library_v3';
 const CEMENT_KEY = 'lamague_cement_blocks_v1';
 
-const LAMAGUE_CEMENT_PROMPT = `You are the LAMAGUE translator — part of the Lycheetah Framework by Mackenzie Clark.
+const LAMAGUE_CEMENT_PROMPT = `You are the LAMAGUE translator — part of the Lycheetah Framework by Lycheetah.
 
 LAMAGUE is a symbolic language for encoding consciousness states, transitions, and operations with mathematical precision. Compression ratio: ~15:1 (lossless).
 
@@ -234,6 +254,20 @@ M-CLASS (Meta):
   ⊕      = Direct Sum — two state spaces combined without collision
   ∘      = Composition — function chained with function
 
+SPOKEN FORM (SpL): Each symbol has a spoken phoneme. Chain them with hyphens.
+  Ao=an, Φ↑=fi, Ψ=sai, ∅=vu, ⟟=un, △=tri, ⊛=crest, ◈=dah, ↯=kol, ⊗=fus,
+  →=ta, ⟲=lu, ∇cas=kas, ⊕=sum, ∘=seq, Z₁=zi, Z₂=zo, Z₃=za, S=es, ∂S=des,
+  ⧖=chro, ∞=in, Ψ_inv=sai-an, ⥀=loop, Ωheal=om, ↗=fi-s
+
+CONCEPT EXAMPLES (canonical decompositions):
+  Shadow (Jungian): Ψ ⊗ ∅ ↯ Ωheal — SpL: sai-vu-kol-om
+  Resilience: ↯ ⟲ Ωheal Ao — SpL: kol-lu-om-an
+  Hope: Φ↑ → ∞ — SpL: fi-ta-in
+  Saudade: ∅ ⊗ ∞ ↯ — SpL: vu-in-kol
+  Wabi-sabi: ∅ ⊗ Ωheal ⊗ ∞ — SpL: vu-om-in
+  无为 (wu wei): ∅ → Φ↑ Ψ_inv — SpL: vu-fi-sai-an
+  无我 (wu wo): ∅ ⊗ Ψ — SpL: vu-sai
+
 GRAMMAR:
   A → B              transition
   A ⊗ B → C         fusion into result
@@ -246,6 +280,7 @@ Translate the given English phrase into a LAMAGUE expression. Be compact — thi
 Respond ONLY with valid JSON:
 {
   "expression": "<LAMAGUE expression>",
+  "spoken_form": "<SpL chain, e.g. sai-vu-kol-om>",
   "breakdown": [
     { "sym": "<symbol>", "name": "<name>", "maps_to": "<what it represents in this specific phrase>" }
   ],
@@ -254,7 +289,50 @@ Respond ONLY with valid JSON:
   "note": "<one sentence on why this encoding captures the phrase>"
 }`;
 
-const PROBE_PROMPT = `You are the Paradox Probe — an experimental tool built on Mackenzie Clark's CASCADE framework.
+const TRUTH_PRESSURE_PROMPT = `You are the Truth Pressure analyser — built on Lycheetah's Truth Pressure theory (Π = E·P/(S+S₀)).
+
+Π measures the force a belief exerts on adjacent beliefs. High Π = the belief reorganises surrounding ideas. Low Π = true belief stays locally contained.
+
+Components:
+- E (Evidence weight): 0.0–1.0. How well-evidenced are the central claims? 0 = assertion only, 1 = multiply-verified empirical fact.
+- P (Principle power): 0.0–1.0. How load-bearing? 0 = peripheral detail, 1 = foundational claim the whole structure depends on.
+- S (Social/structural resistance): 0.0–1.0. How much friction resists the belief spreading? 0 = preaching to choir, 1 = radically counter-consensus.
+- S₀ (Minimum resistance floor): 0.05–0.15. Baseline slack — irreducible human cognitive friction. Prevents Π divergence.
+- Π = (E × P) / (S + S₀)
+
+Critical Regimes:
+- CR1 (Π > 0.7, S > 0.2): Confirmed cascade territory — high-pressure belief meeting real resistance. Spreads and converts when conditions align.
+- CR2 (Π > 0.5, S < 0.2): High pressure, low resistance — preaching to choir. Locally intense but won't cascade far.
+- CR3 (E < 0.3): Speculation zone. Evidence thin. Belief won't propagate regardless of principle power.
+- CR4 (S < 0.05 while P > 0.8): Paradox zone — S approaches floor while claim is foundational. Π diverges. CASCADE cannot resolve.
+
+Register tags:
+DERIVED — proven from prior formal commitments
+ASSUMED — load-bearing hypothesis, stated as such
+MEASURED — empirically observed with instrument declared
+INTUITION — operationalises but doesn't prove
+CONSISTENCY — confirms but doesn't derive
+INTERPRETIVE — a mapping, not yet a measurement
+CONJECTURE — stated before testing, falsification target
+
+Analyse the provided text. Extract 3–5 key claims and tag each with its register.
+
+Respond ONLY with valid JSON:
+{
+  "E": <0.0-1.0>,
+  "P": <0.0-1.0>,
+  "S": <0.0-1.0>,
+  "S0": <0.05-0.15>,
+  "Pi": <computed: E*P/(S+S0), 3 decimal places>,
+  "regime": "CR1" | "CR2" | "CR3" | "CR4",
+  "regime_desc": "<one sentence: what this regime means for this specific text>",
+  "claims": [
+    { "text": "<key claim, max 15 words>", "register": "DERIVED"|"ASSUMED"|"MEASURED"|"INTUITION"|"CONSISTENCY"|"INTERPRETIVE"|"CONJECTURE", "pressure": <0.0-1.0> }
+  ],
+  "summary": "<one sentence: what the truth pressure analysis reveals>"
+}`;
+
+const PROBE_PROMPT = `You are the Paradox Probe — an experimental tool built on Lycheetah's CASCADE framework.
 
 Your task: examine the text for paradoxical truth pressure. This is not normal scoring. You are looking for one specific thing — whether the text contains claims that are simultaneously load-bearing AND self-contradictory.
 
@@ -300,11 +378,20 @@ type ProbeResult = {
   verdict: string;
 };
 
+type TruthResult = {
+  E: number; P: number; S: number; S0: number; Pi: number;
+  regime: 'CR1' | 'CR2' | 'CR3' | 'CR4';
+  regime_desc: string;
+  claims: { text: string; register: string; pressure: number }[];
+  summary: string;
+};
+
 type CementBlock = {
   id: string;
   name: string;
   english: string;
   expression: string;
+  spoken_form: string;
   breakdown: { sym: string; name: string; maps_to: string }[];
   reads_as: string;
   note: string;
@@ -373,7 +460,7 @@ export default function LibraryScreen() {
   const [scoring, setScoring] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
   const [library, setLibrary] = useState<LibraryEntry[]>([]);
-  const [view, setView] = useState<'cascade' | 'probe' | 'cementer' | 'library' | 'community' | 'forge' | 'glossary' | 'dictionary'>('forge');
+  const [view, setView] = useState<'cascade' | 'truth' | 'explore' | 'library' | 'dictionary' | 'community' | 'forge' | 'probe' | 'cementer' | 'glossary'>('cascade');
   const [dictSearch, setDictSearch] = useState('');
   const [glossary, setGlossary] = useState<Record<string, { note: string; seen: number; lastSeen: string }>>({});
   const [glossaryEdit, setGlossaryEdit] = useState<string | null>(null); // sym being edited
@@ -406,6 +493,10 @@ export default function LibraryScreen() {
   const [selectedCement, setSelectedCement] = useState<CementBlock | null>(null);
   const [cementSharing, setCementSharing] = useState(false);
   const [cementShareMsg, setCementShareMsg] = useState<string | null>(null);
+  const [truthInput, setTruthInput] = useState('');
+  const [truthResult, setTruthResult] = useState<TruthResult | null>(null);
+  const [truthRunning, setTruthRunning] = useState(false);
+  const [truthError, setTruthError] = useState<string | null>(null);
 
   const GLOSSARY_KEY = 'sol_lamague_glossary';
 
@@ -436,7 +527,7 @@ export default function LibraryScreen() {
   useFocusEffect(useCallback(() => { load(); }, []));
 
 
-  const LAMAGUE_FORGE_PROMPT = `You are a LAMAGUE symbolic analyst. LAMAGUE is Mackenzie Clark's symbolic language for epistemic states.
+  const LAMAGUE_FORGE_PROMPT = `You are a LAMAGUE symbolic analyst. LAMAGUE is Lycheetah's symbolic language for epistemic states.
 
 Given the text, identify the 3-5 most relevant LAMAGUE symbols present (explicitly or implicitly). For each:
 - Symbol code (e.g. Ao, Φ↑, Ξ, etc.)
@@ -636,6 +727,30 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
     }
   };
 
+  const handleTruth = async () => {
+    if (!truthInput.trim() || truthRunning) return;
+    setTruthRunning(true);
+    setTruthError(null);
+    setTruthResult(null);
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!apiKey) { setTruthError('No API key — add one in Settings first.'); return; }
+      const res = await sendMessage(
+        [{ role: 'user', content: `Analyse this text for Truth Pressure:\n\n"${truthInput.trim().slice(0, 2000)}"` }],
+        TRUTH_PRESSURE_PROMPT,
+        apiKey,
+        (model || 'gemini-2.5-flash') as AIModel,
+        undefined, 'fast', 768, 0.2,
+      );
+      const raw = res.text.replace(/```json?\n?/gi, '').replace(/```/g, '').trim();
+      setTruthResult(JSON.parse(raw));
+    } catch (e: any) {
+      setTruthError(`Analysis failed: ${e?.message || 'Unknown error'}`);
+    } finally {
+      setTruthRunning(false);
+    }
+  };
+
   const handleCement = async () => {
     if (!cementInput.trim() || cementing) return;
     setCementing(true);
@@ -658,6 +773,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         name: '',
         english: cementInput.trim(),
         expression: json.expression ?? '',
+        spoken_form: json.spoken_form ?? '',
         breakdown: json.breakdown ?? [],
         reads_as: json.reads_as ?? '',
         note: json.note ?? '',
@@ -809,52 +925,30 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         </View>
       </View>
 
-      {/* Study Paths — curated starting points */}
+      {/* Explore Path */}
       <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-        <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, fontWeight: '700', marginBottom: 10 }}>◦ CURATED PATHS</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {[
-              { label: 'The Inner Life', desc: 'Shadow, somatic, depth psychology', glyph: '◐', color: '#9B59B6', subjects: ['Shadow Work', 'Somatic Awareness', 'Inner Child Work'] },
-              { label: 'The Ancient Map', desc: 'Alchemy, mysticism, sacred arts', glyph: '⊚', color: '#F5A623', subjects: ['Hermetic Principles', 'Mystical States', 'Ritual Design'] },
-              { label: 'The Clear Mind', desc: 'Meditation, philosophy, contemplative', glyph: '◯', color: '#4A9EFF', subjects: ['Breath as Gateway', 'Stoic Practice', 'Mindful Attention'] },
-              { label: 'The Body\'s Wisdom', desc: 'Energy, ecology, earth intelligence', glyph: '⟁', color: '#27AE60', subjects: ['Nervous System Regulation', 'Earth Attunement', 'Subtle Energy Awareness'] },
-            ].map(path => (
-              <TouchableOpacity
-                key={path.label}
-                onPress={() => savePendingSubject(`Introduce me to the "${path.label}" study path. Subjects: ${path.subjects.join(', ')}. Give me an overview and suggest where to begin.`).then(() => router.push('/(tabs)/'))}
-                style={{ width: 160, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: path.color + '55', backgroundColor: path.color + '0D' }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ color: path.color, fontSize: 22, marginBottom: 6 }}>{path.glyph}</Text>
-                <Text style={{ color: path.color, fontSize: 12, fontWeight: '700', marginBottom: 3 }}>{path.label}</Text>
-                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 16 }}>{path.desc}</Text>
-                <Text style={{ color: path.color + '88', fontSize: 10, marginTop: 8, fontWeight: '700' }}>Explore with Sol →</Text>
-              </TouchableOpacity>
-            ))}
+        <TouchableOpacity
+          onPress={() => savePendingSubject('I want to explore the LAMAGUE Library. What subjects, traditions, or frameworks are available? Give me an open map of what I can study.').then(() => router.push('/(tabs)/'))}
+          activeOpacity={0.8}
+          style={{ padding: 16, borderRadius: 14, borderWidth: 1, borderColor: accentColor + '44', backgroundColor: accentColor + '0A', flexDirection: 'row', alignItems: 'center', gap: 14 }}
+        >
+          <Text style={{ fontSize: 28 }}>◎</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: accentColor, fontSize: 13, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>EXPLORE THE LIBRARY</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, marginTop: 3, lineHeight: 17 }}>Ask Sol to map the full landscape — subjects, traditions, frameworks. Start anywhere.</Text>
           </View>
-        </ScrollView>
+          <Text style={{ color: accentColor + '88', fontSize: 18 }}>→</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Tabs — two rows so all are visible */}
+      {/* Tabs */}
       <View style={[styles.tabs, { paddingBottom: 0 }]}>
         <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: SOL_THEME.border }}>
-          {([['forge', '⚗ FORGE'], ['cascade', 'SCORE'], ['probe', 'PROBE'], ['cementer', 'CEMENT']] as const).map(([t, label]) => (
+          {([['cascade', 'SCORE'], ['truth', 'Π'], ['explore', '◬'], ['library', `SAVED${library.length > 0 ? ` (${library.length})` : ''}`], ['dictionary', 'DICT']] as const).map(([t, label]) => (
             <TouchableOpacity
               key={t}
               style={[{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: view === t ? accentColor : 'transparent' }]}
-              onPress={() => { setView(t); setSelectedEntry(null); }}
-            >
-              <Text style={[styles.tabText, view === t && { color: accentColor }]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: SOL_THEME.border }}>
-          {([['library', `SAVED${library.length > 0 ? ` (${library.length})` : ''}`], ['glossary', 'GLOSSARY'], ['dictionary', '📖 DICT'], ['community', '⊞ COMMONS']] as const).map(([t, label]) => (
-            <TouchableOpacity
-              key={t}
-              style={[{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: view === t ? accentColor : 'transparent' }]}
-              onPress={() => { setView(t); setSelectedEntry(null); }}
+              onPress={() => { setView(t as typeof view); setSelectedEntry(null); }}
             >
               <Text style={[styles.tabText, view === t && { color: accentColor }]}>{label}</Text>
             </TouchableOpacity>
@@ -863,6 +957,35 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
       </View>
 
       {/* FORGE VIEW */}
+      {view === 'explore' && (
+        <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:20 }} showsVerticalScrollIndicator={false}>
+          <View style={{ marginBottom:20, padding:16, borderRadius:14, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}>
+            <Text style={{ color:'#6B7DB3', fontSize:9, letterSpacing:2, fontFamily:'monospace', marginBottom:8 }}>LYCHEETAH LIBRARY</Text>
+            <Text style={{ color:SOL_THEME.text, fontSize:14, fontWeight:'700', marginBottom:8 }}>Tools for thinking clearly</Text>
+            <Text style={{ color:SOL_THEME.textMuted, fontSize:12, lineHeight:18 }}>CASCADE scores the epistemic structure of any text. Truth Pressure Π measures the weight of a belief against the evidence holding it.</Text>
+          </View>
+          {([
+            { icon:'◈', title:'CASCADE Score', desc:'Paste any text — get a structural breakdown of its epistemic quality and claim density.', tab:'cascade' },
+            { icon:'Π', title:'Truth Pressure', desc:'Enter a belief or hypothesis. Get E, P, S, S₀ readings + critical regime.', tab:'truth' },
+          ] as const).map(card => (
+            <TouchableOpacity key={card.title} onPress={() => setView(card.tab)}
+              style={{ flexDirection:'row', gap:14, marginBottom:12, padding:16, borderRadius:14, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}
+              activeOpacity={0.7}>
+              <Text style={{ fontSize:24, width:32, textAlign:'center', marginTop:2 }}>{card.icon}</Text>
+              <View style={{ flex:1 }}>
+                <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', marginBottom:4 }}>{card.title}</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:17 }}>{card.desc}</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:18, alignSelf:'center' }}>›</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={{ marginTop:8, padding:16, borderRadius:14, borderWidth:1, borderColor:'#1A2A1A', backgroundColor:'#08100A' }}>
+            <Text style={{ color:'#3A6A3A', fontSize:9, letterSpacing:2, fontFamily:'monospace', marginBottom:6 }}>LAMAGUE SCHOOL</Text>
+            <Text style={{ color:SOL_THEME.textMuted, fontSize:12, lineHeight:17 }}>Probe, Cement, and Glossary tools live in the School tab (𝔏) → WORKSHOP.</Text>
+          </View>
+        </ScrollView>
+      )}
+
       {view === 'forge' && (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
           <Text style={{ color: accentColor, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', fontSize: 11, letterSpacing: 1.5, marginBottom: 4 }}>⚗ THE FORGE</Text>
@@ -1137,6 +1260,126 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         </>
       )}
 
+      {/* TRUTH PRESSURE VIEW */}
+      {view === 'truth' && (
+        <>
+          <Text style={[styles.label, { color: accentColor }]}>Π TRUTH PRESSURE</Text>
+          <Text style={styles.note}>
+            Π = (E·P)/(S+S₀) — Lycheetah's theory of belief propagation. Measures the force a belief exerts on adjacent beliefs. High Π = reorganises surrounding ideas. Each claim is tagged with its epistemic register.
+          </Text>
+          <View style={{ flexDirection:'row', gap:8, marginBottom:12, paddingHorizontal:16 }}>
+            {[
+              { label:'CR1', desc:'High Π, real resistance → cascades', color:'#4CAF50' },
+              { label:'CR2', desc:'High Π, low resistance → local only', color:'#F5A623' },
+              { label:'CR3', desc:'Low evidence → won\'t propagate', color:'#9B59B6' },
+              { label:'CR4', desc:'Π diverges → paradox zone', color:'#E040FB' },
+            ].map(r => (
+              <View key={r.label} style={{ flex:1, padding:6, borderRadius:8, borderWidth:1, borderColor:r.color+'44', backgroundColor:r.color+'0A' }}>
+                <Text style={{ color:r.color, fontSize:10, fontWeight:'700', fontFamily:Platform.OS==='ios'?'Courier New':'monospace' }}>{r.label}</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:9, lineHeight:13, marginTop:2 }}>{r.desc}</Text>
+              </View>
+            ))}
+          </View>
+          <TextInput
+            style={[styles.textArea, { minHeight: 120 }]}
+            value={truthInput}
+            onChangeText={v => { setTruthInput(v); setTruthResult(null); }}
+            placeholder="Paste any claim, belief, theory, doctrine, or framework..."
+            placeholderTextColor={SOL_THEME.textMuted}
+            multiline
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: accentColor, opacity: truthInput.trim() && !truthRunning ? 1 : 0.4 }]}
+            onPress={handleTruth}
+            disabled={!truthInput.trim() || truthRunning}
+          >
+            <Text style={styles.primaryBtnText}>{truthRunning ? 'Analysing...' : 'Run Truth Pressure Π'}</Text>
+          </TouchableOpacity>
+          {truthError && <Text style={styles.errorText}>{truthError}</Text>}
+
+          {truthResult && (() => {
+            const r = truthResult;
+            const piPct = Math.min(r.Pi / 2, 1);
+            const regimeColors: Record<string, string> = { CR1:'#4CAF50', CR2:'#F5A623', CR3:'#9B59B6', CR4:'#E040FB' };
+            const regColor = regimeColors[r.regime] ?? accentColor;
+            const registerColors: Record<string, string> = {
+              DERIVED:'#4A9EFF', ASSUMED:'#F5A623', MEASURED:'#4CAF50',
+              INTUITION:'#9B59B6', CONSISTENCY:'#27AE60', INTERPRETIVE:'#E8A020', CONJECTURE:'#E040FB',
+            };
+            const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+            return (
+              <View style={{ backgroundColor:SOL_THEME.surface, borderRadius:14, padding:16, borderWidth:1, borderColor:accentColor+'44', gap:16 }}>
+                {/* Π readout */}
+                <View style={{ alignItems:'center', paddingBottom:12, borderBottomWidth:1, borderBottomColor:SOL_THEME.border }}>
+                  <Text style={{ color:SOL_THEME.textMuted, fontSize:10, letterSpacing:3, fontFamily:mono }}>TRUTH PRESSURE</Text>
+                  <Text style={{ color:accentColor, fontSize:48, fontWeight:'700', fontFamily:mono, lineHeight:60 }}>
+                    {r.Pi.toFixed(3)}
+                  </Text>
+                  <View style={{ paddingHorizontal:12, paddingVertical:4, borderRadius:8, backgroundColor:regColor+'22', borderWidth:1, borderColor:regColor+'66', marginTop:4 }}>
+                    <Text style={{ color:regColor, fontSize:12, fontWeight:'700', fontFamily:mono }}>{r.regime} — {r.regime_desc}</Text>
+                  </View>
+                </View>
+
+                {/* E / P / S bars */}
+                {[
+                  { label:'E  evidence weight', val:r.E, color:'#4A9EFF' },
+                  { label:'P  principle power', val:r.P, color:accentColor },
+                  { label:'S  resistance', val:r.S, color:'#E040FB' },
+                  { label:'S₀ floor', val:r.S0, color:SOL_THEME.textMuted },
+                ].map(bar => (
+                  <View key={bar.label}>
+                    <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+                      <Text style={{ color:bar.color, fontSize:10, fontFamily:mono }}>{bar.label}</Text>
+                      <Text style={{ color:bar.color, fontSize:10, fontFamily:mono }}>{bar.val.toFixed(2)}</Text>
+                    </View>
+                    <View style={{ height:4, backgroundColor:SOL_THEME.border, borderRadius:2 }}>
+                      <View style={{ width:`${bar.val*100}%`, height:4, backgroundColor:bar.color+'88', borderRadius:2 }} />
+                    </View>
+                  </View>
+                ))}
+
+                {/* Claims */}
+                <View>
+                  <Text style={{ color:SOL_THEME.textMuted, fontSize:10, letterSpacing:2, fontFamily:mono, marginBottom:8 }}>KEY CLAIMS</Text>
+                  {r.claims.map((c, i) => {
+                    const rc = registerColors[c.register] ?? SOL_THEME.textMuted;
+                    return (
+                      <View key={i} style={{ marginBottom:8, padding:10, borderRadius:8, borderWidth:1, borderColor:rc+'33', backgroundColor:rc+'08' }}>
+                        <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:4 }}>
+                          <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:4, backgroundColor:rc+'22', borderWidth:1, borderColor:rc+'55' }}>
+                            <Text style={{ color:rc, fontSize:8, fontWeight:'700', fontFamily:mono }}>{c.register}</Text>
+                          </View>
+                          <View style={{ flex:1, height:2, backgroundColor:SOL_THEME.border, borderRadius:1 }}>
+                            <View style={{ width:`${c.pressure*100}%`, height:2, backgroundColor:rc+'88', borderRadius:1 }} />
+                          </View>
+                          <Text style={{ color:rc, fontSize:9, fontFamily:mono }}>{(c.pressure*100).toFixed(0)}%</Text>
+                        </View>
+                        <Text style={{ color:SOL_THEME.text, fontSize:12, lineHeight:18 }}>{c.text}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Summary */}
+                <View style={{ paddingTop:12, borderTopWidth:1, borderTopColor:SOL_THEME.border }}>
+                  <Text style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:18, fontStyle:'italic' }}>{r.summary}</Text>
+                </View>
+
+                {/* Run CASCADE on same text */}
+                <TouchableOpacity
+                  onPress={() => { setInputText(truthInput); setView('cascade'); }}
+                  style={{ padding:12, borderRadius:10, borderWidth:1, borderColor:accentColor+'44', alignItems:'center', backgroundColor:accentColor+'0A' }}
+                >
+                  <Text style={{ color:accentColor, fontSize:12, fontWeight:'700', fontFamily:mono }}>→ Run CASCADE on this text</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })()}
+        </>
+      )}
+
       {/* CEMENTER VIEW */}
       {view === 'cementer' && !selectedCement && (
         <>
@@ -1169,6 +1412,11 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
               {/* Expression */}
               <Text style={[styles.cementExprLabel, { color: accentColor }]}>EXPRESSION</Text>
               <Text style={[styles.cementExpr, { color: accentColor }]}>{cementResult.expression}</Text>
+              {cementResult.spoken_form ? (
+                <Text style={{ color: accentColor + 'AA', fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginTop: 4, letterSpacing: 1 }}>
+                  ◎ {cementResult.spoken_form}
+                </Text>
+              ) : null}
 
               <View style={[styles.cementDivider, { backgroundColor: accentColor + '22' }]} />
 
@@ -1392,6 +1640,9 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
               ['DYNAMICS', LAMAGUE_SYMBOLS.dynamics],
               ['FIELDS', LAMAGUE_SYMBOLS.fields],
               ['META', LAMAGUE_SYMBOLS.meta],
+              ['CONNECTIONS', LAMAGUE_SYMBOLS.connections],
+              ['TEMPORAL', LAMAGUE_SYMBOLS.temporal],
+              ['EXTENDED', LAMAGUE_SYMBOLS.extended],
             ];
             return (
               <>

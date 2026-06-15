@@ -53,7 +53,15 @@ export default function TabLayout() {
         options={{
           title: t('MYSTERY SCHOOL'),
           tabBarLabel: t('School'),
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊕" color={color} />,
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: 'LIBRARY',
+          tabBarLabel: 'Library',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="◬" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -70,14 +78,6 @@ export default function TabLayout() {
           title: 'COMPANION',
           tabBarLabel: 'Companion',
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="✦" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="library"
-        options={{
-          title: 'LIBRARY',
-          tabBarLabel: 'Library',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="◬" color={color} />,
         }}
       />
       <Tabs.Screen
