@@ -580,6 +580,44 @@ export default function SolChat() {
     // Remove welcome thread if it exists (deprecated feature)
     deleteConversation('welcome_thread').catch(() => {});
 
+    // Daily question pool — one surfaces each day, seeded by date
+    const DAILY_QUESTIONS = [
+      "What do you know now that you didn't know a month ago — and has it changed how you act?",
+      "What is the question you keep avoiding, and why does it have that kind of power?",
+      "Where in your life are you performing certainty you don't actually feel?",
+      "What would you study if no one would ever know you studied it?",
+      "What belief are you holding that you've never actually tested against evidence?",
+      "When did you last change your mind about something important? What broke it open?",
+      "What does your body already know that your mind hasn't caught up to yet?",
+      "What are you tolerating that you should be confronting?",
+      "If you could only pass one idea forward to someone who comes after you — what would it be?",
+      "What would you do differently if you knew that failure would be forgotten in a year?",
+      "Where are you confusing motion with progress?",
+      "What are you afraid to want, because wanting it would mean risking not getting it?",
+      "What does sovereignty look like for you today — not in theory, in this specific hour?",
+      "Which of your beliefs come from evidence, and which come from the company you keep?",
+      "What would you need to let go of to become who you already know you're becoming?",
+      "Where is your attention being spent that doesn't match what you say you value?",
+      "What is the most uncomfortable true thing you could say to yourself right now?",
+      "What pattern keeps reappearing in your life — and what is it trying to show you?",
+      "When you imagine the version of you that got it right — what did they do differently in the next 24 hours?",
+      "What would it mean to trust the Work even when you can't see where it's going?",
+      "What knowledge have you accumulated that you haven't yet acted on?",
+      "Where are you waiting for permission that only you can give yourself?",
+      "What would a stranger notice about your life that you've stopped being able to see?",
+      "What is the thing you're most proud of that no one knows about?",
+      "If the void is the ground state and not the enemy — what changes about how you face today?",
+    ];
+    getDailyQuestion().then(existing => {
+      if (!existing) {
+        const seed = new Date().toDateString();
+        let hash = 0;
+        for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+        const q = DAILY_QUESTIONS[hash % DAILY_QUESTIONS.length];
+        saveDailyQuestion(q).then(() => setDailyQuestion(q));
+      }
+    });
+
     Promise.all([getConversation(), getPersona(), getUserName(), listConversations(), getReplyStyle(), getBgColor(), getFontSize(), getHaptics(), getStreamSpeed(), getResponseLength(), getAccentColor(), getCompanionEnabled(), getCompanionGlyph(), getShowTimestamps(), getPinnedMessages(), getDailyIntention(), getContextMemory(), getProjectContext(), getBubbleRadius(), getCompanionAnim(), getDailyQuestion(), getTokenBudget(), getTemperature(), getBraveKey(), getFontFamily(), getBubbleGlow(), getShowSignatures(), getShowTokenBadge()])
       .then(([saved, savedPersona, name, convList, style, bg, fs, hap, spd, rlen, acc, compOn, compGlyph, ts, pins, intention, ctxMem, projCtx, bRadius, compAnim, dq, tb, temp, bKey, ff, glow, sigs, badge]) => {
         if (saved.length > 0) {

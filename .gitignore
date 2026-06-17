@@ -19,3 +19,9 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 expo-env.d.ts
+lib/dev-keys.local.ts
+KIMI_IMAGE_SESSION_1.md
+KIMI_SESSION_10.md
+KIMI_SESSION_11.md
+KIMI_SESSION_12.md
+KIMI_SESSION_13.md

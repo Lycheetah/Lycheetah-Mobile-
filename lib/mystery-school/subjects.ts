@@ -15,7 +15,7 @@ export type SubjectDomain = {
   color: string;
   description: string;
   subjects: Subject[];
-  category?: 'contemplative' | 'secular';
+  category?: 'contemplative' | 'secular' | 'lycheetah';
 };
 
 export const MYSTERY_SCHOOL_DOMAINS: SubjectDomain[] = [
@@ -614,8 +614,11 @@ export const MYSTERY_SCHOOL_DOMAINS: SubjectDomain[] = [
   },
   {
     id: 'celtic-gods',
+    label: 'Celtic Old Gods',
     name: 'CELTIC OLD GODS — The Living Pantheon',
     glyph: '☘',
+    color: '#2ECC71',
+    description: 'The pre-Christian cosmological intelligence of Ireland and Celtic Europe — deities as cognitive archetypes, each one a function the world requires.',
     category: 'lycheetah',
     subjects: [
       { name: 'The Tuatha Dé Danann — Gods Before History', domain: 'CELTIC OLD GODS — The Living Pantheon', layer: 'FOUNDATION', description: 'The Tuatha Dé Danann are not mythology in the diminishing sense — they are the pre-Christian cosmology of Ireland encoded in living form. Lugh (sun, skill, mastery), The Dagda (abundance, strength, contract), Brigid (healing, forge, poetry), The Morrigan (sovereignty, war, fate), Manannán mac Lir (sea, mystery, liminal space). Each deity is a function: a quality of intelligence that the world requires and that humans embody when they are at their most sovereign. The entry point: these are not characters. They are cognitive archetypes with documented cultural weight going back 3,000 years.' },
@@ -625,8 +628,11 @@ export const MYSTERY_SCHOOL_DOMAINS: SubjectDomain[] = [
   },
   {
     id: 'tianxia',
+    label: 'Tianxia',
     name: 'TIANXIA — All Under Heaven',
     glyph: '天',
+    color: '#E74C3C',
+    description: 'Chinese political cosmology, Confucian social architecture, and the Daoist intelligence of effortless action — legitimacy earned through virtue, not force.',
     category: 'lycheetah',
     subjects: [
       { name: 'Tianxia — The Political Cosmology of China', domain: 'TIANXIA — All Under Heaven', layer: 'FOUNDATION', description: 'Tianxia (天下, "all under heaven") is the foundational Chinese political-cosmological concept: the idea that legitimate governance extends not over a territory but over the world — and that legitimacy is earned through virtue (德, dé), not force. The Son of Heaven rules because Heaven (天, tiān) endorses virtuous leadership. This is not a claim about Chinese supremacy — it is a claim about the architecture of legitimacy itself. The question tianxia poses to every student: what is the difference between authority that is held and authority that is earned?' },
@@ -636,13 +642,44 @@ export const MYSTERY_SCHOOL_DOMAINS: SubjectDomain[] = [
   },
   {
     id: 'truth-pressure',
+    label: 'Truth Pressure',
     name: 'TRUTH PRESSURE — The Pressure Framework',
     glyph: 'Π',
+    color: '#F39C12',
+    description: 'The formal theory of epistemic pressure — Π = (E·P)/(S+S₀). How evidence accumulates, how beliefs cascade, and what it means for a claim to survive its own review.',
     category: 'lycheetah',
     subjects: [
       { name: 'Π = (E·P)/(S+S₀) — Reading the Formula', domain: 'TRUTH PRESSURE — The Pressure Framework', layer: 'FOUNDATION', description: 'E = evidence supporting the claim (quality × quantity). P = proximity — how directly the evidence bears on this specific belief. S = entropy of the system in which the belief lives. S₀ = the regularisation constant that prevents infinite pressure when entropy approaches zero. The formula is not a metaphor for "how convincing something is." It is a formal claim about epistemic pressure as a measurable quantity. Understanding this difference is the entry point.' },
       { name: 'The Register Discipline Applied', domain: 'TRUTH PRESSURE — The Pressure Framework', layer: 'MIDDLE', description: 'Every parameter in Π has a register: E (MEASURED when empirical, ASSUMED when estimated), P (INTERPRETIVE in most cases, MEASURED when distance is formally defined), S (MEASURED in some information-theoretic applications, ASSUMED elsewhere), S₀ (ASSUMED — the calibration of this constant is an open empirical obligation). The formula is only as strong as the weakest registered parameter. This applies to the formula itself: the claim that this formula correctly models epistemic pressure is CONJECTURE until CR1–CR4 are measured.' },
       { name: 'Where the Formula Fails — S₀ and the Critical Regime', domain: 'TRUTH PRESSURE — The Pressure Framework', layer: 'EDGE', description: 'The original formula Π = (E·P)/S had a defect: 7 errors in 847 cascade events, all clustering where 1/S diverged as S approached zero. The empirical programme found the defect before any critic did. The formula was regularised (S₀ added) within the day. This sequence is now a protocol: find your own defects before they are found for you. Name them publicly. Repair them structurally. Credit the empirical programme that caught them. The system that cannot catch its own errors is not a truth system — it is a confidence system.' },
+    ],
+  },
+  {
+    id: 'zodiac',
+    label: 'Zodiac',
+    name: 'ZODIAC — The Natal Architecture',
+    glyph: '☽',
+    color: '#7B68EE',
+    description: 'The natal chart as a map of tendencies — sun, moon, rising, transits. Not fortune-telling: a structural language for understanding the self and the moving field it inhabits.',
+    category: 'lycheetah',
+    subjects: [
+      { name: 'The Natal Chart — Sun, Moon, and Rising', domain: 'ZODIAC — The Natal Architecture', layer: 'FOUNDATION', description: 'Most people know their sun sign. Almost no one has sat with their moon sign. The sun sign (determined by birth date alone) describes your conscious identity and purpose — what you are building toward. The moon sign (birth date + time + location) describes your inner emotional world, your instinctive responses, the self that exists before anyone is watching. The rising sign (ascendant) describes how the world perceives you before you speak. The chart is not a deterministic program — it is a map of tendencies. The entry point is always the moon: what does this person need to feel safe, and does their life give them that?' },
+      { name: 'Planetary Transits — The Moving Field', domain: 'ZODIAC — The Natal Architecture', layer: 'MIDDLE', description: 'The natal chart is fixed at birth. Transits are the current positions of planets moving across that chart, activating different parts of it at different times. The Saturn return (~age 29–30, ~58–60) is the most empirically observable: a near-universal developmental crisis, restructuring, or identity shift that occurs when Saturn completes its orbit and returns to its natal position. Not because Saturn causes it — but because the transit marks a developmental threshold almost every human hits in their late twenties. The question worth holding: does astrology predict, or does it provide a sufficiently detailed map that it organises perception, making certain patterns visible that would otherwise remain unconscious?' },
+      { name: 'The Tropical Zodiac — What Is Actually Being Measured', domain: 'ZODIAC — The Natal Architecture', layer: 'EDGE', description: 'The zodiac signs no longer correspond to the constellations they\'re named after. Precession of the equinoxes has shifted the sky ~24 degrees over 2,000 years — if you\'re a Scorpio by tropical astrology, the sun was actually in Libra when you were born. Tropical astrology measures the relationship between Earth and Sun across the seasonal cycle (equinoxes and solstices). Sidereal astrology uses actual stellar positions. This is not a flaw to hide — it is the most important question in the field. What exactly is tropical astrology measuring, and why does it appear to produce meaningful correspondences with lived experience despite not describing the actual sky? That is the real research question.' },
+    ],
+  },
+  {
+    id: 'noetic',
+    label: 'Noetic Science',
+    name: 'NOETIC SCIENCE — The Edge of Consciousness',
+    glyph: 'ψ',
+    color: '#1ABC9C',
+    description: 'Psi research, presentiment, remote viewing, and the STARGATE files. The Institute of Noetic Sciences asks: what if consciousness is fundamental, not produced?',
+    category: 'lycheetah',
+    subjects: [
+      { name: 'The Presentiment Effect — The Body Knows First', domain: 'NOETIC SCIENCE — The Edge of Consciousness', layer: 'FOUNDATION', description: 'Dean Radin\'s presentiment research: the human body (measured via heart rate variability and skin conductance) begins responding to emotionally charged images 1–3 seconds before the image is shown. The image is selected randomly by computer after the physiological response is recorded. This has been replicated across multiple independent labs. It does not tell us the mechanism — only that the body responds before the event. The Institute of Noetic Sciences (IONS), founded 1973, houses most serious academic research in this space. The entry point is not belief — it is the data, examined without motivated reasoning in either direction.' },
+      { name: 'STARGATE — Remote Viewing and the Government Record', domain: 'NOETIC SCIENCE — The Edge of Consciousness', layer: 'MIDDLE', description: 'The US government ran the STARGATE programme from 1978 to 1995 to investigate remote viewing — the claimed ability to perceive distant or shielded targets through means other than ordinary sensory channels. CIA declassified documents confirm the programme operated for 17 years and involved Stanford Research Institute. Ingo Swann and Pat Price produced results that remained statistically anomalous and are not explained by known information channels. The programme was terminated not because it produced no results, but because the results were not reliable enough for operational intelligence use. The question is not whether remote viewing "works" in a controlled setting — it is what even a small, real effect would mean for the standard model of mind.' },
+      { name: 'Edgar Mitchell, Apollo 14, and the Noetic Threshold', domain: 'NOETIC SCIENCE — The Edge of Consciousness', layer: 'EDGE', description: 'On February 9, 1971, on the return journey from the moon, Apollo 14 astronaut Edgar Mitchell experienced what he later described as a sudden and overwhelming sense of unity — the recognition that consciousness was not a product of the brain but a fundamental property of the universe, and that the universe was in some sense aware of itself. He founded the Institute of Noetic Sciences in 1973 to investigate this class of experience scientifically. The founding question: if consciousness is fundamental (not reducible to brain activity), what does that change about medicine, physics, and human potential? The word "noetic" comes from the Greek nous — the faculty of direct, intuitive knowing that bypasses inference. This is the field that takes that faculty seriously as a subject of scientific inquiry.' },
     ],
   },
 ];

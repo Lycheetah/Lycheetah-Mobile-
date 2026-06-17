@@ -1,5 +1,6 @@
-// Dev fallback keys — gitignored, never committed
+// Dev fallback keys — DO NOT commit real values here
+// Copy this file to lib/dev-keys.local.ts and add your keys there (gitignored)
 export const DEV_KEYS: Record<string, string> = {
-  deepseek: 'sk-0ceff43f24ec446eab289aab322f1c38',
-  nvidia: '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',
+  nvidia: '',
+  deepseek: '',
 };

@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, { Path, Circle, Ellipse, Rect, Polygon, G, Line } from 'react-native-svg';
 
-type ArchetypeId    = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah';
+type ArchetypeId    = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah' | 'cipher' | 'herald' | 'weaver' | 'revenant';
 type EvolutionStage = 0 | 1 | 2 | 3 | 4 | 5;
 type EvoPath        = 'A' | 'B' | 'C';
 
@@ -43,6 +43,10 @@ export function CreatureSvg({ archId, stage, color, path, width = 150, height = 
         {archId === 'oracle'    && renderOracle(stage, p, p2, p3, line, color, epath)}
         {archId === 'sentinel'  && renderSentinel(stage, p, p2, p3, line, color, epath)}
         {archId === 'wanderer'  && renderWanderer(stage, p, p2, p3, line, lineThin, color, epath)}
+        {archId === 'cipher'    && renderCipher(stage, color, f, f2)}
+        {archId === 'herald'    && renderHerald(stage, color, f, f2)}
+        {archId === 'weaver'    && renderWeaver(stage, color, f, f2)}
+        {archId === 'revenant'  && renderRevenant(stage, color, f, f2)}
       </G>
     </Svg>
   );
@@ -843,4 +847,495 @@ function renderWanderer(
       );
     default: return <G />;
   }
+}
+
+// ── CIPHER — signal decoder: angular torso, node-network head, scanning eye ──
+function renderCipher(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const nodeR = 2 + stage * 0.4;
+  const links = stage >= 2;
+  const crown = stage >= 4;
+  return (
+    <G>
+      {/* Torso — angular hex body */}
+      <Polygon points="50,55 62,65 62,85 50,95 38,85 38,65" fill={f} stroke={color} strokeWidth="2" />
+      {/* Core signal node */}
+      <Circle cx="50" cy="75" r={5 + stage} fill={color} opacity="0.9" />
+      {/* Head — geometric diamond */}
+      <Polygon points="50,30 60,42 50,54 40,42" fill={f2} stroke={color} strokeWidth="2" />
+      {/* Scanning eye */}
+      <Ellipse cx="50" cy="42" rx={3 + stage * 0.3} ry="2" fill={color} />
+      {/* Signal lines */}
+      {links && <Line x1="38" y1="65" x2="28" y2="58" stroke={color} strokeWidth="1.5" opacity="0.7" />}
+      {links && <Line x1="62" y1="65" x2="72" y2="58" stroke={color} strokeWidth="1.5" opacity="0.7" />}
+      {links && <Circle cx="28" cy="58" r={nodeR} fill={color} opacity="0.6" />}
+      {links && <Circle cx="72" cy="58" r={nodeR} fill={color} opacity="0.6" />}
+      {/* Crown node burst */}
+      {crown && <>
+        <Line x1="50" y1="30" x2="50" y2="20" stroke={color} strokeWidth="1.5" opacity="0.8" />
+        <Circle cx="50" cy="18" r="3" fill={color} opacity="0.9" />
+        <Line x1="50" y1="30" x2="42" y2="22" stroke={color} strokeWidth="1" opacity="0.6" />
+        <Line x1="50" y1="30" x2="58" y2="22" stroke={color} strokeWidth="1" opacity="0.6" />
+      </>}
+      {/* Legs */}
+      <Line x1="44" y1="95" x2="40" y2="112" stroke={color} strokeWidth="2.5" />
+      <Line x1="56" y1="95" x2="60" y2="112" stroke={color} strokeWidth="2.5" />
+      <Line x1="40" y1="112" x2="36" y2="118" stroke={color} strokeWidth="2" />
+      <Line x1="60" y1="112" x2="64" y2="118" stroke={color} strokeWidth="2" />
+    </G>
+  );
+}
+
+// ── HERALD — voice bearer: flowing cloak, resonance crown, open stance ──
+function renderHerald(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const waveMag = 3 + stage * 1.2;
+  const crownH = stage >= 3;
+  return (
+    <G>
+      {/* Cloak — flowing trapezoid */}
+      <Path d={`M 36 60 Q 30 85 35 108 L 65 108 Q 70 85 64 60 Z`} fill={f} stroke={color} strokeWidth="1.5" />
+      {/* Torso under cloak */}
+      <Rect x="42" y="55" width="16" height="22" rx="4" fill={f2} stroke={color} strokeWidth="2" />
+      {/* Head */}
+      <Circle cx="50" cy="40" r="13" fill={f2} stroke={color} strokeWidth="2" />
+      {/* Mouth — open to speak */}
+      <Ellipse cx="50" cy="44" rx="4" ry="2.5" fill={color} opacity="0.8" />
+      {/* Eyes */}
+      <Circle cx="46" cy="38" r="2" fill={color} />
+      <Circle cx="54" cy="38" r="2" fill={color} />
+      {/* Sound waves emanating */}
+      <Path d={`M 65 40 Q ${65+waveMag} 37 65 34`} stroke={color} strokeWidth="1.5" fill="none" opacity="0.7" />
+      <Path d={`M 69 42 Q ${69+waveMag*1.4} 37 69 32`} stroke={color} strokeWidth="1" fill="none" opacity="0.5" />
+      {crownH && <>
+        <Path d="M 38 28 L 42 20 L 50 25 L 58 20 L 62 28" stroke={color} strokeWidth="2" fill="none" />
+        <Circle cx="42" cy="20" r="2.5" fill={color} />
+        <Circle cx="50" cy="24" r="2.5" fill={color} />
+        <Circle cx="58" cy="20" r="2.5" fill={color} />
+      </>}
+      {/* Feet */}
+      <Line x1="43" y1="108" x2="40" y2="120" stroke={color} strokeWidth="2.5" />
+      <Line x1="57" y1="108" x2="60" y2="120" stroke={color} strokeWidth="2.5" />
+    </G>
+  );
+}
+
+// ── WEAVER — pattern maker: web-body, multi-arm, grid crown ──
+function renderWeaver(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const armCount = Math.min(3 + stage, 6);
+  const gridLines = stage >= 2;
+  return (
+    <G>
+      {/* Web threads behind body */}
+      {gridLines && <>
+        <Line x1="20" y1="50" x2="80" y2="100" stroke={color} strokeWidth="0.8" opacity="0.3" />
+        <Line x1="80" y1="50" x2="20" y2="100" stroke={color} strokeWidth="0.8" opacity="0.3" />
+        <Line x1="20" y1="75" x2="80" y2="75" stroke={color} strokeWidth="0.8" opacity="0.3" />
+        <Line x1="50" y1="45" x2="50" y2="110" stroke={color} strokeWidth="0.8" opacity="0.3" />
+      </>}
+      {/* Torso — round weaver body */}
+      <Ellipse cx="50" cy="78" rx="14" ry="18" fill={f} stroke={color} strokeWidth="2" />
+      {/* Head */}
+      <Circle cx="50" cy="48" r="14" fill={f2} stroke={color} strokeWidth="2" />
+      {/* Multiple eyes (weaver has compound eyes) */}
+      {[44, 50, 56].map((x, i) => <Circle key={i} cx={x} cy="46" r="2" fill={color} />)}
+      <Circle cx="50" cy="52" r="1.5" fill={color} opacity="0.7" />
+      {/* Arms — radiate outward based on stage */}
+      {armCount >= 3 && <Line x1="38" y1="70" x2="22" y2="58" stroke={color} strokeWidth="2.5" />}
+      {armCount >= 3 && <Line x1="62" y1="70" x2="78" y2="58" stroke={color} strokeWidth="2.5" />}
+      {armCount >= 4 && <Line x1="38" y1="78" x2="18" y2="78" stroke={color} strokeWidth="2" />}
+      {armCount >= 4 && <Line x1="62" y1="78" x2="82" y2="78" stroke={color} strokeWidth="2" />}
+      {armCount >= 5 && <Line x1="40" y1="88" x2="24" y2="98" stroke={color} strokeWidth="1.5" opacity="0.8" />}
+      {armCount >= 5 && <Line x1="60" y1="88" x2="76" y2="98" stroke={color} strokeWidth="1.5" opacity="0.8" />}
+      {/* Legs */}
+      <Line x1="44" y1="96" x2="40" y2="115" stroke={color} strokeWidth="2.5" />
+      <Line x1="56" y1="96" x2="60" y2="115" stroke={color} strokeWidth="2.5" />
+      {/* Grid crown at high stage */}
+      {stage >= 4 && <>
+        <Rect x="40" y="30" width="20" height="12" rx="2" fill="none" stroke={color} strokeWidth="1.5" />
+        <Line x1="47" y1="30" x2="47" y2="42" stroke={color} strokeWidth="1" opacity="0.6" />
+        <Line x1="53" y1="30" x2="53" y2="42" stroke={color} strokeWidth="1" opacity="0.6" />
+        <Line x1="40" y1="36" x2="60" y2="36" stroke={color} strokeWidth="1" opacity="0.6" />
+      </>}
+    </G>
+  );
+}
+
+// ── REVENANT — the returner: cloaked silhouette, spiral eye, rising posture ──
+function renderRevenant(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const riseHeight = stage * 4;
+  const spiralOpen = stage >= 2;
+  return (
+    <G>
+      {/* Rising shadow trails */}
+      {[...Array(3)].map((_, i) => (
+        <Ellipse key={i} cx={48 + i * 3} cy={100 - i * 8 + riseHeight} rx={3 - i * 0.5} ry={6 - i} fill={color} opacity={(0.3 - i * 0.08)} />
+      ))}
+      {/* Cloak — asymmetric, wind-blown */}
+      <Path d={`M 34 65 Q 28 90 32 115 L 50 110 L 68 115 Q 72 90 66 65 Q 58 58 50 60 Q 42 58 34 65 Z`} fill={f} stroke={color} strokeWidth="1.5" />
+      {/* Body */}
+      <Rect x="42" y="58" width="16" height="26" rx="5" fill={f2} stroke={color} strokeWidth="2" />
+      {/* Head */}
+      <Circle cx="50" cy={44 - riseHeight * 0.3} r="13" fill={f2} stroke={color} strokeWidth="2" />
+      {/* Spiral eye — the returner mark */}
+      {spiralOpen ? (
+        <Path d={`M 50 ${41 - riseHeight * 0.3} A 3 3 0 1 1 50 ${47 - riseHeight * 0.3} A 1.5 1.5 0 1 1 50 ${44 - riseHeight * 0.3}`} stroke={color} strokeWidth="1.5" fill="none" />
+      ) : (
+        <Ellipse cx="50" cy={43 - riseHeight * 0.3} rx="3" ry="2" fill={color} />
+      )}
+      {/* Return glyph on chest */}
+      <Path d={`M 46 72 Q 50 68 54 72 Q 50 76 46 72`} stroke={color} strokeWidth="1.5" fill="none" opacity="0.8" />
+      {/* Transcendent rising arc */}
+      {stage >= 5 && <Path d="M 30 40 Q 50 20 70 40" stroke={color} strokeWidth="1.5" fill="none" opacity="0.7" />}
+      {/* Legs — barely visible under cloak */}
+      <Line x1="44" y1="110" x2="42" y2="124" stroke={color} strokeWidth="2" opacity="0.7" />
+      <Line x1="56" y1="110" x2="58" y2="124" stroke={color} strokeWidth="2" opacity="0.7" />
+    </G>
+  );
+}
+
+// ── UNLOCK VARIANTS (character B for each archetype family — wire via characterVariant prop) ──
+// These are the evolved/alternate characters for cipher/herald/weaver/revenant.
+// Dispatch with: archId === 'cipher' && characterVariant === 'b' && renderCipherAlt(...)
+
+function renderCipherAlt(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const s = stage;
+  const showNetwork = s >= 2;
+  const showCrown = s >= 4;
+  const transcendent = s >= 5;
+  const detail = s >= 3;
+  const diamond = "M50,23 L59,35 L50,47 L41,35 Z";
+  const hexTorso = "M50,55 L61,64 L61,82 L50,91 L39,82 L39,64 Z";
+  const hexTorsoSmall = "M50,58 L58,65 L58,79 L50,86 L42,79 L42,65 Z";
+  const leftNode = { cx: 28, cy: 48 };
+  const rightNode = { cx: 72, cy: 48 };
+  const upNode = { cx: 50, cy: 18 };
+  const downNode = { cx: 50, cy: 98 };
+  const crownNodes = [
+    { cx: 38, cy: 14 }, { cx: 50, cy: 10 }, { cx: 62, cy: 14 },
+    { cx: 44, cy: 18 }, { cx: 56, cy: 18 }
+  ];
+  return (
+    <G>
+      <Line x1="46" y1="88" x2="43" y2="118" stroke={color} strokeWidth="1.5" />
+      <Line x1="54" y1="88" x2="57" y2="118" stroke={color} strokeWidth="1.5" />
+      {s <= 1 ? (
+        <Path d={hexTorsoSmall} fill={f} stroke={color} strokeWidth="1.5" />
+      ) : (
+        <Path d={hexTorso} fill={f} stroke={color} strokeWidth="2" />
+      )}
+      {detail && (
+        <>
+          <Line x1="50" y1="55" x2="50" y2="91" stroke={color} strokeWidth="0.8" opacity="0.5" />
+          <Line x1="39" y1="64" x2="61" y2="82" stroke={color} strokeWidth="0.8" opacity="0.5" />
+          <Line x1="61" y1="64" x2="39" y2="82" stroke={color} strokeWidth="0.8" opacity="0.5" />
+        </>
+      )}
+      {s === 0 ? (
+        <>
+          <Line x1="42" y1="62" x2="32" y2="72" stroke={color} strokeWidth="1.5" />
+          <Line x1="58" y1="62" x2="68" y2="72" stroke={color} strokeWidth="1.5" />
+        </>
+      ) : (
+        <>
+          <Line x1="42" y1="62" x2={leftNode.cx} y2={leftNode.cy} stroke={color} strokeWidth="1.5" />
+          <Circle {...leftNode} r="3" fill={f2} stroke={color} strokeWidth="1" />
+          <Line x1="58" y1="62" x2={rightNode.cx} y2={rightNode.cy} stroke={color} strokeWidth="1.5" />
+          <Circle {...rightNode} r="3" fill={f2} stroke={color} strokeWidth="1" />
+        </>
+      )}
+      {showNetwork && (
+        <>
+          <Line x1={leftNode.cx} y1={leftNode.cy} x2={rightNode.cx} y2={rightNode.cy} stroke={color} strokeWidth="0.8" opacity="0.6" />
+          <Line x1="50" y1="55" x2={leftNode.cx} y2={leftNode.cy} stroke={color} strokeWidth="0.8" opacity="0.4" />
+          <Line x1="50" y1="55" x2={rightNode.cx} y2={rightNode.cy} stroke={color} strokeWidth="0.8" opacity="0.4" />
+          {detail && (
+            <>
+              <Line x1="50" y1="55" x2={upNode.cx} y2={upNode.cy} stroke={color} strokeWidth="0.8" opacity="0.5" />
+              <Circle {...upNode} r="2.5" fill={f2} stroke={color} strokeWidth="0.8" />
+              <Line x1="50" y1="91" x2={downNode.cx} y2={downNode.cy} stroke={color} strokeWidth="0.8" opacity="0.5" />
+              <Circle {...downNode} r="2.5" fill={f2} stroke={color} strokeWidth="0.8" />
+              <Line x1={upNode.cx} y1={upNode.cy} x2="50" y2="23" stroke={color} strokeWidth="0.6" opacity="0.4" />
+            </>
+          )}
+        </>
+      )}
+      <Path d={diamond} fill={f2} stroke={color} strokeWidth="2" />
+      {transcendent ? (
+        <>
+          <Line x1="44" y1="35" x2="56" y2="35" stroke={color} strokeWidth="1.2" />
+          <Line x1="44" y1="32" x2="56" y2="32" stroke={color} strokeWidth="0.6" opacity="0.7" />
+          <Line x1="44" y1="38" x2="56" y2="38" stroke={color} strokeWidth="0.6" opacity="0.7" />
+          <Line x1="47" y1="29" x2="47" y2="41" stroke={color} strokeWidth="0.6" opacity="0.7" />
+          <Line x1="50" y1="29" x2="50" y2="41" stroke={color} strokeWidth="0.6" opacity="0.7" />
+          <Line x1="53" y1="29" x2="53" y2="41" stroke={color} strokeWidth="0.6" opacity="0.7" />
+        </>
+      ) : (
+        <Line x1="43" y1="35" x2="57" y2="35" stroke={color} strokeWidth="1.5" />
+      )}
+      {showCrown && (
+        <>
+          {crownNodes.map((n, i) => (
+            <Circle key={i} cx={n.cx} cy={n.cy} r="2.5" fill={f2} stroke={color} strokeWidth="1" />
+          ))}
+          <Line x1="38" y1="14" x2="50" y2="10" stroke={color} strokeWidth="0.8" />
+          <Line x1="50" y1="10" x2="62" y2="14" stroke={color} strokeWidth="0.8" />
+          <Line x1="44" y1="18" x2="56" y2="18" stroke={color} strokeWidth="0.8" />
+          <Line x1="38" y1="14" x2="44" y2="18" stroke={color} strokeWidth="0.8" />
+          <Line x1="62" y1="14" x2="56" y2="18" stroke={color} strokeWidth="0.8" />
+          <Line x1="50" y1="10" x2="50" y2="23" stroke={color} strokeWidth="0.8" opacity="0.6" />
+        </>
+      )}
+      {transcendent && (
+        <>
+          <Line x1="28" y1="48" x2="38" y2="14" stroke={color} strokeWidth="0.5" opacity="0.4" />
+          <Line x1="72" y1="48" x2="62" y2="14" stroke={color} strokeWidth="0.5" opacity="0.4" />
+          <Line x1="28" y1="48" x2="50" y2="10" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="72" y1="48" x2="50" y2="10" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        </>
+      )}
+    </G>
+  );
+}
+
+function renderHeraldAlt(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const s = stage;
+  const showWaves = s >= 2;
+  const showCrown = s >= 4;
+  const transcendent = s >= 5;
+  const detail = s >= 3;
+  const cloakPath = "M38,50 Q32,70 28,95 Q25,115 22,125 Q50,132 78,125 Q75,115 72,95 Q68,70 62,50 Z";
+  const cloakSmall = "M40,52 Q35,70 32,95 Q30,118 28,122 Q50,128 72,122 Q70,118 68,95 Q65,70 60,52 Z";
+  return (
+    <G>
+      {s <= 1 ? (
+        <Path d={cloakSmall} fill={f} stroke={color} strokeWidth="1.5" />
+      ) : (
+        <Path d={cloakPath} fill={f} stroke={color} strokeWidth="2" />
+      )}
+      {detail && (
+        <>
+          <Path d="M42,55 Q38,85 35,118" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+          <Path d="M58,55 Q62,85 65,118" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+          <Path d="M50,55 Q48,90 50,125" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+        </>
+      )}
+      {s === 0 ? (
+        <>
+          <Line x1="38" y1="55" x2="30" y2="72" stroke={color} strokeWidth="1.5" />
+          <Line x1="62" y1="55" x2="70" y2="72" stroke={color} strokeWidth="1.5" />
+          <Circle cx="30" cy="72" r="3" fill={f2} stroke={color} strokeWidth="1" />
+          <Circle cx="70" cy="72" r="3" fill={f2} stroke={color} strokeWidth="1" />
+        </>
+      ) : (
+        <>
+          <Line x1="38" y1="52" x2="16" y2="38" stroke={color} strokeWidth="1.5" />
+          <Line x1="62" y1="52" x2="84" y2="38" stroke={color} strokeWidth="1.5" />
+          <Ellipse cx="16" cy="38" rx="4" ry="3" fill={f2} stroke={color} strokeWidth="1" transform="rotate(-20, 16, 38)" />
+          <Ellipse cx="84" cy="38" rx="4" ry="3" fill={f2} stroke={color} strokeWidth="1" transform="rotate(20, 84, 38)" />
+        </>
+      )}
+      {showWaves && (
+        <>
+          <Path d="M44,36 Q35,30 30,32" fill="none" stroke={color} strokeWidth="1" opacity="0.7" />
+          <Path d="M56,36 Q65,30 70,32" fill="none" stroke={color} strokeWidth="1" opacity="0.7" />
+          <Path d="M42,33 Q30,24 22,28" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+          <Path d="M58,33 Q70,24 78,28" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+          {detail && (
+            <>
+              <Path d="M14,35 Q8,28 6,22" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+              <Path d="M86,35 Q92,28 94,22" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
+              <Path d="M12,40 Q4,36 2,30" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+              <Path d="M88,40 Q96,36 98,30" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+            </>
+          )}
+        </>
+      )}
+      {transcendent && (
+        <>
+          <Ellipse cx="50" cy="70" rx="42" ry="52" fill="none" stroke={color} strokeWidth="0.5" opacity="0.25" />
+          <Ellipse cx="50" cy="70" rx="36" ry="45" fill="none" stroke={color} strokeWidth="0.6" opacity="0.3" />
+          <Ellipse cx="50" cy="70" rx="30" ry="38" fill="none" stroke={color} strokeWidth="0.7" opacity="0.35" />
+          <Ellipse cx="50" cy="70" rx="48" ry="58" fill="none" stroke={color} strokeWidth="0.4" opacity="0.2" />
+        </>
+      )}
+      <Circle cx="50" cy="32" r="12" fill={f2} stroke={color} strokeWidth="2" />
+      <Ellipse cx="50" cy="37" rx="4" ry="3" fill={f} stroke={color} strokeWidth="1" />
+      <Circle cx="46" cy="30" r="2" fill={color} />
+      <Circle cx="54" cy="30" r="2" fill={color} />
+      {showCrown && (
+        <>
+          <Line x1="42" y1="22" x2="38" y2="10" stroke={color} strokeWidth="1.5" />
+          <Line x1="50" y1="20" x2="50" y2="6" stroke={color} strokeWidth="1.5" />
+          <Line x1="58" y1="22" x2="62" y2="10" stroke={color} strokeWidth="1.5" />
+          <Line x1="38" y1="10" x2="50" y2="6" stroke={color} strokeWidth="1" />
+          <Line x1="50" y1="6" x2="62" y2="10" stroke={color} strokeWidth="1" />
+          <Circle cx="38" cy="10" r="2" fill={f2} stroke={color} strokeWidth="0.8" />
+          <Circle cx="50" cy="6" r="2.5" fill={f2} stroke={color} strokeWidth="0.8" />
+          <Circle cx="62" cy="10" r="2" fill={f2} stroke={color} strokeWidth="0.8" />
+        </>
+      )}
+    </G>
+  );
+}
+
+function renderWeaverAlt(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const s = stage;
+  const showWeb = s >= 2;
+  const showCrown = s >= 4;
+  const transcendent = s >= 5;
+  const detail = s >= 3;
+  const armCount = s <= 1 ? 4 : s <= 3 ? 5 : 6;
+  const armLength = s <= 1 ? 22 : s <= 3 ? 26 : 30;
+  const angles = armCount === 4 ? [45, 135, 225, 315]
+    : armCount === 5 ? [0, 45, 135, 225, 315]
+    : [0, 45, 135, 180, 225, 315];
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const bodyCX = 50;
+  const bodyCY = 72;
+  const armTips = angles.map(a => ({
+    x: bodyCX + armLength * Math.cos(toRad(a)),
+    y: bodyCY + armLength * Math.sin(toRad(a)),
+  }));
+  return (
+    <G>
+      {showWeb && (
+        <>
+          <Line x1="18" y1="45" x2="82" y2="100" stroke={color} strokeWidth="0.5" opacity="0.35" />
+          <Line x1="82" y1="45" x2="18" y2="100" stroke={color} strokeWidth="0.5" opacity="0.35" />
+          <Line x1="22" y1="38" x2="78" y2="108" stroke={color} strokeWidth="0.4" opacity="0.25" />
+          <Line x1="78" y1="38" x2="22" y2="108" stroke={color} strokeWidth="0.4" opacity="0.25" />
+          {detail && (
+            <>
+              <Line x1="50" y1="32" x2="50" y2="115" stroke={color} strokeWidth="0.4" opacity="0.2" />
+              <Line x1="15" y1="72" x2="85" y2="72" stroke={color} strokeWidth="0.4" opacity="0.2" />
+            </>
+          )}
+        </>
+      )}
+      {showCrown && (
+        <>
+          <Line x1="28" y1="42" x2="72" y2="102" stroke={color} strokeWidth="0.4" opacity="0.2" />
+          <Line x1="72" y1="42" x2="28" y2="102" stroke={color} strokeWidth="0.4" opacity="0.2" />
+          <Line x1="35" y1="35" x2="65" y2="110" stroke={color} strokeWidth="0.3" opacity="0.15" />
+          <Line x1="65" y1="35" x2="35" y2="110" stroke={color} strokeWidth="0.3" opacity="0.15" />
+        </>
+      )}
+      {armTips.map((tip, i) => (
+        <G key={i}>
+          <Line x1={bodyCX} y1={bodyCY} x2={tip.x} y2={tip.y} stroke={color} strokeWidth="1.5" />
+          <Polygon
+            points={`${tip.x},${tip.y} ${tip.x - 3 * Math.cos(toRad(angles[i] + 90))},${tip.y - 3 * Math.sin(toRad(angles[i] + 90))} ${tip.x + 3 * Math.cos(toRad(angles[i] + 90))},${tip.y + 3 * Math.sin(toRad(angles[i] + 90))}`}
+            fill={f2} stroke={color} strokeWidth="0.8"
+          />
+        </G>
+      ))}
+      <Ellipse cx={bodyCX} cy={bodyCY} rx="14" ry="18" fill={f} stroke={color} strokeWidth="2" />
+      {transcendent && (
+        <>
+          <Line x1="40" y1="62" x2="60" y2="62" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="38" y1="68" x2="62" y2="68" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="38" y1="74" x2="62" y2="74" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="40" y1="80" x2="60" y2="80" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="44" y1="56" x2="44" y2="88" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="50" y1="56" x2="50" y2="88" stroke={color} strokeWidth="0.5" opacity="0.3" />
+          <Line x1="56" y1="56" x2="56" y2="88" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        </>
+      )}
+      <Circle cx="50" cy="38" r="11" fill={f2} stroke={color} strokeWidth="2" />
+      <Circle cx="44" cy="35" r="2.2" fill={color} />
+      <Circle cx="50" cy="33" r="2.5" fill={color} />
+      <Circle cx="56" cy="35" r="2.2" fill={color} />
+      <Circle cx="43.3" cy="34.3" r="0.7" fill={f2} />
+      <Circle cx="49.3" cy="32.3" r="0.8" fill={f2} />
+      <Circle cx="55.3" cy="34.3" r="0.7" fill={f2} />
+      {showCrown && (
+        <>
+          <Line x1="36" y1="24" x2="64" y2="24" stroke={color} strokeWidth="1" />
+          <Line x1="36" y1="16" x2="64" y2="16" stroke={color} strokeWidth="1" />
+          <Line x1="36" y1="16" x2="36" y2="24" stroke={color} strokeWidth="1" />
+          <Line x1="64" y1="16" x2="64" y2="24" stroke={color} strokeWidth="1" />
+          <Line x1="43" y1="16" x2="43" y2="24" stroke={color} strokeWidth="0.6" opacity="0.6" />
+          <Line x1="50" y1="16" x2="50" y2="24" stroke={color} strokeWidth="0.6" opacity="0.6" />
+          <Line x1="57" y1="16" x2="57" y2="24" stroke={color} strokeWidth="0.6" opacity="0.6" />
+          <Line x1="38" y1="24" x2="38" y2="27" stroke={color} strokeWidth="1" />
+          <Line x1="50" y1="24" x2="50" y2="27" stroke={color} strokeWidth="1" />
+          <Line x1="62" y1="24" x2="62" y2="27" stroke={color} strokeWidth="1" />
+        </>
+      )}
+    </G>
+  );
+}
+
+function renderRevenantAlt(stage: EvolutionStage, color: string, f: string, f2: string) {
+  const s = stage;
+  const showSpiral = s >= 1;
+  const showParticles = s >= 2;
+  const showArc = s >= 4;
+  const transcendent = s >= 5;
+  const detail = s >= 3;
+  const cloakPath = "M36,48 Q28,65 24,90 Q20,115 18,128 Q35,132 52,128 Q55,110 58,90 Q62,70 64,48 Q55,42 50,42 Q42,42 36,48 Z";
+  const cloakSmall = "M38,50 Q32,68 28,92 Q26,118 24,124 Q38,128 50,126 Q52,110 54,92 Q58,72 60,50 Q55,45 50,45 Q44,45 38,50 Z";
+  const spiralPath = s === 1
+    ? "M50,38 Q52,34 48,32 Q44,36 46,40 Q50,42 52,38"
+    : s === 2
+    ? "M50,38 Q54,32 46,28 Q38,34 42,42 Q48,46 52,40 Q54,36 50,34"
+    : s === 3
+    ? "M50,38 Q56,30 44,24 Q34,32 38,44 Q44,50 52,44 Q58,36 52,30 Q48,26 44,30"
+    : "M50,38 Q58,28 42,20 Q28,30 34,46 Q42,54 54,46 Q62,34 54,24 Q48,18 40,24 Q34,30 38,38 Q42,44 48,40";
+  return (
+    <G>
+      {showParticles && (
+        <>
+          <Circle cx="38" cy="132" r="2.5" fill={f} opacity="0.5" />
+          <Circle cx="50" cy="138" r="2" fill={f} opacity="0.4" />
+          <Circle cx="62" cy="130" r="2" fill={f} opacity="0.35" />
+          {detail && (
+            <>
+              <Circle cx="44" cy="142" r="1.8" fill={f} opacity="0.3" />
+              <Circle cx="56" cy="136" r="1.5" fill={f} opacity="0.25" />
+            </>
+          )}
+          {transcendent && (
+            <>
+              <Circle cx="34" cy="128" r="1.5" fill={f2} opacity="0.4" />
+              <Circle cx="66" cy="134" r="1.5" fill={f2} opacity="0.35" />
+            </>
+          )}
+        </>
+      )}
+      <Line x1="44" y1="118" x2="42" y2="132" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      <Line x1="54" y1="115" x2="56" y2="128" stroke={color} strokeWidth="1.2" opacity="0.5" />
+      {s <= 1 ? (
+        <Path d={cloakSmall} fill={f} stroke={color} strokeWidth="1.5" />
+      ) : (
+        <Path d={cloakPath} fill={f} stroke={color} strokeWidth="2" />
+      )}
+      {detail && (
+        <>
+          <Path d="M32,65 Q28,85 26,110" fill="none" stroke={color} strokeWidth="0.7" opacity="0.4" />
+          <Path d="M60,60 Q64,80 62,100" fill="none" stroke={color} strokeWidth="0.7" opacity="0.4" />
+          <Path d="M24,90 Q30,95 36,92" fill="none" stroke={color} strokeWidth="0.6" opacity="0.3" />
+        </>
+      )}
+      {transcendent && (
+        <>
+          <Ellipse cx="50" cy="82" rx="10" ry="14" fill={f2} opacity="0.6" />
+          <Ellipse cx="50" cy="82" rx="6" ry="9" fill={color} opacity="0.4" />
+        </>
+      )}
+      <Circle cx="50" cy="38" r="13" fill={f} stroke={color} strokeWidth="2" />
+      <Path d="M36,30 Q38,18 50,16 Q62,18 64,30 Q62,24 50,22 Q38,24 36,30 Z" fill={f} opacity="0.5" />
+      {showSpiral && (
+        <Path d={spiralPath} fill="none" stroke={color} strokeWidth="1.2" />
+      )}
+      {showArc && (
+        <>
+          <Path d="M30,18 Q50,-2 70,18" fill="none" stroke={color} strokeWidth="1.5" opacity="0.7" />
+          <Path d="M34,14 Q50,-6 66,14" fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
+          {transcendent && (
+            <Path d="M26,22 Q50,-10 74,22" fill="none" stroke={color} strokeWidth="1" opacity="0.4" />
+          )}
+        </>
+      )}
+    </G>
+  );
 }

@@ -7,7 +7,7 @@ import { KimiProvider } from './kimi';
 import { NvidiaProvider } from './nvidia';
 
 export const PROVIDERS: AIProvider[] = [
-  NvidiaProvider,  // Free — 13 models, no cost
+  NvidiaProvider,  // Free — 43+ models, no cost
   GeminiProvider,
   AnthropicProvider,
   OpenAIProvider,
@@ -28,6 +28,21 @@ export function getProviderForModel(modelId: string): AIProvider {
   if (modelId.startsWith('claude')) return AnthropicProvider;
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return OpenAIProvider;
   if (modelId.startsWith('deepseek') || modelId.startsWith('moonshot')) return DeepSeekProvider;
-  if (modelId.startsWith('meta/') || modelId.startsWith('nvidia/') || modelId.startsWith('mistralai/') || modelId.startsWith('microsoft/')) return NvidiaProvider;
+  if (
+    modelId.startsWith('meta/') ||
+    modelId.startsWith('nvidia/') ||
+    modelId.startsWith('mistralai/') ||
+    modelId.startsWith('microsoft/') ||
+    modelId.startsWith('google/') ||
+    modelId.startsWith('minimaxai/') ||
+    modelId.startsWith('bytedance/') ||
+    modelId.startsWith('sarvamai/') ||
+    modelId.startsWith('abacusai/') ||
+    modelId.startsWith('stepfun-ai/') ||
+    modelId.startsWith('qwen/') ||
+    modelId.startsWith('openai/') ||
+    modelId.startsWith('deepseek-ai/') ||
+    modelId.startsWith('moonshotai/')
+  ) return NvidiaProvider;
   return GeminiProvider;
 }

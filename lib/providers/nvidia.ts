@@ -8,37 +8,57 @@ export const NvidiaProvider: AIProvider = {
   label: 'NVIDIA NIM',
   color: '#76B900',
   keyPlaceholder: 'nvapi-...',
-  keyHint: 'Unlimited free prototyping · 28 models · build.nvidia.com/explore',
+  keyHint: 'Unlimited free prototyping · 50+ models · build.nvidia.com/explore',
   models: [
-    // ── Speed ──
-    { id: 'meta/llama-3.1-8b-instruct',                      label: 'Llama 3.1 8B',         tier: 'free', note: 'FREE · Meta · Fastest · Light tasks' },
+    // ── Tiny / Edge (fastest, lowest cost) ──
+    { id: 'meta/llama-3.2-1b-instruct',                      label: 'Llama 3.2 1B',         tier: 'free', note: 'FREE · Meta · Tiny · Ultra-fast · Simple tasks' },
+    { id: 'meta/llama-3.2-3b-instruct',                      label: 'Llama 3.2 3B',         tier: 'free', note: 'FREE · Meta · Small · Fast · Summaries' },
+    { id: 'google/gemma-3n-e2b-it',                          label: 'Gemma 3n E2B',         tier: 'free', note: 'FREE · Google · Edge 2B · Audio/image/text lite' },
+    { id: 'google/gemma-3n-e4b-it',                          label: 'Gemma 3n E4B',         tier: 'free', note: 'FREE · Google · Edge 4B · Multimodal · Resource-light' },
+    { id: 'google/gemma-2-2b-it',                            label: 'Gemma 2 2B',           tier: 'free', note: 'FREE · Google · 2B dense · Edge apps · Fast' },
+    { id: 'nvidia/nemotron-mini-4b-instruct',                 label: 'Nemotron Mini 4B',     tier: 'free', note: 'FREE · NVIDIA · 4B · Roleplay · RAG · Function calling' },
+    { id: 'microsoft/phi-4-mini-instruct',                   label: 'Phi-4 Mini',           tier: 'free', note: 'FREE · Microsoft · Lightweight · Multilingual · Low latency' },
+    // ── Speed (8B–20B sweet spot) ──
+    { id: 'meta/llama-3.1-8b-instruct',                      label: 'Llama 3.1 8B',         tier: 'free', note: 'FREE · Meta · Fast · Instruction following' },
+    { id: 'nvidia/llama-3.1-nemotron-nano-8b-v1',            label: 'Nemotron Nano 8B',     tier: 'free', note: 'FREE · NVIDIA · 8B · Reasoning · PC/edge · Agentic' },
+    { id: 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1',         label: 'Nemotron VL 8B',       tier: 'free', note: 'FREE · NVIDIA · Vision-Language · Fast · Doc intel' },
     { id: 'openai/gpt-oss-20b',                              label: 'GPT OSS 20B',          tier: 'free', note: 'FREE · OpenAI · Small MoE · Quick reasoning' },
-    { id: 'stepfun-ai/step-3.7-flash',                       label: 'Step 3.7 Flash',       tier: 'free', note: 'FREE · StepFun · Fast · Multimodal · Coding' },
-    { id: 'google/gemma-3n-e2b-it',                          label: 'Gemma 3n',             tier: 'free', note: 'FREE · Google · Edge · Multimodal lite' },
-    { id: 'moonshotai/kimi-k2.6',                     label: 'Kimi K2',              tier: 'free', note: 'FREE · Moonshot · 1T MoE · Long-horizon · Default ✓' },
-    // ── Reasoning ──
+    { id: 'microsoft/phi-4-multimodal-instruct',             label: 'Phi-4 Multimodal',     tier: 'free', note: 'FREE · Microsoft · Image + audio + text · Speech recognition' },
+    { id: 'google/diffusiongemma-26b-a4b-it',                label: 'DiffusionGemma 26B',   tier: 'free', note: 'FREE · Google · Parallel token gen · Real-time · Diffusion LLM' },
+    // ── Mid (30B–70B workhorses) ──
     { id: 'meta/llama-3.3-70b-instruct',                     label: 'Llama 3.3 70B',        tier: 'free', note: 'FREE · Meta · Reasoning · Math · Tool calling' },
-    { id: 'google/gemma-4-31b-it',                           label: 'Gemma 4 31B',          tier: 'free', note: 'FREE · Google · Dense · Reasoning · Agentic' },
-    { id: 'nvidia/llama-3.3-nemotron-super-49b-v1',          label: 'Nemotron Super 49B',   tier: 'free', note: 'FREE · NVIDIA · Tool calling · High efficiency' },
-    { id: 'minimaxai/minimax-m2.7',                          label: 'MiniMax M2.7',         tier: 'free', note: 'FREE · MiniMax · 230B · Long reasoning' },
-    { id: 'bytedance/seed-oss-36b-instruct',                 label: 'Seed 36B',             tier: 'free', note: 'FREE · ByteDance · Long-context · Agentic' },
-    // ── Coding ──
+    { id: 'meta/llama-3.1-70b-instruct',                     label: 'Llama 3.1 70B',        tier: 'free', note: 'FREE · Meta · Complex chat · Contextual reasoning' },
+    { id: 'google/gemma-4-31b-it',                           label: 'Gemma 4 31B',          tier: 'free', note: 'FREE · Google · Dense · Reasoning · Agentic · Fine-tune ready' },
+    { id: 'nvidia/nvidia-nemotron-nano-9b-v2',               label: 'Nemotron Nano 9B v2',  tier: 'free', note: 'FREE · NVIDIA · Hybrid Transformer-Mamba · Thinking budget' },
+    { id: 'abacusai/dracarys-llama-3.1-70b-instruct',        label: 'Dracarys 70B',         tier: 'free', note: 'FREE · AbacusAI · Fine-tuned Llama 70B · Code · Summarization' },
+    { id: 'sarvamai/sarvam-m',                               label: 'Sarvam M',             tier: 'free', note: 'FREE · SarvamAI · Multilingual · Indian langs · Math · Code' },
+    // ── Vision / Multimodal ──
+    { id: 'meta/llama-3.2-11b-vision-instruct',              label: 'Llama 3.2 11B Vision', tier: 'free', note: 'FREE · Meta · Vision-Language · Image reasoning · Fast' },
+    { id: 'meta/llama-3.2-90b-vision-instruct',              label: 'Llama 3.2 90B Vision', tier: 'free', note: 'FREE · Meta · Large VLM · Deep image reasoning' },
+    { id: 'meta/llama-4-maverick-17b-128e-instruct',         label: 'Llama 4 Maverick',     tier: 'free', note: 'FREE · Meta · 128E MoE · Multimodal · Creative' },
+    { id: 'stepfun-ai/step-3.7-flash',                       label: 'Step 3.7 Flash',       tier: 'free', note: 'FREE · StepFun · MoE multimodal · Agentic · Coding' },
+    { id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning',   label: 'Nemotron Omni 30B',    tier: 'free', note: 'FREE · NVIDIA · Omnimodal · Image/video/speech/text reasoning' },
+    { id: 'moonshotai/kimi-k2.6',                            label: 'Kimi K2',              tier: 'free', note: 'FREE · Moonshot · 1T MoE · Long-horizon · Tool use · Vision' },
+    // ── Reasoning / Coding ──
+    { id: 'nvidia/llama-3.3-nemotron-super-49b-v1',          label: 'Nemotron Super 49B',   tier: 'free', note: 'FREE · NVIDIA · Tool calling · High efficiency · Reasoning' },
+    { id: 'nvidia/llama-3.3-nemotron-super-49b-v1.5',        label: 'Nemotron Super 49B v1.5', tier: 'free', note: 'FREE · NVIDIA · Latest · Reasoning · Tool calling · Chat' },
+    { id: 'minimaxai/minimax-m2.7',                          label: 'MiniMax M2.7',         tier: 'free', note: 'FREE · MiniMax · 230B · Long reasoning · Office tasks' },
+    { id: 'minimaxai/minimax-m3',                            label: 'MiniMax M3',           tier: 'free', note: 'FREE · MiniMax · MoE VLM · Reasoning · Coding · Tool calling' },
+    { id: 'bytedance/seed-oss-36b-instruct',                 label: 'Seed 36B',             tier: 'free', note: 'FREE · ByteDance · Long-context · Agentic · Thinking budget' },
+    { id: 'mistralai/mistral-nemotron',                      label: 'Mistral Nemotron',     tier: 'free', note: 'FREE · Mistral+NVIDIA · Agentic workflows · Coding · Function calling' },
+    { id: 'mistralai/ministral-14b-instruct-2512',           label: 'Ministral 14B',        tier: 'free', note: 'FREE · Mistral · 14B VLM · General chat · Instructions' },
     { id: 'mistralai/mistral-medium-3.5-128b',               label: 'Mistral Medium 3.5',   tier: 'free', note: 'FREE · Mistral · 128B · Best for code' },
-    { id: 'mistralai/mistral-small-4-119b-2603',             label: 'Mistral Small 4',      tier: 'free', note: 'FREE · Mistral · 119B MoE · 256k ctx' },
-    { id: 'qwen/qwen3.5-122b-a10b',                          label: 'Qwen3.5 122B',         tier: 'free', note: 'FREE · Alibaba · 122B MoE · Coding · Agent-ready' },
+    { id: 'mistralai/mistral-small-4-119b-2603',             label: 'Mistral Small 4',      tier: 'free', note: 'FREE · Mistral · 119B MoE · 256k ctx · Reasoning' },
+    { id: 'qwen/qwen3.5-122b-a10b',                          label: 'Qwen3.5 122B',         tier: 'free', note: 'FREE · Alibaba · 122B MoE · Coding · Agent-ready · Tool calling' },
     { id: 'openai/gpt-oss-120b',                             label: 'GPT OSS 120B',         tier: 'free', note: 'FREE · OpenAI · 120B MoE · Reasoning' },
     { id: 'deepseek-ai/deepseek-v4-flash',                   label: 'DeepSeek V4 Flash',    tier: 'free', note: 'FREE · DeepSeek · 284B MoE · 1M ctx · Fast coding' },
-    // ── Creative / Long ──
-    { id: 'meta/llama-4-maverick-17b-128e-instruct',         label: 'Llama 4 Maverick',     tier: 'free', note: 'FREE · Meta · 128E MoE · Multimodal · Creative' },
-    { id: 'qwen/qwen3-next-80b-a3b-instruct',                label: 'Qwen3-Next 80B',       tier: 'free', note: 'FREE · Alibaba · Ultra-long ctx · Storytelling' },
-    // ── Vision ──
-    { id: 'meta/llama-3.2-90b-vision-instruct',              label: 'Llama 3.2 90B Vision', tier: 'free', note: 'FREE · Meta · Vision-Language · Image reasoning' },
-    { id: 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1',         label: 'Nemotron VL 8B',       tier: 'free', note: 'FREE · NVIDIA · Vision-Language · Fast' },
-    { id: 'qwen/qwen3.5-397b-a17b',                          label: 'Qwen3.5 397B',         tier: 'free', note: 'FREE · Alibaba · 400B flagship · Vision + Agentic' },
-    // ── Beast ──
-    { id: 'nvidia/nemotron-3-super-120b-a12b',               label: 'Nemotron Super 120B',  tier: 'free', note: 'FREE · NVIDIA · 1M ctx · Agentic' },
-    { id: 'nvidia/nemotron-3-ultra-550b-a55b',               label: 'Nemotron Ultra 550B',  tier: 'free', note: 'FREE · NVIDIA · 550B · 1M ctx · Best' },
-    { id: 'mistralai/mistral-large-3-675b-instruct-2512',    label: 'Mistral Large 3',      tier: 'free', note: 'FREE · Mistral · 675B MoE · Top tier' },
+    { id: 'deepseek-ai/deepseek-v4-pro',                     label: 'DeepSeek V4 Pro',      tier: 'free', note: 'FREE · DeepSeek · Flagship · 1M ctx · Highest accuracy' },
+    { id: 'qwen/qwen3-next-80b-a3b-instruct',                label: 'Qwen3-Next 80B',       tier: 'free', note: 'FREE · Alibaba · Ultra-long ctx · Hybrid attention · Storytelling' },
+    // ── Large / Flagship ──
+    { id: 'qwen/qwen3.5-397b-a17b',                          label: 'Qwen3.5 397B',         tier: 'free', note: 'FREE · Alibaba · 400B flagship · Vision + Agentic · Best Qwen' },
+    { id: 'nvidia/nemotron-3-super-120b-a12b',               label: 'Nemotron Super 120B',  tier: 'free', note: 'FREE · NVIDIA · 1M ctx · Agentic · Mamba-Transformer' },
+    { id: 'nvidia/nemotron-3-ultra-550b-a55b',               label: 'Nemotron Ultra 550B',  tier: 'free', note: 'FREE · NVIDIA · 550B · 1M ctx · Best NVIDIA · Agentic' },
+    { id: 'mistralai/mistral-large-3-675b-instruct-2512',    label: 'Mistral Large 3',      tier: 'free', note: 'FREE · Mistral · 675B MoE · Top tier · VLM' },
   ],
 
   async send(messages, systemPrompt, apiKey, model, onChunk, _streamSpeed = 'normal', onUsage, tokenBudget = 4096, temperature = 0.9) {
