@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type SubjectLayer = 'FOUNDATION' | 'MIDDLE' | 'EDGE';
+type SubjectLayer = 'FOUNDATION' | 'MIDDLE' | 'EDGE' | 'OPEN' | 'VOID';
 type CompanionMood = 'dormant' | 'present' | 'lit' | 'transcendent';
 
 export interface LAMAGUEStateInput {
@@ -19,6 +19,8 @@ const SIGMA: Record<SubjectLayer, string> = {
   FOUNDATION: 'Σ●',
   MIDDLE:     'Σ~',
   EDGE:       'Σ◈',
+  OPEN:       'Σ∅',
+  VOID:       'Σ◌',
 };
 
 function blockFromSubject(name: string): string {

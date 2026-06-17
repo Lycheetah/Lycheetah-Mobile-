@@ -57,11 +57,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="zodiac"
+        options={{
+          title: 'THE STARS',
+          tabBarLabel: 'Zodiac',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="☽" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="library"
         options={{
+          href: null,
           title: 'LIBRARY',
-          tabBarLabel: 'Library',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="◬" color={color} />,
         }}
       />
       <Tabs.Screen

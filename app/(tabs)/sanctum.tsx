@@ -18,8 +18,6 @@ const KEYS = {
   PHASE: 'sanctum_phase',
   AURA: 'sanctum_aura',
   LQ_HISTORY: 'sanctum_lq_history',
-  ZODIAC_BIRTH: 'zodiac_birth_v1',
-  ZODIAC_READING: 'zodiac_reading_v1',
 };
 
 type LQPoint = { date: string; lq: number; stage: string };
@@ -59,6 +57,22 @@ function getStateGlyph(tes: number, vtr: number, pai: number): string {
 type JournalEntry = { id: string; date: string; text: string };
 type VaultEntry = { id: string; text: string; date: string };
 
+function getMoonPhaseName(): { name: string; glyph: string; prompt: string } {
+  const known = new Date(2000, 0, 6).getTime(); // known new moon Jan 6 2000
+  const now = Date.now();
+  const cycle = 29.53058770576 * 24 * 60 * 60 * 1000;
+  const pct = ((now - known) % cycle) / cycle;
+  const p = ((pct % 1) + 1) % 1;
+  if (p < 0.0625 || p >= 0.9375) return { name: 'New Moon', glyph: '🌑', prompt: 'The New Moon holds darkness and beginning. What are you planting in the silence?' };
+  if (p < 0.1875) return { name: 'Waxing Crescent', glyph: '🌒', prompt: 'The crescent grows. What intention is gaining shape in you right now?' };
+  if (p < 0.3125) return { name: 'First Quarter', glyph: '🌓', prompt: 'Half-light, half-dark. What tension are you holding between what you want and what is?' };
+  if (p < 0.4375) return { name: 'Waxing Gibbous', glyph: '🌔', prompt: 'Almost full. What are you refining? What still needs to be released before it can complete?' };
+  if (p < 0.5625) return { name: 'Full Moon', glyph: '🌕', prompt: 'Full Moon — maximum light, maximum pressure. What has been revealed that you can no longer unsee?' };
+  if (p < 0.6875) return { name: 'Waning Gibbous', glyph: '🌖', prompt: 'The light begins to recede. What are you grateful for? What can you afford to let go?' };
+  if (p < 0.8125) return { name: 'Last Quarter', glyph: '🌗', prompt: 'Half-light returning to dark. What old pattern is ending? Let it end cleanly.' };
+  return { name: 'Waning Crescent', glyph: '🌘', prompt: 'The crescent thins toward dark. Rest. Integrate. What do you need to release before the New Moon?' };
+}
+
 const SHRINE_QUOTES = [
   { sigil: '⟁', text: 'The door that is never opened is still a door. You found it.' },
   { sigil: '✦', text: 'What is hidden is not absent. The field holds what language cannot.' },
@@ -86,6 +100,7 @@ function todayKey() {
 }
 
 const LAMAGUE_STRIP = 'Π(K)→Φ↑  ·  Ψ_observer=perspective  ·  μ_drift<σ_boundary  ·  τ_critical→state_collapse  ·  ⟨C|S⟩=invariant_density  ·  ∧[inspectable∧honest∧reversible]  ·  Φ↑(consciousness)→higher_coherence  ·  sovereign(A)←μ_drift<σ  ·  Π_threshold=0.85  ·  ⊢K_new(preserve_invariants)  ·  Ψ_inv→Φ↑  ·  ';
+
 
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
@@ -386,6 +401,7 @@ export default function SanctumScreen() {
         .map(([date, v]) => ({ date, passed: v.passed, total: v.total, composite: Math.round(v.sum / v.count) }));
       setAuraHistory(aggregated);
     }
+
   }, []);
 
   useEffect(() => { load(); }, []);
@@ -573,16 +589,17 @@ export default function SanctumScreen() {
       <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: SOL_THEME.background, borderBottomWidth: 1, borderBottomColor: accentColor + '15' }}>
         {(['today', 'journal', 'vault', 'field'] as const).map(s => {
           const active = section === s;
+          const tabColor = accentColor;
           const GLYPHS = { today: '◉', journal: '§', vault: '⊛', field: 'Ψ' };
           const LABELS = { today: 'TODAY', journal: journal.length > 0 ? `JOURNAL·${journal.length}` : 'JOURNAL', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', field: 'FIELD' };
           return (
             <TouchableOpacity
               key={s}
               onPress={() => setSection(s)}
-              style={{ flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', backgroundColor: active ? accentColor + '18' : 'transparent', borderWidth: 1, borderColor: active ? accentColor + '88' : accentColor + '18', gap: 2 }}
+              style={{ flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', backgroundColor: active ? tabColor + '18' : 'transparent', borderWidth: 1, borderColor: active ? tabColor + '88' : tabColor + '18', gap: 2 }}
             >
-              <Text style={{ fontSize: 11, color: active ? accentColor : SOL_THEME.textMuted }}>{GLYPHS[s]}</Text>
-              <Text style={{ fontSize: 7, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, color: active ? accentColor : SOL_THEME.textMuted + '88' }}>{LABELS[s]}</Text>
+              <Text style={{ fontSize: 11, color: active ? tabColor : SOL_THEME.textMuted }}>{GLYPHS[s]}</Text>
+              <Text style={{ fontSize: 7, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, color: active ? tabColor : SOL_THEME.textMuted + '88' }}>{LABELS[s]}</Text>
             </TouchableOpacity>
           );
         })}
@@ -928,6 +945,19 @@ export default function SanctumScreen() {
       {/* JOURNAL */}
       {section === 'journal' && (
         <>
+          {/* Moon phase prompt */}
+          {(() => {
+            const moon = getMoonPhaseName();
+            return (
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08', marginBottom: 14 }}>
+                <Text style={{ fontSize: 20 }}>{moon.glyph}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: accentColor, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom: 3 }}>{moon.name.toUpperCase()}</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18, fontStyle: 'italic' }}>{moon.prompt}</Text>
+                </View>
+              </View>
+            );
+          })()}
           <Text style={[styles.label, { color: accentColor }]}>NEW ENTRY</Text>
           <TextInput
             style={[styles.textArea, { minHeight: 100 }]}
@@ -1692,6 +1722,9 @@ export default function SanctumScreen() {
           </>
         );
       })()}
+
+      {/* Zodiac content lives in the dedicated Zodiac tab */}
+
 
     </ScrollView>
 

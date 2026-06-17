@@ -35,15 +35,28 @@ export type OpenAIModel = 'gpt-4o' | 'gpt-4o-mini' | 'gpt-4.1-mini' | 'gpt-4.1-n
 export type DeepSeekModel = 'deepseek-chat' | 'deepseek-reasoner';
 export type KimiModel = 'moonshot-v1-8k' | 'moonshot-v1-32k';
 export type NvidiaModel =
-  | 'meta/llama-3.1-8b-instruct' | 'openai/gpt-oss-20b' | 'stepfun-ai/step-3.7-flash'
-  | 'google/gemma-3n-e2b-it' | 'moonshotai/kimi-k2.6'
-  | 'meta/llama-3.3-70b-instruct' | 'google/gemma-4-31b-it' | 'nvidia/llama-3.3-nemotron-super-49b-v1'
-  | 'minimaxai/minimax-m2.7' | 'bytedance/seed-oss-36b-instruct'
+  // Tiny / Edge
+  | 'meta/llama-3.2-1b-instruct' | 'meta/llama-3.2-3b-instruct'
+  | 'google/gemma-3n-e2b-it' | 'google/gemma-3n-e4b-it' | 'google/gemma-2-2b-it'
+  | 'nvidia/nemotron-mini-4b-instruct' | 'microsoft/phi-4-mini-instruct'
+  // Speed (8B–20B)
+  | 'meta/llama-3.1-8b-instruct' | 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1'
+  | 'openai/gpt-oss-20b' | 'microsoft/phi-4-multimodal-instruct' | 'google/diffusiongemma-26b-a4b-it'
+  // Mid (30B–70B)
+  | 'meta/llama-3.3-70b-instruct' | 'meta/llama-3.1-70b-instruct'
+  | 'nvidia/nvidia-nemotron-nano-9b-v2' | 'abacusai/dracarys-llama-3.1-70b-instruct' | 'sarvamai/sarvam-m'
+  // Vision / Multimodal
+  | 'meta/llama-3.2-11b-vision-instruct' | 'meta/llama-3.2-90b-vision-instruct'
+  | 'meta/llama-4-maverick-17b-128e-instruct' | 'stepfun-ai/step-3.7-flash'
+  | 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' | 'moonshotai/kimi-k2.6'
+  // Reasoning / Coding
+  | 'nvidia/llama-3.3-nemotron-super-49b-v1' | 'nvidia/llama-3.3-nemotron-super-49b-v1.5'
+  | 'minimaxai/minimax-m2.7' | 'minimaxai/minimax-m3' | 'bytedance/seed-oss-36b-instruct'
+  | 'mistralai/mistral-nemotron' | 'mistralai/ministral-14b-instruct-2512'
   | 'mistralai/mistral-medium-3.5-128b' | 'mistralai/mistral-small-4-119b-2603'
-  | 'qwen/qwen3.5-122b-a10b' | 'openai/gpt-oss-120b' | 'deepseek-ai/deepseek-v4-flash'
-  | 'meta/llama-4-maverick-17b-128e-instruct' | 'qwen/qwen3-next-80b-a3b-instruct'
-  | 'meta/llama-3.2-90b-vision-instruct' | 'nvidia/llama-3.1-nemotron-nano-vl-8b-v1' | 'qwen/qwen3.5-397b-a17b'
-  | 'nvidia/nemotron-3-super-120b-a12b' | 'nvidia/nemotron-3-ultra-550b-a55b' | 'mistralai/mistral-large-3-675b-instruct-2512';
+  | 'openai/gpt-oss-120b' | 'deepseek-ai/deepseek-v4-flash' | 'qwen/qwen3-next-80b-a3b-instruct'
+  // Large / Flagship
+  | 'nvidia/nemotron-3-super-120b-a12b' | 'mistralai/mistral-large-3-675b-instruct-2512';
 export type AIModel = GeminiModel | AnthropicModel | OpenAIModel | DeepSeekModel | KimiModel | NvidiaModel;
 
 export function getProviderFromModel(model: AIModel): Provider {

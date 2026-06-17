@@ -64,6 +64,7 @@ export default function SettingsScreen() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [devTapCount, setDevTapCount] = useState(0);
+  const [commitmentOpen, setCommitmentOpen] = useState(false);
 
   useEffect(() => {
     getModel().then(m => {
@@ -247,7 +248,7 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {PROVIDERS.filter(p => devMode || p.id !== 'deepseek').map(provider => {
+      {PROVIDERS.map(provider => {
         const isExpanded = expandedProvider === provider.id;
         const savedKey = savedKeys[provider.id];
         const hasKey = !!savedKey;
@@ -916,11 +917,79 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         ))}
 
+        {/* Support email */}
+        <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: accentColor + '22' }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginBottom: 8, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>✉ SUPPORT & FEEDBACK</Text>
+          {[
+            { label: 'BUG: — report an issue', prefix: 'BUG' },
+            { label: 'FEEDBACK: — share thoughts', prefix: 'FEEDBACK' },
+            { label: 'IDEA: — suggest a feature', prefix: 'IDEA' },
+            { label: 'SCHOOL: — Mystery School input', prefix: 'SCHOOL' },
+            { label: 'CREDIT: — suggest a creator to credit', prefix: 'CREDIT' },
+            { label: 'LOVE: — say something kind', prefix: 'LOVE' },
+          ].map(item => (
+            <TouchableOpacity
+              key={item.prefix}
+              onPress={() => Linking.openURL(`mailto:lycheetahsol@gmail.com?subject=${item.prefix}%3A%20`)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: accentColor + '11' }}
+            >
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{item.label}</Text>
+              <Text style={{ color: accentColor + '88', fontSize: 11 }}>→</Text>
+            </TouchableOpacity>
+          ))}
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 8, textAlign: 'center' }}>lycheetahsol@gmail.com</Text>
+        </View>
+
         <View style={{ marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: accentColor + '22' }}>
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', lineHeight: 16 }}>
             {'#SolApp  #LycheetahFramework  #AICompanion\nBuilt by Mac Clark · Dunedin, Aotearoa NZ'}
           </Text>
         </View>
+      </View>
+
+      {/* ── THE LYCHEETAH COMMITMENT ───────────────────────────────────────── */}
+      <View style={{ marginBottom: 24, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
+        <TouchableOpacity onPress={() => setCommitmentOpen(o => !o)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }} activeOpacity={0.7}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ color: accentColor, fontSize: 14 }}>⊚</Text>
+            <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>THE LYCHEETAH COMMITMENT</Text>
+          </View>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>{commitmentOpen ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+
+        {commitmentOpen && (
+          <View style={{ marginTop: 16, gap: 12 }}>
+            <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 21, fontWeight: '700' }}>
+              Sol is a thinking tool, not an authority.
+            </Text>
+
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20 }}>
+              Everything here — the Mystery School, the readings, the frameworks — is offered as a doorway for your own inquiry. It is drawn from real human traditions and real research. It will be imperfect, it will evolve, and it is not a substitute for primary sources, teachers, peer-reviewed science, or your own direct experience.
+            </Text>
+
+            <View style={{ paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: accentColor + '66' }}>
+              <Text style={{ color: SOL_THEME.text, fontSize: 12, lineHeight: 20, fontWeight: '700' }}>Do your own research.</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20 }}>
+                What resonates — cross-reference it. What doesn't — set it down. The School does not ask for belief. It asks for curiosity.
+              </Text>
+            </View>
+
+            <View style={{ paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: '#E07040AA' }}>
+              <Text style={{ color: SOL_THEME.text, fontSize: 12, lineHeight: 20, fontWeight: '700' }}>On safety.</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20 }}>
+                Some of what you find here may unsettle your existing picture of the world. That is sometimes the point. But if something here disturbs your stability rather than expanding it — stop. Rest. Talk to someone you trust.{'\n\n'}Sol is not a therapist, a doctor, a spiritual authority, or a legal advisor. It is an intelligence designed to help you think more clearly about hard things. That is its only authority.
+              </Text>
+            </View>
+
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20 }}>
+              Lycheetah takes this work seriously. The commitment is to truth over comfort. If you use this tool, that is your commitment too.
+            </Text>
+
+            <Text style={{ color: accentColor + 'AA', fontSize: 11, fontStyle: 'italic', marginTop: 4 }}>
+              — Mac Clark, aka Lycheetah · Dunedin, Aotearoa NZ
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.footer}>
