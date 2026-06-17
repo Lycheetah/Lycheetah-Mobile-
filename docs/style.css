@@ -1,0 +1,431 @@
+/* ===== RESET & BASE ===== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    background-color: #0A0012;
+    color: #E8E8F0;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== HERO ===== */
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 24px 100px;
+    min-height: 60vh;
+}
+
+.glyph-large {
+    font-family: 'Space Mono', monospace;
+    font-size: 80px;
+    color: #C8A96E;
+    line-height: 1;
+    margin-bottom: 24px;
+}
+
+.app-name {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: clamp(32px, 6vw, 56px);
+    color: #7B68EE;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+}
+
+.tagline {
+    font-style: italic;
+    color: #888899;
+    font-size: 18px;
+    margin-bottom: 40px;
+    max-width: 480px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 32px;
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+    white-space: nowrap;
+}
+
+.btn-primary {
+    background-color: #7B68EE;
+    color: #0A0012;
+    border-color: #7B68EE;
+}
+
+.btn-primary:hover {
+    background-color: #8B79F0;
+    border-color: #8B79F0;
+}
+
+.btn-ghost {
+    background-color: transparent;
+    color: #7B68EE;
+    border-color: #7B68EE;
+}
+
+.btn-ghost:hover {
+    background-color: #7B68EE;
+    color: #0A0012;
+}
+
+.btn-download {
+    background-color: #C8A96E;
+    color: #0A0012;
+    border-color: #C8A96E;
+    font-size: 16px;
+    padding: 18px 40px;
+}
+
+.btn-download:hover {
+    background-color: #D4B87A;
+    border-color: #D4B87A;
+}
+
+/* ===== WHAT IS SOL ===== */
+.what-is-sol {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 24px;
+}
+
+.card {
+    background-color: #12101E;
+    border: 1px solid #7B68EE33;
+    border-radius: 12px;
+    padding: 40px 28px;
+    text-align: center;
+    transition: border-color 0.3s ease, transform 0.3s ease;
+}
+
+.card:hover {
+    border-color: #7B68EE66;
+    transform: translateY(-4px);
+}
+
+.card-glyph {
+    font-family: 'Space Mono', monospace;
+    font-size: 48px;
+    color: #7B68EE;
+    line-height: 1;
+    margin-bottom: 20px;
+}
+
+.card-title {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 18px;
+    color: #E8E8F0;
+    margin-bottom: 12px;
+}
+
+.card-desc {
+    color: #888899;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* ===== EPISTEMIC LAYERS ===== */
+.layers {
+    text-align: center;
+    padding: 60px 24px;
+    border-top: 1px solid #7B68EE22;
+    border-bottom: 1px solid #7B68EE22;
+}
+
+.layers-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    color: #888899;
+    margin-bottom: 28px;
+    letter-spacing: 1px;
+}
+
+.layers-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.pill {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 100px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.pill-indigo {
+    background-color: #7B68EE22;
+    color: #7B68EE;
+    border: 1px solid #7B68EE44;
+}
+
+.pill-muted {
+    background-color: #E8E8F011;
+    color: #E8E8F0;
+    border: 1px solid #E8E8F022;
+}
+
+.pill-gold {
+    background-color: #C8A96E22;
+    color: #C8A96E;
+    border: 1px solid #C8A96E44;
+}
+
+.pill-open {
+    background-color: #9B59B622;
+    color: #9B59B6;
+    border: 1px solid #9B59B644;
+}
+
+.pill-void {
+    background-color: #4A008033;
+    color: #B06AE0;
+    border: 1px solid #7B30C066;
+}
+
+/* ===== FEATURES LIST ===== */
+.features {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 80px 24px;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px 40px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15px;
+    color: #E8E8F0;
+    padding: 8px 0;
+}
+
+.feature-glyph {
+    color: #7B68EE;
+    font-size: 14px;
+    line-height: 1.6;
+    flex-shrink: 0;
+}
+
+/* ===== DOWNLOAD ===== */
+.download {
+    padding: 80px 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.download-card {
+    background-color: #12101E;
+    border: 1px solid #7B68EE33;
+    border-radius: 16px;
+    padding: 56px 48px;
+    text-align: center;
+    max-width: 520px;
+    width: 100%;
+}
+
+.download-title {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 28px;
+    color: #C8A96E;
+    margin-bottom: 8px;
+}
+
+.download-subtitle {
+    color: #888899;
+    font-size: 15px;
+    margin-bottom: 32px;
+}
+
+.download-meta {
+    color: #888899;
+    font-size: 13px;
+    margin-top: 16px;
+    margin-bottom: 32px;
+}
+
+.install-note {
+    text-align: left;
+    background-color: #0A0012;
+    border: 1px solid #7B68EE22;
+    border-radius: 10px;
+    padding: 24px 28px;
+}
+
+.install-heading {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    color: #E8E8F0;
+    margin-bottom: 14px;
+}
+
+.install-note ol {
+    padding-left: 20px;
+    color: #888899;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.install-note li {
+    margin-bottom: 4px;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+    text-align: center;
+    padding: 60px 24px 80px;
+    border-top: 1px solid #7B68EE22;
+}
+
+.footer-glyph {
+    font-family: 'Space Mono', monospace;
+    font-size: 24px;
+    color: #C8A96E;
+    margin-bottom: 16px;
+}
+
+.footer p {
+    color: #888899;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.footer a {
+    color: #888899;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.footer a:hover {
+    color: #7B68EE;
+}
+
+.footer-link {
+    text-decoration: underline;
+    text-decoration-color: #7B68EE44;
+}
+
+.footer-quote {
+    font-style: italic;
+    color: #888899;
+    margin-top: 24px;
+    font-size: 14px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ===== MOBILE RESPONSIVENESS ===== */
+@media (max-width: 768px) {
+    .hero {
+        padding: 80px 20px 60px;
+    }
+
+    .glyph-large {
+        font-size: 64px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        width: 100%;
+        max-width: 280px;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .what-is-sol {
+        grid-template-columns: 1fr;
+        padding: 60px 20px;
+    }
+
+    .card {
+        padding: 32px 24px;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .download-card {
+        padding: 40px 24px;
+    }
+
+    .layers-row {
+        gap: 8px;
+    }
+
+    .pill {
+        font-size: 12px;
+        padding: 8px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-name {
+        font-size: 28px;
+    }
+
+    .tagline {
+        font-size: 16px;
+    }
+
+    .download-title {
+        font-size: 22px;
+    }
+
+    .install-note {
+        padding: 20px;
+    }
+}

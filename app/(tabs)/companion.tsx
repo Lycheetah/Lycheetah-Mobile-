@@ -1558,7 +1558,7 @@ function CompanionScene({
         style={{ position:'absolute', top:-48, left:-18, width:SCREEN_W+36, height:SCENE_H+80, opacity:sceneFade, transform:[{ translateX:bgParallaxX }] }}
         resizeMode="cover"
       />
-      {/* Layer 1 — mid depth 2.5D parallax, 1.5× rate, skin-tinted */}
+      {/* Layer 1 — mid depth 2.5D parallax, 1.5× rate — no tint, scene speaks for itself */}
       <Animated.Image
         source={sceneBg}
         style={{ position:'absolute', top:-32, left:-36, width:SCREEN_W+72, height:SCENE_H+60, opacity:Animated.multiply(sceneFade, 0.22), transform:[{ translateX:midParallaxX }] }}
@@ -1601,7 +1601,7 @@ function CompanionScene({
       {/* Bottom dark fade — grounding only, no colour */}
       <View style={{ position:'absolute', bottom:0, left:0, right:0, height:SCENE_H*0.10, backgroundColor:'#000000', opacity:0.35 }} pointerEvents="none" />
 
-      {/* Layered mist bands — mid-depth, independent drift, archetype-tinted */}
+      {/* Layered mist bands — mid-depth, independent drift, neutral white — no skin tint */}
       {[
         { yFrac: 0.12, h: 48, op: 0.038, amp: 0.28, fi: 0 },
         { yFrac: 0.42, h: 30, op: 0.026, amp: 0.20, fi: 1 },
@@ -1615,7 +1615,7 @@ function CompanionScene({
           width: SCREEN_W * 1.6,
           height: h,
           borderRadius: h / 2,
-          backgroundColor: color,
+          backgroundColor: '#FFFFFF',
           opacity: op,
           transform: [{ translateX: fogAnims[fi].interpolate({ inputRange: [0, 1], outputRange: [0, SCREEN_W * amp] }) }],
         }} />
@@ -1860,6 +1860,11 @@ export default function CompanionScreen() {
   const [lamagueSt,  setLamagueSt]  = useState<string | null>(null);
   const [liveLore,   setLiveLore]   = useState<{ text: string; subject: string; date: string }[]>([]);
   const [companionSpec, setCompanionSpec] = useState<CompanionSpec>(DEFAULT_SPEC);
+
+  // ── Tarot ──────────────────────────────────────────────────────────────────
+  const [tarotDraw,    setTarotDraw]    = useState<{ name:string; glyph:string; reversed:boolean }[] | null>(null);
+  const [tarotReading, setTarotReading] = useState<string | null>(null);
+  const [tarotLoading, setTarotLoading] = useState(false);
 
   // ── AI Talk panel ──────────────────────────────────────────────────────────
   const [showTalk,    setShowTalk]    = useState(false);
@@ -2494,6 +2499,57 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     }
   };
 
+  const drawTarot = async () => {
+    const MAJOR_ARCANA = [
+      { name:'The Fool',         glyph:'0', keywords:'beginnings, innocence, spontaneity' },
+      { name:'The Magician',     glyph:'I', keywords:'willpower, desire, creation' },
+      { name:'High Priestess',   glyph:'II', keywords:'intuition, unconscious, mystery' },
+      { name:'The Empress',      glyph:'III', keywords:'femininity, beauty, nature, abundance' },
+      { name:'The Emperor',      glyph:'IV', keywords:'authority, structure, solid foundation' },
+      { name:'The Hierophant',   glyph:'V', keywords:'tradition, conformity, ethics' },
+      { name:'The Lovers',       glyph:'VI', keywords:'love, union, relationships, choices' },
+      { name:'The Chariot',      glyph:'VII', keywords:'control, willpower, victory, assertion' },
+      { name:'Strength',         glyph:'VIII', keywords:'strength, courage, patience, compassion' },
+      { name:'The Hermit',       glyph:'IX', keywords:'soul-searching, introspection, being alone' },
+      { name:'Wheel of Fortune', glyph:'X', keywords:'good luck, karma, life cycles, destiny' },
+      { name:'Justice',          glyph:'XI', keywords:'justice, fairness, truth, cause and effect' },
+      { name:'The Hanged Man',   glyph:'XII', keywords:'suspension, restriction, letting go' },
+      { name:'Death',            glyph:'XIII', keywords:'endings, change, transformation, transition' },
+      { name:'Temperance',       glyph:'XIV', keywords:'balance, moderation, patience, purpose' },
+      { name:'The Devil',        glyph:'XV', keywords:'shadow self, attachment, addiction, bondage' },
+      { name:'The Tower',        glyph:'XVI', keywords:'sudden change, upheaval, chaos, revelation' },
+      { name:'The Star',         glyph:'XVII', keywords:'hope, faith, purpose, renewal' },
+      { name:'The Moon',         glyph:'XVIII', keywords:'illusion, fear, the unconscious, dreams' },
+      { name:'The Sun',          glyph:'XIX', keywords:'positivity, fun, warmth, success' },
+      { name:'Judgement',        glyph:'XX', keywords:'reflection, reckoning, awakening' },
+      { name:'The World',        glyph:'XXI', keywords:'completion, integration, accomplishment' },
+    ];
+    const shuffled = [...MAJOR_ARCANA].sort(() => Math.random() - 0.5);
+    const drawn = shuffled.slice(0, 3).map(c => ({ ...c, reversed: Math.random() < 0.3 }));
+    setTarotDraw(drawn);
+    setTarotReading(null);
+    setTarotLoading(true);
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) throw new Error('no key');
+      const positions = ['Past', 'Present', 'Future'];
+      const cardList = drawn.map((c, i) => `${positions[i]}: ${c.name}${c.reversed ? ' (Reversed)' : ''} — ${c.keywords}`).join('\n');
+      const diveCtx = recentDives.length > 0
+        ? `The seeker has recently studied: ${recentDives.slice(0,2).map(d => d.subjectName).join(', ')}.`
+        : '';
+      const result = await sendMessage(
+        [{ role:'user', content:`Three-card tarot spread:\n${cardList}\n\n${diveCtx}\n\nGive a single flowing reading in 4–5 sentences. Speak in the voice of ${archetype.name}, ${archetype.title}. Past → Present → Future arc. Philosophical, precise, alive. No card names needed in the text — let the meaning speak.` }],
+        `You are ${archetype.name} — ${archetype.desc} Give tarot readings that feel earned and true. No generic preamble.`,
+        key, model as any, undefined, 'normal', 200,
+      );
+      setTarotReading(result.text?.trim() ?? null);
+    } catch {
+      setTarotReading('The cards speak, but the channel is quiet. Return when the key is set.');
+    } finally {
+      setTarotLoading(false);
+    }
+  };
+
   const saveToCodex = async (entry: {id:string; enemy:string; text:string; type:'enemy'|'loot'}) => {
     const raw = await AsyncStorage.getItem('sol_lore_codex');
     const existing: typeof loreCodex = raw ? JSON.parse(raw) : [];
@@ -2867,9 +2923,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           </TouchableOpacity>
           <Text style={{ color, fontSize:18 }}>{archetype.glyph}</Text>
           <View>
-            <Text style={{ color:SOL_THEME.text, fontSize:15, fontWeight:'700', fontFamily:mono }}>
-              {displayName}
-            </Text>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+              <Text style={{ color:SOL_THEME.text, fontSize:15, fontWeight:'700', fontFamily:mono }}>{displayName}</Text>
+              <View style={{ paddingHorizontal:5, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor:color+'55', backgroundColor:color+'14' }}>
+                <Text style={{ color:color, fontSize:8, fontFamily:mono, fontWeight:'700' }}>LV.{lvl.level}</Text>
+              </View>
+            </View>
             <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
           </View>
         </View>
@@ -2968,8 +3027,34 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       )}
 
+      {/* ── XP / STAGE PROGRESS STRIP ───────────────────────────────────── */}
+      <View style={{ marginHorizontal:16, marginTop:8, marginBottom:6, padding:10, borderRadius:10, borderWidth:1, borderColor:color+'22', backgroundColor:color+'08', flexDirection:'row', gap:12, alignItems:'center' }}>
+        {/* Stage progress */}
+        <View style={{ flex:1 }}>
+          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+            <Text style={{ color:color, fontSize:8, fontFamily:mono, letterSpacing:1, fontWeight:'700' }}>EVO · {stageData.name}</Text>
+            <Text style={{ color:'#333355', fontSize:8, fontFamily:mono }}>{stage<5 ? `${totalDives}/${stageData.nextAt}` : '∞'}</Text>
+          </View>
+          <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden' }}>
+            <View style={{ height:3, width:`${Math.round(evProg*100)}%` as any, backgroundColor:color, borderRadius:2 }} />
+          </View>
+        </View>
+        {/* Divider */}
+        <View style={{ width:1, height:28, backgroundColor:color+'22' }} />
+        {/* XP progress */}
+        <View style={{ flex:1 }}>
+          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+            <Text style={{ color:color+'CC', fontSize:8, fontFamily:mono, letterSpacing:1 }}>{lvl.cur.glyph} LV.{lvl.level}</Text>
+            <Text style={{ color:'#333355', fontSize:8, fontFamily:mono }}>{xp} XP</Text>
+          </View>
+          <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden' }}>
+            <View style={{ height:3, width:`${Math.round(lvl.progress*100)}%` as any, backgroundColor:color+'AA', borderRadius:2 }} />
+          </View>
+        </View>
+      </View>
+
       {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
-      <View style={{ flexDirection:'row', gap:4, marginHorizontal:16, marginTop:10, marginBottom:4 }}>
+      <View style={{ flexDirection:'row', gap:4, marginHorizontal:16, marginTop:0, marginBottom:4 }}>
         {([
           { id:'battle' as const, label:'⚔', name:'BATTLE' },
           { id:'feed'   as const, label:'△', name:'FEED'   },
@@ -3619,8 +3704,13 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           </View>
 
           {/* BATTLE PANEL ─────────────────────────── */}
+          {(() => {
+            const bDef = battle ? getEnemyDef(battle.entityName) : null;
+            const panelBorderColor = bDef ? bDef.colour + '55' : '#FF444433';
+            const panelBg = bDef?.rarity === 'legendary' ? '#0C0800' : bDef?.rarity === 'epic' ? '#08000C' : '#0C0000';
+            return (
           <View onLayout={e => { battleY.current = e.nativeEvent.layout.y; }}
-            style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1.5, borderColor:'#FF444433', backgroundColor:'#0C0000' }}>
+            style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1.5, borderColor:panelBorderColor, backgroundColor:panelBg }}>
 
             {/* Header */}
             <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
@@ -3688,8 +3778,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                     )}
                   </Animated.View>
                   <View style={{ flex:1, gap:4 }}>
-                    <View style={{ flexDirection:'row', alignItems:'center', gap:5 }}>
+                    <View style={{ flexDirection:'row', alignItems:'center', gap:5, flexWrap:'wrap' }}>
                       <Text style={{ color:rc, fontSize:12, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{battle.entityName.toUpperCase()}</Text>
+                      <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, borderWidth:1, borderColor:rc+'55', backgroundColor:rc+'14' }}>
+                        <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{def.rarity.toUpperCase()}</Text>
+                      </View>
                       {battle.enemyStunned && <Text style={{ color:'#FFBB00', fontSize:8, fontFamily:mono }}>STUNNED</Text>}
                     </View>
                     <View style={{ height:8, backgroundColor:'#1A0000', borderRadius:4, overflow:'hidden' }}>
@@ -3807,6 +3900,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               </View>
             )}
           </View>
+          ); })()}
 
           {/* INVENTORY ──────────────────────────────── */}
           {inventory.length > 0 && (
@@ -4162,6 +4256,87 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             <Text style={{ color:'#555566', fontSize:11, lineHeight:18, fontStyle:'italic' }}>
               Never starves. Never dies. Never guilts. Absence is rest. Evolution earned through the Work — the form is sacred and cannot be bought.
             </Text>
+          </View>
+
+          {/* ── TAROT READING ─────────────────────────────────────────── */}
+          <View style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1, borderColor:color+'33', backgroundColor:color+'06' }}>
+            <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <Text style={{ color:color, fontSize:16 }}>⊜</Text>
+                <View>
+                  <Text style={{ color:SOL_THEME.text, fontSize:11, fontWeight:'700', fontFamily:mono }}>TAROT · THREE-CARD DRAW</Text>
+                  <Text style={{ color:'#444466', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:1 }}>
+                    PAST · PRESENT · FUTURE
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={drawTarot} disabled={tarotLoading}
+                style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:8, borderWidth:1, borderColor:color+'66', backgroundColor:color+'14' }}>
+                <Text style={{ color: tarotLoading ? '#333344' : color, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
+                  {tarotLoading ? '···' : tarotDraw ? '↺ REDRAW' : '✦ DRAW'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Art placeholder note */}
+            {!tarotDraw && (
+              <View style={{ paddingVertical:18, alignItems:'center', borderWidth:1, borderStyle:'dashed' as any, borderColor:color+'22', borderRadius:8 }}>
+                <Text style={{ color:color+'66', fontSize:22, marginBottom:6 }}>⊜ ⊚ ⊜</Text>
+                <Text style={{ color:'#333355', fontSize:10, fontStyle:'italic', textAlign:'center', lineHeight:16, paddingHorizontal:16 }}>
+                  Draw to begin. Custom card art is coming — each card will have its own sprite.
+                </Text>
+                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, marginTop:8, letterSpacing:1 }}>
+                  MAJOR ARCANA · 22 CARDS
+                </Text>
+              </View>
+            )}
+
+            {/* Drawn cards */}
+            {tarotDraw && (
+              <>
+                <View style={{ flexDirection:'row', gap:6, marginBottom:12 }}>
+                  {tarotDraw.map((card, i) => {
+                    const posLabels = ['PAST', 'PRESENT', 'FUTURE'];
+                    const posColors = [color+'88', color, color+'CC'];
+                    return (
+                      <View key={i} style={{ flex:1, alignItems:'center', padding:10, borderRadius:10, borderWidth:1,
+                        borderColor: posColors[i]+'44', backgroundColor: posColors[i]+'0C' }}>
+                        {/* Card placeholder art */}
+                        <View style={{ width:44, height:66, borderRadius:6, borderWidth:1.5, borderColor:posColors[i]+'66',
+                          backgroundColor:'#000000', alignItems:'center', justifyContent:'center', marginBottom:8,
+                          transform:[{ rotate: card.reversed ? '180deg' : '0deg' }] }}>
+                          <Text style={{ color:posColors[i], fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:0 }}>
+                            {card.glyph}
+                          </Text>
+                          <Text style={{ color:posColors[i]+'88', fontSize:14, marginTop:2 }}>⊜</Text>
+                        </View>
+                        <Text style={{ color:'#444466', fontSize:7, fontFamily:mono, letterSpacing:1, marginBottom:3 }}>{posLabels[i]}</Text>
+                        <Text style={{ color:posColors[i], fontSize:9, fontWeight:'700', textAlign:'center', lineHeight:13 }} numberOfLines={2}>{card.name}</Text>
+                        {card.reversed && <Text style={{ color:'#FF664488', fontSize:7, fontFamily:mono, marginTop:2 }}>REVERSED</Text>}
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Reading */}
+                {tarotLoading && (
+                  <View style={{ alignItems:'center', paddingVertical:10 }}>
+                    <Text style={{ color:color+'66', fontSize:13, letterSpacing:4 }}>· · ·</Text>
+                  </View>
+                )}
+                {tarotReading && (
+                  <View style={{ borderTopWidth:1, borderTopColor:color+'22', paddingTop:12 }}>
+                    <Text style={{ color:color+'88', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:8 }}>
+                      {archetype.name.toUpperCase()} READS THE FIELD
+                    </Text>
+                    <Text style={{ color:SOL_THEME.text, fontSize:12, lineHeight:20, fontStyle:'italic' }}>{tarotReading}</Text>
+                  </View>
+                )}
+                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, marginTop:10, textAlign:'center', letterSpacing:1 }}>
+                  ◈ Custom card art is in progress — each major arcana will have its own sprite ◈
+                </Text>
+              </>
+            )}
           </View>
 
         </View>

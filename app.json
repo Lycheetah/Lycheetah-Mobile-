@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sol by Lycheetah",
     "slug": "lycheetah-mobile",
-    "version": "3.41.0",
+    "version": "3.42.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",

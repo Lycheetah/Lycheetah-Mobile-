@@ -85,7 +85,14 @@ export async function getGeminiKey(): Promise<string | null> { return getProvide
 
 // Model
 export async function saveModel(model: string) { await AsyncStorage.setItem(KEYS.MODEL, model); }
-const DEAD_MODELS = ['z-ai/glm-5.1', 'moonshotai/kimi-k2.6', 'stepfun-ai/step-3.5-flash', 'nvidia/nemotron-3-nano-30b-a3b', 'deepseek-chat'];
+const DEAD_MODELS = [
+  'z-ai/glm-5.1', 'moonshotai/kimi-k2.6', 'stepfun-ai/step-3.5-flash',
+  'nvidia/nemotron-3-nano-30b-a3b',
+  // Benchmark-confirmed timeouts — removed from model list, catch any saved selections:
+  'nvidia/llama-3.1-nemotron-nano-8b-v1', 'google/gemma-4-31b-it',
+  'qwen/qwen3.5-122b-a10b', 'deepseek-ai/deepseek-v4-pro',
+  'qwen/qwen3.5-397b-a17b', 'nvidia/nemotron-3-ultra-550b-a55b',
+];
 export async function getModel(): Promise<string> {
   const stored = await AsyncStorage.getItem(KEYS.MODEL);
   if (!stored || !stored.trim() || DEAD_MODELS.includes(stored.trim())) return 'meta/llama-3.3-70b-instruct';
