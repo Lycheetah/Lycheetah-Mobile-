@@ -3099,7 +3099,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
 
       {/* ── GEAR TAB ─────────────────────────────────────────────────── */}
       {activeTab === 'gear' && (
-        <ScrollView style={{ flex:1 }} contentContainerStyle={{ paddingHorizontal:16, paddingBottom:32, marginTop:8 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingHorizontal:16, paddingBottom:16, marginTop:8 }}>
 
           {/* ── LAMAGUE MILESTONE SLOTS (crown / sigil / mantle) ── */}
           <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10 }}>LAMAGUE LOADOUT</Text>
@@ -3227,7 +3227,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             })}
           </View>
 
-        </ScrollView>
+        </View>
       )}
 
       {/* ── ARCHETYPE SELECTION MODAL ─────────────────────────────────────── */}
@@ -3380,9 +3380,8 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       </Modal>
 
-      {/* ── NAME + LEVEL (FIELD tab) ───────────────────────────────────────── */}
-      {activeTab === 'field' && false && /* merged into FIELD panel below */ null}
-      {/* kept for ceremony reference */}
+      {/* ── COMPANION IDENTITY CARD — field tab only ─────────────────────── */}
+      {activeTab === 'field' && (
       <View style={{ marginHorizontal:16, marginTop:10, marginBottom:4, padding:14, borderRadius:14, backgroundColor:SOL_THEME.surface, borderWidth:1, borderColor:color+'33', borderLeftWidth:3, borderLeftColor:color }}>
         {/* Archetype badge + choose button */}
         <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
@@ -3408,6 +3407,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           <Text style={{ color:SOL_THEME.text, fontSize:11, fontFamily:mono, fontWeight:'700' }}>{lvl.cur.glyph}  LV.{lvl.level}  {lvl.cur.title.toUpperCase()}</Text>
         </View>
       </View>
+      )}
 
       {/* ── NAME MODAL ─────────────────────────────────────────────────────── */}
       <Modal visible={editingName} transparent animationType="fade">
@@ -3908,46 +3908,9 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════
-          GEAR TAB
-          ════════════════════════════════════════════════════════════════════ */}
+      {/* ── RELICS · LORE · CODEX */}
       {activeTab === 'gear' && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
-
-          {/* LAMAGUE Gear */}
-          <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:cardBg }}>
-            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setShowGear(g=>!g); }}
-              style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:showGear?12:0 }}>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ width:3, height:12, borderRadius:2, backgroundColor:color }} />
-                <Text style={{ color:'#444455', fontSize:10, letterSpacing:2, fontFamily:mono }}>LAMAGUE GEAR</Text>
-                {allGearEquipped && <Text style={{ color:color, fontSize:9 }}>✦</Text>}
-              </View>
-              <Text style={{ color:'#333344', fontSize:10 }}>{showGear?'▲':'▼'}</Text>
-            </TouchableOpacity>
-            {showGear && (
-              <>{([['CROWN',gearCrown,nextCrown],['BODY',gearBody,nextBody],['CAPE',gearCape,nextCape],['SIGIL',gearSigil,nextSigil],['MANTLE',gearMantle,nextMantle]] as [string,GearTier,GearTier|null][]).map(([slotName,gear,next]) => (
-                <View key={slotName} style={{ marginBottom:10, paddingBottom:10, borderBottomWidth:1, borderBottomColor:'#1A1A26' }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:12 }}>
-                    <View style={{ width:34, height:34, borderRadius:8, borderWidth:1,
-                      borderColor:gear.threshold>0?color+'66':'#1A1A26', backgroundColor:gear.threshold>0?color+'10':'transparent', alignItems:'center', justifyContent:'center' }}>
-                      <Text style={{ color:gear.threshold>0?color:'#333344', fontSize:15 }}>{gear.glyph}</Text>
-                    </View>
-                    <View style={{ flex:1 }}>
-                      <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
-                        <Text style={{ color:'#333344', fontSize:8, letterSpacing:2, fontFamily:mono }}>{slotName}</Text>
-                        {next && <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>next {next.threshold}d</Text>}
-                      </View>
-                      <Text style={{ color:gear.threshold>0?color:'#444455', fontSize:12, fontWeight:'600', marginTop:1 }}>{gear.name}</Text>
-                      <Text style={{ color:'#555566', fontSize:10, marginTop:1 }}>{gear.effect}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-              {allGearEquipped && <Text style={{ color, fontSize:10, fontFamily:mono, letterSpacing:1, textAlign:'center', paddingTop:4 }}>✦ FULL LOADOUT ACTIVE</Text>}
-              </>
-            )}
-          </View>
 
           {/* Relics — with bonus stats */}
           <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}>
@@ -4122,15 +4085,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             )}
           </View>
 
-          {/* Name + Archetype header */}
+          {/* Stage + stat sheet */}
           <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
             <View>
               <Text style={{ color:'#333344', fontSize:8, letterSpacing:3, fontFamily:mono }}>{stageData.name}</Text>
               <Text style={{ color, fontSize:16, fontWeight:'700', fontFamily:mono, marginTop:2 }}>{displayName}</Text>
-              <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
-              <TouchableOpacity onPress={() => setEditingName(true)} style={{ marginTop:5 }}>
-                <Text style={{ color:color+'88', fontSize:9, fontFamily:mono, letterSpacing:1 }}>✎ RENAME</Text>
-              </TouchableOpacity>
+              <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic' }}>{archetype.specialty}</Text>
             </View>
             <TouchableOpacity onPress={() => setShowStatModal(true)} activeOpacity={0.75} style={{ alignItems:'center', gap:4 }}>
               <Text style={{ color, fontSize:30 }}>{archetype.glyph}</Text>

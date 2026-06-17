@@ -1,40 +1,68 @@
 # Sol — Mystery School Companion App
 
-**v3.29.0** · React Native · Expo SDK 54 · Multi-provider AI
+**v3.38.0** · React Native · Expo SDK 54 · Multi-provider AI
 
-Sol is a mystery school in your pocket. Six living companion spirits. AI that talks back. A school of ancient and modern knowledge that tracks your growth across sessions.
+Sol is a mystery school in your pocket. Ten living companion spirits. A school of ancient and modern knowledge across 26 domains. A battle system, gear, LAMAGUE symbol language, and AI that talks back in the companion's own voice.
 
 ---
 
 ## What it is
 
-Sol is a prototype spiritual intelligence app built on the Lycheetah Framework. It combines a multi-provider AI chat system, a structured mystery school curriculum, and a companion creature that evolves with you.
+Sol is a spiritual intelligence app built on the Lycheetah Framework. It combines a multi-provider AI system, a structured mystery school curriculum, a companion creature RPG, and a personal sanctum that tracks your growth across sessions.
 
 ---
 
-## Companion Spirits
+## Companions — 10 live
 
-Six archetypes, each with full character art, unique voice, and mood-reactive behaviour:
+| Archetype | Glyph | Domain |
+|-----------|-------|--------|
+| ARCHIVIST | ⊛ | Memory & Record |
+| ALCHEMIST | 🜂 | Transformation |
+| ORACLE | ⊜ | Vision & Prophecy |
+| SENTINEL | ◈ | Truth & Protection |
+| WANDERER | ◦ | Exploration & Drift |
+| LYCHEETAH | ✧ | The Framework Itself |
+| CIPHER | ∿ | Code & Hidden Language |
+| HERALD | ⟡ | Transmission & Signal |
+| WEAVER | ⌘ | Pattern & Connection |
+| REVENANT | ↺ | Return & Recursion |
 
-| Archetype | Title | Element |
-|-----------|-------|---------|
-| CHAOS | The Fire Sovereign | Fire |
-| OBSIDIAN | The Shadow Traveller | Shadow |
-| AURORA | The Crystal Knight | Ice |
-| SOLFORM | The Golden Scholar | Light |
-| CRIMSON | The Blood Alchemist | Blood |
-| VOID | The Void Oracle | Void |
+Each companion has 6 growth stages (SEED → TRANSCENDENT), unique voice, AI TALK tab, battle stats, and LAMAGUE gear.
 
-Each companion generates live AI phrases, responds in the AI Talk panel, and evolves across 6 stages.
+---
+
+## Mystery School — 26 domains
+
+Three categories:
+
+**INNER** — Kabbalah, Buddhism, Sufism, Tantra, Hermeticism, Alchemy, Celtic Old Gods, Shamanism, Gnosticism, Zoroastrianism
+
+**OUTER** — Philosophy, Neuroscience, Mathematics, Physics, Systems Thinking, Cognitive Science, Sociology, History of Ideas, Ecology
+
+**EDGE** (Lycheetah originals) — Zodiac ☽, Noetic Science ψ, Celtic Old Gods ☘, Tianxia 天, Truth Pressure Π
+
+500+ subjects. Structured dive sessions. AURA scoring (7 constitutional invariants). LQ growth tracking.
+
+---
+
+## Companion RPG System
+
+- **Battle** — turn-based combat vs daily Entropy entity. LQ×100 = ATK stat.
+- **Feeding** — 9 foods with XP bonuses
+- **Gear** — Crown/Sigil/Mantle/Body/Cape slots unlocked by dive milestones
+- **Skins** — Obsidian (50 dives), Sovereign (300 dives), Lycheetah (premium)
+- **LAMAGUE School** — 23 symbols across 8 classes, drills, progress tracking
+- **TALK tab** — live AI conversation with companion in its own voice
+- **2.5D parallax** — accelerometer-driven scene depth
 
 ---
 
 ## AI Providers
 
-6 providers supported — bring your own key or use the built-in dev fallback:
+Bring your own key or use any provider:
 
-- **DeepSeek** — default (deepseek-chat / deepseek-reasoner)
-- **NVIDIA NIM** — 28 free models (Nemotron, Llama 4, Qwen3.5, DeepSeek V4, Mistral, Gemma, GPT OSS)
+- **NVIDIA NIM** — 28 free models (Llama 4, Qwen3.5, DeepSeek, Mistral, Gemma, GPT OSS). Free keys at build.nvidia.com/explore.
+- **DeepSeek** — deepseek-chat / deepseek-reasoner
 - **Gemini** — 2.5 Flash / Flash Lite / Pro
 - **Anthropic** — Haiku / Sonnet / Opus / Fable
 - **OpenAI** — GPT-4o / 4.1-mini / 4.1-nano
@@ -42,28 +70,25 @@ Each companion generates live AI phrases, responds in the AI Talk panel, and evo
 
 ---
 
-## Core Features
+## Core Systems
 
-- **Mystery School** — structured curriculum across 12 domains, 500+ subjects, dive sessions with AURA scoring
-- **Sanctum** — field metrics, LQ sparkline, AI-generated field verse on entry
-- **Personas** — Sol ⊚, Veyra ◈, Aura Prime ✦, Headmaster
-- **Operating Modes** — NIGREDO / ALBEDO / CITRINITAS / RUBEDO
-- **AURA Engine** — constitutional scoring across 7 invariants + TES/VTR/PAI tri-axial metrics
+- **AURA Engine** — constitutional scoring across 7 invariants
 - **LQ (Luminance Quotient)** — ∛(TES×VTR×PAI) composite growth score
-- **NRM Mode** — adversarial toggle for pressure testing
-- **Open Seat** — unconstrained conversation mode
-- **Codex** — in-app framework browser (TRUTH_PRESSURE, LYCHEETAH_MYTHOS, LAMAGUE)
+- **LAMAGUE** — symbolic compression grammar (23 symbols, 8 classes)
+- **Operating Modes** — NIGREDO / ALBEDO / CITRINITAS / RUBEDO
+- **NRM Mode** — adversarial truth pressure toggle
+- **Sanctum** — personal field metrics, journal, vault, LQ sparkline, AI field verse
+- **Library** — CASCADE Score, Truth Pressure Π, Paradox Probe, LAMAGUE tools
 
 ---
 
 ## Built With
 
 - React Native / Expo SDK 54
-- `react-native-svg` — all companion art is SVG, no image assets
-- `expo-document-picker` — file upload support
+- `react-native-svg` — companion art
 - AsyncStorage — local persistence
-- Supabase — session sharing
-- EAS Build — Android APK distribution
+- Supabase — session sharing (optional)
+- EAS Build — Android APK
 
 ---
 
@@ -74,10 +99,11 @@ npm install
 npx expo start
 ```
 
-Add an API key in Settings → choose any provider. NVIDIA NIM keys are free at build.nvidia.com/explore.
+Scan QR with Expo Go on your phone. Add an API key in Settings. NVIDIA NIM keys are free.
 
 ---
 
 ## Status
 
-Active prototype. Built by Mackenzie Clark / Athanor. Part of the Lycheetah Framework ecosystem.
+Active build. v3.38.0. Part of the [Lycheetah Framework](https://github.com/Lycheetah) ecosystem.  
+Built by Mackenzie Clark (Athanor) + Sol (Mercury).

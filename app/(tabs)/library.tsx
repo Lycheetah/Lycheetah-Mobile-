@@ -958,16 +958,19 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
 
       {/* FORGE VIEW */}
       {view === 'explore' && (
-        <ScrollView style={{ flex:1 }} contentContainerStyle={{ padding:20 }} showsVerticalScrollIndicator={false}>
+        <View style={{ paddingTop: 4 }}>
           <View style={{ marginBottom:20, padding:16, borderRadius:14, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}>
             <Text style={{ color:'#6B7DB3', fontSize:9, letterSpacing:2, fontFamily:'monospace', marginBottom:8 }}>LYCHEETAH LIBRARY</Text>
             <Text style={{ color:SOL_THEME.text, fontSize:14, fontWeight:'700', marginBottom:8 }}>Tools for thinking clearly</Text>
             <Text style={{ color:SOL_THEME.textMuted, fontSize:12, lineHeight:18 }}>CASCADE scores the epistemic structure of any text. Truth Pressure Π measures the weight of a belief against the evidence holding it.</Text>
           </View>
           {([
-            { icon:'◈', title:'CASCADE Score', desc:'Paste any text — get a structural breakdown of its epistemic quality and claim density.', tab:'cascade' },
-            { icon:'Π', title:'Truth Pressure', desc:'Enter a belief or hypothesis. Get E, P, S, S₀ readings + critical regime.', tab:'truth' },
-          ] as const).map(card => (
+            { icon:'◈', title:'CASCADE Score',   desc:'Paste any text — get a structural breakdown of its epistemic quality and claim density.', tab:'cascade' as const },
+            { icon:'Π', title:'Truth Pressure',  desc:'Enter a belief or hypothesis. Get E, P, S, S₀ readings + critical regime.',              tab:'truth' as const },
+            { icon:'◬', title:'Paradox Probe',   desc:'Surface the mathematical signature of a genuine paradox — where CASCADE cannot resolve.', tab:'probe' as const },
+            { icon:'⊗', title:'LAMAGUE Cement',  desc:'Translate English phrases into LAMAGUE symbolic notation. ~15:1 compression.',            tab:'cementer' as const },
+            { icon:'∿', title:'LAMAGUE Glossary',desc:'Browse and search the full LAMAGUE symbol dictionary with meanings and examples.',        tab:'glossary' as const },
+          ]).map(card => (
             <TouchableOpacity key={card.title} onPress={() => setView(card.tab)}
               style={{ flexDirection:'row', gap:14, marginBottom:12, padding:16, borderRadius:14, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}
               activeOpacity={0.7}>
@@ -979,15 +982,11 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
               <Text style={{ color:'#333344', fontSize:18, alignSelf:'center' }}>›</Text>
             </TouchableOpacity>
           ))}
-          <View style={{ marginTop:8, padding:16, borderRadius:14, borderWidth:1, borderColor:'#1A2A1A', backgroundColor:'#08100A' }}>
-            <Text style={{ color:'#3A6A3A', fontSize:9, letterSpacing:2, fontFamily:'monospace', marginBottom:6 }}>LAMAGUE SCHOOL</Text>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:12, lineHeight:17 }}>Probe, Cement, and Glossary tools live in the School tab (𝔏) → WORKSHOP.</Text>
-          </View>
-        </ScrollView>
+        </View>
       )}
 
       {view === 'forge' && (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+        <View>
           <Text style={{ color: accentColor, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', fontSize: 11, letterSpacing: 1.5, marginBottom: 4 }}>⚗ THE FORGE</Text>
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 16 }}>
             Paste any idea, text, or fragment. The Forge runs the full pipeline: LAMAGUE tagging → CASCADE scoring → AURA audit → paradox detection.
@@ -1090,7 +1089,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
               </View>
             </View>
           )}
-        </ScrollView>
+        </View>
       )}
 
       {/* CASCADE VIEW */}
@@ -1599,7 +1598,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
 
       {/* COMMONS — coming soon */}
       {view === 'community' && !selectedEntry && (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 24, alignItems: 'center' }}>
+        <View style={{ alignItems: 'center', paddingTop: 8 }}>
           <Text style={{ fontSize: 48, marginBottom: 16 }}>⊞</Text>
           <Text style={{ color: accentColor, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', fontSize: 12, letterSpacing: 3, marginBottom: 12, textAlign: 'center' }}>THE COMMONS</Text>
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, lineHeight: 22, textAlign: 'center', marginBottom: 28, maxWidth: 300 }}>
@@ -1625,12 +1624,12 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 20, opacity: 0.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
             YOUR PLACE IS KEPT
           </Text>
-        </ScrollView>
+        </View>
       )}
 
       {/* GLOSSARY VIEW */}
       {view === 'glossary' && (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+        <View>
           {(() => {
             const allSyms = Object.values(LAMAGUE_SYMBOLS).flat();
             const seenCount = allSyms.filter(s => glossary[s.sym]?.seen > 0).length;
@@ -1731,7 +1730,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
               </>
             );
           })()}
-        </ScrollView>
+        </View>
       )}
 
       {/* DICTIONARY VIEW */}
@@ -1750,7 +1749,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
           ? Array.from(new Set(sorted.map(t => t.category)))
           : CAT_ORDER.filter(c => FRAMEWORK_TERMS.some(t => t.category === c));
         return (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
+          <View>
             <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: 4 }}>
               <Text style={{ color: accentColor, fontFamily: mono, fontWeight: '700', fontSize: 11, letterSpacing: 1.5 }}>⊛ FRAMEWORK DICTIONARY</Text>
               <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: mono }}>{FRAMEWORK_TERMS.length} terms</Text>
@@ -1791,7 +1790,7 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
                 No terms match "{dictSearch}"
               </Text>
             )}
-          </ScrollView>
+          </View>
         );
       })()}
 

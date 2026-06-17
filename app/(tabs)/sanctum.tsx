@@ -18,6 +18,8 @@ const KEYS = {
   PHASE: 'sanctum_phase',
   AURA: 'sanctum_aura',
   LQ_HISTORY: 'sanctum_lq_history',
+  ZODIAC_BIRTH: 'zodiac_birth_v1',
+  ZODIAC_READING: 'zodiac_reading_v1',
 };
 
 type LQPoint = { date: string; lq: number; stage: string };
@@ -320,7 +322,6 @@ export default function SanctumScreen() {
     const dayReportRaw = await AsyncStorage.getItem(`sol_day_report_${todayKey()}`);
     if (dayReportRaw) { try { setDayReport(JSON.parse(dayReportRaw)); } catch {} }
 
-    // Task 11: Load weekly journal summaries
     const summaries = await getFieldJournalSummaries();
     setWeeklyJournalSummaries(summaries);
 
@@ -713,7 +714,7 @@ export default function SanctumScreen() {
           {sanctumTotalDives > 0 && (() => {
             const STAGE_GLYPHS = ['○', '◌', '◎', '⊚', '✦', '⊕'];
             const STAGE_NAMES  = ['SEED', 'SPARK', 'FLAME', 'FORGE', 'SOVEREIGN', 'ASCENDANT'];
-            const ARCH_GLYPHS: Record<string, string> = { archivist:'◎', alchemist:'⟲', oracle:'◈', sentinel:'⊞', wanderer:'↗', vigil:'◎', lycheetah:'⧟' };
+            const ARCH_GLYPHS: Record<string, string> = { archivist:'◎', alchemist:'⟲', oracle:'◈', sentinel:'⊞', wanderer:'↗', lycheetah:'⧟', cipher:'∿', herald:'⟡', weaver:'⌘', revenant:'↺' };
             const stageGlyph = STAGE_GLYPHS[sanctumStage] ?? '◌';
             const stageName  = STAGE_NAMES[sanctumStage]  ?? 'SEED';
             const archGlyph  = sanctumArchetype ? (ARCH_GLYPHS[sanctumArchetype] ?? '✦') : '✦';
@@ -962,7 +963,6 @@ export default function SanctumScreen() {
                     <Text style={styles.deleteBtn}>✕</Text>
                   </TouchableOpacity>
                 </View>
-                {/* Task 10: Parchment tint on journal entries */}
                 <View style={{ backgroundColor: '#FFFEF806', borderRadius: 4, padding: 4, borderWidth: 1, borderColor: '#FFFEF815' }}>
                   <Text style={styles.entryText}>{entry.text}</Text>
                 </View>
@@ -1562,7 +1562,6 @@ export default function SanctumScreen() {
               </View>
             )}
 
-            {/* Task 11: Weekly Field Journal Summary */}
             {(weeklyJournalLoading || weeklyJournalSummaries.length > 0) && (
               <View style={{ marginTop: 16, padding: 14, borderRadius: 10, backgroundColor: '#C8A06010', borderWidth: 1, borderColor: '#C8A06044' }}>
                 <Text style={{ color: '#C8A060', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>📜 WEEKLY FIELD JOURNAL</Text>
@@ -1570,7 +1569,6 @@ export default function SanctumScreen() {
                 {weeklyJournalSummaries.slice(-1).map((s, i) => (
                   <View key={i}>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginBottom: 6 }}>Week of {s.weekOf}</Text>
-                    {/* Task 10: Parchment-style text for high-signal entries */}
                     <View style={{ backgroundColor: '#FFFEF808', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#FFFEF820' }}>
                       <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>{s.summary}</Text>
                     </View>

@@ -85,10 +85,10 @@ export async function getGeminiKey(): Promise<string | null> { return getProvide
 
 // Model
 export async function saveModel(model: string) { await AsyncStorage.setItem(KEYS.MODEL, model); }
-const DEAD_MODELS = ['z-ai/glm-5.1', 'moonshotai/kimi-k2.6', 'stepfun-ai/step-3.5-flash', 'nvidia/nemotron-3-nano-30b-a3b'];
+const DEAD_MODELS = ['z-ai/glm-5.1', 'moonshotai/kimi-k2.6', 'stepfun-ai/step-3.5-flash', 'nvidia/nemotron-3-nano-30b-a3b', 'deepseek-chat'];
 export async function getModel(): Promise<string> {
   const stored = await AsyncStorage.getItem(KEYS.MODEL);
-  if (!stored || !stored.trim() || DEAD_MODELS.includes(stored.trim())) return 'deepseek-chat';
+  if (!stored || !stored.trim() || DEAD_MODELS.includes(stored.trim())) return 'meta/llama-3.3-70b-instruct';
   return stored.trim();
 }
 

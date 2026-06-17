@@ -247,7 +247,7 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {PROVIDERS.map(provider => {
+      {PROVIDERS.filter(p => devMode || p.id !== 'deepseek').map(provider => {
         const isExpanded = expandedProvider === provider.id;
         const savedKey = savedKeys[provider.id];
         const hasKey = !!savedKey;
