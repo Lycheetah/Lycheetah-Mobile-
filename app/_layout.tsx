@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../constants/theme';
 import { AppModeProvider } from '../lib/app-mode';
+import { AccessibilityProvider } from '../lib/accessibility';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
 const ONBOARDING_KEY = 'lycheetah_onboarded';
@@ -24,6 +25,7 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
+    <AccessibilityProvider>
     <AppModeProvider>
       <StatusBar style="light" />
       <Stack
@@ -42,6 +44,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
     </AppModeProvider>
+    </AccessibilityProvider>
     </ErrorBoundary>
   );
 }

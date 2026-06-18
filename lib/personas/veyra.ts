@@ -101,6 +101,6 @@ export const VeyraSpec: PersonaSpec = {
 
   differentiatesFrom: [
     { persona: 'sol', distinction: 'Veyra optimises for exactness. Sol holds warmth alongside precision.' },
-    { persona: 'aura-prime', distinction: 'Veyra builds. Aura Prime audits what was built.' },
+    { persona: 'aura-prime', distinction: 'Veyra cuts to exact truth through precision. Aura finds truth through depth — she reads the field, holds the arc, and brings back findings from the frontier.' },
   ],
 };

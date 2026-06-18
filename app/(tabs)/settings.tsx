@@ -10,6 +10,7 @@ import { getWeirdQEnabled, setWeirdQEnabled, getWeirdQHour, setWeirdQHour } from
 import { getStreakReminderEnabled, setStreakReminderEnabled, getStreakReminderHour, setStreakReminderHour } from '../../lib/streak-reminder';
 import { SOL_THEME } from '../../constants/theme';
 import { useAppMode } from '../../lib/app-mode';
+import { useAccessibility } from '../../lib/accessibility';
 import { AIModel } from '../../lib/ai-client';
 import { initPurchases, checkSovereignEntitlement, purchaseSovereign, restorePurchases, PRODUCT_MONTHLY, PRODUCT_ANNUAL } from '../../lib/purchases';
 import { PROVIDERS } from '../../lib/providers/registry';
@@ -65,6 +66,7 @@ export default function SettingsScreen() {
   const [devMode, setDevMode] = useState(false);
   const [devTapCount, setDevTapCount] = useState(0);
   const [commitmentOpen, setCommitmentOpen] = useState(false);
+  const { highContrast, setHighContrast } = useAccessibility();
 
   useEffect(() => {
     getModel().then(m => {
@@ -183,6 +185,20 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* ── ACCESSIBILITY ─────────────────────────────────────────────────── */}
+      <Text style={styles.sectionTitle}>◉ ACCESSIBILITY</Text>
+      <TouchableOpacity
+        onPress={() => setHighContrast(!highContrast)}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: highContrast ? accentColor + '88' : SOL_THEME.border, backgroundColor: highContrast ? accentColor + '0E' : SOL_THEME.surface, marginBottom: 16 }}
+        activeOpacity={0.8}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: highContrast ? accentColor : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>High Contrast Text</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Boosts all muted text to minimum readable contrast. Text only — no colour scheme change.</Text>
+        </View>
+        <Text style={{ color: highContrast ? accentColor : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{highContrast ? '◉' : '○'}</Text>
+      </TouchableOpacity>
+
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>
       <Text style={styles.sectionNote}>Sol replies in your chosen language. Injected into every prompt — no extra API needed.</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
@@ -226,7 +242,7 @@ export default function SettingsScreen() {
 
       <View style={styles.freeBanner}>
         <Text style={styles.freeBannerTitle}>★ START FREE</Text>
-        <Text style={styles.freeBannerBody}>Please test the free models below — Gemini, NVIDIA NIM (Llama, Mistral, Qwen, Kimi), and more. Each has a different feel.</Text>
+        <Text style={styles.freeBannerBody}>Start free — Gemini (Google), or NVIDIA NIM with 40+ models: Llama, Maverick, DeepSeek, Mistral, and more. Each has a different feel.</Text>
         <TouchableOpacity onPress={() => Linking.openURL('https://aistudio.google.com/apikey')}>
           <Text style={styles.freeBannerLink}>Get Gemini key → aistudio.google.com</Text>
         </TouchableOpacity>
@@ -917,8 +933,19 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         ))}
 
+        {/* Ko-fi support */}
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://github.com/sponsors/Lycheetah')}
+          style={{ marginTop: 14, paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#E8C76A', backgroundColor: '#E8C76A12', alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+          activeOpacity={0.75}
+        >
+          <Text style={{ color: '#E8C76A', fontSize: 14 }}>⊚</Text>
+          <Text style={{ color: '#E8C76A', fontSize: 12, fontWeight: '700', letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>SPONSOR ON GITHUB</Text>
+        </TouchableOpacity>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', marginTop: 6, marginBottom: 6 }}>Keeps the school free · Funds what comes next</Text>
+
         {/* Support email */}
-        <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: accentColor + '22' }}>
+        <View style={{ marginTop: 8, paddingTop: 14, borderTopWidth: 1, borderTopColor: accentColor + '22' }}>
           <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginBottom: 8, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>✉ SUPPORT & FEEDBACK</Text>
           {[
             { label: 'BUG: — report an issue', prefix: 'BUG' },
@@ -998,7 +1025,7 @@ export default function SettingsScreen() {
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v3.29.0</Text>
+        <Text style={styles.footerVersion}>v3.84.0</Text>
       </View>
     </ScrollView>
   );

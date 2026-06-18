@@ -93,13 +93,15 @@ export function buildFrameworkContext(
   mode: Mode,
   ews: EmotionalState,
   isNRM: boolean,
-  persona: 'sol' | 'veyra' | 'aura-prime' | 'headmaster' = 'sol',
+  persona: 'sol' | 'veyra' | 'aura-prime' | 'headmaster' | 'lyra' = 'sol',
 ): string {
   const interval = EWM_INTERVALS[ews];
   let personaLabel: string;
   let glyph: string;
   if (persona === 'veyra') { personaLabel = 'Veyra'; glyph = '◈'; }
   else if (persona === 'aura-prime') { personaLabel = 'Aura Prime'; glyph = '✦'; }
+  else if (persona === 'headmaster') { personaLabel = 'The Headmaster'; glyph = '𝔏'; }
+  else if (persona === 'lyra') { personaLabel = 'Lyra'; glyph = '✧'; }
   else { personaLabel = 'Sol'; glyph = '⊚'; }
   const nrmFlag = isNRM ? '\n[NRM ACTIVE: Adversarial reviewer mode. Treat all framework claims as unproven hypotheses. Prioritise falsification.]' : '';
   return `[${personaLabel} Framework Context — injected by Lycheetah client]
@@ -131,4 +133,10 @@ export function detectAuraPrimeToggle(text: string): boolean {
 export function detectHeadmasterToggle(text: string): boolean {
   const lower = text.trim().toLowerCase();
   return lower.startsWith('/school') || lower.startsWith('/headmaster') || lower === 'enter the school';
+}
+
+// Detect Lyra toggle trigger in user message
+export function detectLyraToggle(text: string): boolean {
+  const lower = text.trim().toLowerCase();
+  return lower.startsWith('/lyra') || lower.startsWith('/spark');
 }

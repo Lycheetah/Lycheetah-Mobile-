@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Message } from './ai-client';
 let DEV_KEYS: Record<string, string> = {};
-try { DEV_KEYS = require('./dev-keys').DEV_KEYS; } catch {}
+try { DEV_KEYS = require('./dev-keys.local').DEV_KEYS; } catch {
+  try { DEV_KEYS = require('./dev-keys').DEV_KEYS; } catch {}
+}
 
 const KEYS = {
   REPLY_STYLE: 'lycheetah_reply_style',

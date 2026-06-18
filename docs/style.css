@@ -160,6 +160,49 @@ body {
     line-height: 1.6;
 }
 
+/* ===== UPDATE BANNER ===== */
+.update-banner {
+    padding: 64px 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    border-top: 1px solid #7B68EE22;
+}
+
+.update-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #7B68EE;
+    text-align: center;
+    margin-bottom: 36px;
+    opacity: 0.9;
+}
+
+.update-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.update-item {
+    background: #0D0020;
+    border: 1px solid #7B68EE22;
+    border-radius: 12px;
+    padding: 18px 20px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #C8C8E0;
+    transition: border-color 0.2s;
+}
+
+.update-item:hover {
+    border-color: #7B68EE55;
+}
+
+@media (max-width: 600px) {
+    .update-grid { grid-template-columns: 1fr; }
+}
+
 /* ===== EPISTEMIC LAYERS ===== */
 .layers {
     text-align: center;

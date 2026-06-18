@@ -11,6 +11,7 @@
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "d3-force": "^3.0.0",
     "expo": "~54.0.0",
     "expo-constants": "~18.0.13",
     "expo-document-picker": "~13.1.6",

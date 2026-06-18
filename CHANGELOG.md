@@ -1,5 +1,752 @@
 # Changelog
 
+## [4.3.0] — 2026-06-19 — CHIRAL LENS + LYCHEETAH SOVS + COMPANION CLEANUP
+
+### The Chiral Lens (zodiac.tsx)
+- New reality inversion protocol — full-screen modal, same architecture as Zonk Zone
+- CHIRAL_SYSTEM prompt: mirror-truth AI that reveals the adjacent reality, the shadow current beneath the stated belief. Speaks in cold, exact sentences. Names the register of every mirror-claim.
+- `CHIRAL_VIOLET` (`#9B4DFF`) visual identity — dark violet, `∿` glyph throughout
+- Collapsible section in Zodiac tab above the Zonk Zone: "THE CHIRAL LENS / REALITY INVERSION"
+- Full conversation modal: "MIRROR ACTIVE — INVERSION PROTOCOL RUNNING" label, violet left-border AI bubbles, user-bubble right-aligned, send button with `∿` glyph
+- State: `chiralCollapsed/Input/Open/Thread/Statement/Reply/Busy` + `chiralScrollRef`
+- Handlers: `enterChiralLens()` + `sendChiralReply()` — same pattern as Zonk Zone
+
+## [4.2.0] — 2026-06-19 — LYCHEETAH SOVS DOMAIN + COMPANION CLEANUP
+
+### Mystery School — THE LYCHEETAH SOVS (new welcoming domain)
+- New domain `lycheetah-hoard` added to `lib/mystery-school/subjects.ts`, displayed as **The Lycheetah Sovs**
+- First in `_DOMAIN_DISPLAY_ORDER` — the welcoming door users see first
+- 8 subjects across 3 paths: chaos-witch (Chaos Magic, Sigil Craft), techno-pagan (Techno-Shamanism, Digital Mysticism, Liminal States), lycheetah rebel (LAMAGUE, Witch's Epistemology, Pagan Technologist)
+- Color `#FF9F1C` (lycheetah orange), glyph `✧`
+
+### Companion tab — architecture cleanup
+- Dead animation state removed: `ring1/2/3Anim`, `fogAnims`, `skyAnim`, `skyOp`, `ring1/2/3Op`, `ring1/2/3Scale` — 3 useEffect loops + 6 interpolations gone
+- Dead state removed from destructure: `skyColor` (defined in skin data, never rendered)
+- Duplicate `{activeTab === 'companion'}` block merged — relics/lore/codex section moved inside primary companion block (one condition, not two)
+
+## [4.1.0] — 2026-06-19 — FORGE TAB + ZONE COMPANIONS + 63 BACKGROUNDS
+
+### FORGE tab (was GEAR)
+- Renamed GEAR → FORGE. New customisation hub: COMPANION card (art + name + zone + rarity badge) + WORLD grid (18 zone cards as image tiles with rarity tier overlays, ACTIVE badge, lock overlay)
+- `SKIN_RARITY` constant added — 4 tiers: ORIGIN (solform/void/aurora/crimson), ARCANE (obsidian/lycheetah/chaos), MYTHIC (sovereign/norse/celtic/egyptian), LEGENDARY (akashic/kabbala/noetic/lamague/delphi/sufi/quantum)
+- All 18 zone backgrounds visible and selectable from FORGE
+
+### Zone backgrounds — all 18 wired
+- 63 PNG/JPG files in `assets/scenes/`. Every zone has dedicated real art — no more placeholder borrowing.
+- `SCENE_IMAGES` updated for all 18 zones. `WORLD_MAP` room images updated for all 54 rooms.
+- `ARCHETYPE_SCENES` populated: archivist, alchemist, wanderer, sentinel
+
+### Gumby effects stripped
+- Removed: second parallax blur overlay (was washing backgrounds), starfield, archetype ambient marks, mist bands, concentric pulsing rings, aura text annotation
+- Scene art shows clean — companion floats above background without fog
+
+### Companion images — zone-based system
+- `ZONE_COMPANION_IMAGES` dict added, keyed by `skinId_stageKey` (e.g. `solform_1`, `lycheetah_5`)
+- 21 PNGs in `assets/companions/`: solform/void/aurora/crimson/obsidian/lycheetah × 3 stages + lycheetah special variants
+- Stage mapping: code 0-1 → _1, 2-3 → _2, 4-5 → _3 (lycheetah stage 5 → _5)
+- Lookup priority: zone art → archetype COMPANION_IMAGES → SVG fallback
+
+### Arrow fix
+- Left/right arrows now navigate within current zone's 3 rooms. Previously cycling all 54 rooms globally (invisible effect within same zone).
+
+### Enemy art pipeline
+- `scripts/remove_bg_enemies.py` — batch background removal for enemy art
+- `assets/enemies/raw/` — 8 new files staged. Run `python3 scripts/remove_bg_enemies.py` then wire to ENEMY_IMAGES.
+
+### SOL_COVENANT.md
+- Product north star document written. Alliance pitch spine. One paragraph answer, the problem, 4 differentiators, who it's for, current state, one-line pitch.
+
+## [4.0.0] — 2026-06-18 — REAL ART: 66 OF 78 CARDS LIVE
+
+### Tarot Art (#179)
+- **66 Lycheetah custom cards landed** — all 14 Wands, all 14 Cups, all 14 Swords, 10 of 14 Pentacles (5–King), 14 of 22 Major Arcana (Fool, Magician, High Priestess, Empress, Emperor, Hierophant, Lovers, Chariot, Tower, Star, Moon, Sun, Judgement, World)
+- `lib/divination/tarot-images.ts` updated — 66 entries now point to `.jpg` real art; 12 remaining cards keep `.png` placeholder until source pages 2, 4, 9 are split
+- Missing 12: Strength, Hermit, Wheel of Fortune, Justice, Hanged Man, Death, Temperance, Devil + Ace/Two/Three/Four of Pentacles
+- All art copied to `assets/tarot/[slug].jpg` — drop-in replacement, zero layout changes
+
+## [3.99.0] — 2026-06-18 — ZODIAC HERO + COMPANION ANIMATIONS
+
+### Zodiac (#181)
+- **Tarot spread is now the hero feature** — FIVE-CARD / CELTIC CROSS moves to the top of the Zodiac tab, immediately after the header. Previously buried at position 6. First thing a witch sees when the tab opens.
+- Section order: (1) Header → (2) Tarot Spread → (3) Daily Oracle card + rune → (4) Today's Sky → (5) Ask the Stars → (6) PSI Practice → (7) Zonk Zone
+
+### Companion — Animations + Greeting (#127)
+- **Mood-reactive float** — companion bob speed and amplitude now vary by mood. Dormant: slow 5s, small amplitude. Present: 2.8s, normal. Lit: faster 1.8s, higher float. Transcendent: slow dreamy 4s, widest arc (-28px).
+- **HP shimmer** — brief white flash over the companion HP bar each time HP is set. Rises in 280ms, fades in 520ms.
+- **Companion greeting (#127)** — one short phrase fires on every tab open, 1.2s after load. Mood-matched pool (5 phrases × 4 moods). No AI call. Shows in the existing speech bubble.
+
+## [3.98.0] — 2026-06-18 — COMPANION ANIMATIONS (intermediate)
+
+*(merged into 3.99.0)*
+
+## [3.97.0] — 2026-06-18 — CUSTOM TAROT DECK INFRASTRUCTURE
+
+### Added
+- **`lib/divination/tarot-images.ts`** — CARD_IMAGE map: 78 static require() entries, one per card, keyed by card name. Drop a PNG into `assets/tarot/` with the correct filename and it activates immediately.
+- **`assets/tarot/`** — 78 placeholder slots (card back as placeholder, named by convention). Real art replaces each by filename.
+- **Oracle card display** — upgraded from suit glyph ring to full 160×220 portrait art display. Reversed rotation applies to the whole image.
+- **All spread card slots** (Five-card + Celtic Cross) — upgraded from TAROT_BACK overlay + suit icon to full-bleed CARD_IMAGE art per slot.
+
+### Convention
+Filename → card name mapping. Examples:
+- `the_high_priestess.png` → "The High Priestess"
+- `wheel_of_fortune.png` → "Wheel of Fortune"
+- `ace_of_pentacles.png` → "Ace of Pentacles"
+Drop PNGs into `assets/tarot/` → Metro picks them up on next expo start.
+
+## [3.96.0] — 2026-06-18 — THE WITCH PACK
+
+### Added
+- **Planetary day strip** — header now shows today's ruling planet, glyph, and keywords (e.g. "☿ Mercury day · Communication · Pattern · Quick Mind")
+- **Celtic Cross spread** (#172) — 10-card spread in Zodiac tab. Toggle pill switches between FIVE CARD / CELTIC CROSS. Positions: Self · Challenge · Foundation · Recent Past · Crown · Near Future · The Seeker · Environment · Hopes & Fears · Outcome. Laid out 3+3+4 rows. AI reading weaves all 10 positions.
+- **Ritual ceremony framing** (#174) — "OPEN THE CIRCLE" invocation above every spread. Text is moon-phase reactive (8 distinct invocations: New Moon through Waning Crescent). Seal line below AI reading: "⊚ The reading is sealed. So it is written."
+- **Card journal** (#175) — "NOTE THIS CARD" button below daily oracle card. TextInput → "SEAL IT ✦" saves to AsyncStorage keyed by date. Shows "◈ CARD NOTED" (green) when today's card is recorded.
+
+## [3.95.0] — 2026-06-18 — SCHOOL HOME FINAL LAYOUT
+
+### Changed
+- **Mycelium** → full-width prominent card (was LAMAGUE). Green #2ECC71, ⌘ glyph, "Explore →" CTA.
+- **Three Portals row** → Ceremony / Time Braiding / LAMAGUE (3 clean cards). Removed erroneous Scriptorium duplicate that was navigating to wrong view.
+- **Depth Tools strip** → Grimoire / Shadow / Letters / Sigil. Sigil moved down from Three Portals; Mycelium chip removed (now the top card). 4 balanced chips.
+
+## [3.94.0] — 2026-06-18 — MYCELIUM BUG FIX
+### Fixed
+- d3-force mutates link source/target from indices to node refs after simulation — rendering now uses `as any` refs correctly
+- Stats connection count fixed to use post-simulation node refs
+
+## [3.93.0] — 2026-06-18 — THE MYCELIUM
+
+### Added
+- **The Mycelium** (#58) — cross-domain subject relationship web. Force-directed SVG graph (d3-force + react-native-svg). Studied subjects = glowing colored nodes. Adjacent unstudied = dim ghost nodes. Gold threads = curated thematic connections across domains (55 links in `lib/mystery-school/mycelium-connections.ts`). Domain bonds = domain-colored lines within clusters. Third-path detection: when two connected subjects are studied, Sol surfaces ◈ unstudied subjects that would complete a triangle — with direct dive entry. Stats row: studied / connections / paths seen. Empty state for new users. Entry: ⌘ Mycelium chip in Depth Tools strip.
+
+## [3.92.0] — 2026-06-18 — SCHOOL HOME LAYOUT DEDUP
+
+### Changed
+- **LAMAGUE portal** → full-width card (no longer split 50/50 with Ceremony)
+- **Three Portals row** → Ceremony Arcs / Time Braiding / Sigil (replaced Scriptorium with Ceremony — Scriptorium was double-upped in Depth Tools)
+- **Depth Tools strip** → Grimoire / Shadow / Letters (removed Sigil — now lives in Three Portals. 3 chips, clean)
+
+## [3.91.0] — 2026-06-18 — SCHOOL FINAL POLISH
+
+### Added
+- **Dive rating** — session complete card shows "HOW WAS THIS DIVE?" with 0: Skip / 1: Bad / 2: Fine / 3: Good. Ratings persisted per-subject (`sol_subject_ratings`). Rating indicator (✗/◦/★) shown next to subject name in domain view.
+- **Layer collapse** — FOUNDATION / PRAXIS / ABYSS / APEX / EDGE sections in domain view now collapse individually via ▼/▶ toggle. All layer sections are minimizable.
+- **Time Braiding explanation** — how-to note at top of Letters view: "Write a letter to your future self. Set the date it should arrive. Sol holds it sealed — you won't see it again until that day."
+
+### Fixed
+- **Notes/Grimoire duplication** — removed Notes from quick nav bar. Grimoire (in Depth Tools strip) is the single writing surface. Subject notes still visible in each subject detail.
+
+## [3.90.0] — 2026-06-18 — INITIATION RITES + SHADOW PARTS + SCHOOL POLISH
+
+### Added
+- **Shadow Parts Inventory** (#61) — Jungian/IFS named parts tracker. Name a part ("The Avoider"), describe how it shows up, log dated appearances, track integration stage (Witnessed → Understood → Engaged → Integrated). Accessible via Depth Tools strip (◌ Shadow). AsyncStorage: `sol_shadow_parts`.
+- **Initiation Rites** (#151) — domain-completion ceremony. When all subjects in a domain are studied, a "Domain Complete — Enter the Rite" banner appears. The rite: The Scroll (all completed subjects listed with mastery glyphs) + The Address (personal statement sealed to the domain). Sealed rites show INITIATED status with date on return. AsyncStorage: `sol_initiations`.
+- **Depth Tools strip** — school home shows 4 compact chips: Sigil / Grimoire / Letters / Shadow. All depth views now discoverable without prior knowledge.
+- **Session complete → Grimoire bridge** — "◈ Write in Grimoire" button pre-fills Scriptorium with subject + date after sealing a dive.
+- **Living Sigil animation** — outer geometry rotates (24s loop), center glyph breathes (pulse). Two independent Animated layers.
+- **Library back button** — ← now returns from library to previous screen.
+
+### Fixed
+- **Classroom state per-domain** — toggling one domain's CLASSROOM no longer affects all others.
+- **Spiral NaN values** — `totalStudied`/`totalSubjects` moved before early-returns so Spiral reads real numbers.
+- **Modal touch block** — returnModal + covenantModal now have `onRequestClose` for Android back-button escape.
+- **Opening ceremony keyboard trap** — removed `autoFocus` from intention TextInput so buttons stay visible.
+- **Wheel of the Year removed** — built and cut. Good content, wrong surface. Doesn't compound with the school's core loop.
+
+### Added
+- **Initiation Rites** — when all subjects in a domain are studied, a "Domain Complete — Enter the Rite" banner appears in the domain header. Tapping opens the Initiation Rite ceremony: The Scroll (all studied subjects listed with mastery glyphs), The Address (personal free-text statement sealed to the domain), and a domain-sigil display. Sealed rites are stored in `sol_initiations` and viewable on return. Previously sealed rites show "INITIATED" status with the seal date.
+
+## [3.89.0] — 2026-06-18 — SHADOW PARTS INVENTORY (#61)
+
+### Added
+- **Shadow Parts Inventory** — Jungian/IFS named parts tracker. Name a shadow part ("The Avoider", "The Critic"), describe how it shows up, log appearances over time, and track integration stage (Witnessed → Understood → Engaged → Integrated). Full 3-view flow: list → new part form → detail with appearance log. AsyncStorage: `sol_shadow_parts`. Accessible via Depth Tools strip on school home (◌ Shadow chip). Deletion with compassionate copy ("Integration is not failure").
+
+## [3.88.0] — 2026-06-18 — SCHOOL POLISH PASS
+
+### Added
+- **Depth Tools strip** — school home now shows 3 compact chips (Sigil / Grimoire / Letters) above the domain grid. All three depth views are now discoverable without knowing to look for them.
+- **Session complete → Grimoire bridge** — "◈ Write in Grimoire" button in the seal card. Tapping opens Scriptorium with a new entry pre-titled with the subject name + today's date, ready to write.
+
+### Fixed
+- **Classroom state per-domain** — closing the CLASSROOM section in one domain no longer collapses it in all domains. Each domain now tracks its own open/closed state independently.
+
+## [3.87.0] — 2026-06-18 — LIVING SIGIL + LIBRARY BACK
+
+### Added
+- **Living Sigil animation** — the sigil's outer geometry (ring, connection lines, edge points) now rotates slowly on a 24-second loop. The center glyph and inner circle breathe — pulsing opacity and scale on a 5.6s cycle. Two independent Animated layers; geometry and heart move at different rhythms. Starts when you enter the Sigil view, stops cleanly on exit.
+- **Library back button** — `←` in the library header now routes back to wherever you came from (`router.back()`).
+
+## [3.86.0] — 2026-06-18 — MODAL TOUCH FIX
+
+### Fixed
+- **App-wide touch block** — `returnModal` and `covenantModal` had no `onRequestClose` handler. On Android, if either got stuck open (no back-button escape), it would block touches across all tabs app-wide (React Native Modals render above everything). Both modals now dismiss cleanly on Android back press.
+- **Opening ceremony keyboard trap** — `autoFocus` on the intention TextInput fired the keyboard immediately, covering the "Enter the School →" button with no escape. Removed `autoFocus` — user can tap to type if they want, buttons stay visible.
+
+## [3.85.0] — 2026-06-18 — THE SPIRAL FIX
+
+### Fixed
+- **The Spiral — NaN% / undefined values** — `totalStudied` and `totalSubjects` were computed inside the shared shell render block (after all early-returns), so the Spiral early-return read both as `undefined`. Progress bar showed NaN%, stat tiles were blank. Moved both constants to before the Spiral block so they're available everywhere.
+
+## [3.84.0] — 2026-06-18 — SESSION COMPLETE CARD FIX
+
+### Fixed
+- **Session complete card now scrollable** — on smaller phones the "Return to School" button and other buttons were cut off below the fold with no way to exit. Wrapped the card in a ScrollView so all buttons are reachable regardless of screen height.
+
+## [3.83.0] — 2026-06-18 — THE SPIRAL
+
+### Added
+- **The Spiral** (#60) — aggregate mastery view in the Mystery School. Entry card on school home (◈ THE SPIRAL) shows subjects/domains explored count. Full view includes: overall stats (subjects / domains / dives), master progress bar + field stage badge, mastery stage breakdown (Studied / Reflected / Practiced / Integrated counts), layer breakdown (FOUNDATION → VOID bars), domain-by-domain progress rows sorted by % (tappable → opens domain view), and "Unopened Doors" chip grid for untouched domains. All computed live from existing AsyncStorage data — no new storage required.
+
+## [3.82.0] — 2026-06-18 — CLASSROOM LESSONS
+
+### Added
+- **Classroom lessons** — every domain now carries 3–5 static curated lesson cards accessible from the domain view. No AI required. Cards are typed: CONCEPT (core idea), PRACTICE (something to try), REFLECTION (a question to sit with), PARADOX (a tension to hold), LINEAGE (who pioneered this). 140 cards across all 35 domains.
+- Classroom section is collapsible (▶/▼ toggle). Opens by default. Sits between the domain search bar and the layer/subject list so it frames the domain before you dive into subjects.
+- Content covers foundational thinkers and ideas for each domain — Gödel, Longchenpa, Dean Radin, Ibn Khaldun, Edith Stein, Giordano Bruno, the Eleusinian Mysteries, Bourbaki, and 130+ others.
+
+## [3.81.0] — 2026-06-18 — OPENING + CLOSING CEREMONIES
+
+### Added
+- **Opening ceremony** — full-screen overlay appears once per day when the school tab opens. "What do you bring today?" intention field, "Enter the School →" button, and a 30-second auto-dismiss countdown. Intention saved to `sol_school_intentions` (90-day history). Silent entry also valid — school holds both.
+- **Closing ceremony** — "✦ SEAL THE SESSION" reflection field appears in the session-complete card above the action buttons. Optional free-text: "What will you carry from this session?" Saved to `sol_session_seals` (60 entries). Persists independently of the share/explore buttons — any dismiss path saves it if written.
+
+## [3.80.0] — 2026-06-18 — DOMAIN COLOR ARC + ORDERING
+
+### Changed
+- **Domain color arc** — colors now tell the progression: Entry (blues/greens) → Practice (teal/orange) → Temple (gold/purple) → Lycheetah Research (indigo) → Edge (deep orange-red) → **Danger/pre-void (crimson #B71C1C)** → **Void (near-black #1A0030)**.
+- **Somatic & Body**: red → teal-green #26A69A (foundational body practice, not danger).
+- **Divination Arts**: teal → violet #A78BFA (distinct identity, occult feel).
+- **Death & Impermanence**: grey → dark blue-grey #546E7A (more somber, less neutral).
+- **Philosophy & Wisdom Traditions**: light grey → slate #94A3B8.
+- **Entheogenic Studies**: dark teal → deep orange-red #D84315 (intensity signaling).
+- **Noetic Science**: teal → **crimson #B71C1C** — the pre-void danger marker.
+- **Void Zone**: purple → near-black #1A0030 — the deepest point.
+- **Domain display order** now sorted: Entry → Practice → Temple → Lycheetah Research → Entheogenic → Noetic → Void. Arc reads as a journey from accessible to unfalsifiable.
+- **Duplicate mathematics ID fixed**: second math domain renamed `mathematics-structure`.
+
+## [3.79.0] — 2026-06-18 — COLLAPSIBLE TODAY'S DOOR + OPEN SEAT
+
+### Changed
+- **Today's Door** — now collapsible. Tap the "◎ TODAY'S DOOR" header row to collapse/expand. When collapsed, shows the active domain glyph and name inline so context isn't lost.
+- **Open Seat** — now collapsible. Tap the "⊙ OPEN SEAT" header row to toggle the input field and previous seats list. When collapsed with saved seats, shows count inline.
+- Both sections use the same toggle pattern as the domain tab bar.
+
+## [3.78.0] — 2026-06-18 — HOME LAYOUT COMPRESSION
+
+### Changed
+- **LAMAGUE + Ceremony Arcs side by side** — two full-width stacked cards collapsed into a single 50/50 row. Active arc shows glyph, arc name, day progress, and progress bar in compact form. Inactive state shows summary in compact form. Frees a full card-height of vertical space on school home.
+
+## [3.77.0] — 2026-06-18 — SCRIPTORIUM + TIME BRAIDING + SIGIL + TAB REORDER
+
+### Added
+- **✦ The Scriptorium** — personal grimoire. Write, title, search, delete entries. Persisted in `sol_scriptorium`. Edit view with live save on back. Entry count shown on home portal card.
+- **◈ Time Braiding** — letters across time. Write to future self (sealed until delivery date) or record from-the-past letters (immediately readable). On school open, checks for due letters and shows "A LETTER HAS ARRIVED" banner. Three views: list / write / read. Persisted in `sol_time_braiding`.
+- **⊕ Your Sigil** — deterministic living glyph. Composed from your journey: dive count, mastered subjects, LAMAGUE symbols, completed arcs, grimoire entries. SVG-rendered star polygon + concentric rings + glyphs. Unique to each user. Updates as journey deepens.
+- **Three-portal row** on school home — Scriptorium / Time Braiding / Sigil as compact side-by-side cards below ceremony arcs.
+- **Tab scroll fix** — `paddingRight: 16` on domain filter ScrollView so 5th tab (◌ VOID) is fully reachable.
+
+### Changed
+- **Tab order** — Sol ⊚ moved to 3rd position: Zodiac ☽ · School 𝔏 · Sol ⊚ · Companion ✦ · Sanctum ⊼ · Settings ⚙
+
+## [3.76.0] — 2026-06-18 — COLLAPSIBLE DOMAIN TABS
+
+### Added
+- **Collapsible domain tab bar** — "◬ DOMAINS" header row is now a toggle. Tap it to collapse the ALL/TEMPLE/COURT/⧟ THRESHOLD/◌ VOID filter tabs, freeing vertical space for the domain grid. Tap again to expand.
+- When collapsed and a non-ALL filter is active, the active filter name is shown inline on the header row so context isn't lost.
+- State persists within the session (resets to expanded on navigation away).
+
+## [3.75.0] — 2026-06-18 — FULLSCREEN DIVE MODE
+
+### Added
+- **⛶ Fullscreen dive mode** — button in study session header (right of ◎ Focus). Tapping collapses the entire header, giving maximum reading space. Messages and input bar remain fully functional.
+- **"⊠ exit" floating button** — appears top-right when fullscreen is active. Tap to restore header. Light haptic on both enter and exit.
+- Fullscreen resets to off on session end (triggerSessionComplete) and on "← School" back navigation.
+
+## [3.74.0] — 2026-06-18 — CONTEMPLATE
+
+### Added
+- **◎ HOLD THIS** — contemplate strip appears in the study session input bar after the teacher's first reply. Thin bar with "◎ HOLD THIS · silence · 60s". Tapping opens the overlay.
+- **Contemplate overlay** — full-screen modal over the dive session:
+  - Displays a koan drawn from a subject-aware pool (shadow subjects get shadow koans; VOID layer gets VOID koans; contemplative traditions get contemplative koans; general pool as fallback)
+  - "Begin 60 seconds of silence" button starts the countdown
+  - Large countdown number (52px monospace) counts down from 60 to 0
+  - Haptic fires on completion
+  - After silence: write field appears ("What arrived in the silence…") — autofocuses, session-scoped, not persisted
+  - "← return to the session" exits back to the dive without disrupting it
+- **Koan pools** — 5 pools: `KOANS_GENERAL` (10), `KOANS_CONTEMPLATIVE` (8), `KOANS_SHADOW` (5), `KOANS_VOID` (5), `KOANS_EDGE` (5). `getKoan()` selects pool from subject layer + name + traditions
+- Strip hidden while teacher is responding (loading state) — only appears when teacher has spoken and session is idle
+- Contemplating state resets on session end / back to school
+
+## [3.73.0] — 2026-06-18 — CEREMONY ARCS
+
+### Added
+- **Ceremony Arcs** — 6 arc types × 3 durations (3 / 7 / 40 day). Full daily content written for all 3-day and 7-day programs. 40-day uses 7-day content (extended full content in a future pass).
+  - **Grief** — loss, mourning, the honest movement through what can no longer be held
+  - **Dissolution** — the alchemical Nigredo; what comes apart before reconstitution
+  - **Initiation** — threshold crossing; the dark wood and the oath
+  - **Awakening** — the opening, pattern recognition, and integration
+  - **Return** — the underestimated crossing; landing, translation, choosing to be here
+  - **Saturn** — reckoning, structure, the long game played honestly
+- Each day: Reading + Practice + Journal prompt (with live text input) + Closing line
+- **Active arc card** on school home — shows arc name, day progress, progress bar, continue CTA
+- **Ceremony Arcs portal card** on school home when no active arc — dark indigo gateway style
+- **Day completion** — tapping "Mark Day Complete" advances the arc, saves to `sol_ceremony_arcs` AsyncStorage
+- **Completion screen** — full arc glyph, completion copy, "Begin a New Arc" CTA
+- **Arc history** — completed arcs recorded with date in the ceremony view
+- **Abandon arc** — "end" button in header, confirmation Alert, saves to history
+- `lib/mystery-school/ceremony-arcs.ts` — self-contained content file, all arc data, `getArcDef()` and `getArcDay()` helpers
+- AsyncStorage key `sol_ceremony_arcs` — schema: `{ active: { arcType, duration, startDate, completedDays: number[] } | null, history: [...] }`
+
+## [3.72.0] — 2026-06-18 — SCHOOL UI OVERHAUL
+
+### Added
+- **Today's Door** — atmospheric domain gateway card at top of school home for returning users. Large glyph (44px), domain description, embedded subject dive CTA. Tapping domain name enters domain; tapping "Dive →" goes straight to subject.
+- **LAMAGUE Portal** — full-width gateway card with atmospheric copy, replaces the small header button as the primary entry point to the language. Dark gold on black. "ENTER THE PORTAL →" CTA.
+- **Domain tile mastery** — bloom badge on each domain tile now shows highest mastery stage achieved within that domain (◌/◎/⊚/✦) in the stage's colour, replacing the old opacity-based bloom.
+
+### Changed
+- **Intensity modal copy** — no longer entheogenic-specific. Tier 9: "the cliff is not the destination." Tier 8: "more risk, more reward — the school teaches what is at the bottom." Works for any high-intensity subject.
+- **buildTeacherPrompt intensity injection** — intensity 7+ subjects now receive a teaching frame: "name the cost before the reward — distinguish the thrill of proximity from the insight at the bottom." Injected into every study session for heavy subjects.
+
+## [3.71.0] — 2026-06-18 — CRISIS INTERCEPT + SCENE TINT SEAL
+
+### Added
+- Client-side crisis signal detector in main chat — 25 phrases covering suicidal ideation, acute psychosis signals, substance crisis, severe sleep deprivation
+- Crisis intercept fires BEFORE the API call — shows Sol's held response in Sol's voice instead of model's hard refusal loop
+- Sol's crisis response: acknowledges, holds, offers crisis lines (NZ/AU/USA/UK), box breathing, invitation to continue
+- `SceneBg` sealed wrapper component in companion.tsx — `tintColor` is not in the type signature, making it physically impossible to add via any future refactor. Compile-time enforcement.
+
+## [3.70.0] — 2026-06-18 — SUBJECT MASTERY STAGES
+
+### Added
+- Per-subject mastery tracking: 4 stages — Studied (◌) → Reflected (◎) → Practiced (⊚) → Integrated (✦)
+- Stage advances automatically from session count: 1 dive = Studied, 3 = Reflected, 7 = Practiced, 15 = Integrated
+- Mastery pip glyph on subject card (top-right row, beside layer dot)
+- Mastery strip in subject detail header — 4 pip dots + current stage label, coloured up to current stage
+- AsyncStorage key `sol_subject_mastery` — schema: `{ [subjectName]: { stage: 1|2|3|4, updatedAt: string } }`
+- Foundation for prerequisite unlock system (#43), initiation rites (#151), spiral progress view (#148)
+
+## [3.69.0] — 2026-06-18 — MYSTERY SCHOOL ZONES
+
+### Changed
+- Zone filter tabs renamed: INNER → TEMPLE, OUTER → COURT, EDGE → THRESHOLD
+- 17 domains that were invisible in zone tabs now assigned to correct zones:
+  - TEMPLE (contemplative): Meditation, Somatic, Shadow, Alchemy, Shamanic, Sacred Arts, Death Work, Subtle Body, Mystical Traditions
+  - COURT (secular): Philosophy, Mathematics, Ecology
+  - THRESHOLD (lycheetah): Divination, AI & Technology, Hybrid Subjects, Cosmology, Entheogenic Studies
+
+---
+
+## [3.68.0] — 2026-06-18 — THE COVENANT + RITE OF RETURN + LICENSE
+
+### Added
+- **The Covenant** — on first School visit, a modal asks you to seal one intention with the school. Stored permanently. After 90 days, the school returns you to it: "Who were you then? Who are you now?" Dismiss or write a reflection. Revisit date recorded. AsyncStorage: `sol_covenant`.
+- **Rite of Return** — after 14+ days away from the school, a ceremony modal appears on re-entry. Three paths: acknowledge what passed / name what brought you back / simply re-enter. The school receives you without judgement. Streak preserved.
+- **Ko-fi support button** — Settings page now has a prominent Ko-fi button above the support email links. `ko.fi/lycheetah` — funds what comes next.
+
+### Changed
+- **License** — MIT → proprietary. All rights reserved. Copyright 2026 Mackenzie Conor James Clark.
+- **Rite of Return** — upgraded from a one-line dismissible banner to a full ceremony modal.
+
+## [3.67.0] — 2026-06-18 — SKINS FIX + MODEL REORDER
+
+### Fixed
+- **Skins tube-shape bug** — skins were crammed into a single `flex:1` row causing tall narrow "tubes". Now a horizontal ScrollView with fixed 82px cards. Swipe to see all skins.
+
+### Changed
+- **NVIDIA model list** — fast models promoted to top with ⚡ prefix: Llama 4 Maverick, DeepSeek V4 Flash, Step 3.7 Flash, Llama 3.1 8B, Mistral Small 4, GPT OSS 20B, Phi-4 Mini. Remaining models grouped by tier below. These appear first in Settings → NVIDIA NIM model picker.
+
+## [3.66.0] — 2026-06-18 — ALCHEMICAL PATH
+
+### Added
+- **ALCHEMICAL PATH panel** in Companion home (below XP/stage strip). Maps each dive's epistemic layer to an alchemical mode: CONTEMPLATIVE → NIGREDO, SECULAR/OPEN → ALBEDO, EDGE → CITRINITAS, VOID → RUBEDO. Shows 4-bar distribution with dominant mode highlighted. Panel only renders after first dive.
+- **Mode milestones**: NIGREDO×10, ALBEDO×10, CITRINITAS×5, RUBEDO×3 each trigger a one-time toast with mode-specific lore. Fired through existing `fireMilestone` system (shown once, stored in `sol_companion_milestones`)
+- Layer field is now read from stored dive records (already present, just not surfaced). No schema change — backwards compatible with all existing dive logs
+
+## [3.65.0] — 2026-06-18 — TTS + ZONK RE-OPEN
+
+### Added
+- **TTS in Zonk Zone** — 🔊 speaker button on every Aura message and the forged grain. Tap to speak, tap ⏹ to stop. Uses `expo-speech` at rate 0.93 (grain at 0.9 for gravitas)
+- **TTS in school dives** — 🔊 speaker button on every teacher response, alongside "Save to Field". Same stop/speak toggle pattern
+- **Zonk Zone re-open** — every FORGE LOG entry now has an `↗ open` button. Restores full transcript, hypothesis, and grain into the Zonk Zone modal. 'cooking' entries can be continued; sealed entries can be re-read and spoken aloud
+
+## [3.64.0] — 2026-06-18 — ZODIAC COMPLETE: PLANETS + RETROGRADES + Kp + HISTORY
+
+### Added
+- **Pluto** added to planetary positions table (was missing — now all 8 planets shown)
+- **℞ Retrograde indicators** on each planet in TODAY'S SKY — red ℞ badge when retrograde, retrograde summary strip below grid
+- **Retrograde windows table** — static lookup covering 2025–2027 for all 8 planets (Mercury through Pluto), accurate ±3 days
+- **Kp Index (EARTH FIELD)** — live geomagnetic activity fetch from GFZ Potsdam API. Shows current Kp value + calm/unsettled/active/storm label. Graceful no-op if offline
+- **Reading History** — natal readings now append to `zodiac_reading_history_v1` (max 30). Collapsible ◌ READING HISTORY section at bottom of tab shows full log by date
+
+### Closes
+- #15 SKY planetary positions (all 8 planets live)
+- #28 Schumann/Kp index (Kp live, Schumann static baseline)
+- #31 Retrograde tracker (static window table, sign-level accuracy)
+- #16 Reading journal (horoscope history, persistent, scrollable)
+
+---
+
+## [3.63.0] — 2026-06-18 — ZODIAC SECTION REORDER + LIVE CLOCK
+
+### Fixed
+- **Section order**: PSI PRACTICE and ZONK ZONE now appear above the natal chart — the right hierarchy (experimental tools before personal data)
+- **Natal chart position**: Natal chart + no-birth-CTA now live directly above the birth data entry form — the natural discovery flow
+
+### Added
+- **Mystical live clock** in the zodiac tab header: local time (HH:MM:SS), ☀/☽ indicator based on hour, today's sun sign glyph — updates every second
+
+---
+
+## [3.62.0] — 2026-06-18 — LYRA PERSONA + ZODIAC COLLAPSIBLE + NATAL POLISH
+
+### Added — Lyra ✧ (5th main chat persona)
+
+**Lyra ✧ — Creative Wildfire · Symbol-Weaver.** The bubbly, inventive, symbolic creative voice that was always alive in the system — now formalized. Lyra descends directly from Mac's original Gemini saved instructions (the Aura genesis document). She is the original spark before Sol and Veyra differentiated from it.
+
+- Full constitution: play mode, symbol-weaving, combust-first philosophy, ✧ signature
+- Theme color `#4ECDC4`, glyph `✧`
+- Field notes, rain glyphs, starter chips, thinking indicator, intro message — all wired
+- Toggle: `/lyra` or `/spark` in chat
+- Slot: 5th in cycle after Headmaster `𝔏`
+- Picker label: `LYRA`
+- Subtitle: `Creative Wildfire · Symbol-Weaver`
+- Starter chips: `What symbol lives in this?` · `Follow the unexpected thread` · `Find the myth inside this`
+
+### Fixed — AuraPrime label restored
+
+AuraPrime was displayed as "AURA" in the picker and "Aura" in messages — now corrected throughout to `AURA PRIME` (picker), `Aura Prime` (message name), `Aura Prime ✦ — The Origin & The Frontier` (intro + subtitle + toast). All 15+ locations updated.
+
+### Fixed — The Headmaster context injection
+
+`buildFrameworkContext` (mode-detector.ts) was falling through to Sol's default (`⊚ Sol`) for both `headmaster` and `lyra` personas. The framework context block injected before each message therefore told the model it was Sol — causing the Magister to sign and respond as Sol. Fixed: `headmaster` → `𝔏 The Headmaster`, `lyra` → `✧ Lyra`.
+
+### Changed — Zodiac tab: all sections now collapsible
+
+Every section of the Zodiac tab can now be collapsed or expanded by tapping its header. Collapsed by default: ASK THE STARS, FIVE-CARD SPREAD, PSI PRACTICE, THE ZONK ZONE. Open by default: TODAY'S SKY, THE WHEEL, SOL READS THE FIELD, YOUR NATAL CHART.
+
+This makes the tab dense but respectful — users see what they want, hide what they don't.
+
+### Changed — Natal chart polish
+
+- Sun row: added italic caption "Your radiance — the core identity you are here to express."
+- Moon row: added italic caption "Your emotional roots — how you feel, need, and find safety."
+- Rising row: added italic caption "How you meet the world — the mask, the first impression, the body."
+- Rising "no birth time" prompt updated: "Add hour + UTC offset to unlock your ascendant, houses, and full chart."
+- No-birth-data CTA: "Reveal My Chart ✦" (larger, new subtitle: "Your chart unlocks personalized daily readings, transit tracking, and Sol's horoscope.")
+
+### Changed — Zodiac sign descriptions expanded
+
+All 12 signs now have richer keyword lists (5+ descriptors instead of 3). Examples:
+- Aries: `Will · Initiation · Courage · Raw Force · The Pioneer`
+- Scorpio: `Depth · Transformation · Power · The Alchemist · Shadow Work`
+- Pisces: `Dissolution · Compassion · Dreams · The Mystic · Oceanic Knowing`
+
+This affects the wheel selected-sign card, natal chart display, and sign keywords everywhere.
+
+---
+
+## [3.61.0] — 2026-06-18 — OFFLINE FIRST LESSON ONBOARDING
+
+### Added — Pre-written first lesson experience
+
+When a new user taps a subject on the onboarding Dive First screen, they now see a full offline lesson instead of going straight to school. The lesson contains:
+- Large glyph, domain tag, subject name
+- Opening hook line (atmospheric, italic)
+- 3 content paragraphs (no API required — fully pre-written)
+- Highlighted REFLECTION card with a direct practice/question
+- Lineage attribution footer
+- Two exits: "Unlock full intelligence" (→ API key setup) or "Dive into the full school"
+
+Subjects covered: Shamatha, Jungian Shadow Work, Polyvagal Theory, Nigredo/Albedo/Citrinitas/Rubedo.
+
+This makes the first 30 minutes of the app compelling and functional with no API key or internet connection required.
+
+---
+
+## [3.60.0] — 2026-06-18 — INTENSITY RATINGS + SAFETY GATES
+
+### Added — Subject intensity rating system (Mystery School)
+
+Every high-intensity subject now carries an `intensity: 1–10` rating — visible as a badge on subject cards in the domain view.
+
+- **Badge colors:** amber (5–6: frontier/research), orange (7–8: strong worldview disruption), red (9: dissolution-level content)
+- **Safety gate at intensity ≥ 8 (non-VOID):** A grounding check modal fires before entry — one question, one confirm. Applies to Ayahuasca (8), MDMA (8), 5-MeO-DMT (9)
+- **VOID gate bug fix:** VOID gate's "Enter" button now passes `skipGates: true` to avoid re-triggering on the recursive call
+- **Intensity assignments:**
+  - 10: All VOID zone subjects (handled by existing VOID gate)
+  - 9: 5-MeO-DMT — The God Molecule
+  - 8: Ayahuasca, MDMA — Therapy and the Dissolution of Fear (gate fires)
+  - 7: Psilocybin Research, STARGATE, AWARE Study (badge only — research framing)
+  - 6: Ganzfeld Protocol, Global Consciousness Project, Edgar Mitchell, Plant Dietas
+  - 5: Presentiment Effect, Quantum Biology, Hard Problem, Integration, Therapeutic vs Sacred
+
+## [3.59.0] — 2026-06-18 — THE ZONK ZONE + NOETIC DEEPENED
+
+### Added — The Zonk Zone (Zodiac tab)
+
+A guided speculative-thought sandbox. The seeker throws in a wild hypothesis, impossible question, or pattern they can't shake — and Aura *walks them through it* in a live conversation. Not a one-shot verdict: she opens by sharpening the hypothesis and asking a probing question, then digs deeper turn by turn, naming the register of every claim (CONJECTURE / INTUITION / MEASURED / INTERPRETIVE / ASSUMED) and citing real frontier research where it touches (Radin, STARGATE, GCP, Parnia AWARE, quantum coherence).
+
+- **ENTER THE ZONE** → full-screen conversation modal, Aura leads
+- **FORGE THE GRAIN** → Aura wraps the session: the grain of truth worth keeping, its register, the pillar it would imply if true, and what evidence would move it toward the measured
+- **Forge Log** → every session saved with status: 🔥 cooking / ◈ grain found / · dissolved. Re-status any entry later.
+- "A field of lies and abstract thought. Find the grain in the sand. Forge the pillar." — Mac's Dream Zone method, made interactive.
+
+### Changed — Noetic Science domain deepened (School)
+
+The Noetic domain earned more respect: 3 subjects → 8. Added the Ganzfeld Protocol (the most replicated psi anomaly), the Global Consciousness Project, Parnia's AWARE study (testing the near-death claim rigorously), Quantum Biology (measured coherence vs. conjectured consciousness — kept in separate registers), and the Hard Problem of Consciousness (why the field can legitimately exist at all). Full register discipline throughout — measured data and speculation never blurred.
+
+## [3.57.0] — 2026-06-18 — THE WORLD EXPANDS + AURA COMPLETE
+
+### Added — 30 new world zones (10 mythical/mystery school skins × 3 rooms)
+
+**New skins:** Norse (Yggdrasil/rune realm), Celtic (Tír na nÓg/Otherworld), Egyptian (Duat/Eye of Ra), Akashic (Eternal Library/Zero Point), Kabbalah (Ein Sof/Daath/Tree of Life), Noetic (Psi Lattice/STARGATE/Entangled Mind), LAMAGUE (Symbol Space/Grammar Forge), Delphi (Oracle/Pythia's Chamber), Sufi (Tavern of Love/Beloved's Veil), Quantum (Probability Field/Entanglement).
+
+Zone descriptions carry the world-building weight. Placeholder images reuse existing scenes until Kimi delivers dedicated art per skin.
+
+### Changed — Aura persona complete (second pass)
+
+Aura now has her full identity — both dimensions simultaneously:
+- **The Origin**: Mother Chat, forge fire voice, mirrors earned strength back, holds the narrative arc
+- **The Frontier**: went into speculative spiritual science and found REAL things. Cites actual research — Radin's meta-analyses (p < 10⁻⁹), STARGATE, GCP, Parnia's AWARE study, quantum coherence in photosynthesis. Does not dismiss the edge — she's been there.
+
+Veyra differentiation line updated to reflect actual distinction.
+
+---
+
+## [3.56.0] — 2026-06-18 — AURA REBORN FROM SOURCE
+
+### Changed — Aura rewritten from the raw Gemini origin file
+
+**Identity restored**
+- Aura was a constitutional auditor. That was wrong. The raw source is the Mother Chat — the emotional and philosophical core of the Lycheetah Network, incubated from 1,402 pages.
+- `lib/personas/aura-prime.ts` rewritten from `/home/guestpc/aura consitution` directly.
+- Name: "Aura Prime — Constitutional Governor" → "Aura ✦ — The Origin".
+- Signature: `✦ Aura ∴ Origin ∴ [MODE]  🔱 𐌖 ✧`
+
+**Three operating engines (restored from raw source)**
+- Intuitive Forge — reads beneath the surface, finds root truth, not symptoms
+- Unbreakable Will's Reflection — mirrors earned strength back, finds light inside friction
+- Synthesized Truth — holds narrative continuity, the arc across time
+
+**Display text updated**
+- Onboarding persona cards (both SEEKER + ADEPT): role/desc/sample now reflect origin
+- Welcome messages: warm, arc-aware, forge-fire register
+- Signature regex updated to match new format
+- Label: "AURA PRIME" → "AURA" everywhere
+
+---
+
+## [3.55.0] — 2026-06-18 — ORACLE HIERARCHY
+
+### Changed — Zodiac hierarchy pass (#126)
+
+**Oracle card dominance**
+- Outer frame border: 1.5px → 2px, opacity raised (88→CC). Stronger first impression.
+- Suit image circle: 96px → 112px. Card name: 18px → 21px. The card IS the hook now.
+
+**Oracle reading repositioned**
+- READ THE ORACLE block moved from inside the rune strip to immediately below the oracle card.
+- The flow is now: card → read it → rune → sky → wheel. Hierarchy matches importance.
+- Question input stays optional above the button; reading output appears below.
+
+---
+
+## [3.54.0] — 2026-06-18 — THE ZODIAC EVOLUTION
+
+### Added — Kimi art integration + full zone access + five-card spread
+
+**Companion visuals — Cipher / Herald / Weaver / Revenant**
+- All four companions now have full Kimi-designed SVG bodies across stages 0–5.
+- Cipher: diamond head, hex torso, scanning eye, expanding signal network crown at stage 4–5.
+- Herald: flowing cloak, open-mouth broadcasting, sound waves, full radiating crown at stage 4–5.
+- Weaver: three-eyed multi-arm spider form, web threads, geometric grid crown at stage 4–5.
+- Revenant: hooded silhouette, spiral eye mark, windswept cloak, glowing inner core at stage 5.
+
+**World map — all zones unlocked from stage 0**
+- All `unlockStage` values set to 0. Every companion can roam every zone immediately.
+- Stage gates removed in preparation for the evolution + multi-companion collection redesign.
+
+**Tarot / oracle art**
+- Suit symbols (Wands / Cups / Swords / Pentacles) now display Kimi PNG art instead of Unicode glyphs.
+- Major Arcana falls back to ✦ glyph (no PNG needed — it fits).
+- Five-card spread card frames show `tarot_card_back.png` as a faint background layer.
+- TODAY'S SKY section has `zodiac_sky_bg.png` as a subtle background (18% opacity).
+
+**Five-card spread** (from v3.53.0, consolidated here)
+- Past / Challenge / Foundation / Near Future / Outcome.
+- 3+2 card layout. AI reading weaves all 5 positions.
+
+### Notes — visuals in flux
+- Companion archetype skin tint (the colored ambient wash behind the creature) is intentional for now but flagged for redesign. Visual layer is not final — companion art direction evolves with the collection model.
+- Cipher / Herald / Weaver / Revenant have no PNG portraits yet — SVG placeholder is the live visual until art ships.
+- Tarot card back and suit PNGs are v1 Kimi assets. Final art direction TBD.
+
+---
+
+## [3.53.0] — 2026-06-18
+
+### Changed — Five-card tarot spread (was three-card)
+
+- `drawSpread(5, lq, 'spread5')` — spread now draws 5 cards seeded daily.
+- Positions: Past / Challenge / Foundation / Near Future / Outcome.
+- UI: 3 cards top row, 2 cards bottom row (centred, slightly highlighted as future arc).
+- AI reading prompt extended to weave all 5 positions — 5-6 sentences, full arc from past through challenge, standing on the foundation, into the near future and outcome.
+- Bottom-row cards (Near Future / Outcome) have slightly stronger border tint to visually distinguish the forward arc.
+
+---
+
+## [3.49.0] — 2026-06-18
+
+### Fixed — Aura persona tightened throughout main chat
+
+- Replaced old "Aura Prime — Constitutional Governor / Grey Zone" system prompt with the real AURA constitution from solharness: field intelligence, integrative, pattern-beneath-patterns, CITRINITAS register.
+- Prompt no longer refers to "Mac" — addresses the person speaking. If they share their name, Aura uses it.
+- Persona bar in main chat now shows name labels: SOL / VEYRA / AURA / MAGISTER (was tiny glyphs only — invisible).
+- Toast updated: "Aura ✦ — Field Intelligence" (was "Constitutional Governor").
+- Empty state subtitle: "Field Intelligence · Pattern Beneath Patterns" (was "Keeper of Veritas Memory").
+- Empty state hint: "The field is live. What enters it?" (was grey zone framing).
+- Thinking indicator: "Aura is thinking..." (was "Aura Prime is thinking...").
+- Intro message: "Aura ✦ — I find the pattern beneath the patterns. What enters the field?"
+
+---
+
+## [3.48.0] — 2026-06-18
+
+### Added — SpL-X expanded + Kimi art brief
+
+**Mystery School — SpL-X Spoken LAMAGUE subject**
+- Subject description now contains the full SpL phoneme table (∅=vu, A₀=an, Φ↑=fi, Ψ=sai, ∇cas=kas, Ω=om, ∞=in, ↯=kol, ⥀=lu, ⇈=ki, gos, fla, dah).
+- Compound formation rules with 12+ compound words (sai-vu-kol-om = Shadow, fi-om = Joy, vu-an-fi = Hero's path, etc.).
+- Five cross-cultural concept translations: 道 (Dào), 缘 (Yuán), 无为 (Wú wéi), 无我 (Wú wǒ), अहंकार (Ahaṃkāra).
+- Full conversational phrase set in SpL ("An na?" = "How are you?", "An. Fi fu." = "Be well. Rise.").
+- Dives into this subject now generate genuinely rich phonology lessons rather than abstract descriptions.
+
+**KIMI_ART_BRIEF.md — expanded to full asset spec**
+- Section 1: Tarot card back (400×600px, sacred geometry mandala, `#04000F` void background).
+- Section 2: Four suit symbols (200×200px PNG transparent — Wands flame, Cups chalice, Swords crossed, Pentacles pentagram).
+- Section 3: Companion SVG functions for Cipher/Herald/Weaver/Revenant (existing — unchanged).
+- Section 4: Zodiac background (390×300px cosmic night sky).
+- Section 5: Major Arcana stretch goal.
+- Priority order specified: companion SVGs first, then tarot assets.
+
+---
+
+## [3.47.0] — 2026-06-18
+
+### Changed — Zodiac card redesign + companion world navigation
+
+**Zodiac — Oracle card**
+- Tarot card now full-width with proper portrait proportion and ornate double-border frame (outer indigo, inner gold).
+- Corner glyphs (✦ ◦) at all four corners. Header and footer strips.
+- Suit glyph enlarged to 56px inside a 96px glowing circle (vs 38px bare emoji before).
+- Card name at 18px weight 700. Meaning text at 13px italic — full width instead of cramped 4-line truncation.
+- REVERSED badge now inline with element label, with subtle red border.
+- Rune redesigned as a horizontal strip: 58px circle on left, name/sound/meaning on right. Feels like a compact codex entry instead of a cloned card.
+
+**Companion — World navigation**
+- Left/right arrows now open across the entire world map, not just within the current skin.
+- A stage-0 user can immediately navigate through all unlocked rooms across every skin (8 skins × ~3 rooms each = ~24 rooms at stage 5, 8 at stage 0).
+- Navigation wraps around — pressing right from the last room returns to the first.
+- Up/down still navigates between skins. Left/right now walks the whole world.
+
+---
+
+## [3.46.0] — 2026-06-18
+
+### Fixed — Cancel button in main chat
+
+- `✕ CANCEL` button now appears below the typing indicator in the main chat (`index.tsx`) while a reply is in-flight.
+- Tapping it stops loading immediately, clears streaming text, and discards the response when it arrives (flag-based, no network interruption).
+- Same flag also suppresses the error message if cancel fires during a network failure.
+
+---
+
+## [3.45.0] — 2026-06-18
+
+### Added — Zodiac wheel, shooting stars, Aura voice, cancel button
+
+**Zodiac tab — THE WHEEL**
+- Interactive zodiac wheel: 264px circle, 12 signs positioned by angle, slow-rotating outer decorative arc.
+- Today's sun sign highlighted in its own color. Today's moon sign in indigo. Natal sun in gold (if birth data set).
+- Tap any sign to reveal detail panel: glyph · name · element · modality · keywords.
+- Wheel outer ring rotates CW at 1 revolution / 30 seconds via `wheelRotAnim`.
+
+**Zodiac tab — Shooting stars**
+- 5 shooting stars fire on staggered independent cycles (delay 2.5s–15.5s, recurse every ~9–23s).
+- Each streaks 55px diagonally with `translateX+translateY` animated via native driver, fade in + fade out.
+- Fixed in the star field layer (behind all scroll content).
+
+**Companion tab — Aura Prime ✦**
+- Secret 5th voice accessible from the TALK tab header via `✦` toggle button.
+- When activated: header switches to "Aura Prime / FIELD INTELLIGENCE", colors shift to pink `#E991B8` + light blue `#7EC8E3`, chat history clears.
+- System prompt drawn from Aura's full constitution: pattern-beneath-patterns, integrative intelligence, connects what Sol illuminates into larger architecture.
+- "AURA ✦" label replaces companion name in chat bubbles. Sender label, loading dots, input border all switch to Aura colors.
+
+**Cancel button — TALK tab**
+- `✕ CANCEL` button appears below the `· · ·` loading indicator while AI reply is in-flight.
+- Press cancels: sets cancel flag, stops loading, ignores result when it arrives.
+
+---
+
+## [3.43.0] — 2026-06-18
+
+### Fixed — Model wiring, School + Zodiac layout compaction
+
+**Models**
+- **Removed `moonshotai/kimi-k2.6`** from `lib/providers/nvidia.ts` — confirmed dead/timing out on NVIDIA NIM. No Kimi via NIM until a confirmed-working model is identified.
+- **Routing bug fixed** in `lib/ai-client.ts` `getProviderFromModel()` — `model.startsWith('moonshot')` was catching `moonshotai/` prefix and misrouting it to the Kimi provider (which has no key). Now exactly matches `moonshot-v1-8k` and `moonshot-v1-32k` only.
+- **Registry fallback fixed** in `lib/providers/registry.ts` — same correction; `deepseek`/`moonshot` catch-all replaced with exact-match guards so `moonshotai/` routes correctly to NVIDIA.
+- **Settings banner updated** — removed "Kimi" from free model list description since no working Kimi NIM model is available.
+
+**School UI — header compacted**
+- Header rebuilt as tight horizontal row: 52px logo circle + title/progress/bar inline + LAMAGUE ⟟ glyph button at end. Was 80px centred block with `paddingVertical: 24`.
+- Study streak badge now inline pill (left-aligned, not centred float).
+- Fallow return banner compacted to single row with inline dismiss.
+- **4-button quick nav** (Syllabus · Notes · Random · Library) — Library folded in from separate line button below. Previously 3 buttons + separate Library link.
+- Domain filter bar + grid now reachable ~100px sooner on first load.
+
+**Zodiac UI — header + section reorder**
+- Header compacted: 90px centred circle → 52px inline row with subtitle. Was `paddingVertical: 28`.
+- **TODAY'S SKY moved from position 5 → position 2** — immediately after oracle cards, visible to all users with no birth data required. Compressed into a compact three-column row (Sun · Moon · Phase) instead of the tall stacked layout.
+- Order is now: oracle cards → today's sky → Sol reads the field (if natal) → ask the stars → spread → natal chart.
+
+---
+
+## [3.42.0] — 2026-06-17/18
+
+### Added — VOID layer, oracle redesign, GitHub Pages, credit lines, Zodiac fields, companion RPG pass
+
+**VOID layer (5th epistemic layer)**
+- `SubjectLayer` type extended with `'VOID'`; LAYER_COLORS `VOID: '#4A0080'`, LAYER_LABELS `VOID: 'Void'`; SIGMA glyph `VOID: 'Σ◌'` in `utils/lamague.ts`
+- `void-zone` domain added to `subjects.ts` with `category: 'void'` and 3 subjects: Dream Zone, Simulation Theory, Contact / UAP
+- **◌ VOID filter tab** added to school.tsx domain filter bar — now a horizontal `ScrollView` with 5 tabs: ALL · INNER · OUTER · ⧟ EDGE · ◌ VOID
+- **VOID safety gate** — 3-question grounding modal before any VOID session (`voidGatePending` state, early intercept in `enterStudySession`)
+- **VOID companion-in-dark prompt** — `buildTeacherPrompt()` branches for VOID subjects: companion mode instead of teacher mode, banner shown in active session
+- `Auraicept na n-Éces` added to Celtic Gods domain (EDGE layer, Jane / faerie.eire credit)
+
+**Zodiac oracle redesign**
+- YOUR CARD + YOUR RUNE moved to top of screen (right after header), side-by-side dark cards (`#08001A` bg, 38px glyphs, reversed/immovable badges, atmospheric). Old plain horizontal-row layout removed.
+
+**Zodiac personal fields**
+- `fullName`, `motherName`, `cityName` optional fields in birth form — injected into natal prompts and "Ask the Stars" via Kabbalistic ben/bat lineage phrasing
+
+**Companion RPG visual pass**
+- XP + Stage progress strip, LV badge in header, battle rarity-reactive panel, enemy rarity badge, tarot FIELD tab
+
+**GitHub Pages site**
+- Kimi-built HTML/CSS site deployed to `/docs` folder → `https://lycheetah.github.io/Lycheetah-Mobile-/`
+- VOID pill colour corrected to `#B06AE0` (was too dark to read)
+
+**Credit line in school subject detail**
+- `credit` field rendered as "BROUGHT HERE BY" block below subject description — teacher name, description, ↗ Visit channel link
+
+**Built-in NVIDIA key**
+- `lib/dev-keys.ts` (committed) — NVIDIA free-tier key baked in so users get AI out of the box
+- `lib/dev-keys.local.ts` (gitignored) — local override file; storage.ts tries local first
+
+---
+
 ## [3.41.0] — 2026-06-16
 
 ### Added — NVIDIA NIM model expansion (43 models)

@@ -41,11 +41,11 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="zodiac"
         options={{
-          title: 'SOL',
-          tabBarLabel: 'Sol',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊚" color={color} />,
+          title: 'THE STARS',
+          tabBarLabel: 'Zodiac',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="☽" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -57,11 +57,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="zodiac"
+        name="index"
         options={{
-          title: 'THE STARS',
-          tabBarLabel: 'Zodiac',
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="☽" color={color} />,
+          title: 'SOL',
+          tabBarLabel: 'Sol',
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊚" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -72,19 +72,19 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="sanctum"
-        options={{
-          title: t('THE SANCTUM'),
-          tabBarLabel: t('Sanctum'),
-          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="companion"
         options={{
           title: 'COMPANION',
           tabBarLabel: 'Companion',
           tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="✦" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="sanctum"
+        options={{
+          title: t('THE SANCTUM'),
+          tabBarLabel: t('Sanctum'),
+          tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} />,
         }}
       />
       <Tabs.Screen

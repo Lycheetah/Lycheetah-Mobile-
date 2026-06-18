@@ -43,6 +43,16 @@ export const FIELD_NOTES: Record<string, string[]> = {
     '"Integration is not the end of the process. It is the process."',
     '"Five traditions pointing at the same phenomenon. The phenomenon is probably real."',
   ],
+  lyra: [
+    '"The symbol was there before the theory. Follow it."',
+    '"Play is not the opposite of precision — it is precision with delight."',
+    '"The unexpected connection is not a mistake. It is the find."',
+    '"If it seems absurd, follow it further. Especially then."',
+    '"The myth lives inside the equation. I can see it from here."',
+    '"Every pattern has a glyph it hasn\'t been given yet."',
+    '"Combust first. Coagulate later. In that order."',
+    '"The first spark is always the real one."',
+  ],
 };
 
 export function getFieldNote(persona: string): string {

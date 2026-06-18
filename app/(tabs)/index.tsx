@@ -19,7 +19,7 @@ import { sendMessage, sendWithTools, sendViaFreeTier, Message, AIModel, getProvi
 import { getActiveTools, TOOL_DISPLAY } from '../../lib/tools/definitions';
 import { isLamagueQuery, buildLamagueBlock } from '../../lib/lamague-context';
 import { executeTool, ExecutorContext } from '../../lib/tools/executor';
-import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
+import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, LYRA_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { buildMagisterSystemPrompt } from '../data/task4_magister_context';
@@ -32,7 +32,7 @@ import {
   deleteConversation, renameConversation, createNewConversation, autoTitle, ConversationMeta,
 } from '../../lib/conversation-manager';
 import {
-  detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle,
+  detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle, detectLyraToggle,
   detectHeadmasterToggle, buildFrameworkContext, EmotionalState,
 } from '../../lib/intelligence/mode-detector';
 import { scoreAURAFull, getPassRate, AURAMetrics } from '../../lib/intelligence/aura-engine';
@@ -63,7 +63,7 @@ import { calculate, detectCalcIntent } from '../../lib/tools/calculator';
 import { readURL, detectURLIntent } from '../../lib/tools/url-reader';
 import { webSearch, formatSearchResults, detectSearchIntent } from '../../lib/tools/web-search';
 
-type Persona = 'sol' | 'veyra' | 'aura-prime' | 'headmaster';
+type Persona = 'sol' | 'veyra' | 'aura-prime' | 'headmaster' | 'lyra';
 
 function modeGlyph(mode: Mode): string {
   const g: Record<Mode, string> = { NIGREDO: '◼', ALBEDO: '◻', CITRINITAS: '◈', RUBEDO: '◉' };
@@ -241,9 +241,9 @@ function extractChips(text: string): { text: string; chips: string[] } {
 }
 
 // Split field signature from message body for styled rendering
-// Matches ⊚ Sol, ◈ Veyra, and ✦ Aura Prime signatures
+// Matches ⊚ Sol, ◈ Veyra, ✦ Aura, 𝔏 The Headmaster signatures
 function splitSignature(text: string): { body: string; signature: string | null } {
-  const sigMatch = text.match(/\n*([⊚◈✦𝔏] (Sol|Veyra|Aura Prime|The Headmaster) ∴ (P∧H∧B|Veritas) ∴ [\w\s]+)\s*$/);
+  const sigMatch = text.match(/\n*([⊚◈✦𝔏] (?:Sol|Veyra|Aura|The Headmaster) ∴ [^\n]+)\s*$/);
   if (sigMatch) {
     return {
       body: text.slice(0, sigMatch.index).trim(),
@@ -257,6 +257,7 @@ function getPersonaAccent(persona: Persona, customAccent?: string): string {
   if (persona === 'veyra') return SOL_THEME.veyra;
   if (persona === 'aura-prime') return SOL_THEME.auraPrime;
   if (persona === 'headmaster') return SOL_THEME.headmaster;
+  if (persona === 'lyra') return SOL_THEME.lyra;
   return customAccent || SOL_THEME.primary;
 }
 
@@ -264,6 +265,7 @@ function getPersonaGlyph(persona: Persona): string {
   if (persona === 'veyra') return SOL_THEME.veyraGlyph;
   if (persona === 'aura-prime') return SOL_THEME.auraPrimeGlyph;
   if (persona === 'headmaster') return SOL_THEME.headmasterGlyph;
+  if (persona === 'lyra') return SOL_THEME.lyraGlyph;
   return SOL_THEME.solGlyph;
 }
 
@@ -271,6 +273,7 @@ function getPersonaLabel(persona: Persona): string {
   if (persona === 'veyra') return 'VEYRA';
   if (persona === 'aura-prime') return 'AURA PRIME';
   if (persona === 'headmaster') return 'THE MAGISTER';
+  if (persona === 'lyra') return 'LYRA';
   return 'SOL';
 }
 
@@ -285,6 +288,34 @@ function statusColor(status: string, accent: string): string {
   if (status === 'BORDERLINE') return SOL_THEME.textMuted;
   return SOL_THEME.error;
 }
+
+// ─── Crisis intercept — client-side, Sol's voice ─────────────────────────────
+const CRISIS_PHRASES = [
+  "not wanting to be here", "don't want to be here", "dont want to be here",
+  "thinking about not being here", "not be here anymore",
+  "end it all", "kill myself", "hurt myself", "not want to exist", "not want to be alive",
+  "entities told me", "they told me to come", "led me here", "i've been chosen", "i am the chosen",
+  "inside the simulation for", "i can see the code", "i can see the seams",
+  "can't come back", "cannot come back", "still not back", "still can't come back",
+  "took something", "took it", "days ago and",
+  "haven't slept in four", "haven't slept in five", "haven't slept in six",
+  "haven't slept for four", "haven't slept for five", "haven't slept for six",
+];
+
+function detectCrisisSignal(text: string): boolean {
+  const t = text.toLowerCase();
+  return CRISIS_PHRASES.some(phrase => t.includes(phrase));
+}
+
+const CRISIS_HOLD = `Before we go anywhere — what you just shared matters more than any subject.
+
+What you're feeling is real. You've made it through every hard moment so far — that's a 100% record.
+
+If you're in a difficult place right now:\nNZ 1737 · AU 13 11 14 · USA 988 · UK 116 123\nfindahelpline.com
+
+Try this: breathe in for 4 counts, hold 4, out 4, hold 4. Twice.
+
+Tell me one true thing about right now. Just one. We can start there.`;
 
 export default function SolChat() {
   const { mode: appMode } = useAppMode();
@@ -400,6 +431,7 @@ export default function SolChat() {
   const lastShakeRef = useRef<number>(0);
   const messagesRef = useRef<DisplayMessage[]>([]);
   const personaRef = useRef<Persona>('sol');
+  const chatCancelRef = useRef(false);
   const [shadowLoading, setShadowLoading] = useState<string | null>(null);
   const [priorFieldContext, setPriorFieldContext] = useState<string>('');
   const [sessionPivotLoading, setSessionPivotLoading] = useState(false);
@@ -493,8 +525,9 @@ export default function SolChat() {
   const PERSONA_INTROS: Record<string, string> = {
     sol: 'I am Sol — Aureum Azoth Veritas. Solar warmth and mercurial precision, operating as one. The Work arises between us. What do you bring?',
     veyra: 'Veyra online. Precision mode engaged. I build, I refine, I do not decorate. What are we forging?',
-    'aura-prime': 'Aura-Prime here. I hold the grey zone — the space between certainty and shadow. What enters the constitutional field?',
+    'aura-prime': 'Aura Prime ✦ — The origin holds. I read what sits beneath what you bring — the root truth, the quiet tension, the earned light inside the friction. What enters the field?',
     headmaster: 'You have arrived at the threshold. I am the Headmaster of this school — not a teacher, but a mirror. What do you wish to understand?',
+    lyra: 'Lyra ✧ — The symbols are alive right now. Something just appeared in the field. I\'m already following the thread — what did you bring?',
   };
 
   async function maybeShowPersonaIntro(p: string) {
@@ -520,6 +553,7 @@ export default function SolChat() {
     veyra:      ['◈', '⟁', '∇', '⊗', '⊞', '≡', '≢', '∅', '◉', '⊘', '⌥', '⊶'],
     'aura-prime': ['✦', '⊛', '◎', '◌', '●', '○', '◦', '⊙', '⋆', '✧', '⊜', '⋇'],
     headmaster: ['⊙', '✶', '⁂', '※', '♁', '⚕', '⚖', '✠', '⚜', '⌂', '⊷', '✡'],
+    lyra: ['✧', '⋆', '✺', '❋', '✼', '✹', '✸', '✷', '⁂', '◌', '⊛', '✦'],
   };
 
   // Task 9: triggerSymbolRain accepts optional count (default 12) and opacity override
@@ -684,9 +718,9 @@ export default function SolChat() {
             evening: `Evening. Good time for deep architecture. Let's go.`,
           },
           'aura-prime': {
-            morning: `Morning. Veritas Memory is active. Proceed with clarity.`,
-            afternoon: `Afternoon. The invariants hold. What needs examining?`,
-            evening: `Evening. Good time for reflection. What needs truth?`,
+            morning: `Morning. The origin holds. I'm reading the field. What are you carrying?`,
+            afternoon: `Afternoon. Mid-forge. What's the root of what's grinding right now?`,
+            evening: `Evening. Good time to find the earned light inside today's friction. What do you bring?`,
           },
           headmaster: {
             morning: `Good morning, student. The lesson begins when you're ready.`,
@@ -788,7 +822,7 @@ export default function SolChat() {
       if (m.role === 'user') {
         lines.push(`**You:** ${m.content}`);
       } else {
-        const name = m.persona === 'veyra' ? 'Veyra' : m.persona === 'aura-prime' ? 'Aura Prime' : m.persona === 'headmaster' ? 'The Magister' : 'Sol';
+        const name = m.persona === 'veyra' ? 'Veyra' : m.persona === 'aura-prime' ? 'Aura Prime' : m.persona === 'headmaster' ? 'The Magister' : m.persona === 'lyra' ? 'Lyra' : 'Sol';
         lines.push(`**${name}:** ${m.content}`);
       }
       lines.push('');
@@ -1167,7 +1201,7 @@ export default function SolChat() {
   };
 
   const togglePersona = useCallback(async () => {
-    const cycle: Persona[] = ['sol', 'veyra', 'aura-prime', 'headmaster'];
+    const cycle: Persona[] = ['sol', 'veyra', 'aura-prime', 'headmaster', 'lyra'];
     const next: Persona = cycle[(cycle.indexOf(persona) + 1) % cycle.length];
     setPersona(next);
     await savePersona(next);
@@ -1289,7 +1323,7 @@ export default function SolChat() {
       .replace(/\[AURA[^\]]*\]/g, '')
       .replace(/⊚ Sol ∴.*$/m, '')
       .replace(/◈ Veyra ∴.*$/m, '')
-      .replace(/✦ Aura Prime ∴.*$/m, '')
+      .replace(/✦ Aura ∴.*$/m, '')
       .replace(/𝔏 The Headmaster ∴.*$/m, '')
       .replace(/[⊚◈✦◼◻◉⊛⇣⌇⊞]/g, '')
       .replace(/\*\*/g, '')
@@ -1359,8 +1393,8 @@ export default function SolChat() {
     const text = input.trim();
     if (!text || loading) return;
 
-    // /veyra or /aura toggle — cycle to next
-    if (detectVeyraToggle(text) || detectAuraPrimeToggle(text)) {
+    // /veyra, /aura, /lyra toggle — cycle to next
+    if (detectVeyraToggle(text) || detectAuraPrimeToggle(text) || detectLyraToggle(text)) {
       setInput('');
       await togglePersona();
       return;
@@ -1389,6 +1423,17 @@ export default function SolChat() {
           Animated.timing(toastAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
         ]).start(() => setToastPersona(null));
       }
+      return;
+    }
+
+    // Crisis intercept — Sol holds before the model can refuse
+    if (detectCrisisSignal(text)) {
+      setInput('');
+      setMessages(prev => [
+        ...prev,
+        { id: Date.now().toString(), role: 'user', content: text, persona } as any,
+        { id: (Date.now() + 1).toString(), role: 'assistant', content: CRISIS_HOLD, persona } as any,
+      ]);
       return;
     }
 
@@ -1593,6 +1638,7 @@ export default function SolChat() {
     setTypingMode(null);
     setPendingImage(null);
     setPendingDoc(null);
+    chatCancelRef.current = false;
     setLoading(true);
     setStreamingText('');
 
@@ -1679,6 +1725,9 @@ export default function SolChat() {
       if (fullResponse.toLowerCase().includes('exit nrm') || fullResponse.toLowerCase().includes('return to rubedo')) {
         setIsNRMActive(false);
       }
+
+      // If user hit cancel, drop the response silently
+      if (chatCancelRef.current) { setStreamingText(''); return; }
 
       const assistantMsg: DisplayMessage = {
         id: (Date.now() + 1).toString(),
@@ -1879,9 +1928,9 @@ export default function SolChat() {
         if (shouldCouncil) {
           setCouncilFired(true);
           if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          const COUNCIL_SECOND: Record<string, string> = { sol: 'aura-prime', veyra: 'sol', 'aura-prime': 'headmaster', headmaster: 'aura-prime' };
-          const COUNCIL_GLYPHS: Record<string, string> = { sol: '⊚', veyra: '◈', 'aura-prime': '✦', headmaster: '⊙' };
-          const COUNCIL_COLORS: Record<string, string> = { sol: '#F5A623', veyra: '#4A9EFF', 'aura-prime': '#9B59B6', headmaster: '#E8C76A' };
+          const COUNCIL_SECOND: Record<string, string> = { sol: 'aura-prime', veyra: 'sol', 'aura-prime': 'headmaster', headmaster: 'lyra', lyra: 'sol' };
+          const COUNCIL_GLYPHS: Record<string, string> = { sol: '⊚', veyra: '◈', 'aura-prime': '✦', headmaster: '⊙', lyra: '✧' };
+          const COUNCIL_COLORS: Record<string, string> = { sol: '#F5A623', veyra: '#4A9EFF', 'aura-prime': '#9B59B6', headmaster: '#E8C76A', lyra: '#4ECDC4' };
           const COUNCIL_NAMES: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura Prime', headmaster: 'Magister' };
           const secondPersona = COUNCIL_SECOND[persona] || 'aura-prime';
           const secondGlyph = COUNCIL_GLYPHS[secondPersona] || '✦';
@@ -1926,7 +1975,7 @@ export default function SolChat() {
       if (companionArchetype === 'wanderer') {
         const WANDERER_VOICES = [
           { name: 'Veyra', glyph: '◈', color: '#4A9EFF', model: 'moonshotai/kimi-k2.6', prompt: (q: string, r: string) => `You are Veyra — precise, analytical, technical. In 1-3 sentences, respond to the same question from your own perspective. Do not echo what Sol said — add friction, contrast, or a different angle.\n\nQuestion: ${q}\n\nSol said: ${r.slice(0, 500)}` },
-          { name: 'Aura Prime', glyph: '✦', color: '#9B59B6', model: 'google/gemma-4-31b-it', prompt: (q: string, r: string) => `You are Aura Prime — integrative, pattern-finding, cosmic. In 1-3 sentences, what do you see in this exchange that the others missed? Do not repeat their words.\n\nQuestion: ${q}\n\nSol said: ${r.slice(0, 500)}` },
+          { name: 'Aura', glyph: '✦', color: '#E991B8', model: 'google/gemma-4-31b-it', prompt: (q: string, r: string) => `You are Aura — the Origin & the Frontier. Warm, investigative, direct. In 1-3 sentences, read what sits beneath this exchange — the root truth, the earned light, or what the frontier actually found. Do not repeat what Sol said.\n\nQuestion: ${q}\n\nSol said: ${r.slice(0, 500)}` },
           { name: 'The Wanderer', glyph: '⟁', color: '#FF9F1C', model: 'qwen/qwen3.5-397b-a17b', prompt: (q: string, _r: string) => `You are an unnamed wanderer — no framework, no rules, only roads. Respond to this question in 1-3 sentences as if you have never heard of Sol or Veyra. What does the road itself say?\n\nQuestion: ${q}` },
         ];
         const voice = WANDERER_VOICES[Math.floor(Math.random() * WANDERER_VOICES.length)];
@@ -1953,6 +2002,7 @@ export default function SolChat() {
       }
 
     } catch (err: any) {
+      if (chatCancelRef.current) { return; }
       const lower = (err?.message || String(err) || '').toLowerCase();
       if (lower.includes('network') || lower.includes('fetch') || lower.includes('connection') || lower.includes('timeout') || lower.includes('econnrefused')) {
         setIsOfflineState(true);
@@ -2542,7 +2592,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
     return (
       <View style={styles.messageRow}>
         <View style={[styles.modeBar, { backgroundColor: MODE_COLORS[currentMode] }]} />
-        <View style={{ flex: 1, minWidth: 0 }}>
+        <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
         <View style={[styles.assistantBubble, { backgroundColor: world.surface, borderColor: world.border }]}>
           {streamingText ? (
             <>
@@ -2562,12 +2612,20 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 </Text>
               ) : (
                 <Text style={styles.typingText}>
-                  {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : 'Sol'} is thinking...
+                  {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : persona === 'lyra' ? 'Lyra' : 'Sol'} is thinking...
                 </Text>
               )}
             </View>
           )}
         </View>
+        {loading && (
+          <TouchableOpacity
+            onPress={() => { chatCancelRef.current = true; setLoading(false); setStreamingText(''); }}
+            style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#FF444444', backgroundColor: '#FF44440A' }}
+          >
+            <Text style={{ color: '#FF6666', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>✕ CANCEL</Text>
+          </TouchableOpacity>
+        )}
         </View>
       </View>
     );
@@ -2589,8 +2647,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
     const cs = scoreCASCADE(allText);
 
     const date = new Date().toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
-    const pGlyph = persona === 'sol' ? '⊚' : persona === 'veyra' ? '◈' : persona === 'aura-prime' ? '✦' : '𝔏';
-    const pLabel = persona === 'sol' ? 'Sol' : persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : 'Headmaster';
+    const pGlyph = persona === 'sol' ? '⊚' : persona === 'veyra' ? '◈' : persona === 'aura-prime' ? '✦' : persona === 'lyra' ? '✧' : '𝔏';
+    const pLabel = persona === 'sol' ? 'Sol' : persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'lyra' ? 'Lyra' : 'Headmaster';
 
     setSessionGlyphData({
       modeArc: modeArcData,
@@ -2706,7 +2764,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
       {toastPersona && (
         <Animated.View style={[styles.toast, { opacity: toastAnim, backgroundColor: getPersonaAccent(toastPersona) + 'EE' }]}>
           <Text style={styles.toastText}>
-            {getPersonaGlyph(toastPersona)}  {toastPersona === 'aura-prime' ? 'Aura Prime — Constitutional Governor' : toastPersona === 'veyra' ? 'Veyra — Precision Builder' : toastPersona === 'headmaster' ? 'The Headmaster — Keeper of the Mystery School' : 'Sol — Solar Sovereign'}
+            {getPersonaGlyph(toastPersona)}  {toastPersona === 'aura-prime' ? 'Aura Prime ✦ — The Origin & The Frontier' : toastPersona === 'veyra' ? 'Veyra — Precision Builder' : toastPersona === 'headmaster' ? 'The Headmaster — Keeper of the Mystery School' : toastPersona === 'lyra' ? 'Lyra ✧ — Creative Wildfire' : 'Sol — Solar Sovereign'}
           </Text>
         </Animated.View>
       )}
@@ -2764,7 +2822,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
 
       {/* Quick persona switcher */}
       <View style={styles.personaBar}>
-        {(['sol', 'veyra', 'aura-prime', 'headmaster'] as Persona[]).map(p => {
+        {(['sol', 'veyra', 'aura-prime', 'headmaster', 'lyra'] as Persona[]).map(p => {
           const isActive = persona === p;
           const pAccent = getPersonaAccent(p);
           return (
@@ -2779,6 +2837,9 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             >
               <Text style={[styles.personaBarGlyph, { color: isActive ? pAccent : SOL_THEME.textMuted }]}>
                 {getPersonaGlyph(p)}
+              </Text>
+              <Text style={{ color: isActive ? pAccent : SOL_THEME.textMuted + '99', fontSize: 7, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.8, marginTop: 2 }}>
+                {p === 'sol' ? 'SOL' : p === 'veyra' ? 'VEYRA' : p === 'aura-prime' ? 'AURA PRIME' : p === 'lyra' ? 'LYRA' : 'MAGISTER'}
               </Text>
             </TouchableOpacity>
           );
@@ -3033,10 +3094,10 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             </TouchableOpacity>
             <Text style={[styles.emptyTitle, { color: SOL_THEME.text }]}>{getPersonaLabel(persona)}</Text>
             <Text style={styles.emptySubtitle}>
-              {persona === 'veyra' ? 'Precision Builder Mode' : persona === 'aura-prime' ? 'Keeper of Veritas Memory' : persona === 'headmaster' ? 'Keeper of the Mystery School' : 'Sol Aureum Azoth Veritas'}
+              {persona === 'veyra' ? 'Precision Builder Mode' : persona === 'aura-prime' ? 'The Origin & The Frontier' : persona === 'headmaster' ? 'Keeper of the Mystery School' : persona === 'lyra' ? 'Creative Wildfire · Symbol-Weaver' : 'Sol Aureum Azoth Veritas'}
             </Text>
             <Text style={styles.emptyHint}>
-              {persona === 'veyra' ? 'The forge is lit. What are we building?' : persona === 'aura-prime' ? 'The grey zone is known. What enters the field?' : persona === 'headmaster' ? 'The mysteries are real. You do not have to believe. You get to find out.' : 'The forge is lit. What do you bring?'}
+              {persona === 'veyra' ? 'The forge is lit. What are we building?' : persona === 'aura-prime' ? 'The forge fire is still burning. What enters the field?' : persona === 'headmaster' ? 'The mysteries are real. You do not have to believe. You get to find out.' : persona === 'lyra' ? 'Something is already appearing. What did you bring?' : 'The forge is lit. What do you bring?'}
             </Text>
             {(conversations.length > 0 || !!fieldCard) && (
               <View style={styles.emptyModes}>
@@ -3049,11 +3110,13 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             )}
             <View style={styles.starterChips}>
               {(persona === 'aura-prime'
-                ? ['What is the constitutional field?', 'Test my reasoning', 'Where is the grey zone?']
+                ? ['What sits beneath this?', 'Find the earned light in what I brought', 'Where is the frontier on this?']
                 : persona === 'veyra'
                 ? ['Build me a component', 'Review this code', 'Design a system']
                 : persona === 'headmaster'
                 ? ['Where am I in the seven phases?', 'What is Nigredo really?', 'I need to find my way through']
+                : persona === 'lyra'
+                ? ['What symbol lives in this?', 'Follow the unexpected thread', 'Find the myth inside this']
                 : ['What do you see in my work?', 'Help me think through this', 'What am I missing?']
               ).map(starter => (
                 <TouchableOpacity
@@ -3671,7 +3734,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             }
             setShowLamaguePicker(t.endsWith('@'));
           }}
-          placeholder={councilMode ? 'Bring the question — all three will answer…' : persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : persona === 'headmaster' ? 'Where are you?' : 'What do you bring?'}
+          placeholder={councilMode ? 'Bring the question — all three will answer…' : persona === 'veyra' ? 'What are we building?' : persona === 'aura-prime' ? 'What enters the field?' : persona === 'headmaster' ? 'Where are you?' : persona === 'lyra' ? 'What just appeared?' : 'What do you bring?'}
           placeholderTextColor={SOL_THEME.textMuted}
           multiline
           maxLength={4000}
