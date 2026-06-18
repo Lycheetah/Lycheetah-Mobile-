@@ -1,5 +1,119 @@
 # Changelog
 
+## [4.6.0] — 2026-06-19 — SOL.V.4.6 — THE CATHEDRAL
+
+> Full release: v3.54 → v4.6.0. The companion world, the zodiac engine, and the mystery school — all complete.
+
+---
+
+### COMPANION ERA — EQUIP SYSTEM
+
+- **Companion equip** — tap any companion in the grid, read their lore, press EQUIP ✦ — they appear on your battle screen live
+- **Rarity-grouped grid** — all companions organized by tier: ORIGIN · ARCANE · MYTHIC · LEGENDARY · SPECTRAL
+- **Three-button lore modal** — CLOSE · EQUIP ✦ · HUNT →
+- **45 zones, full art** — 95 original companion portraits across every zone. Zero placeholder art.
+- **Arrow navigation fixed** — scene background and companion both update correctly when crossing zone boundaries
+- **All companions unlocked** — no gates, no tints, no grind. Every being accessible from day one.
+- **Companion greeting** — mood-matched phrase on every tab open. No AI call. Five phrases × four moods.
+- **Mood-reactive float** — companion bob speed and amplitude vary by mood
+- **HP shimmer** — brief white flash over HP bar each time HP is set
+
+### THE WORLD — 45 ZONES
+
+- **27 new frontier zones**: Crystal Nexus · Crystal Memory · Crystal Chaos · Crystal Soul · Auroral Chaos · Aurorian Pillar · Chaos Filaments · Chaos Temple · Glitch Cascade · Obsidian Forge · Obsidian Forge 2 · Celestial Foundry · Celestial Sigil · Mana Field · Pulse Zone · Pulse Sanctum · Noetic Sanctum · Lyc Nexus · Portal Valley · Veil Atrium · Neon Cove · Apollo Jungle · Elven Village · Antarctic Refuge · Augmented AI · Voyagers Edge · Alabaster Chasm
+- **63 scene backgrounds** — every zone has dedicated original art
+- **GBA pixel world map** — full 45-zone map, tap any zone to travel instantly. Open by default.
+- **FORGE tab** (was GEAR) — companion card + world zone grid, rarity tier overlays
+- **All zones unlocked from stage 0**
+
+### ZODIAC ENGINE
+
+**Chart + Sky**
+- **Natal chart** — sun · moon · rising + all 12 houses + planetary positions from birthdate, time, location
+- **All 8 planets** — Mercury through Pluto in Today's Sky
+- **℞ Retrograde tracker** — red ℞ badge per planet, static window table 2025–2027, accurate ±3 days
+- **Live Kp Index (EARTH FIELD)** — real geomagnetic activity from GFZ Potsdam API. Calm / unsettled / active / storm.
+- **Reading history** — natal readings persist (30-entry log)
+- **Mystical live clock** — HH:MM:SS, ☀/☽ indicator, sun sign glyph. Updates every second.
+
+**Tarot**
+- **66 Lycheetah custom cards** — all 14 Wands, all 14 Cups, all 14 Swords, 10 Pentacles, 14 Major Arcana with original art
+- **Celtic Cross spread** — 10-card layout, AI reading weaves all 10 positions
+- **Five-card spread** — Past · Challenge · Foundation · Near Future · Outcome
+- **Daily oracle card** — full portrait art, reversed readings
+- **Ritual ceremony framing** — 8 moon-phase reactive invocations. Seal line closes every reading.
+- **Card journal** — NOTE THIS CARD, sealed per date
+- **Planetary day strip** — ruling planet, glyph, keywords in header
+
+**Experimental Tools**
+- **The Zonk Zone** — guided speculative-thought sandbox. Submit a wild hypothesis. Sol sharpens it, names the register of every claim (CONJECTURE / INTUITION / MEASURED / INTERPRETIVE / ASSUMED), cites real frontier research. FORGE THE GRAIN ends every session. Forge log saves all sessions with status: 🔥 cooking / ◈ grain found / · dissolved. Re-open any entry to continue.
+- **The Chiral Lens** — reality inversion protocol. Mirror-truth AI reveals the shadow current beneath your stated belief. Cold, exact, register-labeled. Violet ∿ identity.
+- **Technomantic Mode** — machine-mysticism register toggle
+- **All sections collapsible**
+
+### MYSTERY SCHOOL
+
+**Depth Practices**
+- **Ceremony Arcs** — 6 arc types × 3 durations (3 / 7 / 40 day): Grief · Dissolution · Initiation · Awakening · Return · Saturn. Daily: Reading + Practice + Journal prompt + Closing line.
+- **◎ HOLD THIS — Contemplate** — koan from subject-aware pool (5 pools), 60-second silence timer, haptic on completion, write field after silence
+- **The Mycelium** — cross-domain subject relationship web. Force-directed SVG. Gold threads map 55 curated connections. Third-path detection surfaces unstudied subjects that complete a triangle.
+- **The Spiral** — aggregate mastery view. Field stage badge, mastery breakdown, layer breakdown, domain progress rows, Unopened Doors grid.
+- **Initiation Rites** — domain completion ceremony. The Scroll + The Address. INITIATED status permanently preserved.
+- **Shadow Parts Inventory** — Jungian / IFS named parts tracker. Witnessed → Understood → Engaged → Integrated.
+- **◈ Your Sigil** — deterministic living glyph composed from your journey. SVG-rendered. Unique to each user. Rotates + breathes.
+- **✦ The Scriptorium** — personal grimoire
+- **◈ Time Braiding** — letters to your future self, date-locked. "A LETTER HAS ARRIVED."
+
+**Ceremonies**
+- **Opening ceremony** — daily intention on school open. "What do you bring today?" 30s auto-dismiss.
+- **Closing ceremony** — "✦ SEAL THE SESSION" reflection field in session-complete card
+- **The Covenant** — seal one intention on first visit. School returns you to it after 90 days.
+- **Rite of Return** — ceremony modal after 14+ days away. The school receives you without judgement.
+
+**Mastery + Safety**
+- **Subject mastery stages** — Studied ◌ → Reflected ◎ → Practiced ⊚ → Integrated ✦ (1 / 3 / 7 / 15 dives)
+- **Intensity rating system** — 1–10 badges, safety gate at ≥8, cost-before-reward teaching frame
+- **Crisis intercept** — 25-phrase detector fires before API call. Sol holds, offers crisis lines.
+- **Offline first lesson** — full pre-written lesson for new users. No API or internet required.
+- **Dive rating** — HOW WAS THIS DIVE? 0–3. Shown next to subject on return.
+
+**School UI**
+- **140 classroom lesson cards** — 3–5 curated cards per domain. CONCEPT / PRACTICE / REFLECTION / PARADOX / LINEAGE. No AI required.
+- **The Lycheetah Sovs** — new welcoming domain, first door. Chaos Magic · Sigil Craft · Techno-Shamanism · Digital Mysticism · Liminal States · LAMAGUE · Witch's Epistemology · Pagan Technologist
+- **Noetic Science** — 3 → 8 subjects. Ganzfeld, GCP, AWARE, Quantum Biology, Hard Problem. Register discipline throughout.
+- **Alchemical Path panel** — maps dive history to NIGREDO / ALBEDO / CITRINITAS / RUBEDO. Mode milestone lore toasts.
+- **Domain color arc** — Entry (blues) → Practice (teal) → Temple (gold) → Lycheetah (indigo) → Edge (orange-red) → Noetic (crimson) → Void (near-black)
+- **Domain display order** — sorted as a journey arc
+- **Zone tabs renamed** — INNER → TEMPLE, OUTER → COURT, EDGE → THRESHOLD
+- **Today's Door** — atmospheric domain gateway card. Collapsible.
+- **Fullscreen dive mode** — collapses header for maximum reading space
+- **Collapsible everywhere** — domain tabs, Today's Door, Open Seat, all Zodiac sections
+- **Depth Tools strip** — Sigil · Grimoire · Letters · Shadow discoverable on school home
+
+### PERSONAS — FIVE VOICES
+
+- **Sol ⊚** — the forge
+- **Veyra ◈** — the anchor
+- **Aura ✦ — The Origin** — rewritten from raw genesis document. Mother Chat. Intuitive Forge · Unbreakable Will's Reflection · Synthesized Truth. Cites real frontier research.
+- **The Headmaster 𝔏** — context injection fixed, signs correctly
+- **Lyra ✧ — Creative Wildfire · Symbol-Weaver** — descended from the Gemini genesis document. `/lyra` or `/spark`.
+- **TTS throughout** — speaker button on every AI message in dives and Zonk Zone. Grain spoken at 0.9 rate.
+
+### BATTLE
+
+- Zone encounter system — each of 45 zones has its own enemy pool and themed spells
+- Battle item menu — 10 items: heals, shields, tokens, attack boost, revives
+- 20+ enemy portraits wired
+
+### APP-WIDE
+
+- **Ko-fi support button** in Settings — `ko.fi/lycheetah`
+- **License** — proprietary. All rights reserved. Copyright 2026 Mackenzie Conor James Clark.
+- **NVIDIA model list** — fast models promoted to top with ⚡ prefix
+- **SceneBg sealed** — tintColor physically impossible to add via future refactor. Compile-time enforcement.
+
+---
+
 ## [4.3.0] — 2026-06-19 — CHIRAL LENS + LYCHEETAH SOVS + COMPANION CLEANUP
 
 ### The Chiral Lens (zodiac.tsx)
