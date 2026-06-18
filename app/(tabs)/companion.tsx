@@ -746,6 +746,14 @@ const ZONE_COMPANION_IMAGES: Partial<Record<string, any>> = {
   sufi_2:              require('../../assets/companions/haviz_2.png'),
   sufi_3:              require('../../assets/companions/haviz_3.png'),
   sufi_special:        require('../../assets/companions/haviz_special.png'),
+  // LYCA × AURA PRIME — secret crossover (secret find)
+  lycheetah_aura_prime:      require('../../assets/companions/lycheetah_aura_prime.png'),
+  // ANOTH × LYCHEETAH special editions
+  anoth_lycheetah_special:   require('../../assets/companions/anoth_lycheetah_special.png'),
+  anoth_lycheetah_edition:   require('../../assets/companions/anoth_lycheetah_edition.png'),
+  anoth_lyca_special:        require('../../assets/companions/anoth_lyca_special.png'),
+  // PYTHIA special edition
+  pythia_special_edition:    require('../../assets/companions/pythia_special_edition.png'),
   // KABBALA zone — quol forms (no dedicated art yet)
   kabbala_1:           require('../../assets/companions/quol_2.png'),
   kabbala_2:           require('../../assets/companions/quol_3.png'),
@@ -2577,13 +2585,13 @@ export default function CompanionScreen() {
     let target: SceneRoom | undefined;
 
     if (direction === 'right') {
-      const zoneRooms = WORLD_MAP.filter(r => r.skinId === current.skinId);
-      const zIdx = zoneRooms.findIndex(r => r.id === currentRoomId);
-      target = zoneRooms[(zIdx + 1) % zoneRooms.length];
+      // Navigate to next zone entirely
+      const nextSkin = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length];
+      target = getRoomInSkin(nextSkin, 0);
     } else if (direction === 'left') {
-      const zoneRooms = WORLD_MAP.filter(r => r.skinId === current.skinId);
-      const zIdx = zoneRooms.findIndex(r => r.id === currentRoomId);
-      target = zoneRooms[(zIdx - 1 + zoneRooms.length) % zoneRooms.length];
+      // Navigate to previous zone entirely
+      const prevSkin = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length];
+      target = getRoomInSkin(prevSkin, 0);
     } else {
       // UP/DOWN: navigate via GBA adjacency map, picking spatially correct neighbor
       const currentPos = GBA_ZONE_COORDS[current.skinId];
@@ -4151,88 +4159,8 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             const ELEMENTAL_IDS:  SkinId[] = ['apollo_jungle','mana_field','neon_cove','alabaster_chasm','antarctic_refuge','aurorian_pillar','elven_village'];
             const DIM_IDS:        SkinId[] = ['augmented_ai','celestial_sigil','portal_valley','pulse_zone','voyagers_edge'];
 
-            // Current zone for GBA map
-            const mapSkin = (currentRoomId.split('_')[0] as SkinId);
-
             return (
               <View style={{ marginBottom:20 }}>
-                {/* GBA PIXEL MAP */}
-                <TouchableOpacity onPress={() => setGbaMapOpen(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom: gbaMapOpen ? 8 : 0 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                    <View style={{ width:3, height:12, borderRadius:2, backgroundColor:'#44FF88' }} />
-                    <Text style={{ color:'#AAAABC', fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>GBA MAP</Text>
-                    <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#44FF8822', borderWidth:1, borderColor:'#44FF8844' }}>
-                      <Text style={{ color:'#44FF88', fontSize:7, fontFamily:mono }}>{SKIN_IDS.length}</Text>
-                    </View>
-                  </View>
-                  <Text style={{ color:'#333344', fontSize:10 }}>{gbaMapOpen ? '▼' : '▶'}</Text>
-                </TouchableOpacity>
-                {gbaMapOpen && (
-                  <View style={{ marginBottom:12, borderRadius:12, borderWidth:1, borderColor:'#1A2A1A', backgroundColor:'#020504', overflow:'hidden' }}>
-                    <ScrollView style={{ maxHeight:420 }} showsVerticalScrollIndicator={false}>
-                      <Svg width={GBA_W} height={GBA_H} style={{ backgroundColor:'#030806' }}>
-                        {/* Region labels */}
-                        {([
-                          {label:'ORIGIN',    y:14, col:'#C49A3C'},
-                          {label:'ARCANE',    y:69, col:'#9B6BFF'},
-                          {label:'MYSTIC',    y:124,col:'#5AC878'},
-                          {label:'CRYSTAL',   y:233,col:'#44DDCC'},
-                          {label:'CHAOS',     y:285,col:'#8855FF'},
-                          {label:'SANCTUM',   y:380,col:'#AA44FF'},
-                          {label:'ELEMENTAL', y:433,col:'#88CC44'},
-                          {label:'DIMENSIONAL',y:483,col:'#44AAFF'},
-                        ] as {label:string;y:number;col:string}[]).map(r => (
-                          <SvgText key={r.label} x={2} y={r.y} fontSize={6} fill={r.col+'66'} fontWeight="bold">{r.label}</SvgText>
-                        ))}
-                        {/* Adjacency lines */}
-                        {Object.entries(GBA_ADJ).map(([sid, neighbors]) => {
-                          const from = GBA_ZONE_COORDS[sid as SkinId];
-                          if (!from) return null;
-                          return neighbors.map(nb => {
-                            const to = GBA_ZONE_COORDS[nb];
-                            if (!to || nb < sid) return null; // avoid drawing twice
-                            return (
-                              <Line key={`${sid}-${nb}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                                stroke="#1A2A1A" strokeWidth={1} />
-                            );
-                          });
-                        })}
-                        {/* Zone dots */}
-                        {SKIN_IDS.map(sid => {
-                          const pos = GBA_ZONE_COORDS[sid];
-                          if (!pos) return null;
-                          const s = SKINS[sid];
-                          const isActive = sid === mapSkin;
-                          const visited = visitedRooms.has(`${sid}_0`);
-                          return (
-                            <G key={sid} onPress={() => {
-                              const room = getRoomInSkin(sid, 0);
-                              if (room) {
-                                setActiveSkin(sid);
-                                setCurrentRoomId(room.id);
-                                setActiveTab('battle');
-                                setGbaMapOpen(false);
-                              }
-                            }}>
-                              {isActive && <Circle cx={pos.x} cy={pos.y} r={11} fill="transparent" stroke={s.color} strokeWidth={1.5} opacity={0.6} />}
-                              <Circle cx={pos.x} cy={pos.y} r={isActive ? 7 : visited ? 5 : 4}
-                                fill={visited ? s.color+'CC' : s.color+'33'}
-                                stroke={isActive ? s.color : s.color+'44'}
-                                strokeWidth={isActive ? 1.5 : 0.5} />
-                              <SvgText x={pos.x} y={pos.y + 14} textAnchor="middle" fontSize={5}
-                                fill={visited ? s.color+'CC' : '#333344'}>{s.glyph}</SvgText>
-                            </G>
-                          );
-                        })}
-                      </Svg>
-                    </ScrollView>
-                    <View style={{ paddingHorizontal:10, paddingVertical:6, borderTopWidth:1, borderTopColor:'#1A2A1A', flexDirection:'row', alignItems:'center', gap:8 }}>
-                      <View style={{ width:8, height:8, borderRadius:4, backgroundColor: SKINS[mapSkin]?.color ?? '#44FF88' }} />
-                      <Text style={{ color:'#444455', fontSize:8, fontFamily:mono }}>NOW: {SKINS[mapSkin]?.name ?? mapSkin.toUpperCase()} · TAP DOT TO TRAVEL</Text>
-                    </View>
-                  </View>
-                )}
-
                 {/* WORLD list header */}
                 <TouchableOpacity onPress={() => setWorldCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: worldCollapsed ? 0 : 4 }}>
                   <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
@@ -5153,6 +5081,86 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               </View>
             </View>
           )}
+
+          {/* TRAVEL MAP ─────────────────────────── */}
+          {(() => {
+            const mapSkin = (currentRoomId.split('_')[0] as SkinId);
+            return (
+              <View style={{ marginBottom:20, marginTop:6 }}>
+                <TouchableOpacity onPress={() => setGbaMapOpen(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom: gbaMapOpen ? 8 : 0 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:12, borderRadius:2, backgroundColor:'#44FF88' }} />
+                    <Text style={{ color:'#AAAABC', fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>TRAVEL MAP</Text>
+                    <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#44FF8822', borderWidth:1, borderColor:'#44FF8844' }}>
+                      <Text style={{ color:'#44FF88', fontSize:7, fontFamily:mono }}>{SKIN_IDS.length}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color:'#333344', fontSize:10 }}>{gbaMapOpen ? '▼' : '▶'}</Text>
+                </TouchableOpacity>
+                {gbaMapOpen && (
+                  <View style={{ marginBottom:12, borderRadius:12, borderWidth:1, borderColor:'#1A2A1A', backgroundColor:'#020504', overflow:'hidden' }}>
+                    <ScrollView style={{ maxHeight:420 }} showsVerticalScrollIndicator={false}>
+                      <Svg width={GBA_W} height={GBA_H} style={{ backgroundColor:'#030806' }}>
+                        {([
+                          {label:'ORIGIN',    y:14, col:'#C49A3C'},
+                          {label:'ARCANE',    y:69, col:'#9B6BFF'},
+                          {label:'MYSTIC',    y:124,col:'#5AC878'},
+                          {label:'CRYSTAL',   y:233,col:'#44DDCC'},
+                          {label:'CHAOS',     y:285,col:'#8855FF'},
+                          {label:'SANCTUM',   y:380,col:'#AA44FF'},
+                          {label:'ELEMENTAL', y:433,col:'#88CC44'},
+                          {label:'DIMENSIONAL',y:483,col:'#44AAFF'},
+                        ] as {label:string;y:number;col:string}[]).map(r => (
+                          <SvgText key={r.label} x={2} y={r.y} fontSize={6} fill={r.col+'66'} fontWeight="bold">{r.label}</SvgText>
+                        ))}
+                        {Object.entries(GBA_ADJ).map(([sid, neighbors]) => {
+                          const from = GBA_ZONE_COORDS[sid as SkinId];
+                          if (!from) return null;
+                          return neighbors.map(nb => {
+                            const to = GBA_ZONE_COORDS[nb];
+                            if (!to || nb < sid) return null;
+                            return (
+                              <Line key={`${sid}-${nb}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                                stroke="#1A2A1A" strokeWidth={1} />
+                            );
+                          });
+                        })}
+                        {SKIN_IDS.map(sid => {
+                          const pos = GBA_ZONE_COORDS[sid];
+                          if (!pos) return null;
+                          const s = SKINS[sid];
+                          const isActive = sid === mapSkin;
+                          const visited = visitedRooms.has(`${sid}_0`);
+                          return (
+                            <G key={sid} onPress={() => {
+                              const room = getRoomInSkin(sid, 0);
+                              if (room) {
+                                setActiveSkin(sid);
+                                setCurrentRoomId(room.id);
+                                setGbaMapOpen(false);
+                              }
+                            }}>
+                              {isActive && <Circle cx={pos.x} cy={pos.y} r={11} fill="transparent" stroke={s.color} strokeWidth={1.5} opacity={0.6} />}
+                              <Circle cx={pos.x} cy={pos.y} r={isActive ? 7 : visited ? 5 : 4}
+                                fill={visited ? s.color+'CC' : s.color+'33'}
+                                stroke={isActive ? s.color : s.color+'44'}
+                                strokeWidth={isActive ? 1.5 : 0.5} />
+                              <SvgText x={pos.x} y={pos.y + 14} textAnchor="middle" fontSize={5}
+                                fill={visited ? s.color+'CC' : '#333344'}>{s.glyph}</SvgText>
+                            </G>
+                          );
+                        })}
+                      </Svg>
+                    </ScrollView>
+                    <View style={{ paddingHorizontal:10, paddingVertical:6, borderTopWidth:1, borderTopColor:'#1A2A1A', flexDirection:'row', alignItems:'center', gap:8 }}>
+                      <View style={{ width:8, height:8, borderRadius:4, backgroundColor: SKINS[mapSkin]?.color ?? '#44FF88' }} />
+                      <Text style={{ color:'#444455', fontSize:8, fontFamily:mono }}>NOW: {SKINS[mapSkin]?.name ?? mapSkin.toUpperCase()} · TAP DOT TO TRAVEL</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
 
         </View>
       )}
