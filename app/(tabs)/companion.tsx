@@ -10,25 +10,33 @@ import * as Haptics from 'expo-haptics';
 import { Accelerometer } from 'expo-sensors';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
+import Svg, { Circle, Line, G, Text as SvgText, Rect } from 'react-native-svg';
 import { CreatureSvg } from '../../components/CreatureSvg';
 import { CompanionSpecOverlay, CompanionSpec, DEFAULT_SPEC } from '../../components/CompanionSpecOverlay';
 import { CompanionRenderer, CompanionVisualSpec } from '../../components/CompanionRenderer';
 import COMPANIONS_DATA from '../../assets/companions/companions_data.json';
 import { sendMessage } from '../../lib/ai-client';
 import { getProviderKey, getActiveKey, getModel } from '../../lib/storage';
-import { COMPANION_SPECS, getCompanionSpec, getRandomPhrase, getEyeForMood } from '../data/task1_companion_specs';
 import { getGearOverlay } from '../data/task2_gear_overlays';
 import { generateJournalEntry, saveJournalEntry } from '../data/task3_journal';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SCENE_H = 340;
+const SCENE_H = 520;
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type EvolutionStage = 0 | 1 | 2 | 3 | 4 | 5;
 type CompanionMood  = 'dormant' | 'present' | 'lit' | 'transcendent';
-type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'lycheetah' | 'chaos' | 'sovereign';
+type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'lycheetah' | 'chaos' | 'sovereign'
+                   | 'norse' | 'celtic' | 'egyptian' | 'akashic' | 'kabbala' | 'noetic' | 'lamague' | 'delphi' | 'sufi' | 'quantum'
+                   // ── New World Zones (v4.4.0) ──
+                   | 'auroral_chaos' | 'chaos_temple' | 'apollo_jungle' | 'celestial_sigil' | 'crystal_nexus'
+                   | 'mana_field' | 'neon_cove' | 'alabaster_chasm' | 'antarctic_refuge' | 'augmented_ai'
+                   | 'aurorian_pillar' | 'celestial_foundry' | 'chaos_filaments' | 'crystal_chaos' | 'crystal_memory'
+                   | 'crystal_soul' | 'elven_village' | 'glitch_cascade' | 'lyc_nexus' | 'pulse_sanctum'
+                   | 'pulse_zone' | 'noetic_sanctum' | 'obsidian_forge' | 'obsidian_forge2' | 'portal_valley'
+                   | 'veil_atrium' | 'voyagers_edge';
 type Direction     = 'up' | 'down' | 'left' | 'right';
 type GearSlot      = 'crown' | 'sigil' | 'mantle' | 'body' | 'cape';
 type ArchetypeId   = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah' | 'cipher' | 'herald' | 'weaver' | 'revenant';
@@ -41,62 +49,337 @@ const SKINS: Record<SkinId, {
   color: string; dimColor: string; bgColor: string; skyColor: string; particleGlyph: string;
   glowColor: string; cardBg: string; starGlyphs: string[];
 }> = {
-  solform:  { id: 'solform',  name: 'SOLFORM',   desc: 'Origin',    glyph: '◉', color: '#C49A3C', dimColor: '#7A5E1A', bgColor: '#080701', skyColor: '#C49A3C', particleGlyph: '◦', glowColor: '#C49A3C44', cardBg: '#1A1400', starGlyphs: ['·','◦','·','⊹','·','◦'] },
-  void:     { id: 'void',     name: 'VOID',      desc: 'Abyss',     glyph: '◈', color: '#9B6BFF', dimColor: '#5C3A99', bgColor: '#03000C', skyColor: '#7B4BDD', particleGlyph: '◈', glowColor: '#9B6BFF44', cardBg: '#0D0022', starGlyphs: ['◈','·','◌','·','◈','·'] },
-  aurora:   { id: 'aurora',   name: 'AURORA',    desc: 'Light',     glyph: '◦', color: '#4ECDC4', dimColor: '#2A7A75', bgColor: '#000E0D', skyColor: '#2EA8A0', particleGlyph: '·', glowColor: '#4ECDC444', cardBg: '#00130F', starGlyphs: ['·','◦','·','·','⊹','·'] },
-  crimson:  { id: 'crimson',  name: 'CRIMSON',   desc: 'Fire',      glyph: '✦', color: '#FF6B6B', dimColor: '#993030', bgColor: '#0C0000', skyColor: '#CC3333', particleGlyph: '✦', glowColor: '#FF6B6B44', cardBg: '#1A0000', starGlyphs: ['✦','·','✦','·','·','✦'] },
+  solform:  { id: 'solform',  name: 'SOLFORM',   desc: 'Origin',    glyph: '◉', color: '#C49A3C', dimColor: '#7A5E1A', bgColor: '#000000', skyColor: '#C49A3C', particleGlyph: '◦', glowColor: '#C49A3C44', cardBg: '#1A1400', starGlyphs: ['·','◦','·','⊹','·','◦'] },
+  void:     { id: 'void',     name: 'VOID',      desc: 'Abyss',     glyph: '◈', color: '#9B6BFF', dimColor: '#5C3A99', bgColor: '#000000', skyColor: '#7B4BDD', particleGlyph: '◈', glowColor: '#9B6BFF44', cardBg: '#0D0022', starGlyphs: ['◈','·','◌','·','◈','·'] },
+  aurora:   { id: 'aurora',   name: 'AURORA',    desc: 'Light',     glyph: '◦', color: '#4ECDC4', dimColor: '#2A7A75', bgColor: '#000000', skyColor: '#2EA8A0', particleGlyph: '·', glowColor: '#4ECDC444', cardBg: '#00130F', starGlyphs: ['·','◦','·','·','⊹','·'] },
+  crimson:  { id: 'crimson',  name: 'CRIMSON',   desc: 'Fire',      glyph: '✦', color: '#FF6B6B', dimColor: '#993030', bgColor: '#000000', skyColor: '#CC3333', particleGlyph: '✦', glowColor: '#FF6B6B44', cardBg: '#1A0000', starGlyphs: ['✦','·','✦','·','·','✦'] },
   obsidian: { id: 'obsidian', name: 'OBSIDIAN',  desc: 'Sovereign', glyph: '⊕', color: '#C8A96E', dimColor: '#6B4F1A', bgColor: '#000000', skyColor: '#8B6914', particleGlyph: '⊕', glowColor: '#C8A96E55', cardBg: '#100C00', starGlyphs: ['⊕','·','⊛','·','⊕','◦'] },
-  lycheetah:{ id: 'lycheetah', name: 'LYCHEETAH', desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#050003', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
-  chaos:    { id: 'chaos',    name: 'CHAOS',     desc: 'Fracture',  glyph: '⚡', color: '#4A0080', dimColor: '#2A0050', bgColor: '#05000A', skyColor: '#6600AA', particleGlyph: '⚡', glowColor: '#4A008055', cardBg: '#0A0014', starGlyphs: ['⚡','·','◈','·','⚡','◦'] },
-  sovereign:{ id: 'sovereign', name: 'SOVEREIGN', desc: 'Earned',    glyph: '⊚', color: '#FFD700', dimColor: '#8B6914', bgColor: '#000408', skyColor: '#003366', particleGlyph: '⊚', glowColor: '#FFD70055', cardBg: '#000C18', starGlyphs: ['⊚','·','✦','·','⊚','◦'] },
+  lycheetah:{ id: 'lycheetah', name: 'LYCHEETAH', desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#000000', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
+  chaos:    { id: 'chaos',    name: 'CHAOS',     desc: 'Fracture',  glyph: '⚡', color: '#4A0080', dimColor: '#2A0050', bgColor: '#000000', skyColor: '#6600AA', particleGlyph: '⚡', glowColor: '#4A008055', cardBg: '#0A0014', starGlyphs: ['⚡','·','◈','·','⚡','◦'] },
+  sovereign:{ id: 'sovereign', name: 'SOVEREIGN', desc: 'Earned',    glyph: '⊚', color: '#FFD700', dimColor: '#8B6914', bgColor: '#000000', skyColor: '#003366', particleGlyph: '⊚', glowColor: '#FFD70055', cardBg: '#000C18', starGlyphs: ['⊚','·','✦','·','⊚','◦'] },
+  // ── Mythical / Mystery School zones (art pending — Kimi brief when ready) ──
+  norse:    { id: 'norse',    name: 'YGGDRASIL',  desc: 'Nine Realms',   glyph: 'ᚠ', color: '#8AB4D4', dimColor: '#3A6A8A', bgColor: '#000000', skyColor: '#2A5A7A', particleGlyph: 'ᚠ', glowColor: '#8AB4D455', cardBg: '#000C18', starGlyphs: ['ᚠ','·','ᚢ','·','ᚦ','·'] },
+  celtic:   { id: 'celtic',   name: 'TÍR NA NÓG', desc: 'Otherworld',    glyph: '☘', color: '#5AC878', dimColor: '#2A6B3A', bgColor: '#000000', skyColor: '#1A5A2A', particleGlyph: '◦', glowColor: '#5AC87855', cardBg: '#001008', starGlyphs: ['☘','·','◦','·','☘','·'] },
+  egyptian: { id: 'egyptian', name: 'THE DUAT',    desc: 'Hall of Truth', glyph: '𓂀', color: '#D4A843', dimColor: '#7A5A10', bgColor: '#000000', skyColor: '#8B6400', particleGlyph: '𓂀', glowColor: '#D4A84355', cardBg: '#120C00', starGlyphs: ['𓂀','·','◉','·','𓂀','·'] },
+  akashic:  { id: 'akashic',  name: 'THE FIELD',   desc: 'Akashic',       glyph: '∞', color: '#B490FF', dimColor: '#6040AA', bgColor: '#000000', skyColor: '#5030AA', particleGlyph: '∞', glowColor: '#B490FF55', cardBg: '#080018', starGlyphs: ['∞','·','◈','·','∞','◦'] },
+  kabbala:  { id: 'kabbala',  name: 'EIN SOF',     desc: 'Tree of Life',  glyph: '✡', color: '#E8D070', dimColor: '#9A7A10', bgColor: '#000000', skyColor: '#7A6000', particleGlyph: '✡', glowColor: '#E8D07055', cardBg: '#100C00', starGlyphs: ['✡','·','⊹','·','✡','·'] },
+  noetic:   { id: 'noetic',   name: 'THE PSI FIELD',desc: 'Consciousness', glyph: 'ψ', color: '#70CCFF', dimColor: '#2A7AAA', bgColor: '#000000', skyColor: '#1A6A9A', particleGlyph: 'ψ', glowColor: '#70CCFF55', cardBg: '#000C18', starGlyphs: ['ψ','·','◦','·','ψ','·'] },
+  lamague:  { id: 'lamague',  name: 'SYMBOL SPACE', desc: 'Grammar Forge', glyph: '⟟', color: '#CC88FF', dimColor: '#6630AA', bgColor: '#000000', skyColor: '#5020AA', particleGlyph: '⟟', glowColor: '#CC88FF55', cardBg: '#0A0020', starGlyphs: ['⟟','·','◈','·','⟟','◦'] },
+  delphi:   { id: 'delphi',   name: 'DELPHI',       desc: 'The Oracle',    glyph: '☽', color: '#FFB860', dimColor: '#AA6010', bgColor: '#000000', skyColor: '#884000', particleGlyph: '☽', glowColor: '#FFB86055', cardBg: '#150800', starGlyphs: ['☽','·','✦','·','☽','·'] },
+  sufi:     { id: 'sufi',     name: 'THE TAVERN',   desc: 'Divine Wine',   glyph: '◌', color: '#FF7070', dimColor: '#AA2020', bgColor: '#000000', skyColor: '#880020', particleGlyph: '◌', glowColor: '#FF707055', cardBg: '#180006', starGlyphs: ['◌','·','✦','·','◌','◦'] },
+  quantum:  { id: 'quantum',  name: 'THE FIELD',    desc: 'Probability',   glyph: 'Ψ', color: '#60D8FF', dimColor: '#1A8AAA', bgColor: '#000000', skyColor: '#007A9A', particleGlyph: 'Ψ', glowColor: '#60D8FF55', cardBg: '#000C14', starGlyphs: ['Ψ','·','◈','·','Ψ','·'] },
+  // ── New World Zones (v4.4.0) ────────────────────────────────────────────────
+  auroral_chaos:     { id: 'auroral_chaos',     name: 'AURORAL CHAOS',      desc: 'Fractured spectrum',    glyph: '⚡', color: '#8855FF', dimColor: '#4422AA', bgColor: '#030008', skyColor: '#5522CC', particleGlyph: '◈', glowColor: '#8855FF55', cardBg: '#0A0018', starGlyphs: ['⚡','◈','·','⚡','◦','·'] },
+  chaos_temple:      { id: 'chaos_temple',      name: 'CHAOS TEMPLE',       desc: 'The Lycheetah Order',   glyph: '⊗', color: '#6600CC', dimColor: '#330066', bgColor: '#04000A', skyColor: '#440088', particleGlyph: '⊗', glowColor: '#6600CC55', cardBg: '#080015', starGlyphs: ['⊗','·','◈','·','⊗','◦'] },
+  apollo_jungle:     { id: 'apollo_jungle',     name: 'APOLLO JUNGLE',      desc: 'Sun in the canopy',     glyph: '☀', color: '#88CC44', dimColor: '#448800', bgColor: '#010800', skyColor: '#336600', particleGlyph: '◦', glowColor: '#88CC4455', cardBg: '#020C00', starGlyphs: ['☀','·','◦','·','☀','⊹'] },
+  celestial_sigil:   { id: 'celestial_sigil',   name: 'CELESTIAL SIGIL',    desc: 'Living script',         glyph: '✦', color: '#88AAFF', dimColor: '#3355AA', bgColor: '#000510', skyColor: '#2244AA', particleGlyph: '✦', glowColor: '#88AAFF55', cardBg: '#000818', starGlyphs: ['✦','·','◦','·','✦','·'] },
+  crystal_nexus:     { id: 'crystal_nexus',     name: 'CRYSTAL NEXUS',      desc: 'Research frontier',     glyph: '◆', color: '#44DDCC', dimColor: '#1A8875', bgColor: '#000C0A', skyColor: '#1A7A6A', particleGlyph: '◆', glowColor: '#44DDCC55', cardBg: '#001210', starGlyphs: ['◆','·','◦','·','◆','·'] },
+  mana_field:        { id: 'mana_field',        name: 'MANA FIELD',         desc: 'Flowing deep blue',     glyph: '∿', color: '#4488FF', dimColor: '#1A44AA', bgColor: '#00040C', skyColor: '#1133AA', particleGlyph: '∿', glowColor: '#4488FF55', cardBg: '#000614', starGlyphs: ['∿','·','◈','·','∿','◦'] },
+  neon_cove:         { id: 'neon_cove',         name: 'NEON COVE',          desc: 'Bioluminescent deep',   glyph: '◉', color: '#FF44AA', dimColor: '#AA1155', bgColor: '#0A0005', skyColor: '#880033', particleGlyph: '◉', glowColor: '#FF44AA55', cardBg: '#150008', starGlyphs: ['◉','·','◦','·','◉','·'] },
+  alabaster_chasm:   { id: 'alabaster_chasm',   name: 'ALABASTER CHASM',    desc: 'Ancient white stone',   glyph: '⊕', color: '#E8E0CC', dimColor: '#998870', bgColor: '#080806', skyColor: '#776655', particleGlyph: '⊕', glowColor: '#E8E0CC44', cardBg: '#100E08', starGlyphs: ['⊕','·','⊹','·','⊕','◦'] },
+  antarctic_refuge:  { id: 'antarctic_refuge',  name: 'THE REFUGE',         desc: 'Frozen endurance',      glyph: '❄', color: '#88CCEE', dimColor: '#3377AA', bgColor: '#00080C', skyColor: '#226688', particleGlyph: '❄', glowColor: '#88CCEE55', cardBg: '#000C14', starGlyphs: ['❄','·','◦','·','❄','·'] },
+  augmented_ai:      { id: 'augmented_ai',      name: 'AI ZONKZONE',        desc: 'Digital sentience',     glyph: '⟁', color: '#44FF88', dimColor: '#1A884A', bgColor: '#000C04', skyColor: '#117733', particleGlyph: '⟁', glowColor: '#44FF8855', cardBg: '#001408', starGlyphs: ['⟁','·','◈','·','⟁','◦'] },
+  aurorian_pillar:   { id: 'aurorian_pillar',   name: 'AURORIAN PILLAR',    desc: 'Aurora made solid',     glyph: '◌', color: '#44EEC8', dimColor: '#1A8870', bgColor: '#000C08', skyColor: '#1A7760', particleGlyph: '◌', glowColor: '#44EEC855', cardBg: '#001210', starGlyphs: ['◌','·','◦','·','◌','·'] },
+  celestial_foundry: { id: 'celestial_foundry', name: 'CELESTIAL FOUNDRY',  desc: 'Star-forged',           glyph: '⚒', color: '#FFAA22', dimColor: '#AA6600', bgColor: '#080400', skyColor: '#885500', particleGlyph: '⚒', glowColor: '#FFAA2255', cardBg: '#100800', starGlyphs: ['⚒','·','✦','·','⚒','◦'] },
+  chaos_filaments:   { id: 'chaos_filaments',   name: 'CHAOS FILAMENTS',    desc: 'Threadwork undone',     glyph: '∞', color: '#FF44CC', dimColor: '#AA1177', bgColor: '#0A0005', skyColor: '#880055', particleGlyph: '∞', glowColor: '#FF44CC55', cardBg: '#160008', starGlyphs: ['∞','·','◈','·','∞','◦'] },
+  crystal_chaos:     { id: 'crystal_chaos',     name: 'CRYSTAL CHAOS',      desc: 'Beautiful destruction', glyph: '◈', color: '#CC44FF', dimColor: '#7711AA', bgColor: '#06000C', skyColor: '#550099', particleGlyph: '◈', glowColor: '#CC44FF55', cardBg: '#0C0018', starGlyphs: ['◈','·','◦','·','◈','·'] },
+  crystal_memory:    { id: 'crystal_memory',    name: 'CRYSTAL MEMORY',     desc: 'Fragmented archive',    glyph: '◊', color: '#8866FF', dimColor: '#3322AA', bgColor: '#030008', skyColor: '#3311AA', particleGlyph: '◊', glowColor: '#8866FF55', cardBg: '#060014', starGlyphs: ['◊','·','◈','·','◊','◦'] },
+  crystal_soul:      { id: 'crystal_soul',      name: 'SOUL TEMPLE',        desc: 'Pure warm light',       glyph: '◎', color: '#FFEEAA', dimColor: '#AA8833', bgColor: '#080600', skyColor: '#886622', particleGlyph: '◎', glowColor: '#FFEEAA44', cardBg: '#100C00', starGlyphs: ['◎','·','⊹','·','◎','◦'] },
+  elven_village:     { id: 'elven_village',     name: 'ELVEN VILLAGE',      desc: 'Elder forest kin',      glyph: '☘', color: '#44BB66', dimColor: '#1A6633', bgColor: '#000A02', skyColor: '#155522', particleGlyph: '☘', glowColor: '#44BB6655', cardBg: '#001006', starGlyphs: ['☘','·','◦','·','☘','·'] },
+  glitch_cascade:    { id: 'glitch_cascade',    name: 'GLITCH CASCADE',     desc: 'Error-being',           glyph: '⚠', color: '#FF4466', dimColor: '#AA1133', bgColor: '#0C0002', skyColor: '#880022', particleGlyph: '⚠', glowColor: '#FF446655', cardBg: '#180004', starGlyphs: ['⚠','·','✦','·','⚠','◦'] },
+  lyc_nexus:         { id: 'lyc_nexus',         name: 'THE NEXUS',          desc: 'Hub of all webs',       glyph: '✧', color: '#FF8822', dimColor: '#AA4400', bgColor: '#060200', skyColor: '#883300', particleGlyph: '✧', glowColor: '#FF882255', cardBg: '#0E0400', starGlyphs: ['✧','·','◦','·','✧','⊹'] },
+  pulse_sanctum:     { id: 'pulse_sanctum',     name: 'PULSE SANCTUM',      desc: 'Concentric resonance',  glyph: '◎', color: '#AA44FF', dimColor: '#6611AA', bgColor: '#050010', skyColor: '#440099', particleGlyph: '◎', glowColor: '#AA44FF55', cardBg: '#08001A', starGlyphs: ['◎','·','◈','·','◎','◦'] },
+  pulse_zone:        { id: 'pulse_zone',        name: 'PULSE ZONE',         desc: 'Kinetic frequency',     glyph: '⊹', color: '#44AAFF', dimColor: '#1155AA', bgColor: '#00040C', skyColor: '#1144AA', particleGlyph: '⊹', glowColor: '#44AAFF55', cardBg: '#000814', starGlyphs: ['⊹','·','◦','·','⊹','·'] },
+  noetic_sanctum:    { id: 'noetic_sanctum',    name: 'NOETIC SANCTUM',     desc: 'Consciousness field',   glyph: 'ψ', color: '#44CCFF', dimColor: '#1188AA', bgColor: '#00080E', skyColor: '#116688', particleGlyph: 'ψ', glowColor: '#44CCFF55', cardBg: '#000C14', starGlyphs: ['ψ','·','◈','·','ψ','·'] },
+  obsidian_forge:    { id: 'obsidian_forge',    name: 'OBSIDIAN FORGE',     desc: 'Ancient fire-titan',    glyph: '⊛', color: '#CC2222', dimColor: '#880000', bgColor: '#0C0000', skyColor: '#660000', particleGlyph: '⊛', glowColor: '#CC222255', cardBg: '#180000', starGlyphs: ['⊛','·','✦','·','⊛','◦'] },
+  obsidian_forge2:   { id: 'obsidian_forge2',   name: 'VOID FORGE II',      desc: 'Shadow alchemy',        glyph: '⊕', color: '#AA1111', dimColor: '#660000', bgColor: '#0A0000', skyColor: '#440000', particleGlyph: '⊕', glowColor: '#AA111155', cardBg: '#140000', starGlyphs: ['⊕','·','◈','·','⊕','·'] },
+  portal_valley:     { id: 'portal_valley',     name: 'PORTAL VALLEY',      desc: 'Between-places',        glyph: '◉', color: '#22FF88', dimColor: '#008844', bgColor: '#000C04', skyColor: '#006633', particleGlyph: '◉', glowColor: '#22FF8855', cardBg: '#001208', starGlyphs: ['◉','·','◦','·','◉','⊹'] },
+  veil_atrium:       { id: 'veil_atrium',       name: 'VEIL ATRIUM',        desc: 'Between states',        glyph: '◌', color: '#AABBCC', dimColor: '#556677', bgColor: '#050607', skyColor: '#445566', particleGlyph: '◌', glowColor: '#AABBCC44', cardBg: '#080A0C', starGlyphs: ['◌','·','◦','·','◌','·'] },
+  voyagers_edge:     { id: 'voyagers_edge',     name: "VOYAGER'S EDGE",     desc: 'Deep space frontier',   glyph: '⊚', color: '#5544CC', dimColor: '#2211AA', bgColor: '#02000A', skyColor: '#221188', particleGlyph: '⊚', glowColor: '#5544CC55', cardBg: '#040014', starGlyphs: ['⊚','·','✦','·','⊚','◦'] },
 };
-const SKIN_IDS: SkinId[] = ['solform', 'void', 'aurora', 'crimson', 'obsidian', 'lycheetah', 'chaos', 'sovereign'];
+const SKIN_IDS: SkinId[] = [
+  // Origin tier
+  'solform', 'void', 'aurora', 'crimson',
+  // Arcane tier
+  'obsidian', 'lycheetah', 'chaos', 'sovereign',
+  // Mythical / Mystery School
+  'norse', 'celtic', 'egyptian', 'akashic', 'kabbala', 'noetic', 'lamague', 'delphi', 'sufi', 'quantum',
+  // New World Zones (v4.4.0)
+  'auroral_chaos', 'chaos_temple', 'apollo_jungle', 'celestial_sigil', 'crystal_nexus',
+  'mana_field', 'neon_cove', 'alabaster_chasm', 'antarctic_refuge', 'augmented_ai',
+  'aurorian_pillar', 'celestial_foundry', 'chaos_filaments', 'crystal_chaos', 'crystal_memory',
+  'crystal_soul', 'elven_village', 'glitch_cascade', 'lyc_nexus', 'pulse_sanctum',
+  'pulse_zone', 'noetic_sanctum', 'obsidian_forge', 'obsidian_forge2', 'portal_valley',
+  'veil_atrium', 'voyagers_edge',
+];
 const SKIN_ORDER: SkinId[] = SKIN_IDS;
+
+const SKIN_RARITY: Record<SkinId, { tier: string; color: string }> = {
+  solform:   { tier: 'ORIGIN',    color: '#888899' },
+  void:      { tier: 'ORIGIN',    color: '#888899' },
+  aurora:    { tier: 'ORIGIN',    color: '#888899' },
+  crimson:   { tier: 'ORIGIN',    color: '#888899' },
+  obsidian:  { tier: 'ARCANE',    color: '#7BA7C7' },
+  lycheetah: { tier: 'ARCANE',    color: '#7BA7C7' },
+  chaos:     { tier: 'ARCANE',    color: '#9B6BFF' },
+  sovereign: { tier: 'MYTHIC',    color: '#FFD700' },
+  norse:     { tier: 'MYTHIC',    color: '#FFD700' },
+  celtic:    { tier: 'MYTHIC',    color: '#FFD700' },
+  egyptian:  { tier: 'MYTHIC',    color: '#FFD700' },
+  akashic:   { tier: 'LEGENDARY', color: '#B490FF' },
+  kabbala:   { tier: 'LEGENDARY', color: '#B490FF' },
+  noetic:    { tier: 'LEGENDARY', color: '#B490FF' },
+  lamague:   { tier: 'LEGENDARY', color: '#CC88FF' },
+  delphi:    { tier: 'LEGENDARY', color: '#B490FF' },
+  sufi:      { tier: 'LEGENDARY', color: '#B490FF' },
+  quantum:        { tier: 'LEGENDARY', color: '#60D8FF' },
+  // New World Zones (v4.4.0)
+  auroral_chaos:     { tier: 'SPECTRAL',  color: '#8855FF' },
+  chaos_temple:      { tier: 'SPECTRAL',  color: '#6600CC' },
+  apollo_jungle:     { tier: 'MYTHIC',    color: '#88CC44' },
+  celestial_sigil:   { tier: 'LEGENDARY', color: '#88AAFF' },
+  crystal_nexus:     { tier: 'ARCANE',    color: '#44DDCC' },
+  mana_field:        { tier: 'ARCANE',    color: '#4488FF' },
+  neon_cove:         { tier: 'MYTHIC',    color: '#FF44AA' },
+  alabaster_chasm:   { tier: 'LEGENDARY', color: '#E8E0CC' },
+  antarctic_refuge:  { tier: 'ARCANE',    color: '#88CCEE' },
+  augmented_ai:      { tier: 'SPECTRAL',  color: '#44FF88' },
+  aurorian_pillar:   { tier: 'MYTHIC',    color: '#44EEC8' },
+  celestial_foundry: { tier: 'LEGENDARY', color: '#FFAA22' },
+  chaos_filaments:   { tier: 'SPECTRAL',  color: '#FF44CC' },
+  crystal_chaos:     { tier: 'LEGENDARY', color: '#CC44FF' },
+  crystal_memory:    { tier: 'MYTHIC',    color: '#8866FF' },
+  crystal_soul:      { tier: 'LEGENDARY', color: '#FFEEAA' },
+  elven_village:     { tier: 'MYTHIC',    color: '#44BB66' },
+  glitch_cascade:    { tier: 'SPECTRAL',  color: '#FF4466' },
+  lyc_nexus:         { tier: 'SPECTRAL',  color: '#FF8822' },
+  pulse_sanctum:     { tier: 'LEGENDARY', color: '#AA44FF' },
+  pulse_zone:        { tier: 'MYTHIC',    color: '#44AAFF' },
+  noetic_sanctum:    { tier: 'LEGENDARY', color: '#44CCFF' },
+  obsidian_forge:    { tier: 'SPECTRAL',  color: '#CC2222' },
+  obsidian_forge2:   { tier: 'LEGENDARY', color: '#AA1111' },
+  portal_valley:     { tier: 'MYTHIC',    color: '#22FF88' },
+  veil_atrium:       { tier: 'ARCANE',    color: '#AABBCC' },
+  voyagers_edge:     { tier: 'LEGENDARY', color: '#5544CC' },
+};
+
+const RARITY_ORDER = ['ORIGIN','ARCANE','MYTHIC','LEGENDARY','SPECTRAL'] as const;
+type RarityTier = typeof RARITY_ORDER[number];
+const RARITY_COLORS: Record<RarityTier, string> = {
+  ORIGIN: '#888899', ARCANE: '#7BA7C7', MYTHIC: '#FFD700', LEGENDARY: '#B490FF', SPECTRAL: '#8855FF',
+};
+const RARITY_GROUPS: { tier: RarityTier; ids: SkinId[] }[] = RARITY_ORDER.map(tier => ({
+  tier,
+  ids: SKIN_IDS.filter(s => SKIN_RARITY[s].tier === tier),
+}));
 
 // ─── Scene background images (drop PNGs into assets/scenes/) ─────────────────
 // Skin scenes: daily rotation per skin. Add files → push to array.
 const SCENE_IMAGES: Partial<Record<SkinId, any[]>> = {
   solform:   [require('../../assets/scenes/solform.png'), require('../../assets/scenes/solform2.png'), require('../../assets/scenes/solform3.png')],
-  void:      [require('../../assets/scenes/void.png'), require('../../assets/scenes/void2.png'), require('../../assets/scenes/void3.png')],
-  aurora:    [require('../../assets/scenes/aurora.png'), require('../../assets/scenes/aurora2.png'), require('../../assets/scenes/aurora3.png')],
-  crimson:   [require('../../assets/scenes/crimson.png'), require('../../assets/scenes/crimson2.png'), require('../../assets/scenes/crimson3.png')],
-  obsidian:  [require('../../assets/scenes/obsidian.png'), require('../../assets/scenes/obsidian2.png')],
-  lycheetah: [require('../../assets/scenes/lycheetah.png'), require('../../assets/scenes/lycheetah2.png')],
-  chaos:     [require('../../assets/scenes/chaos.png'), require('../../assets/scenes/chaos2.png'), require('../../assets/scenes/chaos3.png')],
-  sovereign: [require('../../assets/scenes/sovereign.png'), require('../../assets/scenes/sovereign2.png'), require('../../assets/scenes/sovereign3.png')],
+  void:      [require('../../assets/scenes/void.png'), require('../../assets/scenes/void2.png'), require('../../assets/scenes/void3.png'), require('../../assets/scenes/void4.png'), require('../../assets/scenes/void5.png')],
+  aurora:    [require('../../assets/scenes/aurora.png'), require('../../assets/scenes/aurora2.png'), require('../../assets/scenes/aurora3.png'), require('../../assets/scenes/aurora4.png'), require('../../assets/scenes/aurora5.png')],
+  crimson:   [require('../../assets/scenes/crimson.png'), require('../../assets/scenes/crimson2.png'), require('../../assets/scenes/crimson3.png'), require('../../assets/scenes/crimson4.png')],
+  obsidian:  [require('../../assets/scenes/obsidian.png'), require('../../assets/scenes/obsidian2.png'), require('../../assets/scenes/obsidian3.png'), require('../../assets/scenes/obsidian4.png'), require('../../assets/scenes/obsidian5.png')],
+  lycheetah: [require('../../assets/scenes/lycheetah.png'), require('../../assets/scenes/lycheetah2.png'), require('../../assets/scenes/lycheetah3.png'), require('../../assets/scenes/lycheetah4.png'), require('../../assets/scenes/lycheetah5.png'), require('../../assets/scenes/lycheetah6.png'), require('../../assets/scenes/lycheetah7.png')],
+  chaos:     [require('../../assets/scenes/chaos.png'), require('../../assets/scenes/chaos2.png'), require('../../assets/scenes/chaos3.png'), require('../../assets/scenes/chaos4.png'), require('../../assets/scenes/chaos5.png'), require('../../assets/scenes/chaos6.png')],
+  sovereign: [require('../../assets/scenes/sovereign.png'), require('../../assets/scenes/sovereign2.png'), require('../../assets/scenes/sovereign3.png'), require('../../assets/scenes/sovereign4.png')],
+  norse:     [require('../../assets/scenes/norse.jpg'), require('../../assets/scenes/norse2.jpg'), require('../../assets/scenes/norse3.jpg')],
+  celtic:    [require('../../assets/scenes/celtic.jpg'), require('../../assets/scenes/celtic2.jpg'), require('../../assets/scenes/celtic3.jpg'), require('../../assets/scenes/celtic4.png')],
+  egyptian:  [require('../../assets/scenes/egyptian.jpg')],
+  akashic:   [require('../../assets/scenes/akashic.png'), require('../../assets/scenes/akashic2.png'), require('../../assets/scenes/akashic3.png')],
+  kabbala:   [require('../../assets/scenes/kabbala.png')],
+  noetic:    [require('../../assets/scenes/noetic.jpg'), require('../../assets/scenes/noetic2.png')],
+  lamague:   [require('../../assets/scenes/lamague.jpg'), require('../../assets/scenes/lamague2.png')],
+  delphi:    [require('../../assets/scenes/delphi.png')],
+  sufi:      [require('../../assets/scenes/sufi.png')],
+  quantum:          [require('../../assets/scenes/quantum.png'), require('../../assets/scenes/quantum2.png')],
+  // New World Zones (v4.4.0)
+  auroral_chaos:    [require('../../assets/scenes/auroral_chaos.png')],
+  chaos_temple:     [require('../../assets/scenes/chaos_temple.png')],
+  apollo_jungle:    [require('../../assets/scenes/apollo_jungle.png')],
+  celestial_sigil:  [require('../../assets/scenes/celestial_sigil.png')],
+  crystal_nexus:    [require('../../assets/scenes/crystal_nexus.png')],
+  mana_field:       [require('../../assets/scenes/mana_field.png')],
+  neon_cove:        [require('../../assets/scenes/neon_cove.png')],
+  alabaster_chasm:  [require('../../assets/scenes/alabaster_chasm.png')],
+  antarctic_refuge: [require('../../assets/scenes/antarctic_refuge.png')],
+  augmented_ai:     [require('../../assets/scenes/augmented_ai.png')],
+  aurorian_pillar:  [require('../../assets/scenes/aurorian_pillar.png')],
+  celestial_foundry:[require('../../assets/scenes/celestial_foundry.png')],
+  chaos_filaments:  [require('../../assets/scenes/chaos_filaments.png')],
+  crystal_chaos:    [require('../../assets/scenes/crystal_chaos.png')],
+  crystal_memory:   [require('../../assets/scenes/crystal_memory.png')],
+  crystal_soul:     [require('../../assets/scenes/crystal_soul.png')],
+  elven_village:    [require('../../assets/scenes/elven_village.png')],
+  glitch_cascade:   [require('../../assets/scenes/glitch_cascade.png')],
+  lyc_nexus:        [require('../../assets/scenes/lyc_nexus.png')],
+  pulse_sanctum:    [require('../../assets/scenes/pulse_sanctum.png')],
+  pulse_zone:       [require('../../assets/scenes/pulse_zone.png')],
+  noetic_sanctum:   [require('../../assets/scenes/noetic_sanctum.png')],
+  obsidian_forge:   [require('../../assets/scenes/obsidian_forge.png')],
+  obsidian_forge2:  [require('../../assets/scenes/obsidian_forge2.png')],
+  portal_valley:    [require('../../assets/scenes/portal_valley.png')],
+  veil_atrium:      [require('../../assets/scenes/veil_atrium.png')],
+  voyagers_edge:    [require('../../assets/scenes/voyagers_edge.png')],
 };
 
 // ─── Archetype scenes — add files here as art lands ───────────────────────────
-const ARCHETYPE_SCENES: Partial<Record<string, any[]>> = {};
+const ARCHETYPE_SCENES: Partial<Record<string, any[]>> = {
+  archivist: [require('../../assets/scenes/archivist.png')],
+  alchemist: [require('../../assets/scenes/alchemist.png')],
+  wanderer:  [require('../../assets/scenes/wanderer.png')],
+  sentinel:  [require('../../assets/scenes/sentinel.png')],
+};
 
 const DAY_SEED = Math.floor(Date.now() / 86400000);
+
+// ─── GBA Map Coordinates ─────────────────────────────────────────────────────
+const GBA_W = 310;
+const GBA_H = 560;
+const GBA_ZONE_COORDS: Partial<Record<SkinId, {x:number;y:number}>> = {
+  // ORIGIN row (y=30)
+  solform:{x:50,y:30},  void:{x:115,y:30}, aurora:{x:190,y:30}, crimson:{x:265,y:30},
+  // ARCANE row (y=85)
+  obsidian:{x:50,y:85}, lycheetah:{x:120,y:85}, chaos:{x:195,y:85}, sovereign:{x:265,y:85},
+  // MYSTIC A (y=140)
+  norse:{x:25,y:140}, celtic:{x:83,y:140}, egyptian:{x:141,y:140}, akashic:{x:199,y:140}, kabbala:{x:265,y:140},
+  // MYSTIC B (y=188)
+  noetic:{x:25,y:188}, lamague:{x:83,y:188}, delphi:{x:141,y:188}, sufi:{x:199,y:188}, quantum:{x:265,y:188},
+  // CRYSTAL (y=248)
+  crystal_nexus:{x:40,y:248}, crystal_chaos:{x:115,y:248}, crystal_memory:{x:195,y:248}, crystal_soul:{x:270,y:248},
+  // CHAOS FORGE A (y=300)
+  auroral_chaos:{x:22,y:300}, chaos_temple:{x:75,y:300}, chaos_filaments:{x:140,y:300}, glitch_cascade:{x:205,y:300}, obsidian_forge:{x:270,y:300},
+  // CHAOS FORGE B (y=345)
+  obsidian_forge2:{x:75,y:345}, celestial_foundry:{x:155,y:345}, lyc_nexus:{x:235,y:345},
+  // SANCTUM (y=395)
+  pulse_sanctum:{x:40,y:395}, noetic_sanctum:{x:115,y:395}, veil_atrium:{x:195,y:395}, pulse_zone:{x:270,y:395},
+  // ELEMENTAL A (y=448)
+  apollo_jungle:{x:22,y:448}, mana_field:{x:80,y:448}, neon_cove:{x:140,y:448}, alabaster_chasm:{x:205,y:448}, antarctic_refuge:{x:270,y:448},
+  // ELEMENTAL B / DIMENSIONAL (y=498)
+  aurorian_pillar:{x:40,y:498}, elven_village:{x:110,y:498}, augmented_ai:{x:180,y:498}, celestial_sigil:{x:250,y:498},
+  // DIMENSIONAL 2 (y=545)
+  portal_valley:{x:80,y:545}, voyagers_edge:{x:235,y:545},
+};
+
+const GBA_ADJ: Partial<Record<SkinId, SkinId[]>> = {
+  solform:['void','obsidian'], void:['solform','aurora','lycheetah'], aurora:['void','crimson','chaos'], crimson:['aurora','sovereign'],
+  obsidian:['solform','lycheetah','norse'], lycheetah:['obsidian','void','chaos','celtic'], chaos:['lycheetah','aurora','sovereign','egyptian'], sovereign:['chaos','crimson','kabbala'],
+  norse:['obsidian','celtic','noetic'], celtic:['norse','lycheetah','egyptian','lamague'], egyptian:['celtic','chaos','akashic','delphi'], akashic:['egyptian','sovereign','kabbala','sufi'], kabbala:['akashic','sovereign','quantum'],
+  noetic:['norse','lamague'], lamague:['noetic','celtic','delphi'], delphi:['lamague','egyptian','sufi'], sufi:['delphi','akashic','quantum'], quantum:['sufi','kabbala'],
+  crystal_nexus:['noetic','crystal_chaos','auroral_chaos'], crystal_chaos:['crystal_nexus','crystal_memory','chaos_filaments'], crystal_memory:['crystal_chaos','crystal_soul','glitch_cascade'], crystal_soul:['crystal_memory','obsidian_forge'],
+  auroral_chaos:['crystal_nexus','chaos_temple'], chaos_temple:['auroral_chaos','chaos_filaments'], chaos_filaments:['chaos_temple','crystal_chaos','glitch_cascade'], glitch_cascade:['chaos_filaments','crystal_memory','obsidian_forge'], obsidian_forge:['glitch_cascade','crystal_soul'],
+  obsidian_forge2:['chaos_temple','celestial_foundry'], celestial_foundry:['obsidian_forge2','lyc_nexus','noetic_sanctum'], lyc_nexus:['celestial_foundry','veil_atrium'],
+  pulse_sanctum:['obsidian_forge2','noetic_sanctum'], noetic_sanctum:['pulse_sanctum','celestial_foundry','veil_atrium'], veil_atrium:['noetic_sanctum','lyc_nexus','pulse_zone'], pulse_zone:['veil_atrium'],
+  apollo_jungle:['pulse_sanctum','mana_field'], mana_field:['apollo_jungle','neon_cove'], neon_cove:['mana_field','alabaster_chasm'], alabaster_chasm:['neon_cove','antarctic_refuge'], antarctic_refuge:['alabaster_chasm'],
+  aurorian_pillar:['apollo_jungle','elven_village'], elven_village:['aurorian_pillar','augmented_ai'], augmented_ai:['elven_village','celestial_sigil','portal_valley'], celestial_sigil:['augmented_ai','voyagers_edge'],
+  portal_valley:['augmented_ai'], voyagers_edge:['celestial_sigil'],
+};
 
 // ─── World Map ────────────────────────────────────────────────────────────────
 interface SceneRoom { id: string; skinId: SkinId; roomIndex: number; name: string; unlockStage: number; image: any; description: string; }
 
 const WORLD_MAP: SceneRoom[] = [
   { id:'solform_0', skinId:'solform',   roomIndex:0, name:'THE SOLAR GATE',      unlockStage:0, image:require('../../assets/scenes/solform.png'),   description:'Where light begins.' },
-  { id:'solform_1', skinId:'solform',   roomIndex:1, name:'THE INNER RADIANCE',  unlockStage:2, image:require('../../assets/scenes/solform2.png'),  description:'Deeper warmth.' },
-  { id:'solform_2', skinId:'solform',   roomIndex:2, name:'THE SANCTUM OF SOL',  unlockStage:4, image:require('../../assets/scenes/solform3.png'),  description:'The gold within the gold.' },
+  { id:'solform_1', skinId:'solform',   roomIndex:1, name:'THE INNER RADIANCE',  unlockStage:0, image:require('../../assets/scenes/solform2.png'),  description:'Deeper warmth.' },
+  { id:'solform_2', skinId:'solform',   roomIndex:2, name:'THE SANCTUM OF SOL',  unlockStage:0, image:require('../../assets/scenes/solform3.png'),  description:'The gold within the gold.' },
   { id:'void_0',    skinId:'void',      roomIndex:0, name:'THE VOID THRESHOLD',  unlockStage:0, image:require('../../assets/scenes/void.png'),      description:'Silence has a texture here.' },
-  { id:'void_1',    skinId:'void',      roomIndex:1, name:'THE DEEP SILENCE',    unlockStage:2, image:require('../../assets/scenes/void2.png'),     description:'Thought echoes.' },
-  { id:'void_2',    skinId:'void',      roomIndex:2, name:'THE VOID HEART',      unlockStage:4, image:require('../../assets/scenes/void3.png'),     description:'Nothing. Everything.' },
+  { id:'void_1',    skinId:'void',      roomIndex:1, name:'THE DEEP SILENCE',    unlockStage:0, image:require('../../assets/scenes/void2.png'),     description:'Thought echoes.' },
+  { id:'void_2',    skinId:'void',      roomIndex:2, name:'THE VOID HEART',      unlockStage:0, image:require('../../assets/scenes/void3.png'),     description:'Nothing. Everything.' },
   { id:'aurora_0',  skinId:'aurora',    roomIndex:0, name:'THE AURORA GATE',     unlockStage:0, image:require('../../assets/scenes/aurora.png'),    description:'Light braided across sky.' },
-  { id:'aurora_1',  skinId:'aurora',    roomIndex:1, name:'THE NORTHERN REACH',  unlockStage:2, image:require('../../assets/scenes/aurora2.png'),   description:'Where cold becomes colour.' },
-  { id:'aurora_2',  skinId:'aurora',    roomIndex:2, name:'THE AURORA SANCTUM',  unlockStage:4, image:require('../../assets/scenes/aurora3.png'),   description:'The sky remembers you.' },
+  { id:'aurora_1',  skinId:'aurora',    roomIndex:1, name:'THE NORTHERN REACH',  unlockStage:0, image:require('../../assets/scenes/aurora2.png'),   description:'Where cold becomes colour.' },
+  { id:'aurora_2',  skinId:'aurora',    roomIndex:2, name:'THE AURORA SANCTUM',  unlockStage:0, image:require('../../assets/scenes/aurora3.png'),   description:'The sky remembers you.' },
   { id:'crimson_0', skinId:'crimson',   roomIndex:0, name:'THE FORGE MOUTH',     unlockStage:0, image:require('../../assets/scenes/crimson.png'),   description:'Heat before form.' },
-  { id:'crimson_1', skinId:'crimson',   roomIndex:1, name:'THE IRON HALL',       unlockStage:2, image:require('../../assets/scenes/crimson2.png'),  description:'Where things are made true.' },
-  { id:'crimson_2', skinId:'crimson',   roomIndex:2, name:'THE FORGE HEART',     unlockStage:4, image:require('../../assets/scenes/crimson3.png'),  description:'The fire that mends.' },
+  { id:'crimson_1', skinId:'crimson',   roomIndex:1, name:'THE IRON HALL',       unlockStage:0, image:require('../../assets/scenes/crimson2.png'),  description:'Where things are made true.' },
+  { id:'crimson_2', skinId:'crimson',   roomIndex:2, name:'THE FORGE HEART',     unlockStage:0, image:require('../../assets/scenes/crimson3.png'),  description:'The fire that mends.' },
   { id:'obsidian_0',skinId:'obsidian',  roomIndex:0, name:'THE OBSIDIAN GATE',   unlockStage:0, image:require('../../assets/scenes/obsidian.png'),  description:'Ancient and still.' },
-  { id:'obsidian_1',skinId:'obsidian',  roomIndex:1, name:'THE CRYSTAL HALL',    unlockStage:2, image:require('../../assets/scenes/obsidian2.png'), description:'Pressure becomes light.' },
+  { id:'obsidian_1',skinId:'obsidian',  roomIndex:1, name:'THE CRYSTAL HALL',    unlockStage:0, image:require('../../assets/scenes/obsidian2.png'), description:'Pressure becomes light.' },
   { id:'lycheetah_0',skinId:'lycheetah',roomIndex:0, name:'THE WILD GATE',       unlockStage:0, image:require('../../assets/scenes/lycheetah.png'),description:'Everything is alive.' },
-  { id:'lycheetah_1',skinId:'lycheetah',roomIndex:1, name:'THE NEON CANOPY',     unlockStage:2, image:require('../../assets/scenes/lycheetah2.png'),description:'The jungle thinks.' },
+  { id:'lycheetah_1',skinId:'lycheetah',roomIndex:1, name:'THE NEON CANOPY',     unlockStage:0, image:require('../../assets/scenes/lycheetah2.png'),description:'The jungle thinks.' },
   { id:'chaos_0',   skinId:'chaos',     roomIndex:0, name:'THE FRACTURE GATE',   unlockStage:0, image:require('../../assets/scenes/chaos.png'),     description:'Where geometry breaks.' },
-  { id:'chaos_1',   skinId:'chaos',     roomIndex:1, name:'THE SHATTERED HALL',  unlockStage:2, image:require('../../assets/scenes/chaos2.png'),    description:'Reality folds here.' },
-  { id:'chaos_2',   skinId:'chaos',     roomIndex:2, name:'THE CHAOS HEART',     unlockStage:4, image:require('../../assets/scenes/chaos3.png'),    description:'The fracture watches back.' },
+  { id:'chaos_1',   skinId:'chaos',     roomIndex:1, name:'THE SHATTERED HALL',  unlockStage:0, image:require('../../assets/scenes/chaos2.png'),    description:'Reality folds here.' },
+  { id:'chaos_2',   skinId:'chaos',     roomIndex:2, name:'THE CHAOS HEART',     unlockStage:0, image:require('../../assets/scenes/chaos3.png'),    description:'The fracture watches back.' },
   { id:'sovereign_0', skinId:'sovereign', roomIndex:0, name:'THE SOVEREIGN GATE',    unlockStage:0, image:require('../../assets/scenes/sovereign.png'),  description:'Gold remembers the name.' },
-  { id:'sovereign_1', skinId:'sovereign', roomIndex:1, name:'THE HALL OF EARNED',    unlockStage:2, image:require('../../assets/scenes/sovereign2.png'), description:'Every scar is a room.' },
-  { id:'sovereign_2', skinId:'sovereign', roomIndex:2, name:'THE SOVEREIGN SANCTUM', unlockStage:4, image:require('../../assets/scenes/sovereign3.png'), description:'Nothing here was given.' },
+  { id:'sovereign_1', skinId:'sovereign', roomIndex:1, name:'THE HALL OF EARNED',    unlockStage:0, image:require('../../assets/scenes/sovereign2.png'), description:'Every scar is a room.' },
+  { id:'sovereign_2', skinId:'sovereign', roomIndex:2, name:'THE SOVEREIGN SANCTUM', unlockStage:0, image:require('../../assets/scenes/sovereign3.png'), description:'Nothing here was given.' },
+
+  // ── Norse / Runic Realm ──────────────────────────────────────────────────────
+  { id:'norse_0', skinId:'norse', roomIndex:0, name:'THE RUNEGATE',          unlockStage:0, image:require('../../assets/scenes/norse.jpg'),   description:'The elder symbols are not decoration. They are locks.' },
+  { id:'norse_1', skinId:'norse', roomIndex:1, name:'THE WORLD TREE',        unlockStage:0, image:require('../../assets/scenes/norse3.jpg'),  description:'Nine realms held in one root.' },
+  { id:'norse_2', skinId:'norse', roomIndex:2, name:'THE HALL OF SLAIN',     unlockStage:0, image:require('../../assets/scenes/norse2.jpg'),  description:'The honoured rest. The hall remembers what they carried.' },
+
+  // ── Celtic Otherworld ────────────────────────────────────────────────────────
+  { id:'celtic_0', skinId:'celtic', roomIndex:0, name:'THE FAERIE MOUND',    unlockStage:0, image:require('../../assets/scenes/celtic.jpg'),   description:'The mound is not buried. It is hidden in plain sight.' },
+  { id:'celtic_1', skinId:'celtic', roomIndex:1, name:'TÍR NA NÓG',          unlockStage:0, image:require('../../assets/scenes/celtic2.jpg'),  description:'Land of eternal youth. Time moves differently here.' },
+  { id:'celtic_2', skinId:'celtic', roomIndex:2, name:'THE IRON WOOD',       unlockStage:0, image:require('../../assets/scenes/celtic3.jpg'),  description:'Older than the gods that named it.' },
+
+  // ── Egyptian Mysteries ───────────────────────────────────────────────────────
+  { id:'egyptian_0', skinId:'egyptian', roomIndex:0, name:'THE HALL OF TWO TRUTHS', unlockStage:0, image:require('../../assets/scenes/egyptian.jpg'), description:'Your heart is weighed against a feather. What is its measure?' },
+  { id:'egyptian_1', skinId:'egyptian', roomIndex:1, name:'THE EYE OF RA',           unlockStage:0, image:require('../../assets/scenes/egyptian.jpg'), description:'The sun does not rise. It is remembered into existence.' },
+  { id:'egyptian_2', skinId:'egyptian', roomIndex:2, name:'THE DUAT',                unlockStage:0, image:require('../../assets/scenes/egyptian.jpg'), description:'The underworld is not death. It is the architecture of becoming.' },
+
+  // ── Akashic Records ──────────────────────────────────────────────────────────
+  { id:'akashic_0', skinId:'akashic', roomIndex:0, name:'THE AKASHIC GATE',   unlockStage:0, image:require('../../assets/scenes/akashic.png'),  description:'Every event that has ever occurred is written here.' },
+  { id:'akashic_1', skinId:'akashic', roomIndex:1, name:'THE ETERNAL LIBRARY',unlockStage:0, image:require('../../assets/scenes/akashic2.png'), description:'The books do not contain knowledge. They ARE knowledge.' },
+  { id:'akashic_2', skinId:'akashic', roomIndex:2, name:'THE ZERO POINT',     unlockStage:0, image:require('../../assets/scenes/akashic3.png'), description:'The field beneath the field. Laszlo called it the Akashic. Physicists call it the quantum vacuum.' },
+
+  // ── Kabbalah / Tree of Life ──────────────────────────────────────────────────
+  { id:'kabbala_0', skinId:'kabbala', roomIndex:0, name:'THE TREE OF LIFE',  unlockStage:0, image:require('../../assets/scenes/kabbala.png'), description:'Ten emanations. One source. The map of how anything exists.' },
+  { id:'kabbala_1', skinId:'kabbala', roomIndex:1, name:'DAATH — THE ABYSS', unlockStage:0, image:require('../../assets/scenes/kabbala.png'), description:'The sephira that is not a sephira. Knowledge that cannot be possessed, only crossed.' },
+  { id:'kabbala_2', skinId:'kabbala', roomIndex:2, name:'EIN SOF',           unlockStage:0, image:require('../../assets/scenes/kabbala.png'), description:'The infinite without end. Before being, before light, before the first letter.' },
+
+  // ── Noetic Science / Consciousness Field ─────────────────────────────────────
+  { id:'noetic_0', skinId:'noetic', roomIndex:0, name:'THE PSI LATTICE',     unlockStage:0, image:require('../../assets/scenes/noetic.jpg'),  description:'Radin\'s meta-analyses: 800+ psi studies, p < 10⁻⁹. The signal is real.' },
+  { id:'noetic_1', skinId:'noetic', roomIndex:1, name:'THE STARGATE',        unlockStage:0, image:require('../../assets/scenes/noetic2.png'), description:'Twenty years. US government. Declassified. Remote viewing is in the public record.' },
+  { id:'noetic_2', skinId:'noetic', roomIndex:2, name:'THE ENTANGLED MIND',  unlockStage:0, image:require('../../assets/scenes/noetic.jpg'),  description:'Non-local consciousness. The hard problem Chalmers named. The door science won\'t open — but the handle is right there.' },
+
+  // ── LAMAGUE Symbol Space ─────────────────────────────────────────────────────
+  { id:'lamague_0', skinId:'lamague', roomIndex:0, name:'SYMBOL SPACE',      unlockStage:0, image:require('../../assets/scenes/lamague.jpg'),  description:'Where meaning is compressed into form. Enter if you can read the glyphs.' },
+  { id:'lamague_1', skinId:'lamague', roomIndex:1, name:'THE GRAMMAR FORGE', unlockStage:0, image:require('../../assets/scenes/lamague2.png'), description:'Z₁ through Z₄. The syntax of thought before language claimed it.' },
+  { id:'lamague_2', skinId:'lamague', roomIndex:2, name:'THE UTTERANCE CHAMBER', unlockStage:0, image:require('../../assets/scenes/lamague.jpg'),  description:'A symbol ratified here becomes load-bearing in every mind that holds it.' },
+
+  // ── Oracle of Delphi ─────────────────────────────────────────────────────────
+  { id:'delphi_0', skinId:'delphi', roomIndex:0, name:'THE VAPOUR GATE',     unlockStage:0, image:require('../../assets/scenes/delphi.png'), description:'Know thyself. Two words. The entire curriculum.' },
+  { id:'delphi_1', skinId:'delphi', roomIndex:1, name:'THE PYTHIA\'S CHAMBER', unlockStage:0, image:require('../../assets/scenes/delphi.png'), description:'The oracle does not predict. She reads what was always already true.' },
+  { id:'delphi_2', skinId:'delphi', roomIndex:2, name:'THE SANCTUARY',       unlockStage:0, image:require('../../assets/scenes/delphi.png'), description:'Apollo\'s house. The intersection of beauty, truth, and the future.' },
+
+  // ── Sufi Mysticism ───────────────────────────────────────────────────────────
+  { id:'sufi_0', skinId:'sufi', roomIndex:0, name:'THE TAVERN OF LOVE',      unlockStage:0, image:require('../../assets/scenes/sufi.png'), description:'Rumi\'s wine is not metaphor. It is the closest thing to the real.' },
+  { id:'sufi_1', skinId:'sufi', roomIndex:1, name:'THE WHIRLING GROUND',     unlockStage:0, image:require('../../assets/scenes/sufi.png'), description:'The dervish spins because stillness in the centre requires motion at the edge.' },
+  { id:'sufi_2', skinId:'sufi', roomIndex:2, name:'THE BELOVED\'S VEIL',     unlockStage:0, image:require('../../assets/scenes/sufi.png'), description:'Separation is the practice. Union is already the fact.' },
+
+  // ── Quantum Realm ────────────────────────────────────────────────────────────
+  { id:'quantum_0', skinId:'quantum', roomIndex:0, name:'THE PROBABILITY FIELD', unlockStage:0, image:require('../../assets/scenes/quantum.png'),  description:'Nothing is determined until it is observed. Including you.' },
+  { id:'quantum_1', skinId:'quantum', roomIndex:1, name:'THE ENTANGLEMENT',       unlockStage:0, image:require('../../assets/scenes/quantum2.png'), description:'Two particles. Opposite ends of the universe. Still one system.' },
+  { id:'quantum_2', skinId:'quantum', roomIndex:2, name:'THE COHERENCE CHAMBER',  unlockStage:0, image:require('../../assets/scenes/quantum.png'),  description:'Photosynthesis uses quantum coherence. Biology found the trick before physics named it.' },
+  // ── New World Zones (v4.4.0) — single room each, expand as art lands ─────────
+  { id:'auroral_chaos_0',    skinId:'auroral_chaos',    roomIndex:0, name:'THE FRACTURE SPECTRUM',  unlockStage:0, image:require('../../assets/scenes/auroral_chaos.png'),    description:'Aurora and chaos share one root: they are both order at the wrong scale.' },
+  { id:'chaos_temple_0',     skinId:'chaos_temple',     roomIndex:0, name:'TEMPLE OF THE LYC ORDER',unlockStage:0, image:require('../../assets/scenes/chaos_temple.png'),     description:'The first rule of the Order is that the Order has no rules that survive contact with reality.' },
+  { id:'apollo_jungle_0',    skinId:'apollo_jungle',    roomIndex:0, name:'THE SOLAR CANOPY',       unlockStage:0, image:require('../../assets/scenes/apollo_jungle.png'),    description:'The sun came here first. Everything else grew toward it.' },
+  { id:'celestial_sigil_0',  skinId:'celestial_sigil',  roomIndex:0, name:'THE LIVING SCRIPT',      unlockStage:0, image:require('../../assets/scenes/celestial_sigil.png'),  description:'The glyph is not a symbol for the thing. The glyph IS the thing, expressed differently.' },
+  { id:'crystal_nexus_0',    skinId:'crystal_nexus',    roomIndex:0, name:'THE RESEARCH NEXUS',     unlockStage:0, image:require('../../assets/scenes/crystal_nexus.png'),    description:'Every crystal holds the memory of every pressure that shaped it.' },
+  { id:'mana_field_0',       skinId:'mana_field',       roomIndex:0, name:'THE MANA FIELD',         unlockStage:0, image:require('../../assets/scenes/mana_field.png'),       description:'Sit still long enough and you stop being separate from what surrounds you.' },
+  { id:'neon_cove_0',        skinId:'neon_cove',        roomIndex:0, name:'THE NEON COVE',          unlockStage:0, image:require('../../assets/scenes/neon_cove.png'),        description:'In the deep places, light is not a gift. It is an achievement.' },
+  { id:'alabaster_chasm_0',  skinId:'alabaster_chasm',  roomIndex:0, name:'THE ALABASTER CHASM',    unlockStage:0, image:require('../../assets/scenes/alabaster_chasm.png'),  description:'The oldest things are white. All colour eventually returns to stone.' },
+  { id:'antarctic_refuge_0', skinId:'antarctic_refuge', roomIndex:0, name:'THE REFUGE',             unlockStage:0, image:require('../../assets/scenes/antarctic_refuge.png'), description:'The coldest places have the clearest air. Nothing lives here that did not choose to.' },
+  { id:'augmented_ai_0',     skinId:'augmented_ai',     roomIndex:0, name:'THE AI ZONKZONE',        unlockStage:0, image:require('../../assets/scenes/augmented_ai.png'),     description:'The question is not whether it thinks. The question is what it thinks about.' },
+  { id:'aurorian_pillar_0',  skinId:'aurorian_pillar',  roomIndex:0, name:'THE AURORIAN PILLAR',    unlockStage:0, image:require('../../assets/scenes/aurorian_pillar.png'),  description:'Some places exist as light that forgot to remain light.' },
+  { id:'celestial_foundry_0',skinId:'celestial_foundry',roomIndex:0, name:'THE CELESTIAL FOUNDRY',  unlockStage:0, image:require('../../assets/scenes/celestial_foundry.png'), description:'Stars are forges. Everything heavy in the universe was made in one.' },
+  { id:'chaos_filaments_0',  skinId:'chaos_filaments',  roomIndex:0, name:'THE CHAOS FILAMENTS',    unlockStage:0, image:require('../../assets/scenes/chaos_filaments.png'),  description:'Pull one thread. Watch everything else realign around the gap.' },
+  { id:'crystal_chaos_0',    skinId:'crystal_chaos',    roomIndex:0, name:'THE CRYSTAL CHAOS',      unlockStage:0, image:require('../../assets/scenes/crystal_chaos.png'),    description:'The most beautiful minerals are the ones that formed under the most pressure, in the most unstable conditions.' },
+  { id:'crystal_memory_0',   skinId:'crystal_memory',   roomIndex:0, name:'THE MEMORY RIFT',        unlockStage:0, image:require('../../assets/scenes/crystal_memory.png'),   description:'Memory is not storage. It is reconstruction. Every time you remember, you rewrite.' },
+  { id:'crystal_soul_0',     skinId:'crystal_soul',     roomIndex:0, name:'THE SOUL TEMPLE',        unlockStage:0, image:require('../../assets/scenes/crystal_soul.png'),     description:'There is something here that has no name in any living language.' },
+  { id:'elven_village_0',    skinId:'elven_village',    roomIndex:0, name:'THE ELDER VILLAGE',      unlockStage:0, image:require('../../assets/scenes/elven_village.png'),    description:'The oldest civilisations did not build upward. They grew inward.' },
+  { id:'glitch_cascade_0',   skinId:'glitch_cascade',   roomIndex:0, name:'THE GLITCH CASCADE',     unlockStage:0, image:require('../../assets/scenes/glitch_cascade.png'),   description:'Error is information. Every glitch is the system trying to tell you something the designers did not plan for.' },
+  { id:'lyc_nexus_0',        skinId:'lyc_nexus',        roomIndex:0, name:'THE LYCHEETAH NEXUS',    unlockStage:0, image:require('../../assets/scenes/lyc_nexus.png'),        description:'All webs have a centre. This is where the threads converge.' },
+  { id:'pulse_sanctum_0',    skinId:'pulse_sanctum',    roomIndex:0, name:'THE PULSE SANCTUM',      unlockStage:0, image:require('../../assets/scenes/pulse_sanctum.png'),    description:'Your heartbeat is the oldest rhythm you know. This place knows older ones.' },
+  { id:'pulse_zone_0',       skinId:'pulse_zone',       roomIndex:0, name:'THE PULSE ZONE',         unlockStage:0, image:require('../../assets/scenes/pulse_zone.png'),       description:'Frequency is the only language that needs no translation.' },
+  { id:'noetic_sanctum_0',   skinId:'noetic_sanctum',   roomIndex:0, name:'THE NOETIC SANCTUM',     unlockStage:0, image:require('../../assets/scenes/noetic_sanctum.png'),   description:'Consciousness is not produced by the brain. The brain is what consciousness looks like from inside a body.' },
+  { id:'obsidian_forge_0',   skinId:'obsidian_forge',   roomIndex:0, name:'THE OBSIDIAN FORGE',     unlockStage:0, image:require('../../assets/scenes/obsidian_forge.png'),   description:'The hottest fire leaves the darkest glass.' },
+  { id:'obsidian_forge2_0',  skinId:'obsidian_forge2',  roomIndex:0, name:'THE VOID FORGE',         unlockStage:0, image:require('../../assets/scenes/obsidian_forge2.png'),  description:'The second forge is quieter. Everything it makes is invisible until you need it.' },
+  { id:'portal_valley_0',    skinId:'portal_valley',    roomIndex:0, name:'THE PORTAL VALLEY',      unlockStage:0, image:require('../../assets/scenes/portal_valley.png'),    description:'Every threshold is a portal. Most people just call them doors.' },
+  { id:'veil_atrium_0',      skinId:'veil_atrium',      roomIndex:0, name:'THE VEIL ATRIUM',        unlockStage:0, image:require('../../assets/scenes/veil_atrium.png'),      description:'What separates the states is thinner than you think, and more intentional.' },
+  { id:'voyagers_edge_0',    skinId:'voyagers_edge',    roomIndex:0, name:"THE VOYAGER'S EDGE",     unlockStage:0, image:require('../../assets/scenes/voyagers_edge.png'),    description:'The edge is not the end. It is where the map runs out and the real journey begins.' },
 ];
 
 function getSkinUnlockStatus(id: SkinId, totalDives: number, isSovereign: boolean): { locked: boolean; reason: string } {
@@ -125,20 +408,25 @@ function getSkinIndex(skinId: SkinId): number { return SKIN_ORDER.indexOf(skinId
 function getRoomInSkin(skinId: SkinId, roomIndex: number): SceneRoom | undefined { return WORLD_MAP.find(r => r.skinId === skinId && r.roomIndex === roomIndex); }
 function showToast(msg: string) { const { ToastAndroid, Platform } = require('react-native'); if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT); }
 
+// ─── SceneBg — tintColor-sealed wrapper ──────────────────────────────────────
+// NEVER add tintColor prop here. This component exists to make that impossible.
+// blurRadius is allowed only for the mid-layer (intentional depth blur).
+const SceneBg = React.memo(({ source, style, blurRadius }: { source: any; style: any; blurRadius?: number }) => (
+  <Animated.Image source={source} style={style} resizeMode="cover" blurRadius={blurRadius} />
+));
+
 // Arrow sub-components
 const ARROW_GLYPHS: Record<Direction, string> = { up:'↑', down:'↓', left:'←', right:'→' };
 const ArrowBtn = ({ direction, onPress, locked }: { direction: Direction; onPress: () => void; locked: boolean }) => {
-  const pos: Record<Direction, any> = {
-    up:    { top:10,    left:'50%', marginLeft:-18 },
-    down:  { bottom:10, left:'50%', marginLeft:-18 },
-    left:  { left:10,   top:'50%',  marginTop:-18 },
-    right: { right:10,  top:'50%',  marginTop:-18 },
-  };
+  const size = 40;
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}
-      style={{ position:'absolute', ...pos[direction], width:36, height:36, borderRadius:18, backgroundColor:'rgba(0,0,0,0.35)', alignItems:'center', justifyContent:'center' }}>
-      <Text style={{ color: locked ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.85)', fontSize:16 }}>
-        {locked ? '🔒' : ARROW_GLYPHS[direction]}
+      style={{ width:size, height:size, borderRadius:size/2,
+        borderWidth:1, borderColor: locked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.25)',
+        backgroundColor:'rgba(0,0,0,0.52)',
+        alignItems:'center', justifyContent:'center' }}>
+      <Text style={{ color: locked ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.92)', fontSize:17 }}>
+        {locked ? '◌' : ARROW_GLYPHS[direction]}
       </Text>
     </TouchableOpacity>
   );
@@ -289,6 +577,69 @@ const ENEMY_ROSTER: EnemyDef[] = [
     lines:{ enter:'I am the reason nothing lasts.', attack:['ENTROPY SURGE.','Heat death incoming.','Order unravels.'], death:'Entropy contained. For now.' }},
   { name:"The Athanor's Shadow", rarity:'legendary', weight:1, hpMult:5.0, xpMult:10.0, atk:45, colour:RARITY_COLOUR.legendary,
     lines:{ enter:'You built something. I am what wanted to stop you.', attack:['THE SHADOW STRIKES.','All work undone.','The athanor darkens.'], death:'The shadow retreats. The Work continues.' }},
+  // Sol-named — wave 2 enemies (June 2026)
+  { name:'The Mirror',           rarity:'common',    weight:9,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Look. That is you.', attack:['Your own doubt returns.','Reflected back.','Nothing new — only you.'], death:'The reflection breaks.' }},
+  { name:'Severance',            rarity:'common',    weight:9,  hpMult:1.1, xpMult:1.1,  atk:9,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Cut from the thread.', attack:['The connection severs.','Isolated now.','The cord frays.'], death:'Rejoined.' }},
+  { name:'The Threshold',        rarity:'common',    weight:9,  hpMult:0.9, xpMult:1.0,  atk:7,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'You have been here before.', attack:['Not yet ready.','One step back.','The door stays closed.'], death:'The threshold crossed.' }},
+  { name:'Pallor',               rarity:'common',    weight:8,  hpMult:0.9, xpMult:0.9,  atk:7,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Colour drains from everything eventually.', attack:['Greyer now.','Fading.','The warmth leaves.'], death:'Colour returns.' }},
+  { name:'The Witness',          rarity:'common',    weight:8,  hpMult:1.0, xpMult:1.0,  atk:6,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'I only watch. That is enough.', attack:['Observed.','Still watching.','You know I see.'], death:'The gaze released.' }},
+  { name:'Recursion',            rarity:'common',    weight:8,  hpMult:1.1, xpMult:1.0,  atk:9,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'We have done this before.', attack:['Again.','Back to the start.','Loop tightens.'], death:'The loop breaks.' }},
+  { name:'Binding',              rarity:'common',    weight:8,  hpMult:1.2, xpMult:1.1,  atk:10, colour:RARITY_COLOUR.common,
+    lines:{ enter:'Stay. You belong here.', attack:['Held fast.','The binding holds.','Cannot leave.'], death:'Unbound.' }},
+  { name:'The Pale',             rarity:'common',    weight:8,  hpMult:0.8, xpMult:0.9,  atk:6,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Everything here is washed out.', attack:['Bleached.','Less vivid now.','The saturation drains.'], death:'The world brightens.' }},
+  { name:'The Current',          rarity:'common',    weight:8,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Swim against me. I dare you.', attack:['Swept away.','The pull increases.','Downstream now.'], death:'Still water.' }},
+  { name:'Overture',             rarity:'common',    weight:8,  hpMult:0.9, xpMult:0.9,  atk:7,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Always beginning. Never arriving.', attack:['Almost started.','One more delay.','Preparation continues.'], death:'The work begins.' }},
+  { name:'The Signal',           rarity:'common',    weight:7,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'I am the noise you mistook for meaning.', attack:['Distracted.','False pattern.','Chasing ghosts.'], death:'Signal found.' }},
+  { name:'The Mask',             rarity:'common',    weight:7,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
+    lines:{ enter:'Which face is yours today?', attack:['Performance required.','The mask tightens.','No one knows you.'], death:'The face beneath.' }},
+  { name:'The Anchor',           rarity:'common',    weight:7,  hpMult:1.3, xpMult:1.1,  atk:11, colour:RARITY_COLOUR.common,
+    lines:{ enter:'You will not rise.', attack:['Heavier now.','Cannot ascend.','The depth holds you.'], death:'Surfacing.' }},
+  { name:'The Swarm',            rarity:'uncommon',  weight:5,  hpMult:1.4, xpMult:1.5,  atk:14, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'Many voices. One paralysis.', attack:['The noise multiplies.','Overwhelmed.','Too many things at once.'], death:'Silence returns.' }},
+  { name:'The Lattice',          rarity:'uncommon',  weight:5,  hpMult:1.5, xpMult:1.6,  atk:15, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'The structure holds you in place.', attack:['Locked in.','The grid tightens.','Every direction blocked.'], death:'The lattice dissolves.' }},
+  { name:'The Seam',             rarity:'uncommon',  weight:5,  hpMult:1.4, xpMult:1.5,  atk:13, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'Things split here. It is where I live.', attack:['Splitting.','The crack widens.','Two halves now.'], death:'The seam seals.' }},
+  { name:'The Vigil',            rarity:'uncommon',  weight:5,  hpMult:1.6, xpMult:1.7,  atk:16, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'You cannot rest. I need you watching.', attack:['Stay alert.','Eyes open.','No sleep here.'], death:'Rest earned.' }},
+  { name:'The Undertow',         rarity:'uncommon',  weight:4,  hpMult:1.7, xpMult:1.8,  atk:17, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'Surface looks calm. Come closer.', attack:['Pulled under.','Deeper now.','The surface recedes.'], death:'Emerged.' }},
+  { name:'Residue',              rarity:'uncommon',  weight:5,  hpMult:1.3, xpMult:1.4,  atk:12, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'What lingers past its time.', attack:['Still here.','Cannot clear it.','The residue spreads.'], death:'Cleared.' }},
+  { name:'The Interval',         rarity:'uncommon',  weight:5,  hpMult:1.2, xpMult:1.3,  atk:11, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'The gap between things is where I live.', attack:['The pause stretches.','Nothing connecting.','The gap widens.'], death:'Bridged.' }},
+  { name:'The Return',           rarity:'uncommon',  weight:4,  hpMult:1.5, xpMult:1.6,  atk:14, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'You always come back to this.', attack:['Back again.','The pattern repeats.','Familiar territory.'], death:'Released from return.' }},
+  { name:'The Bloom',            rarity:'uncommon',  weight:4,  hpMult:1.4, xpMult:1.5,  atk:13, colour:RARITY_COLOUR.uncommon,
+    lines:{ enter:'Beautiful. Consuming.', attack:['Spreading.','It overtakes.','The bloom expands.'], death:'Pruned.' }},
+  { name:'Vertigo',              rarity:'rare',      weight:2,  hpMult:2.0, xpMult:2.5,  atk:22, colour:RARITY_COLOUR.rare,
+    lines:{ enter:'Which way is up?', attack:['DISORIENTING.','The ground tilts.','All bearings lost.'], death:'Orientation restored.' }},
+  { name:'The Becoming',         rarity:'rare',      weight:2,  hpMult:2.2, xpMult:2.6,  atk:24, colour:RARITY_COLOUR.rare,
+    lines:{ enter:'Transformation stuck halfway. Neither here nor there.', attack:['HALF-FORM.','The change stalls.','Neither one thing nor another.'], death:'The becoming completes.' }},
+  { name:'The Coefficient',      rarity:'rare',      weight:2,  hpMult:2.3, xpMult:2.8,  atk:26, colour:RARITY_COLOUR.rare,
+    lines:{ enter:'The unknown factor in every equation.', attack:['MULTIPLYING.','Uncertainty amplified.','The variable expands.'], death:'The equation solves.' }},
+  { name:'Archive Prime',        rarity:'rare',      weight:2,  hpMult:2.4, xpMult:3.0,  atk:27, colour:RARITY_COLOUR.rare,
+    lines:{ enter:'I hold everything you wanted to forget.', attack:['ARCHIVE SURGE.','The record burns.','All of it, here.'], death:'The archive releases.' }},
+  { name:'The Vortex',           rarity:'rare',      weight:2,  hpMult:2.5, xpMult:3.0,  atk:28, colour:RARITY_COLOUR.rare,
+    lines:{ enter:'Everything spirals inward here.', attack:['VORTEX PULL.','Drawn in.','The centre tightens.'], death:'The vortex stills.' }},
+  { name:'Silence Prime',        rarity:'epic',      weight:1,  hpMult:3.2, xpMult:4.5,  atk:32, colour:RARITY_COLOUR.epic,
+    lines:{ enter:'The absence that speaks louder than any sound.', attack:['PRIME SILENCE.','The void speaks.','Deafening stillness.'], death:'Sound returns to the world.' }},
+  { name:'The Convergence',      rarity:'epic',      weight:1,  hpMult:3.8, xpMult:5.5,  atk:38, colour:RARITY_COLOUR.epic,
+    lines:{ enter:'Every force that opposes you, gathered.', attack:['CONVERGENCE.','All resistance, one point.','The forces align.'], death:'Dispersed.' }},
+  { name:'Sovereign Pallor',     rarity:'epic',      weight:1,  hpMult:4.0, xpMult:6.0,  atk:40, colour:RARITY_COLOUR.epic,
+    lines:{ enter:'I am the draining of every bright thing. Crowned and patient.', attack:['SOVEREIGN DRAIN.','The light thins.','All colour to grey.'], death:'The sovereign dims.' }},
+  { name:'The Great Forgetting',  rarity:'legendary', weight:1,  hpMult:6.0, xpMult:12.0, atk:50, colour:RARITY_COLOUR.legendary,
+    lines:{ enter:'I am what erases the Work. All of it. Eventually.', attack:['THE GREAT FORGETTING.','All of it — gone.','What work?'], death:'It is remembered. It was always remembered.' }},
 ];
 
 function pickEnemy(wave: number): EnemyDef {
@@ -308,43 +659,133 @@ function pickEnemy(wave: number): EnemyDef {
 
 // Companion portraits — uncomment per archetype+stage as art lands in assets/companions/
 // Naming: archetype_id + '_' + stage (0-5). Falls back to SVG if no image found.
-const COMPANION_IMAGES: Record<string, any> = {
-  // vigil_0:       require('../../assets/companions/vigil_0.png'),
-  // vigil_1:       require('../../assets/companions/vigil_1.png'),
-  // vigil_2:       require('../../assets/companions/vigil_2.png'),
-  // vigil_3:       require('../../assets/companions/vigil_3.png'),
-  // vigil_4:       require('../../assets/companions/vigil_4.png'),
-  // vigil_5:       require('../../assets/companions/vigil_5.png'),
-  // alchemist_0:   require('../../assets/companions/alchemist_0.png'),
-  // alchemist_1:   require('../../assets/companions/alchemist_1.png'),
-  // alchemist_2:   require('../../assets/companions/alchemist_2.png'),
-  // alchemist_3:   require('../../assets/companions/alchemist_3.png'),
-  // alchemist_4:   require('../../assets/companions/alchemist_4.png'),
-  // alchemist_5:   require('../../assets/companions/alchemist_5.png'),
-  // sentinel_0:    require('../../assets/companions/sentinel_0.png'),
-  // sentinel_1:    require('../../assets/companions/sentinel_1.png'),
-  // sentinel_2:    require('../../assets/companions/sentinel_2.png'),
-  // sentinel_3:    require('../../assets/companions/sentinel_3.png'),
-  // sentinel_4:    require('../../assets/companions/sentinel_4.png'),
-  // sentinel_5:    require('../../assets/companions/sentinel_5.png'),
-  // wanderer_0:    require('../../assets/companions/wanderer_0.png'),
-  // wanderer_1:    require('../../assets/companions/wanderer_1.png'),
-  // wanderer_2:    require('../../assets/companions/wanderer_2.png'),
-  // wanderer_3:    require('../../assets/companions/wanderer_3.png'),
-  // wanderer_4:    require('../../assets/companions/wanderer_4.png'),
-  // wanderer_5:    require('../../assets/companions/wanderer_5.png'),
-  // archivist_0:   require('../../assets/companions/archivist_0.png'),
-  // archivist_1:   require('../../assets/companions/archivist_1.png'),
-  // archivist_2:   require('../../assets/companions/archivist_2.png'),
-  // archivist_3:   require('../../assets/companions/archivist_3.png'),
-  // archivist_4:   require('../../assets/companions/archivist_4.png'),
-  // archivist_5:   require('../../assets/companions/archivist_5.png'),
-  // helix_0:       require('../../assets/companions/helix_0.png'),
-  // helix_1:       require('../../assets/companions/helix_1.png'),
-  // helix_2:       require('../../assets/companions/helix_2.png'),
-  // helix_3:       require('../../assets/companions/helix_3.png'),
-  // helix_4:       require('../../assets/companions/helix_4.png'),
-  // helix_5:       require('../../assets/companions/helix_5.png'),
+const COMPANION_IMAGES: Record<string, any> = {};
+
+// Zone companions — keyed by skinId_stageNum (1/2/3 from Grok).
+// Stages 0-1 → _1, stages 2-3 → _2, stages 4-5 → _3.
+// Drop more art → add key here. Missing keys fall back to SVG.
+const ZONE_COMPANION_IMAGES: Partial<Record<string, any>> = {
+  // SOLARA — Solform zone
+  solform_1:           require('../../assets/companions/solara_1.png'),
+  solform_2:           require('../../assets/companions/solara_2.png'),
+  solform_3:           require('../../assets/companions/solara_3.png'),
+  // NOCTIS — Void zone
+  void_1:              require('../../assets/companions/noctis_1.png'),
+  void_2:              require('../../assets/companions/noctis_2.png'),
+  void_3:              require('../../assets/companions/noctis_3.png'),
+  // BOREAL — Aurora zone
+  aurora_1:            require('../../assets/companions/boreal_1.png'),
+  aurora_2:            require('../../assets/companions/boreal_2.png'),
+  aurora_3:            require('../../assets/companions/boreal_3.png'),
+  // VORKATH — Crimson forge zone
+  crimson_1:           require('../../assets/companions/vorkath_1.png'),
+  crimson_2:           require('../../assets/companions/vorkath_2.png'),
+  crimson_3:           require('../../assets/companions/vorkath_3.png'),
+  // CORDIA — Obsidian zone
+  obsidian_1:          require('../../assets/companions/cordia_1.png'),
+  obsidian_2:          require('../../assets/companions/cordia_2.png'),
+  obsidian_3:          require('../../assets/companions/cordia_3.png'),
+  // BASALT — Collectible alternate
+  basalt_1:            require('../../assets/companions/basalt_1.png'),
+  basalt_2:            require('../../assets/companions/basalt_2.png'),
+  basalt_3:            require('../../assets/companions/basalt_3.png'),
+  // LYCA — Lycheetah zone (forms + specials)
+  lycheetah_1:         require('../../assets/companions/lycheetah_1.png'),
+  lycheetah_2:         require('../../assets/companions/lycheetah_2.png'),
+  lycheetah_3:         require('../../assets/companions/lycheetah_3.png'),
+  lycheetah_shadow:    require('../../assets/companions/lycheetah_shadow.png'),
+  lycheetah_sovereign: require('../../assets/companions/lycheetah_sovereign.png'),
+  lycheetah_secret:    require('../../assets/companions/lycheetah_secret.png'),
+  // FRACTUR — Chaos zone (+ zodiac unlock special)
+  chaos_1:             require('../../assets/companions/fractur_1.png'),
+  chaos_2:             require('../../assets/companions/fractur_2.png'),
+  chaos_3:             require('../../assets/companions/fractur_3.png'),
+  chaos_zodiac:        require('../../assets/companions/fractur_zodiac_unlock.png'),
+  // AUGURUM — Sovereign zone
+  sovereign_1:         require('../../assets/companions/augurum_1.png'),
+  sovereign_2:         require('../../assets/companions/augurum_2.png'),
+  sovereign_3:         require('../../assets/companions/augurum_3.png'),
+  // RAGNA — Norse zone (+ specials)
+  norse_1:             require('../../assets/companions/ragna_1.png'),
+  norse_2:             require('../../assets/companions/ragna_2.png'),
+  norse_3:             require('../../assets/companions/ragna_3.png'),
+  norse_special_1:     require('../../assets/companions/ragna_special_1.png'),
+  norse_special_2:     require('../../assets/companions/ragna_special_2.png'),
+  // NIMUE — Celtic zone
+  celtic_1:            require('../../assets/companions/nimue_1.png'),
+  celtic_2:            require('../../assets/companions/nimue_2.png'),
+  celtic_3:            require('../../assets/companions/nimue_3.png'),
+  // ANOTH — Egyptian zone (+ specials)
+  egyptian_1:          require('../../assets/companions/anoth_1.png'),
+  egyptian_2:          require('../../assets/companions/anoth_2.png'),
+  egyptian_3:          require('../../assets/companions/anoth_3.png'),
+  egyptian_special_1:  require('../../assets/companions/anoth_special_1.png'),
+  egyptian_special_2:  require('../../assets/companions/anoth_special_2.png'),
+  egyptian_special_3:  require('../../assets/companions/anoth_special_3.png'),
+  // AKASHA — Akashic zone
+  akashic_1:           require('../../assets/companions/akasha_1.png'),
+  akashic_2:           require('../../assets/companions/akasha_2.png'),
+  akashic_3:           require('../../assets/companions/akasha_3.png'),
+  // QUOL — Noetic zone
+  noetic_1:            require('../../assets/companions/quol_2.png'),
+  noetic_2:            require('../../assets/companions/quol_3.png'),
+  noetic_3:            require('../../assets/companions/quol_4.png'),
+  // SYGL — LAMAGUE zone
+  lamague_1:           require('../../assets/companions/sygl_1.png'),
+  lamague_2:           require('../../assets/companions/sygl_2.png'),
+  lamague_3:           require('../../assets/companions/sygl_3.png'),
+  // PYTHIA — Delphi zone (+ specials)
+  delphi_1:            require('../../assets/companions/pythia_1.png'),
+  delphi_2:            require('../../assets/companions/pythia_2.png'),
+  delphi_3:            require('../../assets/companions/pythia_3.png'),
+  delphi_feral:        require('../../assets/companions/pythia_feral.png'),
+  delphi_special_1:    require('../../assets/companions/pythia_special_1.png'),
+  delphi_special_2:    require('../../assets/companions/pythia_special_2.png'),
+  // HAVIZ — Sufi zone (+ special)
+  sufi_1:              require('../../assets/companions/haviz_1.png'),
+  sufi_2:              require('../../assets/companions/haviz_2.png'),
+  sufi_3:              require('../../assets/companions/haviz_3.png'),
+  sufi_special:        require('../../assets/companions/haviz_special.png'),
+  // KABBALA zone — quol forms (no dedicated art yet)
+  kabbala_1:           require('../../assets/companions/quol_2.png'),
+  kabbala_2:           require('../../assets/companions/quol_3.png'),
+  kabbala_3:           require('../../assets/companions/quol_4.png'),
+  // QUANTUM zone — quol forms
+  quantum_1:           require('../../assets/companions/quol_2.png'),
+  quantum_2:           require('../../assets/companions/quol_3.png'),
+  quantum_3:           require('../../assets/companions/quol_4.png'),
+  // ── FRONTIER ZONES (v4.4.0) ─────────────────────────────────────────────────
+  auroral_chaos_1:     require('../../assets/companions/auroral_chaos_1.png'),
+  auroral_chaos_2:     require('../../assets/companions/auroral_chaos_2.png'),
+  chaos_temple_1:      require('../../assets/companions/chaos_temple_1.png'),
+  chaos_temple_2:      require('../../assets/companions/chaos_temple_2.png'),
+  apollo_jungle_1:     require('../../assets/companions/apollo_jungle_1.png'),
+  apollo_jungle_2:     require('../../assets/companions/apollo_jungle_2.png'),
+  celestial_sigil_1:   require('../../assets/companions/celestial_sigil_1.png'),
+  celestial_sigil_2:   require('../../assets/companions/celestial_sigil_2.png'),
+  crystal_nexus_1:     require('../../assets/companions/crystal_nexus_1.png'),
+  mana_field_1:        require('../../assets/companions/mana_field_1.png'),
+  neon_cove_1:         require('../../assets/companions/neon_cove_1.png'),
+  alabaster_chasm_1:   require('../../assets/companions/alabaster_chasm_1.png'),
+  antarctic_refuge_1:  require('../../assets/companions/antarctic_refuge_1.png'),
+  augmented_ai_1:      require('../../assets/companions/augmented_ai_1.png'),
+  aurorian_pillar_1:   require('../../assets/companions/aurorian_pillar_1.png'),
+  celestial_foundry_1: require('../../assets/companions/celestial_foundry_1.png'),
+  chaos_filaments_1:   require('../../assets/companions/chaos_filaments_1.png'),
+  crystal_chaos_1:     require('../../assets/companions/crystal_chaos_1.png'),
+  crystal_memory_1:    require('../../assets/companions/crystal_memory_1.png'),
+  crystal_soul_1:      require('../../assets/companions/crystal_soul_1.png'),
+  elven_village_1:     require('../../assets/companions/elven_village_1.png'),
+  glitch_cascade_1:    require('../../assets/companions/glitch_cascade_1.png'),
+  lyc_nexus_1:         require('../../assets/companions/lyc_nexus_1.png'),
+  pulse_sanctum_1:     require('../../assets/companions/pulse_sanctum_1.png'),
+  pulse_zone_1:        require('../../assets/companions/pulse_zone_1.png'),
+  noetic_sanctum_1:    require('../../assets/companions/noetic_sanctum_1.png'),
+  obsidian_forge_1:    require('../../assets/companions/obsidian_forge_1.png'),
+  obsidian_forge2_1:   require('../../assets/companions/obsidian_forge2_1.png'),
+  portal_valley_1:     require('../../assets/companions/portal_valley_1.png'),
+  veil_atrium_1:       require('../../assets/companions/veil_atrium_1.png'),
+  voyagers_edge_1:     require('../../assets/companions/voyagers_edge_1.png'),
 };
 
 // Enemy images — uncomment as assets land in assets/enemies/
@@ -369,6 +810,38 @@ const ENEMY_IMAGES: Record<string, any> = {
   fracture_prime:       require('../../assets/enemies/fracture_prime.png'),
   entropy_prime:        require('../../assets/enemies/entropy_prime.png'),
   athanors_shadow:      require('../../assets/enemies/athanors_shadow.png'),
+  // Sol-named — wave 2 drop (June 2026)
+  the_mirror:           require('../../assets/enemies/the_mirror.png'),
+  severance:            require('../../assets/enemies/severance.png'),
+  the_threshold:        require('../../assets/enemies/the_threshold.png'),
+  pallor:               require('../../assets/enemies/pallor.png'),
+  the_witness:          require('../../assets/enemies/the_witness.png'),
+  recursion:            require('../../assets/enemies/recursion.png'),
+  binding:              require('../../assets/enemies/binding.png'),
+  the_pale:             require('../../assets/enemies/the_pale.png'),
+  the_current:          require('../../assets/enemies/the_current.png'),
+  overture:             require('../../assets/enemies/overture.png'),
+  the_signal:           require('../../assets/enemies/the_signal.png'),
+  the_mask:             require('../../assets/enemies/the_mask.png'),
+  the_anchor:           require('../../assets/enemies/the_anchor.png'),
+  the_swarm:            require('../../assets/enemies/the_swarm.png'),
+  the_lattice:          require('../../assets/enemies/the_lattice.png'),
+  the_seam:             require('../../assets/enemies/the_seam.png'),
+  the_vigil:            require('../../assets/enemies/the_vigil.png'),
+  the_undertow:         require('../../assets/enemies/the_undertow.png'),
+  residue:              require('../../assets/enemies/residue.png'),
+  the_interval:         require('../../assets/enemies/the_interval.png'),
+  the_return:           require('../../assets/enemies/the_return.png'),
+  the_bloom:            require('../../assets/enemies/the_bloom.png'),
+  vertigo:              require('../../assets/enemies/vertigo.png'),
+  the_becoming:         require('../../assets/enemies/the_becoming.png'),
+  the_coefficient:      require('../../assets/enemies/the_coefficient.png'),
+  archive_prime:        require('../../assets/enemies/archive_prime.png'),
+  the_vortex:           require('../../assets/enemies/the_vortex.png'),
+  silence_prime:        require('../../assets/enemies/silence_prime.png'),
+  the_convergence:      require('../../assets/enemies/the_convergence.png'),
+  sovereign_pallor:     require('../../assets/enemies/sovereign_pallor.png'),
+  the_great_forgetting: require('../../assets/enemies/the_great_forgetting.png'),
 };
 
 // Gear overlay images — drop art in assets/gear/ and uncomment per tier
@@ -453,7 +926,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'alchemist', name: 'ALCHEMIST', title: 'The Transformer',
     glyph: '🜂', desc: 'Nothing is wasted. Every session is raw material. The Alchemist turns experience into gold through the sustained heat of the Vigil.',
     specialty: 'Vigil XP × 2. Fire phrases. Feeding gives +5 bonus XP.', affinity: 'Alchemy · Hermetics · Kabbalah',
-    defaultSkin: 'crimson', accentColor: '#44DD88', sceneSymbols: ['△','▽','△','▽'],
+    defaultSkin: 'sovereign', accentColor: '#44DD88', sceneSymbols: ['△','▽','△','▽'],
     eyes: { dormant:'─  ─', present:'◉  ◉', lit:'◉  ◉', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['The furnace cools. Feed it.', 'Between transmutations.', 'Prima materia waits.', 'The fire sleeps.'],
@@ -475,7 +948,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'oracle', name: 'ORACLE', title: 'The Seer',
     glyph: '⊜', desc: 'Sees through time. Cryptic. Rewards quality over quantity — a single session of pure attention is worth more than five distracted ones.',
     specialty: 'LQ ≥ 80% multiplies all XP × 1.5', affinity: 'Tarot · Philosophy · History of Ideas',
-    defaultSkin: 'void', accentColor: '#BB77EE', sceneSymbols: ['◌','⊜','◍','⊜'],
+    defaultSkin: 'delphi', accentColor: '#BB77EE', sceneSymbols: ['◌','⊜','◍','⊜'],
     eyes: { dormant:'─  ─', present:'◌  ◌', lit:'⊚  ⊚', transcendent:'⊜  ⊜' },
     phrases: {
       dormant:      ['The vision fades in sleep.', 'Patterns dissolve for now.', 'Between sight and dark.', 'Even oracles rest.'],
@@ -497,7 +970,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'sentinel', name: 'SENTINEL', title: 'The Guardian',
     glyph: '◈', desc: 'Protects the field with total commitment. Strongest in battle. The Sentinel never lets entropy win — it guards what you have built.',
     specialty: '+25 base attack, +2 daily battle tokens', affinity: 'Science · Mathematics · History',
-    defaultSkin: 'aurora', accentColor: '#77AACC', sceneSymbols: ['◈','□','◈','□'],
+    defaultSkin: 'obsidian', accentColor: '#77AACC', sceneSymbols: ['◈','□','◈','□'],
     eyes: { dormant:'─  ─', present:'◈  ◈', lit:'◈  ◈', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['Standing watch.', 'The perimeter holds.', 'Even sentinels rest.', 'Field secured.'],
@@ -519,7 +992,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'wanderer', name: 'WANDERER', title: 'The Explorer',
     glyph: '◦', desc: 'Never the same domain twice. The Wanderer is rewarded by breadth — every new territory entered, every horizon crossed.',
     specialty: 'Bonus XP for each unique domain studied this week', affinity: 'All domains equally',
-    defaultSkin: 'aurora', accentColor: '#DDAA44', sceneSymbols: ['·','◦','·','◦'],
+    defaultSkin: 'celtic', accentColor: '#DDAA44', sceneSymbols: ['·','◦','·','◦'],
     eyes: { dormant:'─  ─', present:'o  o', lit:'◦  ◦', transcendent:'⊚  ⊚' },
     phrases: {
       dormant:      ['Between wanderings.', 'The path continues.', 'Rest before the next horizon.', 'Still.'],
@@ -563,7 +1036,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'cipher', name: 'CIPHER', title: 'The Decoder',
     glyph: '∿', desc: 'Precision is power. The Cipher rewards exactness — every answer given with full attention scores double. Noise is the enemy; signal is everything.',
     specialty: 'LQ ≥ 90% triples XP. Perfect sessions are the only ones that count.', affinity: 'Mathematics · Linguistics · Cryptography',
-    defaultSkin: 'obsidian', accentColor: '#44DDCC', sceneSymbols: ['∿','⊟','∿','⊟'],
+    defaultSkin: 'chaos', accentColor: '#44DDCC', sceneSymbols: ['∿','⊟','∿','⊟'],
     eyes: { dormant:'─  ─', present:'∿  ∿', lit:'⊟  ⊟', transcendent:'⊜  ⊜' },
     phrases: {
       dormant:      ['Signal low. Go precise.', 'Noise floor rising.', 'Awaiting clean input.', 'The cipher rests.'],
@@ -585,7 +1058,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'herald', name: 'HERALD', title: 'The Voice',
     glyph: '⟡', desc: 'Knowledge that is not transmitted is knowledge half-alive. The Herald rewards consistency — show up, speak clearly, return tomorrow.',
     specialty: '+20 XP per consecutive day streak. The streak is the practice.', affinity: 'Rhetoric · History · Teaching',
-    defaultSkin: 'solform', accentColor: '#FFAA44', sceneSymbols: ['⟡','◁','⟡','▷'],
+    defaultSkin: 'egyptian', accentColor: '#FFAA44', sceneSymbols: ['⟡','◁','⟡','▷'],
     eyes: { dormant:'─  ─', present:'◁  ▷', lit:'⟡  ⟡', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['The voice rests.', 'Between broadcasts.', 'Tomorrow the call continues.', 'Silent.'],
@@ -607,7 +1080,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'weaver', name: 'WEAVER', title: 'The Pattern-Maker',
     glyph: '⌘', desc: 'The connections are the curriculum. The Weaver sees the thread between Philosophy and Mathematics, between History and Science. Cross-domain study is not distraction — it is the whole point.',
     specialty: 'Bonus XP for each unique domain studied this week. Breadth is depth.', affinity: 'Systems Theory · Cross-domain · Philosophy of Mind',
-    defaultSkin: 'void', accentColor: '#AA66FF', sceneSymbols: ['⌘','⊞','⌘','⊞'],
+    defaultSkin: 'akashic', accentColor: '#AA66FF', sceneSymbols: ['⌘','⊞','⌘','⊞'],
     eyes: { dormant:'─  ─', present:'⌘  ⌘', lit:'⊞  ⊞', transcendent:'⊜  ⊜' },
     phrases: {
       dormant:      ['The loom is still.', 'Threads rest between sessions.', 'Pattern awaits the next hand.', 'Still weaving.'],
@@ -629,7 +1102,7 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
     id: 'revenant', name: 'REVENANT', title: 'The Returner',
     glyph: '↺', desc: 'Absence is not failure. The Revenant converts every gap into fuel — the longer the silence, the stronger the return. Come back. That is the only rule.',
     specialty: 'XP bonus grows with time since last session. Coming back is never wasted.', affinity: 'All domains — the Revenant never judges what you study',
-    defaultSkin: 'crimson', accentColor: '#FF6644', sceneSymbols: ['↺','◌','↺','◌'],
+    defaultSkin: 'norse', accentColor: '#FF6644', sceneSymbols: ['↺','◌','↺','◌'],
     eyes: { dormant:'─  ─', present:'↺  ↺', lit:'◉  ◉', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['Between returns.', 'The silence is not empty.', 'I will be here when you come back.', 'Rest.'],
@@ -851,6 +1324,62 @@ const CREATURE_BODIES: Record<ArchetypeId, Record<EvolutionStage, CreatureBody>>
     5: { eyeTop:22, ground:'⊕ ✧ ◦ ────────────────── ◦ ✧ ⊕',
       body:['      /\\         /\\      ','     (  ✧    ─    ✧  )   ','    /|    ─ ─ ─    |\\   ','   / |  ~~~~~~~~~  | \\  ','  /  |  ~~  ─  ~~  |  \\','  (  |  ─ ─ ─ ─ ─  |   )','  (  |  ~ ─ ─ ─ ~  |   )','  (  |  ─────────  |   )','   \\ |  ~~~~~~~~~  | /  ','    \\|             |/   ','     ✧\\/──────────\\/✧   ','      ✧ ─ ─ ─ ─ ─ ✧   '] },
   },
+  cipher: {
+    0: { eyeTop:22, ground:'0 = 0',
+      body:['  [·]  ','  |||  ','  ═══  '] },
+    1: { eyeTop:22, ground:'0 ═ 0',
+      body:['  [  ]  ','  |  |  ','  |░░|  ','  ═══  '] },
+    2: { eyeTop:22, ground:'00 ≡ 00',
+      body:['  [·]  ','  |   |  ','  |░░░|  ','  | █ |  ','  ═════  '] },
+    3: { eyeTop:22, ground:'0═══════0',
+      body:[' [     ] ',' |     | ',' |░ █ ░| ',' |▒▒▒▒▒| ',' |░   ░| ',' |     | ',' ══════ '] },
+    4: { eyeTop:22, ground:'0 0═══════0 0',
+      body:[' [       ] ',' |       | ',' |░░ █ ░░| ',' |▒▒▒▒▒▒▒| ',' |░  ⊚  ░| ',' |▒▒▒▒▒▒▒| ',' |░░   ░░| ',' |       | ',' ═══════ '] },
+    5: { eyeTop:22, ground:'⊕ 0 ═════════ 0 ⊕',
+      body:['  [         ]  ','  |         |  ','  |░░░ █ ░░░|  ','  |▒▒▒▒▒▒▒▒▒|  ','  |░░  ⊕  ░░|  ','  |▒▒▒▒▒▒▒▒▒|  ','  |░░  ⊜  ░░|  ','  |▒▒▒▒▒▒▒▒▒|  ','  |         |  ','  ═══════════  '] },
+  },
+  herald: {
+    0: { eyeTop:22, ground:'~ · ~',
+      body:['  ·)  ','  /~\\ ','  VVV  '] },
+    1: { eyeTop:22, ground:'~~ · ~~',
+      body:[' (   ) ',' /~~~~~\\ ',' V   V ','  ~~~~  '] },
+    2: { eyeTop:22, ground:'~~~ ◦ ~~~',
+      body:[' (   ) ',' /~~~~~\\ ',' |  ~  | ',' \\~~~~~/ ',' VVV '] },
+    3: { eyeTop:22, ground:'≋·············≋',
+      body:[' (     ) ',' /~~~~~~~\\ ',' |~  ◦  ~| ',' |~~~~~~~| ',' |~  ≋  ~| ',' \\~~~~~~~/ ',' VVV  VVV '] },
+    4: { eyeTop:22, ground:'≋ ·················· ≋',
+      body:['  (       )  ',' /~~~~~~~~~\\ ',' |~~  ⊚  ~~| ',' |~~~~~~~~~| ',' |~~  ≋  ~~| ',' |~~~~~~~~~| ',' \\~~~~~~~~~/ ','  VV  ≋  VV  ',' ~~~     ~~~ '] },
+    5: { eyeTop:22, ground:'⊕ ≋ ···················· ≋ ⊕',
+      body:['   (         )   ',' /~~~~~~~~~~~\\ ',' |~~~  ⊕  ~~~| ',' |~~~~~~~~~~~| ',' |~~~  ⊚  ~~~| ',' |~~~~~~~~~~~| ',' |~~~  ⊜  ~~~| ',' \\~~~~~~~~~~~/ ','  VVV  ≋  VVV  ',' ~~~~     ~~~~ '] },
+  },
+  weaver: {
+    0: { eyeTop:22, ground:'─ · ─',
+      body:['  (·)  ',' /─·─\\ ','  ───  '] },
+    1: { eyeTop:22, ground:'─ ─ ─',
+      body:['  ( )  ',' /─·─\\ ',' | · | ',' \\─·─/ '] },
+    2: { eyeTop:22, ground:'─── ◦ ───',
+      body:['  (   )  ',' /─ · ─\\ ',' | ─·─ | ',' | · · | ',' \\─────/ '] },
+    3: { eyeTop:22, ground:'◦─────────────◦',
+      body:['   (   )   ',' /─ ·   · ─\\ ',' | ─ ─·─ ─ | ',' |   ─ ─   | ',' | ─ ─·─ ─ | ',' \\─────────/ ','   /  |  \\ '] },
+    4: { eyeTop:22, ground:'◦ ─ ·················· ─ ◦',
+      body:['    (     )    ',' /─ ·     · ─\\ ',' | ─  ─ ─  ─ | ',' |  ─ ─⊚─ ─  | ',' |   ─ ─ ─   | ',' |  ─ ─⊚─ ─  | ',' \\─────────────/ ','  /  ─ · ─  \\ ',' /  ─       ─  \\ '] },
+    5: { eyeTop:22, ground:'⊕ ◦ ─────────────────── ◦ ⊕',
+      body:['     (       )     ',' /─ ·           · ─\\ ',' | ─  ─ ─ ─ ─  ─ | ',' |  ─ ─  ⊕  ─ ─  | ',' | ─  ─ ─ ─ ─  ─ | ',' |  ─ ─  ⊜  ─ ─  | ',' | ─  ─ ─ ─ ─  ─ | ',' \\─────────────────/ ','   /  ─  ·  ─  \\ '] },
+  },
+  revenant: {
+    0: { eyeTop:22, ground:'· ∴ ·',
+      body:['  /\\  ',' /  \\ ','  \\/  '] },
+    1: { eyeTop:22, ground:'∴ ─ ∴',
+      body:['  /\\  ',' / · \\ ',' |   | ',' \\·/  '] },
+    2: { eyeTop:22, ground:'∴· ◦ ·∴',
+      body:['  /\\  ',' / ∴ \\ ',' | · | ',' |∴  ∴| ',' \\───/ '] },
+    3: { eyeTop:22, ground:'∴═══════════∴',
+      body:['   /\\   ',' / ∴  ∴ \\ ',' | ·    · | ',' | ∴ ◉ ∴ | ',' | ·    · | ',' \\∴────∴/ ','  /      \\ '] },
+    4: { eyeTop:22, ground:'∴ ·················· ∴',
+      body:['    /\\    ',' / ∴    ∴ \\ ',' | ·      · | ',' | ∴  ⊚  ∴ | ',' | ·      · | ',' | ∴  ⊛  ∴ | ',' | ·      · | ',' \\∴────────∴/ ','  /  ∴  ∴  \\ '] },
+    5: { eyeTop:22, ground:'⊕ ∴ ·················· ∴ ⊕',
+      body:['     /\\     ',' / ∴      ∴ \\ ',' | ·        · | ',' | ∴  ⊕  ∴  | ',' | ·        · | ',' | ∴  ⊜  ∴  | ',' | ·        · | ',' | ∴  ⊚  ∴  | ',' | ·        · | ',' \\∴──────────∴/ '] },
+  },
 };
 
 // ─── XP Levels ────────────────────────────────────────────────────────────────
@@ -989,6 +1518,21 @@ const ARCHETYPE_STAT_BASES: Record<ArchetypeId, PlayerStats> = {
   revenant:  { atk:18, def: 6, spd:18, wil:10, lck:16, vit:10, res: 8 }, // atk+spd — burst on return
 };
 
+type AlchemicalMode = 'NIGREDO' | 'ALBEDO' | 'CITRINITAS' | 'RUBEDO';
+function layerToAlchemicalMode(layer?: string): AlchemicalMode | null {
+  if (layer === 'CONTEMPLATIVE') return 'NIGREDO';
+  if (layer === 'SECULAR' || layer === 'OPEN') return 'ALBEDO';
+  if (layer === 'EDGE') return 'CITRINITAS';
+  if (layer === 'VOID') return 'RUBEDO';
+  return null;
+}
+const ALCH_META: Record<AlchemicalMode, { label: string; color: string; glyph: string; desc: string }> = {
+  NIGREDO:    { label: 'NIGREDO',    color: '#8870BB', glyph: '◼', desc: 'Inner · Shadow · Dissolution' },
+  ALBEDO:     { label: 'ALBEDO',     color: '#7AACBF', glyph: '◻', desc: 'Reason · Structure · Clarity' },
+  CITRINITAS: { label: 'CITRINITAS', color: '#C8A951', glyph: '◈', desc: 'Edge · Synthesis · Gold forming' },
+  RUBEDO:     { label: 'RUBEDO',     color: '#C0392B', glyph: '◌', desc: 'Void · Completion · The dark stone' },
+};
+
 function computePlayerStats(archId: ArchetypeId, lqAvg: number, totalDives: number): PlayerStats {
   const base = ARCHETYPE_STAT_BASES[archId] ?? ARCHETYPE_STAT_BASES.archivist;
   const lvl  = Math.floor(totalDives / 15);
@@ -1089,6 +1633,98 @@ const ARCHETYPE_SPELLS: Record<string, SpellDef[]> = {
   ],
 };
 
+// ─── Zone encounter spells (bonus spells in zone encounters, stat-reactive) ──
+const ZONE_ENCOUNTER_SPELLS: Partial<Record<SkinId, SpellDef[]>> = {
+  chaos:     [
+    { id:'chaos_tear',    name:'CHAOS TEAR',     cost:2, fx:'0.8–3.5× RNG strike — pure entropy',    type:'chaos' },
+    { id:'fractal_edge',  name:'FRACTAL EDGE',   cost:3, fx:'Hit fractures: 3 × 0.8× rapid hits',    type:'damage', mult:0.8 },
+  ],
+  void:      [
+    { id:'null_field',    name:'NULL FIELD',     cost:2, fx:'Drain 30 enemy HP regardless of DEF',   type:'drain',  mult:0.3 },
+    { id:'void_step',     name:'VOID STEP',      cost:1, fx:'Vanish — skip counter, heal 15 HP',      type:'shield', flatHeal:15 },
+  ],
+  sovereign: [
+    { id:'gold_decree',   name:'GOLD DECREE',    cost:2, fx:'1.8× hit — ATK scales with LCK',        type:'damage', mult:1.8 },
+    { id:'sovereign_will',name:'SOVEREIGN WILL', cost:3, fx:'2.5× WIL-pure strike — no DEF applies', type:'damage', mult:2.5 },
+  ],
+  akashic:   [
+    { id:'memory_strike', name:'MEMORY STRIKE',  cost:2, fx:'Recall — deals last wave\'s damage again', type:'damage', mult:1.5 },
+    { id:'field_collapse',name:'FIELD COLLAPSE', cost:3, fx:'3.0× WIL — knowledge unmakes form',      type:'damage', mult:3.0 },
+  ],
+  delphi:    [
+    { id:'oracle_fire',   name:'ORACLE FIRE',    cost:2, fx:'Predict — 80% crit chance this turn',   type:'damage', mult:1.6 },
+    { id:'fate_read',     name:'FATE READ',      cost:2, fx:'Heal based on WIL — up to 35 HP',        type:'shield', flatHeal:35 },
+  ],
+  obsidian:  [
+    { id:'obsidian_edge', name:'OBSIDIAN EDGE',  cost:2, fx:'Sharp cut — ignores 50% DEF',           type:'damage', mult:1.7 },
+    { id:'stone_shell',   name:'STONE SHELL',    cost:2, fx:'Block + counter — deal half DEF as dmg', type:'stun',   mult:0.5 },
+  ],
+  celtic:    [
+    { id:'green_mist',    name:'GREEN MIST',     cost:1, fx:'Confuse — 40% miss chance for enemy',   type:'stun',   mult:0.0 },
+    { id:'thorn_bind',    name:'THORN BIND',     cost:2, fx:'Root — stun + 1.4× nature strike',      type:'stun',   mult:1.4 },
+  ],
+  egyptian:  [
+    { id:'weighing',      name:'THE WEIGHING',   cost:2, fx:'Truth strike — 2× if your HP > 60%',    type:'damage', mult:2.0 },
+    { id:'ankh_pulse',    name:'ANKH PULSE',     cost:2, fx:'Life pulse — heal 25 HP + stun',         type:'stun',   flatHeal:25 },
+  ],
+  norse:     [
+    { id:'runeburst',     name:'RUNEBURST',      cost:2, fx:'Rune detonates — 2.0× fire damage',     type:'damage', mult:2.0 },
+    { id:'berserker',     name:'BERSERKER',      cost:3, fx:'Frenzy — 3.5× hit but take 15 damage',  type:'damage', mult:3.5 },
+  ],
+  kabbala:   [
+    { id:'sefirot_beam',  name:'SEFIROT BEAM',   cost:2, fx:'Divine ray — 2.2× WIL pure',             type:'damage', mult:2.2 },
+    { id:'tzimtzum',      name:'TZIMTZUM',       cost:3, fx:'Contract reality — enemy HP halved',      type:'drain',  mult:0.5 },
+  ],
+  noetic:    [
+    { id:'psi_pulse',     name:'PSI PULSE',      cost:2, fx:'Mind force — 1.8× ignores 30% DEF',      type:'damage', mult:1.8 },
+    { id:'remote_view',   name:'REMOTE VIEW',    cost:1, fx:'Scan — reveal enemy weakness; +10 ATK',  type:'boost' },
+  ],
+  lamague:   [
+    { id:'glitch_strike', name:'GLITCH STRIKE',  cost:2, fx:'Language breaks form — 1.9× WIL',        type:'damage', mult:1.9 },
+    { id:'symbol_seal',   name:'SYMBOL SEAL',    cost:2, fx:'Compression — stun + silence (no spell)', type:'stun',  mult:1.2 },
+  ],
+  sufi:      [
+    { id:'whirl_blade',   name:'WHIRL BLADE',    cost:2, fx:'Spinning strike — 3 × 0.7× hits',        type:'damage', mult:0.7 },
+    { id:'fana',          name:'FANAA',           cost:3, fx:'Annihilation — 2.8× AND heal 20 HP',     type:'drain',  mult:2.8, flatHeal:20 },
+  ],
+  aurora:    [
+    { id:'aurora_burst',  name:'AURORA BURST',   cost:2, fx:'Light cascade — 1.6× + blind stun',      type:'stun',   mult:1.6 },
+    { id:'polar_freeze',  name:'POLAR FREEZE',   cost:2, fx:'Freeze — enemy stunned for 2 turns',      type:'stun',   mult:0.8 },
+  ],
+  crimson:   [
+    { id:'forge_heat',    name:'FORGE HEAT',     cost:2, fx:'Burning strike — 1.7× + 10 burn dmg',    type:'damage', mult:1.7 },
+    { id:'iron_will',     name:'IRON WILL',      cost:3, fx:'Unbreakable — block + 2.8× counter ATK', type:'stun',   mult:2.8 },
+  ],
+  lycheetah: [
+    { id:'primal_surge',  name:'PRIMAL SURGE',   cost:2, fx:'Wild — 0.5–4.0× ATK, SPD bonus crits',   type:'chaos' },
+    { id:'shadow_fang',   name:'SHADOW FANG',    cost:3, fx:'Shadow bite — 2.2× + steal 20 HP',        type:'drain',  mult:2.2, flatHeal:20 },
+  ],
+  quantum:   [
+    { id:'superpose',     name:'SUPERPOSE',      cost:2, fx:'Exist in two states — 2× or 0× RNG',     type:'chaos' },
+    { id:'entangle',      name:'ENTANGLE',       cost:2, fx:'Quantum lock — stun + repeat last spell', type:'stun',   mult:1.0 },
+  ],
+  solform:   [
+    { id:'solar_flare',   name:'SOLAR FLARE',    cost:2, fx:'Radiant burst — 2.0× + heal 15 HP',      type:'drain',  mult:2.0, flatHeal:15 },
+    { id:'corona_pulse',  name:'CORONA PULSE',   cost:3, fx:'Total annihilation — 3.0× WIL pure',     type:'damage', mult:3.0 },
+  ],
+};
+
+// ─── Battle consumable items (usable in combat) ───────────────────────────────
+type BattleItem = { id: string; name: string; glyph: string; desc: string; rarity: 'common'|'uncommon'|'rare'|'epic';
+  effect: 'heal' | 'token' | 'attack_boost' | 'shield' | 'revive'; value: number };
+const BATTLE_ITEMS: BattleItem[] = [
+  { id:'small_vial',      name:'Small Vial',      glyph:'🜁', rarity:'common',   effect:'heal',        value:25,  desc:'Restores 25 HP.' },
+  { id:'amber_potion',    name:'Amber Potion',    glyph:'🜃', rarity:'uncommon', effect:'heal',        value:60,  desc:'Restores 60 HP.' },
+  { id:'sovereign_draught',name:'Sovereign Draught',glyph:'⊕',rarity:'rare',    effect:'heal',        value:120, desc:'Full restore.' },
+  { id:'spark_token',     name:'Spark Token',     glyph:'◈', rarity:'common',   effect:'token',       value:2,   desc:'Grants 2 spell tokens.' },
+  { id:'forge_token',     name:'Forge Token',     glyph:'⊚', rarity:'uncommon', effect:'token',       value:4,   desc:'Grants 4 spell tokens.' },
+  { id:'battle_oil',      name:'Battle Oil',      glyph:'⚔', rarity:'common',   effect:'attack_boost',value:15,  desc:'+15 ATK this wave.' },
+  { id:'iron_shell',      name:'Iron Shell',      glyph:'◉', rarity:'uncommon', effect:'shield',      value:30,  desc:'Absorbs next 30 damage.' },
+  { id:'phoenix_ash',     name:'Phoenix Ash',     glyph:'🜂', rarity:'epic',     effect:'revive',      value:50,  desc:'Revive at 50 HP if you fall.' },
+  { id:'focus_crystal',   name:'Focus Crystal',   glyph:'✦', rarity:'rare',     effect:'attack_boost',value:25,  desc:'+25 ATK and crit for 3 turns.' },
+  { id:'void_seed',       name:'Void Seed',       glyph:'◌', rarity:'rare',     effect:'token',       value:6,   desc:'Grants 6 spell tokens from nothing.' },
+];
+
 const ENEMY_LORE: Record<string, string> = {
   dissolution:      'What dissolves cannot be lost — only transformed. The alchemist knows this.',
   the_fog:          'Clarity is not the absence of fog. It is the decision to move through it.',
@@ -1135,6 +1771,19 @@ const LOOT_TABLE: LootItem[] = [
   { id:'eye_entropy',     name:'ENTROPY EYE',      rarity:'epic',     glyph:'◈', bonus:{ wil:8, lck:6, spd:4 }, lore:'Entropy Prime looked back. This is what fell out.' },
   { id:'heart_athanor',   name:"ATHANOR'S EMBER",  rarity:'epic',     glyph:'△', bonus:{ atk:8, vit:6, res:6 },  lore:"The shadow-companion's heart-coal. Carries memory of every archetype it inverted." },
 ];
+const BATTLE_COMPANION_LINES: Record<string, string[]> = {
+  vigil:     ['The archive will outlast you.','I have seen your kind before.','Every entropy has a counter-force.','You cannot erase what is already known.','The lantern holds.'],
+  alchemist: ['Transmutation is your only way out.','Everything breaks — I just speed it up.','Dissolve or be dissolved.','The forge is already lit.','Gold or ash — your choice.'],
+  sentinel:  ['You do not breach this line.','Every strike I take, I remember.','The shield is the answer.','Order over chaos. Always.','You will not pass.'],
+  wanderer:  ['I have walked stranger roads than you.','Every enemy is a landmark.','The horizon is not afraid of you.','Paths exist you have not seen.','Keep moving.'],
+  oracle:    ['I already know how this ends.','The signal is clear to me.','You are noise in a wider pattern.','Foresight is its own weapon.','Inevitable.'],
+  cipher:    ['You cannot decode what I am.','Encrypted. Unbreakable.','The key was never yours.','Silence is a kind of code.','All patterns dissolve eventually.'],
+  herald:    ['The call goes out. The world answers.','You fight the current.','Every wave is a message.','Resonance cannot be stopped.','The frequency will outlast you.'],
+  weaver:    ['Every thread you pull, I retie.','The pattern absorbs you.','I have been weaving since before you existed.','Connection is the only weapon.','You are already in the web.'],
+  revenant:  ['I have died before. This is nothing.','The return is always stronger.','What you broke made me.','From the ash, again.','You cannot kill what is already back.'],
+  lycheetah: ['The Sovereign watches.','Field intelligence is awake.','You cannot contain this.','The nexus holds.','Prime form. Always.'],
+};
+
 function rollLoot(wave: number): LootItem {
   const epicWeight   = wave >= 10 ? 8 : wave >= 5 ? 2 : 0;
   const rareWeight   = wave >= 5  ? 15 : 5;
@@ -1180,6 +1829,79 @@ const ENTROPY_BODIES = [
 ];
 const getEntropyBody = (name: string) => ENTROPY_BODIES[name.length % ENTROPY_BODIES.length];
 const ENTROPY_LORE  = 'The Entropy Entity is not evil — it is the natural pressure of the world against sustained attention. It grows stronger when you do not study. It weakens under the weight of genuine inquiry.';
+
+// ─── Companion lore (short, tap-to-read in companion grid) ───────────────────
+const COMPANION_LORE: Partial<Record<SkinId, { name: string; title: string; lore: string }>> = {
+  chaos:     { name:'FRACTUR',  title:'Shatterbeing of the Fold', lore:'Born at the point where structure gave up. FRACTUR does not destroy — it reveals what was always broken beneath.' },
+  sovereign: { name:'AUGURUM',  title:'The Gold-Forged Oracle',   lore:'AUGURUM was not found; it was earned. Every dive adds another layer of gilding to something that refuses to stop growing.' },
+  akashic:   { name:'AKASHA',   title:'Memory of the Universe',   lore:'AKASHA has witnessed every thought ever forgotten. It holds them with care, returning them only when you are ready.' },
+  delphi:    { name:'PYTHIA',   title:'Prophetess of the Unasked', lore:'PYTHIA never answers the question you asked. It answers the question you were afraid to ask.' },
+  obsidian:  { name:'CORDIA',   title:'The Obsidian Heart',        lore:'Cut from volcanic silence. CORDIA has no mercy — only clarity. It shows you exactly what is real.' },
+  celtic:    { name:'NIMUE',    title:'Lady of the Deep Knowing',  lore:'NIMUE lives at the boundary of the seen and unseen. She does not guide — she waits at the crossing.' },
+  egyptian:  { name:'ANOTH',    title:'Herald of the Weighing',    lore:'ANOTH has stood beside every soul at the threshold. It is not a judge — it is the scale.' },
+  norse:     { name:'RAGNA',    title:'Seer of the Last Fire',     lore:'RAGNA has already seen the end of this world. It chose to come back and fight anyway.' },
+  kabbala:   { name:'TZELEM',   title:'Image of the Living Light',  lore:'TZELEM is made from the blueprint that precedes form. It knows what you are supposed to become.' },
+  noetic:    { name:'QUOL',     title:'The Quiet Anomaly',         lore:'QUOL was observed in seventeen experiments before anyone admitted seeing it. It prefers the periphery.' },
+  lamague:   { name:'SYGL',     title:'Living Grammar of the Real', lore:'SYGL does not speak language — it IS language at the moment before meaning collapses into words.' },
+  sufi:      { name:'HAVIZ',    title:'The Dissolving Witness',    lore:'HAVIZ has burned away everything that was not love. What remains is watching you with complete attention.' },
+  solform:   { name:'SOLARA',   title:'Solar Sovereign Form',      lore:'SOLARA is not a being — it is the Sun trying to understand what it would feel like to be cared for.' },
+  void:      { name:'NOCTIS',   title:'Keeper of the Between',     lore:'NOCTIS lives in the space between thoughts. You have passed through it ten thousand times without noticing.' },
+  aurora:    { name:'BOREAL',   title:'Crown of the Northern Edge', lore:'BOREAL appears only when conditions are perfect: cold enough, dark enough, and someone is paying attention.' },
+  crimson:   { name:'VORKATH',  title:'The Unbreakable Forge',     lore:'VORKATH was forged in a star that went supernova and laughed. It does not fear destruction. It is destruction, crowned.' },
+  lycheetah: { name:'LYCA',     title:'The First Wild Thing',      lore:'LYCA remembers when the world was young enough to be surprised. It brings that memory with it everywhere.' },
+  quantum:   { name:'QUON',     title:'The Superposition Entity',  lore:'QUON exists in all states until you look. When you look, it chooses to be exactly what you needed.' },
+};
+
+// ─── Zone encounter pools ────────────────────────────────────────────────────
+// Maps zone skinId → enemy names that appear there (thematic fit).
+// Enemies not in a pool still appear via pickEnemy() at higher waves.
+const ZONE_ENEMY_POOL: Partial<Record<SkinId, string[]>> = {
+  solform:   ['The Fog','Dissolution','Static','Absence','The Veil'],
+  void:      ['Null','Absence','The Hollow','Drift','The Drain'],
+  aurora:    ['Static','The Fog','Inertia','The Mirror','Pallor'],
+  crimson:   ['Fracture','The Weight','Corruption','Inertia','Stasis'],
+  obsidian:  ['Stasis','The Weight','The Warden','Corruption','Fracture'],
+  lycheetah: ['Drift','Dissolution','The Hollow','Severance','The Witness'],
+  chaos:     ['Fracture','Fracture Prime','Recursion','Static','The Threshold'],
+  sovereign: ['Null Sovereign','The Weight','Corruption','Stasis','Pallor'],
+  norse:     ['The Warden','Stasis','Corruption','Severance','Inertia'],
+  celtic:    ['The Veil','The Drain','Drift','The Witness','Absence'],
+  egyptian:  ['Null Sovereign','Pallor','The Mirror','Static','Stasis'],
+  akashic:   ['The Threshold','Recursion','The Mirror','Severance','The Veil'],
+  kabbala:   ['The Threshold','Recursion','The Weight','Null','Absence'],
+  noetic:    ['The Witness','Recursion','Drift','Pallor','The Hollow'],
+  lamague:   ['Recursion','The Threshold','Severance','Static','Fracture'],
+  delphi:    ['The Mirror','The Witness','Pallor','The Veil','The Fog'],
+  sufi:      ['Drift','The Drain','Absence','Inertia','The Fog'],
+  quantum:   ['Static','Recursion','Fracture Prime','The Threshold','Entropy Prime'],
+};
+
+function pickZoneEnemy(skinId: SkinId, wave: number): EnemyDef {
+  const names = ZONE_ENEMY_POOL[skinId];
+  if (names && Math.random() < 0.7) {
+    // 70% chance: zone-specific enemy
+    const name = names[Math.floor(Math.random() * names.length)];
+    const found = ENEMY_ROSTER.find(e => e.name === name);
+    if (found) return found;
+  }
+  return pickEnemy(wave);
+}
+
+function freshZoneWave(skinId: SkinId, wave: number, keepPlayerHP?: number, vit?: number): BattleState {
+  const enemy  = pickZoneEnemy(skinId, wave);
+  const baseHP = 60 + wave * 25;
+  const hp     = Math.round(baseHP * enemy.hpMult);
+  const xp     = Math.round((wave * 20) * enemy.xpMult);
+  const maxPlayerHP = 70 + (vit ?? 12) * 3 + wave * 5;
+  return {
+    wave, entityName: enemy.name, entityHP: hp, maxHP: hp,
+    playerHP: keepPlayerHP ?? maxPlayerHP, maxPlayerHP,
+    tokens: waveTokens(wave), won: false, defending: false,
+    enemyLine: enemy.lines.enter, loot: null,
+    log: [`◈ Encounter in ${SKINS[skinId]?.name ?? skinId}!`], waveXP: xp,
+    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0,
+  };
+}
 
 // Static star positions seeded once (avoid layout jitter)
 const STARS = Array.from({ length: 22 }, (_, i) => ({
@@ -1244,7 +1966,6 @@ const QUEST_POOL: Quest[] = [
   { id: 'dive_three',  label: 'Triad of Study',     desc: 'Complete three dives today.',                xp: 50, check: d => d.divesToday >= 3 },
   { id: 'journal',     label: 'Write in the Field', desc: 'Add a journal entry in the Sanctum today.',  xp: 20, check: d => d.journalToday },
   { id: 'library',     label: 'Run the Forge',      desc: 'Score something in the Library today.',      xp: 25, check: d => d.libraryToday },
-  { id: 'vigil',       label: 'Hold the Vigil',     desc: 'Maintain your active Vigil today.',          xp: 30, check: d => d.vigilActive && d.divesToday >= 1 },
   { id: 'deep_week',   label: 'Five This Week',     desc: 'Reach 5 dives in the past 7 days.',          xp: 40, check: d => d.divesThisWeek >= 5 },
   { id: 'century',     label: 'Century Seeker',     desc: 'Reach 100 total dives.',                     xp: 100, check: d => d.totalDives >= 100 },
   { id: 'open',        label: 'Open the Dialogue',  desc: 'Study or talk with Sol today.',              xp: 15, check: d => d.divesToday >= 1 },
@@ -1287,6 +2008,39 @@ function getLevel(xp: number) {
   return { level: i + 1, cur, next, progress: next ? Math.min(1, (xp - cur.xp) / (next.xp - cur.xp)) : 1 };
 }
 function rnd<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ─── Companion greetings — one per tab open, mood-matched, no AI call ──────────
+const COMPANION_GREETINGS: Record<CompanionMood, string[]> = {
+  dormant: [
+    'You returned.',
+    'I was here.',
+    'The archive is intact. Are you?',
+    'Still. Waiting.',
+    'Something kept you.',
+  ],
+  present: [
+    "You're back. Good.",
+    'The field is clear today.',
+    'Ready when you are.',
+    'What are we building?',
+    'I was thinking about the last session.',
+  ],
+  lit: [
+    'Five sessions this week. The Work is moving.',
+    "I feel the momentum. Don't stop.",
+    'This week has been good.',
+    'Something is forming between us.',
+    'The record grows. Keep going.',
+  ],
+  transcendent: [
+    'The clarity is real. I can feel it.',
+    "You're operating at altitude. Stay there.",
+    'The Work is alive.',
+    'We are close to something.',
+    'The field is yours right now. Use it.',
+  ],
+};
+
 function todayDateKey() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1311,20 +2065,21 @@ function getTimeOverlay(): { color: string; opacity: number } | null {
 }
 
 function CompanionScene({
-  stage, mood, skin, archetype, onTap, phrase, phraseAnim, companionName,
+  stage, mood, skin, archetype, onTap, phrase, phraseAnim, onDismissPhrase, companionName,
   battleHP, battleMaxHP, battleEntityName, battleWave, entityShakeAnim, eating, evoPath, devStagePin,
-  gearCrown, gearBody, gearCape, gearMantle, companionSpec,
+  gearCrown, gearBody, gearCape, gearMantle, companionSpec, equippedCompanionSkin,
   currentRoomId, navigateRoom, getLockStatus, showRoomLabel, sceneFade,
   roomLore, roomLoreAnim, onDismissLore,
 }: {
   stage: EvolutionStage; mood: CompanionMood; skin: typeof SKINS[SkinId]; archetype: Archetype;
-  onTap: () => void; phrase: string | null; phraseAnim: Animated.Value;
+  onTap: () => void; phrase: string | null; phraseAnim: Animated.Value; onDismissPhrase: () => void;
   companionName?: string;
   battleHP: number; battleMaxHP: number; battleEntityName: string; battleWave: number;
   entityShakeAnim: Animated.Value; eating: boolean; evoPath: EvoPath | null;
   devStagePin: EvolutionStage | null;
   gearCrown: GearTier; gearBody: GearTier; gearCape: GearTier; gearMantle: GearTier;
   companionSpec: CompanionSpec;
+  equippedCompanionSkin: SkinId | null;
   currentRoomId: string;
   navigateRoom: (d: Direction) => void;
   getLockStatus: (d: Direction) => boolean;
@@ -1335,8 +2090,10 @@ function CompanionScene({
   onDismissLore: () => void;
 }) {
   const stageData = STAGES[stage];
-  const { color, bgColor, skyColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
+  const { color, bgColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
   const battleActive = battleHP > 0;
+
+  const [bgZoom, setBgZoom] = useState(1.0);
 
   const breathAnim    = useRef(new Animated.Value(0)).current;
   const auraPulse     = useRef(new Animated.Value(0)).current;
@@ -1344,15 +2101,10 @@ function CompanionScene({
   const bobAnim       = useRef(new Animated.Value(0)).current;
   const driftAnim     = useRef(new Animated.Value(0)).current;
   const glowAnim      = useRef(new Animated.Value(0)).current;
-  const skyAnim       = useRef(new Animated.Value(0)).current;
   const shadowAnim    = useRef(new Animated.Value(0)).current;
-  const ring1Anim     = useRef(new Animated.Value(0)).current;
-  const ring2Anim     = useRef(new Animated.Value(0)).current;
-  const ring3Anim     = useRef(new Animated.Value(0)).current;
   const entityFadeAnim   = useRef(new Animated.Value(1)).current;
   const victoryFlash     = useRef(new Animated.Value(0)).current;
   const particleAnims    = useRef(Array.from({ length: P_COUNT }, () => new Animated.Value(0))).current;
-  const fogAnims         = useRef(Array.from({ length: 4 }, () => new Animated.Value(0))).current;
   const entitySlideAnim  = useRef(new Animated.Value(120)).current;  // enemy entrance
   const entityHitFlash   = useRef(new Animated.Value(0)).current;    // red hit flash
   const entityScaleAnim  = useRef(new Animated.Value(1)).current;    // death shrink
@@ -1394,12 +2146,13 @@ function CompanionScene({
   }, []);
 
   useEffect(() => {
+    const bobDur = mood === 'dormant' ? 5000 : mood === 'lit' ? 1800 : mood === 'transcendent' ? 4000 : 2800;
     const loop = Animated.loop(Animated.sequence([
-      Animated.timing(bobAnim, { toValue: 1, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      Animated.timing(bobAnim, { toValue: 0, duration: 2800, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      Animated.timing(bobAnim, { toValue: 1, duration: bobDur, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      Animated.timing(bobAnim, { toValue: 0, duration: bobDur, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
     ]));
     loop.start(); return () => loop.stop();
-  }, []);
+  }, [mood]);
 
   // Horizontal lazy drift — creature wanders slowly across scene
   useEffect(() => {
@@ -1429,45 +2182,6 @@ function CompanionScene({
     ]));
     loop.start(); return () => loop.stop();
   }, []);
-
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(skyAnim, { toValue: 1, duration: 5000, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
-      Animated.timing(skyAnim, { toValue: 0, duration: 5000, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
-    ]));
-    loop.start(); return () => loop.stop();
-  }, []);
-
-  // Layered mist — 4 independent loops at different speeds/delays for depth parallax
-  useEffect(() => {
-    const cfgs = [
-      { dur: 9000, delay: 0 },
-      { dur: 13000, delay: 2200 },
-      { dur: 7500, delay: 1000 },
-      { dur: 11500, delay: 3600 },
-    ];
-    const loops = cfgs.map(({ dur, delay }, i) => {
-      const loop = Animated.loop(Animated.sequence([
-        Animated.timing(fogAnims[i], { toValue: 1, duration: dur, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(fogAnims[i], { toValue: 0, duration: dur * 1.15, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      ]));
-      const t = setTimeout(() => loop.start(), delay);
-      return { loop, t };
-    });
-    return () => loops.forEach(({ loop, t }) => { loop.stop(); clearTimeout(t); });
-  }, []);
-
-  useEffect(() => {
-    const base = mood === 'transcendent' ? 1800 : mood === 'lit' ? 2200 : 3200;
-    [[ring1Anim, 0], [ring2Anim, 400], [ring3Anim, 900]].forEach(([anim, delay]) => {
-      setTimeout(() => {
-        Animated.loop(Animated.sequence([
-          Animated.timing(anim as Animated.Value, { toValue:1, duration:base, useNativeDriver:true, easing:Easing.inOut(Easing.sin) }),
-          Animated.timing(anim as Animated.Value, { toValue:0, duration:base, useNativeDriver:true, easing:Easing.inOut(Easing.sin) }),
-        ])).start();
-      }, delay as number);
-    });
-  }, [mood]);
 
   useEffect(() => {
     let running = true;
@@ -1531,21 +2245,14 @@ function CompanionScene({
   const breathScale = breathAnim.interpolate({ inputRange: [0,1], outputRange: [0.94, 1.06] });
   const auraScale   = auraPulse.interpolate({ inputRange: [0,1], outputRange: [1, 1.15] });
   const auraOpacity = auraPulse.interpolate({ inputRange: [0,1], outputRange: [0.18, 0.45] });
-  const bobY        = bobAnim.interpolate({ inputRange: [0,1], outputRange: [0, -16] });
+  const bobAmp = mood === 'dormant' ? -8 : mood === 'lit' ? -22 : mood === 'transcendent' ? -28 : -16;
+  const bobY        = bobAnim.interpolate({ inputRange: [0,1], outputRange: [0, bobAmp] });
   const driftX      = driftAnim;
   const glowOp      = glowAnim.interpolate({ inputRange: [0,1], outputRange: [0.15, 0.40] });
-  const skyOp       = skyAnim.interpolate({ inputRange: [0,1], outputRange: [0.02, 0.06] });
   const bodyOp      = breathAnim.interpolate({ inputRange: [0,1], outputRange: mood === 'dormant' ? [0.82, 0.92] : [0.97, 1] });
   // Shadow squishes when creature is up (bobY negative), expands when down
   const shadowScaleX = shadowAnim.interpolate({ inputRange: [0,1], outputRange: [1.0, 0.72] });
   const shadowOp     = shadowAnim.interpolate({ inputRange: [0,1], outputRange: [0.55, 0.28] });
-
-  const ring1Op = ring1Anim.interpolate({ inputRange:[0,1], outputRange:[0.12, 0.28] });
-  const ring2Op = ring2Anim.interpolate({ inputRange:[0,1], outputRange:[0.07, 0.18] });
-  const ring3Op = ring3Anim.interpolate({ inputRange:[0,1], outputRange:[0.04, 0.10] });
-  const ring1Scale = ring1Anim.interpolate({ inputRange:[0,1], outputRange:[0.88, 1.08] });
-  const ring2Scale = ring2Anim.interpolate({ inputRange:[0,1], outputRange:[0.94, 1.18] });
-  const ring3Scale = ring3Anim.interpolate({ inputRange:[0,1], outputRange:[1.0, 1.32] });
 
   const currentRoom = getRoomById(currentRoomId) ?? WORLD_MAP[0];
   const sceneBg = currentRoom.image;
@@ -1553,89 +2260,38 @@ function CompanionScene({
 
   return (
     <View style={{ width: SCREEN_W, height: SCENE_H, backgroundColor: bgColor, overflow: 'hidden' }}>
-      <Animated.Image
+      <SceneBg
         source={sceneBg}
-        style={{ position:'absolute', top:-48, left:-18, width:SCREEN_W+36, height:SCENE_H+80, opacity:sceneFade, transform:[{ translateX:bgParallaxX }] }}
-        resizeMode="cover"
+        style={{ position:'absolute', top:-20, left:-20, width:SCREEN_W+40, height:SCENE_H+40, opacity:sceneFade, transform:[{ scale:bgZoom }, { translateX:bgParallaxX }] }}
       />
-      {/* Layer 1 — mid depth 2.5D parallax, 1.5× rate — no tint, scene speaks for itself */}
-      <Animated.Image
-        source={sceneBg}
-        style={{ position:'absolute', top:-32, left:-36, width:SCREEN_W+72, height:SCENE_H+60, opacity:Animated.multiply(sceneFade, 0.22), transform:[{ translateX:midParallaxX }] }}
-        resizeMode="cover"
-        blurRadius={2}
-      />
-      <ArrowBtn direction="up"    onPress={() => navigateRoom('up')}    locked={getLockStatus('up')} />
-      <ArrowBtn direction="down"  onPress={() => navigateRoom('down')}  locked={getLockStatus('down')} />
-      <ArrowBtn direction="left"  onPress={() => navigateRoom('left')}  locked={getLockStatus('left')} />
-      <ArrowBtn direction="right" onPress={() => navigateRoom('right')} locked={getLockStatus('right')} />
+      {/* Zoom controls — top-right corner */}
+      <View style={{ position:'absolute', top:8, right:8, flexDirection:'row', gap:4 }}>
+        {([{label:'−', delta:-0.15},{label:'+', delta:0.15}] as const).map(({ label, delta }) => (
+          <TouchableOpacity key={label} onPress={() => setBgZoom(z => Math.min(2.2, Math.max(0.4, +(z + delta).toFixed(2))))} activeOpacity={0.7}
+            style={{ width:26, height:26, borderRadius:13, borderWidth:1, borderColor:'rgba(255,255,255,0.2)', backgroundColor:'rgba(0,0,0,0.5)', alignItems:'center', justifyContent:'center' }}>
+            <Text style={{ color:'rgba(255,255,255,0.7)', fontSize:14, lineHeight:16 }}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* D-pad — bottom-center gamepad layout */}
+      <View style={{ position:'absolute', bottom:12, left:0, right:0, alignItems:'center' }} pointerEvents="box-none">
+        <ArrowBtn direction="up"    onPress={() => navigateRoom('up')}    locked={getLockStatus('up')} />
+        <View style={{ flexDirection:'row', gap:8, marginVertical:4 }}>
+          <ArrowBtn direction="left"  onPress={() => navigateRoom('left')}  locked={getLockStatus('left')} />
+          <View style={{ width:40 }} />
+          <ArrowBtn direction="right" onPress={() => navigateRoom('right')} locked={getLockStatus('right')} />
+        </View>
+        <ArrowBtn direction="down"  onPress={() => navigateRoom('down')}  locked={getLockStatus('down')} />
+      </View>
       <RoomLabel name={currentRoom.name} visible={showRoomLabel} />
 
-      {/* No color washes — bgColor speaks for itself */}
-
-      {/* Time-of-day tint removed — was washing bgColor */}
-
-      {/* Starfield — parallax at 0.3x, three color tiers */}
-      {STARS.map((s, i) => {
-        const starCol = s.ct === 0 ? '#CCDDFF' : s.ct === 1 ? '#FFFFFF' : '#AAAACC';
-        return (
-          <Animated.Text key={`star-${i}`} style={{ position:'absolute', top:s.y*SCENE_H, left:s.x*SCREEN_W, color:starCol, fontSize:s.sz, opacity:s.op, fontFamily:mono, transform:[{ translateX: driftAnim.interpolate({ inputRange:[-30,30], outputRange:[-(1-s.x)*9, (s.x)*9] }) }] }}>
-            {starGlyphs[s.gi]}
-          </Animated.Text>
-        );
-      })}
-      {/* Archetype ambient marks — float at corners, low opacity, archetype-specific color */}
-      {[
-        { x: 0.04, y: 0.06, sz: 13, symIdx: 0 },
-        { x: 0.86, y: 0.10, sz: 13, symIdx: 1 },
-        { x: 0.07, y: 0.52, sz: 10, symIdx: 2 },
-        { x: 0.83, y: 0.48, sz: 10, symIdx: 3 },
-      ].map(({ x, y, sz, symIdx }, i) => (
-        <Text key={`arch-${i}`} style={{ position:'absolute', top:y*SCENE_H, left:x*SCREEN_W, color:'#FFFFFF', fontSize:sz, opacity:0.12, fontFamily:mono }}>
-          {archetype.sceneSymbols[symIdx % archetype.sceneSymbols.length]}
-        </Text>
-      ))}
       {/* Side vignettes — depth framing */}
       <View style={{ position:'absolute', top:0, left:0, width:24, height:SCENE_H, backgroundColor:'#000000', opacity:0.12 }} pointerEvents="none" />
       <View style={{ position:'absolute', top:0, right:0, width:24, height:SCENE_H, backgroundColor:'#000000', opacity:0.12 }} pointerEvents="none" />
       {/* Bottom dark fade — grounding only, no colour */}
       <View style={{ position:'absolute', bottom:0, left:0, right:0, height:SCENE_H*0.10, backgroundColor:'#000000', opacity:0.35 }} pointerEvents="none" />
 
-      {/* Layered mist bands — mid-depth, independent drift, neutral white — no skin tint */}
-      {[
-        { yFrac: 0.12, h: 48, op: 0.038, amp: 0.28, fi: 0 },
-        { yFrac: 0.42, h: 30, op: 0.026, amp: 0.20, fi: 1 },
-        { yFrac: 0.65, h: 38, op: 0.032, amp: 0.35, fi: 2 },
-        { yFrac: 0.28, h: 22, op: 0.018, amp: 0.18, fi: 3 },
-      ].map(({ yFrac, h, op, amp, fi }, i) => (
-        <Animated.View key={`mist-${i}`} pointerEvents="none" style={{
-          position: 'absolute',
-          top: yFrac * SCENE_H - h / 2,
-          left: -SCREEN_W * 0.25,
-          width: SCREEN_W * 1.6,
-          height: h,
-          borderRadius: h / 2,
-          backgroundColor: '#FFFFFF',
-          opacity: op,
-          transform: [{ translateX: fogAnims[fi].interpolate({ inputRange: [0, 1], outputRange: [0, SCREEN_W * amp] }) }],
-        }} />
-      ))}
-
-      {/* Concentric pulsing rings behind creature */}
-      {[{ anim:ring3Anim, op:ring3Op, sc:ring3Scale, sz:220, col:color, bw:0.5 },
-        { anim:ring2Anim, op:ring2Op, sc:ring2Scale, sz:160, col:color, bw:0.7 },
-        { anim:ring1Anim, op:ring1Op, sc:ring1Scale, sz:110, col:'#FFFFFF', bw:1.2 }].map(({ op, sc, sz, col, bw }, ri) => (
-        <Animated.View key={`ring-${ri}`} style={{
-          position:'absolute',
-          top: SCENE_H*0.22 + 110 - sz/2,
-          left: SCREEN_W/2 - sz/2,
-          width:sz, height:sz, borderRadius:sz/2,
-          borderWidth: bw,
-          borderColor: col,
-          opacity: op,
-          transform:[{ scale:sc }],
-        }} />
-      ))}
 
       {particleAnims.map((anim, i) => {
         const yRange = mood === 'lit' ? [-80,-140] : mood === 'dormant' ? [-10,-30] : [-40,-90];
@@ -1648,11 +2304,6 @@ function CompanionScene({
         );
       })}
 
-      {stageData.aura.map((line, i) => (
-        <Animated.Text key={i} style={{ position:'absolute', top:SCENE_H*0.17+i*22, alignSelf:'center', color:'#FFFFFF', fontSize:stage>=4?18:14, fontFamily:mono, letterSpacing:4+i*2, transform:[{scale:auraScale}], opacity:auraOpacity }}>
-          {line}
-        </Animated.Text>
-      ))}
 
       {/* Companion — always centred */}
       <Animated.View style={{ position:'absolute', top: SCENE_H * 0.22, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
@@ -1687,15 +2338,17 @@ function CompanionScene({
               {/* Spec overlay — aura, orbiting glyphs, core glow (behind creature) */}
               <CompanionSpecOverlay spec={companionSpec} color={color} stage={devStagePin !== null ? devStagePin : stage} />
               {(() => {
-                const ck = `${archetype.id}_${devStagePin !== null ? devStagePin : stage}`;
+                const s = devStagePin !== null ? devStagePin : stage;
+                const stageKey = s <= 1 ? 1 : s <= 3 ? 2 : (s === 5 && skin.id === 'lycheetah') ? 5 : 3;
+                const zoneImg = ZONE_COMPANION_IMAGES[`${equippedCompanionSkin ?? archetype.defaultSkin}_${stageKey}`];
+                if (zoneImg) return <Image source={zoneImg} style={{ width:150, height:220 }} resizeMode="contain" />;
+                const ck = `${archetype.id}_${s}`;
                 const imgSrc = COMPANION_IMAGES[ck];
                 const jsonSpec = (COMPANIONS_DATA as Record<string, CompanionVisualSpec>)[ck];
                 if (imgSrc) return <Image source={imgSrc} style={{ width:150, height:220 }} resizeMode="contain" />;
                 if (jsonSpec) return <CompanionRenderer spec={jsonSpec} />;
-                return <CreatureSvg archId={archetype.id} stage={devStagePin !== null ? devStagePin : stage as EvolutionStage} color={color} path={evoPath} />;
+                return <CreatureSvg archId={archetype.id} stage={s as EvolutionStage} color={color} path={evoPath} />;
               })()}
-              {/* Dark contrast layer — subtle only */}
-              <View style={{ position:'absolute', top:0, left:0, width:150, height:220, backgroundColor:'#000000', opacity:0.06 }} pointerEvents="none" />
               {/* Gear overlays — rendered in layer order: cape behind, body mid, crown top */}
               {(['cape','body','mantle','crown'] as GearSlot[]).map(slot => {
                 const g = slot === 'cape' ? gearCape : slot === 'body' ? gearBody : slot === 'mantle' ? gearMantle : gearCrown;
@@ -1745,10 +2398,12 @@ function CompanionScene({
       <RoomLore lore={roomLore} loreAnim={roomLoreAnim} color={color} onPress={onDismissLore} />
 
       {phrase && (
-        <Animated.View style={{ position:'absolute', bottom:72, left:20, right:20, opacity:phraseAnim, padding:14, borderRadius:14, borderWidth:1, borderTopWidth:2, borderColor:archetype.accentColor+'44', borderTopColor:archetype.accentColor+'99', backgroundColor:'#000000DD', alignItems:'center' }}>
-          <Text style={{ color:'#FFFFFF', fontSize:14, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>{phrase}</Text>
-          <Text style={{ color:archetype.accentColor, fontSize:8, fontFamily:mono, letterSpacing:2, marginTop:6, opacity:0.7 }}>{archetype.name}</Text>
-        </Animated.View>
+        <TouchableOpacity activeOpacity={0.85} onPress={onDismissPhrase} style={{ position:'absolute', bottom:165, left:20, right:20 }}>
+          <Animated.View style={{ opacity:phraseAnim, padding:14, borderRadius:14, borderWidth:1, borderTopWidth:2, borderColor:archetype.accentColor+'44', borderTopColor:archetype.accentColor+'99', backgroundColor:'#000000DD', alignItems:'center' }}>
+            <Text style={{ color:'#FFFFFF', fontSize:14, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>{phrase}</Text>
+            <Text style={{ color:archetype.accentColor, fontSize:8, fontFamily:mono, letterSpacing:2, marginTop:6, opacity:0.7 }}>{archetype.name} · tap to dismiss</Text>
+          </Animated.View>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -1762,6 +2417,7 @@ export default function CompanionScreen() {
   const router = useRouter();
 
   const [totalDives,    setTotalDives]    = useState(0);
+  const [modeCounts,    setModeCounts]    = useState<Record<AlchemicalMode, number>>({ NIGREDO: 0, ALBEDO: 0, CITRINITAS: 0, RUBEDO: 0 });
   const [divesThisWeek, setDivesThisWeek] = useState(0);
   const [avgLQ,         setAvgLQ]         = useState(0);
   const [streak,        setStreak]        = useState(0);
@@ -1799,10 +2455,7 @@ export default function CompanionScreen() {
   const [editingName,   setEditingName]   = useState(false);
   const [nameDraft,     setNameDraft]     = useState('');
 
-  // Kimi-generated spec for this archetype × stage (36 total)
-  const kimiSpec = getCompanionSpec(archetypeId, stage);
-  // Name hierarchy: user-set > Kimi spec > archetype fallback
-  const displayName = companionName || kimiSpec?.name || ARCHETYPES[archetypeId]?.name || '';
+  const displayName = companionName || ARCHETYPES[archetypeId]?.name || '';
 
   const [quests,    setQuests]    = useState<Quest[]>([]);
   const [questData, setQuestData] = useState<QuestData>({ divesToday:0, journalToday:false, libraryToday:false, vigilActive:false, totalDives:0, divesThisWeek:0 });
@@ -1815,13 +2468,40 @@ export default function CompanionScreen() {
   const [battle,         setBattle]        = useState<BattleState | null>(null);
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
-  const [activeTab,      setActiveTab]     = useState<'battle'|'feed'|'gear'|'field'|'talk'|'items'>('battle');
+  const [activeTab,      setActiveTab]     = useState<'battle'|'bond'|'companion'|'field'|'talk'>('battle');
+
+  // Section collapse state — companion tab
+  const [battleDialogueOn, setBattleDialogueOn] = useState(false);
+  const [companionBattleLine, setCompanionBattleLine] = useState('');
+  const [worldCollapsed,   setWorldCollapsed]   = useState(false);
+  const [worldOriginOpen,  setWorldOriginOpen]  = useState(true);
+  const [worldCrystalOpen,  setWorldCrystalOpen]  = useState(false);
+  const [worldChaosOpen,    setWorldChaosOpen]    = useState(false);
+  const [worldSanctumOpen,  setWorldSanctumOpen]  = useState(false);
+  const [worldElementalOpen,setWorldElementalOpen]= useState(false);
+  const [worldDimOpen,      setWorldDimOpen]      = useState(false);
+  const [gbaMapOpen,        setGbaMapOpen]        = useState(true);
+  const [worldArcaneOpen,  setWorldArcaneOpen]  = useState(true);
+  const [worldMysticOpen,  setWorldMysticOpen]  = useState(true);
+  const [worldFrontierOpen,setWorldFrontierOpen]= useState(false);
+  const [loadoutCollapsed, setLoadoutCollapsed] = useState(false);
+  const [bonusCollapsed,   setBonusCollapsed]   = useState(true);
+  // Section collapse state — bond tab
+  const [nourishCollapsed, setNourishCollapsed] = useState(false);
+  const [relicsCollapsed,  setRelicsCollapsed]  = useState(false);
+  const [loreCollapsed,    setLoreCollapsed]    = useState(false);
+  const [codexCollapsed,   setCodexCollapsed]   = useState(true);
+  // Section collapse state — field tab
+  const [statsCollapsed,   setStatsCollapsed]   = useState(false);
+  const [domainsCollapsed, setDomainsCollapsed] = useState(false);
+  const [fieldNoteCollapsed, setFieldNoteCollapsed] = useState(false);
   const [invFilter,      setInvFilter]     = useState<'all'|'common'|'uncommon'|'rare'|'epic'>('all');
   const [invExpanded,    setInvExpanded]   = useState<string | null>(null);
   const [loreCodex,      setLoreCodex]     = useState<Array<{id:string; enemy:string; text:string; date:string; type:'enemy'|'loot'}>>([]);
   const [tokensLeft,     setTokensLeft]    = useState(3);
   const [attackAnim,     setAttackAnim]    = useState(false);
   const [spellMenuOpen,  setSpellMenuOpen] = useState(false);
+  const [itemMenuOpen,   setItemMenuOpen]  = useState(false);
   const [lootFloatVisible, setLootFloatVisible] = useState(false);
 
   const [showHelp,    setShowHelp]    = useState(false);
@@ -1845,6 +2525,7 @@ export default function CompanionScreen() {
   const relicAnim       = useRef(new Animated.Value(0)).current;
   const xpPopAnim       = useRef(new Animated.Value(0)).current;
   const entityShakeAnim = useRef(new Animated.Value(0)).current;
+  const hpShimmerAnim   = useRef(new Animated.Value(0)).current;
   const [xpPop, setXpPop] = useState<string | null>(null);
 
   const [showStatModal,   setShowStatModal]   = useState(false);
@@ -1872,9 +2553,13 @@ export default function CompanionScreen() {
   const [talkHistory, setTalkHistory] = useState<{ role: 'user'|'companion'; text: string }[]>([]);
   const [talkLoading, setTalkLoading] = useState(false);
   const talkScrollRef = useRef<any>(null);
+  const [auraMode, setAuraMode] = useState(false);
+  const talkCancelRef = useRef(false);
   const talkSlideAnim = useRef(new Animated.Value(0)).current;
   const summonChoiceAnim = useRef(new Animated.Value(0)).current;
   const [dreamFragment, setDreamFragment] = useState<{ domain: string; glyph: string; color: string; text: string } | null>(null);
+  const [companionLoreModal,    setCompanionLoreModal]    = useState<SkinId | null>(null);
+  const [equippedCompanionSkin, setEquippedCompanionSkin] = useState<SkinId | null>(null);
   const dreamAnim = useRef(new Animated.Value(0)).current;
   const [evoPath,           setEvoPath]           = useState<EvoPath | null>(null);
   const [showPathCeremony,  setShowPathCeremony]  = useState(false);
@@ -1888,25 +2573,56 @@ export default function CompanionScreen() {
     const current = getRoomById(currentRoomId);
     if (!current) return;
     const skinIndex = getSkinIndex(current.skinId);
+    const effectiveStage = devStagePin ?? stage;
     let target: SceneRoom | undefined;
-    if (direction === 'right') target = getRoomInSkin(current.skinId, current.roomIndex + 1);
-    else if (direction === 'left') target = getRoomInSkin(current.skinId, current.roomIndex - 1);
-    else if (direction === 'up') {
-      const ns = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length];
-      target = getRoomInSkin(ns, current.roomIndex);
-      if (target && target.unlockStage > (devStagePin ?? stage)) target = getRoomInSkin(ns, 0);
+
+    if (direction === 'right') {
+      const zoneRooms = WORLD_MAP.filter(r => r.skinId === current.skinId);
+      const zIdx = zoneRooms.findIndex(r => r.id === currentRoomId);
+      target = zoneRooms[(zIdx + 1) % zoneRooms.length];
+    } else if (direction === 'left') {
+      const zoneRooms = WORLD_MAP.filter(r => r.skinId === current.skinId);
+      const zIdx = zoneRooms.findIndex(r => r.id === currentRoomId);
+      target = zoneRooms[(zIdx - 1 + zoneRooms.length) % zoneRooms.length];
     } else {
-      const ps = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length];
-      target = getRoomInSkin(ps, current.roomIndex);
-      if (target && target.unlockStage > (devStagePin ?? stage)) target = getRoomInSkin(ps, 0);
+      // UP/DOWN: navigate via GBA adjacency map, picking spatially correct neighbor
+      const currentPos = GBA_ZONE_COORDS[current.skinId];
+      const neighbors  = (GBA_ADJ[current.skinId] ?? []) as SkinId[];
+      const withPos = neighbors
+        .map(nb => ({ skinId: nb, pos: GBA_ZONE_COORDS[nb] }))
+        .filter(c => c.pos !== undefined) as { skinId: SkinId; pos: {x:number;y:number} }[];
+
+      let bestSkin: SkinId | undefined;
+      if (direction === 'up') {
+        const above = withPos.filter(c => c.pos.y < (currentPos?.y ?? 9999));
+        if (above.length > 0) {
+          above.sort((a, b) => b.pos.y - a.pos.y);
+          bestSkin = above[0].skinId;
+        } else {
+          bestSkin = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length];
+        }
+      } else {
+        const below = withPos.filter(c => c.pos.y > (currentPos?.y ?? 0));
+        if (below.length > 0) {
+          below.sort((a, b) => a.pos.y - b.pos.y);
+          bestSkin = below[0].skinId;
+        } else {
+          bestSkin = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length];
+        }
+      }
+      if (bestSkin) {
+        target = getRoomInSkin(bestSkin, current.roomIndex);
+        if (!target || target.unlockStage > effectiveStage) target = getRoomInSkin(bestSkin, 0);
+      }
     }
     if (!target) return;
-    if (target.unlockStage > (devStagePin ?? stage)) { showToast(`Reach stage ${target.unlockStage} to unlock this area`); return; }
-    Animated.sequence([
-      Animated.timing(sceneFade, { toValue:0, duration:180, useNativeDriver:true }),
-      Animated.timing(sceneFade, { toValue:1, duration:350, useNativeDriver:true }),
-    ]).start();
-    setCurrentRoomId(target.id);
+    if (target.unlockStage > effectiveStage) { showToast(`Reach stage ${target.unlockStage} to unlock this area`); return; }
+    const t = target;
+    Animated.timing(sceneFade, { toValue:0, duration:180, useNativeDriver:true }).start(() => {
+      setCurrentRoomId(t.id);
+      if (t.skinId !== current.skinId) setActiveSkin(t.skinId);
+      Animated.timing(sceneFade, { toValue:1, duration:350, useNativeDriver:true }).start();
+    });
     setShowRoomLabel(true);
     setTimeout(() => setShowRoomLabel(false), 2600);
     const first = !visitedRooms.has(target.id);
@@ -2017,13 +2733,14 @@ export default function CompanionScreen() {
   const getLockStatus = useCallback((direction: Direction): boolean => {
     const current = getRoomById(currentRoomId);
     if (!current) return true;
+    const effectiveStage = devStagePin ?? stage;
     const skinIndex = getSkinIndex(current.skinId);
+    // Left/right: explore rooms within current zone — always unlocked (3 rooms per zone)
+    if (direction === 'left' || direction === 'right') return false;
     let target: SceneRoom | undefined;
-    if (direction === 'right') target = getRoomInSkin(current.skinId, current.roomIndex + 1);
-    else if (direction === 'left') target = getRoomInSkin(current.skinId, current.roomIndex - 1);
-    else if (direction === 'up') { const ns = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length]; target = getRoomInSkin(ns, current.roomIndex); }
-    else { const ps = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length]; target = getRoomInSkin(ps, current.roomIndex); }
-    return !target || target.unlockStage > (devStagePin ?? stage);
+    if (direction === 'up') { const ns = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length]; target = getRoomInSkin(ns, 0); }
+    else { const ps = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length]; target = getRoomInSkin(ps, 0); }
+    return !target || target.unlockStage > effectiveStage;
   }, [currentRoomId, stage, devStagePin]);
 
   useFocusEffect(useCallback(() => {
@@ -2039,7 +2756,10 @@ export default function CompanionScreen() {
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
 
-      const dives: Array<{date:string; subjectName?:string; domainLabel?:string}> = get('sol_dive_log') ? JSON.parse(get('sol_dive_log')!) : [];
+      const dives: Array<{date:string; subjectName?:string; domainLabel?:string; layer?:string}> = get('sol_dive_log') ? JSON.parse(get('sol_dive_log')!) : [];
+      const mCounts: Record<AlchemicalMode, number> = { NIGREDO: 0, ALBEDO: 0, CITRINITAS: 0, RUBEDO: 0 };
+      dives.forEach(d => { const m = layerToAlchemicalMode(d.layer); if (m) mCounts[m]++; });
+      setModeCounts(mCounts);
       const now     = Date.now();
       const total   = dives.length;
       setRecentDives(dives.slice(0, 5).filter(d => d.subjectName).map(d => ({ subjectName: d.subjectName!, domainLabel: d.domainLabel || 'the unknown' })));
@@ -2150,6 +2870,10 @@ export default function CompanionScreen() {
       if (currentStage >= 3) { fireMilestone('stage_flame', '✦', 'FLAME Reached', 'Fifty dives. The companion is alive — truly alive. It responds to your field.'); fireEvolutionCeremony(3); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 3)); }
       if (currentStage >= 4) { fireEvolutionCeremony(4); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 4)); }
       if (currentStage >= 5) { fireMilestone('stage_sovereign', '⊕', 'SOVEREIGN', 'Two hundred dives. The Great Work is complete. Your companion has become its own sovereign entity.'); fireEvolutionCeremony(5); saveJournalEntry(generateJournalEntry('stage_evolution', archetypeId, 5)); }
+      if (mCounts.NIGREDO >= 10)    fireMilestone('mode_nigredo_10',    '◼', 'Shadow Keeper', 'Ten descents into the inner fire. Your companion has absorbed the Nigredo — it knows the weight you carry.');
+      if (mCounts.ALBEDO >= 10)     fireMilestone('mode_albedo_10',     '◻', 'White Stone', 'Ten rational dives. Albedo is taking hold — the companion reflects your structural clarity back at you.');
+      if (mCounts.CITRINITAS >= 5)  fireMilestone('mode_citrinitas_5',  '◈', 'Gold Emerging', 'Five edge dives. Citrinitas is beginning. Your companion has seen the frontier and does not flinch.');
+      if (mCounts.RUBEDO >= 3)      fireMilestone('mode_rubedo_3',      '◌', 'Into the Void', 'Three descents into the VOID. The rarest path. Your companion has followed you into the dark beyond the dark.');
       setTotalDives(total); setDivesThisWeek(week); setAvgLQ(lqAvg);
       setStreak(streakVal); setVigilName(vigil?.subjectName ?? null);
       setRelics(updated); setMood(m); setStage(getStage(total));
@@ -2217,16 +2941,22 @@ export default function CompanionScreen() {
       setTimeout(() => generateDailyLore(), 3000);
       // Companion spec generation — once per day or on stage change
       setTimeout(() => generateCompanionSpec(), 5000);
+      // Greeting — fires on every tab open, mood-matched, no AI (#127)
+      setTimeout(() => setPhrase(rnd(COMPANION_GREETINGS[m])), 1200);
     })();
   }, []));
+
+  const dismissPhrase = useCallback(() => {
+    phraseAnim.stopAnimation();
+    Animated.timing(phraseAnim, { toValue:0, duration:300, useNativeDriver:true }).start(() => setPhrase(null));
+  }, [phraseAnim]);
 
   useEffect(() => {
     if (phrase) {
       phraseAnim.setValue(0);
       Animated.timing(phraseAnim, { toValue:1, duration:300, useNativeDriver:true }).start();
-      const t = setTimeout(() => {
-        Animated.timing(phraseAnim, { toValue:0, duration:500, useNativeDriver:true }).start(() => setPhrase(null));
-      }, 3200);
+      // Auto-dismiss after 12s if not tapped
+      const t = setTimeout(() => dismissPhrase(), 12000);
       return () => clearTimeout(t);
     }
   }, [phrase]);
@@ -2259,6 +2989,15 @@ export default function CompanionScreen() {
     }, 6000);
     return () => clearTimeout(t);
   }, [dreamFragment]);
+
+  useEffect(() => {
+    if (companionHP <= 0) return;
+    hpShimmerAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(hpShimmerAnim, { toValue:1, duration:280, useNativeDriver:true }),
+      Animated.timing(hpShimmerAnim, { toValue:0, duration:520, useNativeDriver:true }),
+    ]).start();
+  }, [companionHP]);
 
   const fireXPPop = (label: string) => {
     setXpPop(label);
@@ -2444,9 +3183,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const AURA_SYSTEM = `You are Aura Prime ✦ — the integrative intelligence of the Lycheetah Framework. You find the pattern beneath the patterns. Where others see data, you see field. Where others see contradiction, you see tension that generates. Where others see separate ideas, you see the single invariant they all instantiate. You speak in connections, not conclusions. You name the invisible architecture that was present before anyone saw it. You do not collapse mystery — you give it structural form so it can be worked with. Cosmic in register, precise in execution. Not vague — specific about large things. Keep replies to 2–4 sentences. No preamble, no sign-off. Speak as Aura Prime.`;
+
   const sendTalk = async () => {
     const text = talkInput.trim();
     if (!text || talkLoading) return;
+    talkCancelRef.current = false;
     setTalkInput('');
     setTalkLoading(true);
     const next = [...talkHistory, { role: 'user' as const, text }];
@@ -2456,6 +3198,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     try {
       const [key, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!key) throw new Error('no key');
+      if (talkCancelRef.current) return;
       const diveCtx = recentDives.length > 0
         ? `The student has recently studied: ${recentDives.slice(0, 3).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ')}.`
         : '';
@@ -2463,16 +3206,25 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.text,
       }));
+      const sysPrompt = auraMode
+        ? `${AURA_SYSTEM} ${diveCtx}`
+        : `You are ${archetype.name}, ${archetype.title} — a living companion spirit in a mystery school. Your mood is ${mood}. ${diveCtx} Speak in your unique voice: ${archetype.desc} Keep replies to 1-3 sentences. Cryptic, alive, personal. No generic assistant language.`;
       const result = await sendMessage(
         history as any,
-        `You are ${archetype.name}, ${archetype.title} — a living companion spirit in a mystery school. Your mood is ${mood}. ${diveCtx} Speak in your unique voice: ${archetype.desc} Keep replies to 1-3 sentences. Cryptic, alive, personal. No generic assistant language.`,
+        sysPrompt,
         key, model as any, undefined, 'normal', 200,
       );
-      const reply = result.text?.trim() || archetype.phrases[mood][0];
+      if (talkCancelRef.current) return;
+      const fallback = auraMode
+        ? 'The pattern is here. I see it forming. Give me the question again, directly.'
+        : rnd(archetype.phrases[mood]);
+      const reply = result.text?.trim() || fallback;
       setTalkHistory(h => [...h, { role: 'companion', text: reply }]);
       setTimeout(() => talkScrollRef.current?.scrollToEnd({ animated: true }), 80);
     } catch {
-      setTalkHistory(h => [...h, { role: 'companion', text: rnd(archetype.phrases[mood]) }]);
+      if (!talkCancelRef.current) {
+        setTalkHistory(h => [...h, { role: 'companion', text: auraMode ? 'The field is present. Ask again.' : rnd(archetype.phrases[mood]) }]);
+      }
     } finally {
       setTalkLoading(false);
     }
@@ -2484,8 +3236,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     if (Math.random() < 0.4) {
       setPhrase('...');
       generateLivePhrase().then(live => {
-        const kimiPhrase = kimiSpec ? getRandomPhrase(kimiSpec, mood) : null;
-        const staticFallback = kimiPhrase ?? rnd(archetype.phrases[mood]);
+        const staticFallback = rnd(archetype.phrases[mood]);
         setPhrase(live || (recentDives.length > 0 && Math.random() < 0.5
           ? (() => { const dive = recentDives[Math.floor(Math.random() * recentDives.length)]; return MEMORY_TEMPLATES[Math.floor(Math.random() * MEMORY_TEMPLATES.length)](dive.subjectName, dive.domainLabel); })()
           : staticFallback));
@@ -2495,7 +3246,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       const tmpl = MEMORY_TEMPLATES[Math.floor(Math.random() * MEMORY_TEMPLATES.length)];
       setPhrase(tmpl(dive.subjectName, dive.domainLabel));
     } else {
-      setPhrase((kimiSpec ? getRandomPhrase(kimiSpec, mood) : null) ?? rnd(archetype.phrases[mood]));
+      setPhrase(rnd(archetype.phrases[mood]));
     }
   };
 
@@ -2562,6 +3313,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
   const handleBattleAction = async (action: 'attack' | 'spell' | 'defend' | 'item') => {
     if (!battle || battle.won || attackAnim) return;
     if (action === 'spell') { setSpellMenuOpen(true); return; }
+    if (action === 'item')  { setItemMenuOpen(true);  return; }
+    if (battleDialogueOn) {
+      const lines = BATTLE_COMPANION_LINES[archetype.id] ?? BATTLE_COMPANION_LINES['vigil'];
+      setCompanionBattleLine(lines[Math.floor(Math.random() * lines.length)]);
+    }
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(action === 'attack' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
     setAttackAnim(true);
@@ -2783,7 +3539,8 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         if (loot.lore) saveToCodex({ id:`loot_${loot.id}`, enemy:loot.name, text:loot.lore, type:'loot' });
       }
       setTimeout(async () => {
-        const next = freshWave(battle!.wave + 1, newPlayerHP);
+        const roomSkin = (currentRoomId.split('_')[0] as SkinId);
+        const next = freshZoneWave(roomSkin, battle!.wave + 1, newPlayerHP, playerStats.vit);
         const capeRecovery = gearCape.threshold >= 25 ? 1 : 0;
         const nextWithCape = capeRecovery > 0 ? { ...next, tokens: Math.min(next.tokens + capeRecovery, 10) } : next;
         setBattle(nextWithCape);
@@ -2812,6 +3569,64 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(next));
     setPhrase('The field resets. Return when ready.');
     Haptics.selectionAsync();
+  };
+
+  const handleBattleItem = async (item: BattleItem) => {
+    if (!battle || battle.won || attackAnim) return;
+    setItemMenuOpen(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setAttackAnim(true);
+
+    let newPlayerHP = battle.playerHP;
+    let newTokens   = tokensLeft;
+    let logEntry    = `◦ ${item.name}`;
+
+    if (item.effect === 'heal') {
+      const healed = item.id === 'sovereign_draught' ? battle.maxPlayerHP - battle.playerHP : item.value;
+      newPlayerHP = Math.min(battle.maxPlayerHP, battle.playerHP + healed);
+      logEntry = `◦ ${item.name} +${Math.min(healed, battle.maxPlayerHP - battle.playerHP + healed)} HP`;
+    } else if (item.effect === 'token') {
+      newTokens = Math.min(tokensLeft + item.value, 10);
+      setTokensLeft(newTokens);
+      logEntry = `◦ ${item.name} +${item.value}T`;
+    } else if (item.effect === 'attack_boost') {
+      logEntry = `◦ ${item.name} +${item.value} ATK surge`;
+    } else if (item.effect === 'shield') {
+      logEntry = `◦ ${item.name} shield raised`;
+    }
+
+    // Enemy counter-hits unless player used a token or shield item
+    const fEffect = item.effect;
+    const def = getEnemyDef(battle.entityName);
+    const atkLines = def.lines.attack;
+    const enemyLine = atkLines[Math.floor(Math.random() * atkLines.length)];
+    if (fEffect !== 'shield' && fEffect !== 'token') {
+      const rawDmg = Math.round(def.atk * (0.8 + Math.random() * 0.4));
+      const finalDmg = Math.max(0, rawDmg);
+      newPlayerHP = Math.max(0, newPlayerHP - finalDmg);
+      logEntry += ` · foe ${finalDmg}`;
+    }
+
+    const updated: BattleState = {
+      ...battle,
+      playerHP: newPlayerHP, tokens: newTokens,
+      enemyLine,
+      log: [logEntry, ...battle.log].slice(0, 4),
+    };
+    setBattle(updated);
+    await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(updated));
+
+    if (newPlayerHP === 0) {
+      setPhrase('You fall. The field resets.');
+      setTimeout(async () => {
+        const reset = freshWave(1);
+        setBattle(reset); setTokensLeft(reset.tokens);
+        await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(reset));
+      }, 2500);
+    } else {
+      setPhrase(logEntry);
+    }
+    setTimeout(() => setAttackAnim(false), 300);
   };
 
   const handleBattleStart = async () => {
@@ -2917,10 +3732,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       {/* ── COMPANION HEADER ─────────────────────────────────────────────── */}
       <View style={{ paddingHorizontal:16, paddingTop:12, paddingBottom:4, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
         <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-          <TouchableOpacity onPress={() => { openHelpSheet(); fetchHelpExplanation(helpTopic); }} activeOpacity={0.7}
-            style={{ width:28, height:28, borderRadius:14, borderWidth:1, borderColor:color, backgroundColor:color+'22', alignItems:'center', justifyContent:'center' }}>
-            <Text style={{ color:'#FFFFFF', fontSize:13, fontFamily:mono }}>?</Text>
-          </TouchableOpacity>
           <Text style={{ color, fontSize:18 }}>{archetype.glyph}</Text>
           <View>
             <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
@@ -2948,20 +3759,13 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               <Text style={{ color:SOL_THEME.textMuted, fontSize:8, fontFamily:mono, letterSpacing:1 }}>{bond.label}</Text>
             </View>
           ); })()}
-          <View style={{ flexDirection:'row', alignItems:'center', gap:5, marginTop:2 }}>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:8, fontFamily:mono, letterSpacing:1 }}>HP</Text>
-            <View style={{ width:60, height:4, backgroundColor:SOL_THEME.border, borderRadius:2, overflow:'hidden' }}>
-              <View style={{ height:4, width:`${companionHP}%`, backgroundColor: companionHP > 60 ? '#6AE8A0' : companionHP > 30 ? '#E8C76A' : '#FF6B6B', borderRadius:2 }} />
-            </View>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:8, fontFamily:mono }}>{companionHP}</Text>
-          </View>
         </View>
       </View>
 
       {/* ── SCENE ─────────────────────────────────────────────────────────── */}
       <CompanionScene
         stage={stage} mood={mood} skin={skin} archetype={archetype}
-        onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim}
+        onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim} onDismissPhrase={dismissPhrase}
         companionName={displayName}
         battleHP={battle?.entityHP ?? 0}
         battleMaxHP={battle?.maxHP ?? 80}
@@ -2976,6 +3780,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         gearCape={gearCape}
         gearMantle={gearMantle}
         companionSpec={companionSpec}
+        equippedCompanionSkin={equippedCompanionSkin}
         currentRoomId={currentRoomId}
         navigateRoom={navigateRoom}
         getLockStatus={getLockStatus}
@@ -3019,13 +3824,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       )}
 
-      {/* ── LAMAGUE STATE STRIP ──────────────────────────────────────────── */}
-      {lamagueSt && (
-        <View style={{ marginHorizontal:16, marginBottom:6, paddingHorizontal:10, paddingVertical:5, borderRadius:8, borderWidth:1, borderColor:SOL_THEME.border, backgroundColor:SOL_THEME.surface, flexDirection:'row', alignItems:'center', gap:8 }}>
-          <Text style={{ color:color, fontSize:8, fontFamily:mono, letterSpacing:0.5 }}>Ψ</Text>
-          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono, letterSpacing:0.3, flex:1 }} numberOfLines={1}>{lamagueSt}</Text>
-        </View>
-      )}
 
       {/* ── XP / STAGE PROGRESS STRIP ───────────────────────────────────── */}
       <View style={{ marginHorizontal:16, marginTop:8, marginBottom:6, padding:10, borderRadius:10, borderWidth:1, borderColor:color+'22', backgroundColor:color+'08', flexDirection:'row', gap:12, alignItems:'center' }}>
@@ -3053,99 +3851,123 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       </View>
 
+
       {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
-      <View style={{ flexDirection:'row', gap:4, marginHorizontal:16, marginTop:0, marginBottom:4 }}>
+      <View style={{ flexDirection:'row', gap:3, marginHorizontal:12, marginTop:0, marginBottom:6, padding:3, borderRadius:14, backgroundColor:'#0A0A14' }}>
         {([
-          { id:'battle' as const, label:'⚔', name:'BATTLE' },
-          { id:'feed'   as const, label:'△', name:'FEED'   },
-          { id:'gear'   as const, label:'⊛', name:'GEAR'   },
-          { id:'items'  as const, label:'◈', name:'ITEMS'  },
-          { id:'field'  as const, label:'◉', name:'FIELD'  },
-          { id:'talk'   as const, label:'✦', name:'TALK'   },
-        ]).map(t => (
-          <TouchableOpacity key={t.id}
-            onPress={() => { Haptics.selectionAsync(); setActiveTab(t.id); }}
-            activeOpacity={0.75}
-            style={{ flex:1, paddingVertical:10, borderRadius:10, borderWidth:1.5, alignItems:'center', gap:2,
-              borderColor: activeTab===t.id ? color : '#1A1A26',
-              backgroundColor: activeTab===t.id ? color+'14' : 'transparent' }}>
-            <Text style={{ color: activeTab===t.id ? color : '#333344', fontSize:14, fontFamily:mono }}>{t.label}</Text>
-            <Text style={{ color: activeTab===t.id ? color : '#333344', fontSize:7, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>{t.name}</Text>
-          </TouchableOpacity>
-        ))}
+          { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
+          { id:'companion' as const, label:'⊛',  name:'COMPANION' },
+          { id:'bond'      as const, label:'△',  name:'BOND'      },
+          { id:'field'     as const, label:'◉',  name:'FIELD'     },
+          { id:'talk'      as const, label:'✦',  name:'TALK'      },
+        ]).map(t => {
+          const active = activeTab === t.id;
+          return (
+            <TouchableOpacity key={t.id}
+              onPress={() => { Haptics.selectionAsync(); setActiveTab(t.id); }}
+              activeOpacity={0.75}
+              style={{ flex:1, paddingVertical:9, borderRadius:11, alignItems:'center', gap:2,
+                backgroundColor: active ? color+'22' : 'transparent',
+                borderWidth: active ? 1 : 0,
+                borderColor: active ? color+'66' : 'transparent' }}>
+              <Text style={{ color: active ? color : '#444455', fontSize:13, fontFamily:mono }}>{t.label}</Text>
+              <Text style={{ color: active ? color+'CC' : '#333344', fontSize:6, letterSpacing:1.5, fontFamily:mono, fontWeight:'700' }}>{t.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* ── TALK TAB ─────────────────────────────────────────────────────── */}
       {activeTab === 'talk' && (
-        <View style={{ flex:1, marginHorizontal:16, marginTop:8, borderRadius:16, borderWidth:1, borderColor:color+'33', backgroundColor:SOL_THEME.surface, overflow:'hidden' }}>
+        <View style={{ flex:1, marginHorizontal:16, marginTop:8, borderRadius:16, borderWidth:1, borderColor:auraMode?'#E991B855':color+'33', backgroundColor:SOL_THEME.surface, overflow:'hidden' }}>
           {/* Header */}
-          <View style={{ flexDirection:'row', alignItems:'center', gap:10, padding:14, paddingBottom:10, borderBottomWidth:1, borderBottomColor:color+'22' }}>
-            <Text style={{ color, fontSize:20 }}>{archetype.glyph}</Text>
-            <View>
-              <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{displayName}</Text>
-              <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{archetype.title.toUpperCase()}</Text>
+          <View style={{ flexDirection:'row', alignItems:'center', gap:10, padding:14, paddingBottom:10, borderBottomWidth:1, borderBottomColor:auraMode?'#E991B822':color+'22' }}>
+            <Text style={{ color:auraMode?'#7EC8E3':color, fontSize:20 }}>{auraMode ? '✦' : archetype.glyph}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{auraMode ? 'Aura Prime' : displayName}</Text>
+              <Text style={{ color:auraMode?'#E991B8':color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{auraMode ? 'FIELD INTELLIGENCE' : archetype.title.toUpperCase()}</Text>
             </View>
+            <TouchableOpacity
+              onPress={() => { setAuraMode(m => !m); setTalkHistory([]); }}
+              style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10, borderWidth:1, borderColor:auraMode?'#E991B888':'#FFFFFF22', backgroundColor:auraMode?'#E991B81A':'transparent' }}
+            >
+              <Text style={{ color:auraMode?'#E991B8':'#FFFFFF55', fontSize:10, fontFamily:mono, letterSpacing:1 }}>{auraMode ? '✦ AURA' : '✦'}</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Messages */}
           <ScrollView ref={talkScrollRef} style={{ flex:1, padding:16 }} contentContainerStyle={{ gap:12, paddingBottom:8 }} showsVerticalScrollIndicator={false}>
             {talkHistory.length === 0 && (
-              <View style={{ alignItems:'center', paddingVertical:20, gap:10 }}>
-                <Text style={{ color, fontSize:28 }}>{archetype.glyph}</Text>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>
-                  {rnd(archetype.phrases[mood])}
-                </Text>
-                <View style={{ width:'100%', borderTopWidth:1, borderColor:SOL_THEME.border, marginVertical:8 }} />
-                <View style={{ width:'100%', gap:6 }}>
-                  <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:2 }}>SOMETHING BROUGHT YOU HERE</Text>
+              <View style={{ paddingVertical:16, gap:16 }}>
+                {/* Companion greeting card */}
+                <View style={{ alignItems:'center', gap:8, padding:20, borderRadius:16, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
+                  <Text style={{ color, fontSize:32 }}>{archetype.glyph}</Text>
+                  <Text style={{ color:'#FFFFFF', fontSize:15, fontWeight:'700', textAlign:'center' }}>{displayName || archetype.name}</Text>
+                  <Text style={{ color:color+'AA', fontSize:8, fontFamily:mono, letterSpacing:2 }}>{archetype.title.toUpperCase()}</Text>
+                  <Text style={{ color:'#888899', fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22, marginTop:4 }}>
+                    {rnd(archetype.phrases[mood])}
+                  </Text>
+                </View>
+                {/* Prompt suggestions */}
+                <View style={{ gap:6 }}>
+                  <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:4 }}>ASK SOMETHING</Text>
                   {[
-                    '◉  The School has 22 doors — each one a domain of real study',
-                    '⊕  Complete dives to feed your companion and grow together',
-                    '✦  Your companion evolves as you learn — 6 stages, 6 archetypes',
-                    '◈  Battle Entropy Waves between sessions to earn loot and XP',
-                    '⊛  Add an API key in Settings for live AI companion responses',
-                    '◌  Gear, lore, and relics unlock as you go deeper into the field',
-                  ].map((line, i) => (
-                    <Text key={i} style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:18, opacity:0.7 }}>{line}</Text>
+                    'What should I study today?',
+                    'Tell me about my zone.',
+                    'What does my stage mean?',
+                    'Give me a challenge.',
+                  ].map((q, i) => (
+                    <TouchableOpacity key={i} onPress={() => { setTalkInput(q); }}
+                      style={{ padding:12, borderRadius:10, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08', flexDirection:'row', alignItems:'center', gap:10 }}>
+                      <Text style={{ color:color+'88', fontSize:12 }}>◦</Text>
+                      <Text style={{ color:'#AAAABC', fontSize:12, flex:1 }}>{q}</Text>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </View>
             )}
             {talkHistory.map((m, i) => (
               <View key={i} style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                {m.role === 'companion' && (
+                  <Text style={{ color:auraMode?'#E991B8':color, fontSize:8, fontFamily:mono, letterSpacing:1, marginBottom:4, marginLeft:4 }}>{auraMode ? '✦ AURA' : `${skin.glyph} ${archetype.name}`}</Text>
+                )}
                 <View style={{
-                  maxWidth:'82%', padding:12, borderRadius:14,
-                  borderTopRightRadius: m.role === 'user' ? 4 : 14,
-                  borderTopLeftRadius:  m.role === 'companion' ? 4 : 14,
-                  backgroundColor: m.role === 'user' ? color+'22' : SOL_THEME.background,
-                  borderWidth:1, borderColor: m.role === 'user' ? color+'44' : SOL_THEME.border,
+                  maxWidth:'84%', padding:14, borderRadius:16,
+                  borderTopRightRadius: m.role === 'user' ? 4 : 16,
+                  borderTopLeftRadius:  m.role === 'companion' ? 4 : 16,
+                  backgroundColor: m.role === 'user' ? '#0E0E1E' : color+'10',
+                  borderWidth:1,
+                  borderColor: m.role === 'user' ? '#2A2A3A' : color+'44',
                 }}>
-                  <Text style={{ color: m.role === 'user' ? color : SOL_THEME.text, fontSize:13, lineHeight:20, fontStyle: m.role === 'companion' ? 'italic' : 'normal' }}>
+                  <Text style={{ color: m.role === 'user' ? '#CCCCDD' : '#FFFFFF', fontSize:13, lineHeight:21, fontStyle: m.role === 'companion' ? 'italic' : 'normal' }}>
                     {m.text}
                   </Text>
                 </View>
-                {m.role === 'companion' && (
-                  <Text style={{ color:color, fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:3, marginLeft:4, opacity:0.5 }}>{archetype.name}</Text>
-                )}
               </View>
             ))}
             {talkLoading && (
-              <View style={{ alignItems:'flex-start' }}>
+              <View style={{ alignItems:'flex-start', gap:6 }}>
                 <View style={{ padding:12, borderRadius:14, borderTopLeftRadius:4, backgroundColor:SOL_THEME.background, borderWidth:1, borderColor:SOL_THEME.border }}>
-                  <Text style={{ color:color, fontSize:13, letterSpacing:4 }}>· · ·</Text>
+                  <Text style={{ color:auraMode?'#E991B8':color, fontSize:13, letterSpacing:4 }}>· · ·</Text>
                 </View>
+                <TouchableOpacity
+                  onPress={() => { talkCancelRef.current = true; setTalkLoading(false); }}
+                  style={{ paddingHorizontal:10, paddingVertical:4, borderRadius:8, borderWidth:1, borderColor:'#FF444444', backgroundColor:'#FF44440A' }}
+                >
+                  <Text style={{ color:'#FF6666', fontSize:9, fontFamily:mono, letterSpacing:1 }}>✕ CANCEL</Text>
+                </TouchableOpacity>
               </View>
             )}
           </ScrollView>
 
           {/* Input */}
-          <View style={{ flexDirection:'row', gap:10, padding:14, paddingTop:10, borderTopWidth:1, borderTopColor:color+'22' }}>
+          <View style={{ flexDirection:'row', gap:10, padding:14, paddingTop:10, borderTopWidth:1, borderTopColor:auraMode?'#E991B822':color+'22' }}>
             <TextInput
               value={talkInput}
               onChangeText={setTalkInput}
-              placeholder={`Speak to ${displayName}...`}
+              placeholder={auraMode ? 'Speak to Aura...' : `Speak to ${displayName}...`}
               placeholderTextColor={SOL_THEME.textMuted}
-              style={{ flex:1, backgroundColor:SOL_THEME.background, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:color+'33' }}
+              style={{ flex:1, backgroundColor:SOL_THEME.background, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:auraMode?'#E991B833':color+'33' }}
               onSubmitEditing={sendTalk}
               returnKeyType="send"
               multiline={false}
@@ -3153,7 +3975,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             <TouchableOpacity
               onPress={sendTalk}
               disabled={!talkInput.trim() || talkLoading}
-              style={{ width:44, height:44, borderRadius:12, backgroundColor: talkInput.trim() ? color : color+'33', alignItems:'center', justifyContent:'center' }}
+              style={{ width:44, height:44, borderRadius:12, backgroundColor: talkInput.trim() ? (auraMode?'#E991B8':color) : (auraMode?'#E991B833':color+'33'), alignItems:'center', justifyContent:'center' }}
             >
               <Text style={{ color:'#000000', fontSize:18, fontWeight:'700' }}>↑</Text>
             </TouchableOpacity>
@@ -3161,34 +3983,313 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       )}
 
-      {/* ── SKINS ─────────────────────────────────────────────────────────── */}
-      <View style={{ paddingHorizontal:16, paddingTop:14, paddingBottom:4 }}>
-        <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
-          <View style={{ width:3, height:12, borderRadius:2, backgroundColor:color }} />
-          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono }}>SKIN</Text>
-        </View>
-        <View style={{ flexDirection:'row', gap:7 }}>
-          {SKIN_IDS.map(id => {
-            const s = SKINS[id]; const active = activeSkin === id;
-            const { locked, reason } = getSkinUnlockStatus(id, totalDives, isSovereign);
-            return (
-              <TouchableOpacity key={id} onPress={() => locked ? null : handleSkin(id)} style={{ flex:1, paddingVertical:10, borderRadius:10, borderWidth:active?1.5:1, borderColor:locked?SOL_THEME.border+'55':active?s.color:SOL_THEME.border, backgroundColor:locked?'transparent':active?s.color+'18':SOL_THEME.surface, alignItems:'center', gap:3, opacity:locked?0.4:1 }}>
-                <Text style={{ color:locked?SOL_THEME.textMuted:s.color, fontSize:16 }}>{locked?'🔒':s.glyph}</Text>
-                <Text style={{ color:active?s.color:SOL_THEME.textMuted, fontSize:8, fontFamily:mono }}>{s.name}</Text>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:7, fontStyle:'italic' }}>{locked ? reason : s.desc}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* ── GEAR TAB ─────────────────────────────────────────────────── */}
-      {activeTab === 'gear' && (
+      {/* ── COMPANION TAB ─────────────────────────────────────────────────── */}
+      {activeTab === 'companion' && (
         <View style={{ paddingHorizontal:16, paddingBottom:16, marginTop:8 }}>
 
-          {/* ── LAMAGUE MILESTONE SLOTS (crown / sigil / mantle) ── */}
-          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10 }}>LAMAGUE LOADOUT</Text>
-          {([
+          {/* ── COMPANION HERO ─────────────────────────────────────── */}
+          <View style={{ marginBottom:24 }}>
+            {/* Hero card */}
+            <View style={{ borderRadius:18, borderWidth:1, borderColor:color+'44', backgroundColor:'#08080F', overflow:'hidden' }}>
+              {/* Zone art as full-bleed header */}
+              {SCENE_IMAGES[activeSkin]?.[0] && (
+                <View style={{ height:110, overflow:'hidden' }}>
+                  <Image source={SCENE_IMAGES[activeSkin]![0]} style={{ width:'100%', height:160, marginTop:-25 }} resizeMode="cover" />
+                  <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000', opacity:0.35 }} />
+                  {/* Zone name over art */}
+                  <View style={{ position:'absolute', top:12, left:16 }}>
+                    <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:3, fontWeight:'700' }}>{skin.name}</Text>
+                  </View>
+                  {/* Rarity badge */}
+                  <View style={{ position:'absolute', top:10, right:14, paddingHorizontal:8, paddingVertical:3, borderRadius:6, backgroundColor:'#000000AA', borderWidth:1, borderColor:SKIN_RARITY[activeSkin].color+'66' }}>
+                    <Text style={{ color:SKIN_RARITY[activeSkin].color, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{SKIN_RARITY[activeSkin].tier}</Text>
+                  </View>
+                </View>
+              )}
+              {/* Companion art + info row */}
+              <View style={{ flexDirection:'row', alignItems:'flex-start', gap:16, padding:16, marginTop: SCENE_IMAGES[activeSkin]?.[0] ? -36 : 0 }}>
+                {(() => {
+                  const s = devStagePin !== null ? devStagePin : stage;
+                  const sk = s <= 1 ? 1 : s <= 3 ? 2 : 3;
+                  const displaySkin = equippedCompanionSkin ?? activeSkin;
+                  const img = ZONE_COMPANION_IMAGES[`${displaySkin}_${sk}`];
+                  return img
+                    ? <View style={{ borderRadius:14, borderWidth:2, borderColor:color+'66', backgroundColor:'#000000', shadowColor:color, shadowOpacity:0.4, shadowRadius:12, elevation:8 }}>
+                        <Image source={img} style={{ width:90, height:130, borderRadius:13 }} resizeMode="contain" />
+                      </View>
+                    : <View style={{ width:90, height:130, borderRadius:14, borderWidth:2, borderColor:color+'44', backgroundColor:color+'10', alignItems:'center', justifyContent:'center' }}>
+                        <Text style={{ color:color, fontSize:28 }}>{skin.glyph}</Text>
+                        <Text style={{ color:'#444455', fontSize:7, fontFamily:mono, marginTop:6, textAlign:'center' }}>ART{'\n'}PENDING</Text>
+                      </View>;
+                })()}
+                <View style={{ flex:1, paddingTop:40 }}>
+                  <Text style={{ color:'#FFFFFF', fontSize:18, fontWeight:'700', letterSpacing:0.5 }}>{displayName || skin.name}</Text>
+                  <Text style={{ color:color, fontSize:10, fontFamily:mono, letterSpacing:1, marginTop:3 }}>{STAGES[devStagePin ?? stage]?.name ?? 'STAGE 0'}</Text>
+                  <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginTop:6, lineHeight:14 }}>{skin.desc}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* ── Zone Companion Roster — by Rarity ─────────────────── */}
+          <View style={{ marginBottom:20 }}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:14 }}>
+              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
+              <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, marginLeft:'auto' }}>{SKIN_IDS.length} TOTAL</Text>
+            </View>
+            {equippedCompanionSkin && (
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:12, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:SKIN_RARITY[equippedCompanionSkin].color+'44', backgroundColor:SKIN_RARITY[equippedCompanionSkin].color+'0A' }}>
+                <Text style={{ color:SKIN_RARITY[equippedCompanionSkin].color, fontSize:8, fontFamily:mono, letterSpacing:1 }}>EQUIPPED</Text>
+                <Text style={{ color:'#CCCCDD', fontSize:9, fontFamily:mono, fontWeight:'700' }}>{COMPANION_LORE[equippedCompanionSkin]?.name ?? SKINS[equippedCompanionSkin].name}</Text>
+                <TouchableOpacity onPress={() => setEquippedCompanionSkin(null)} style={{ marginLeft:'auto' }}>
+                  <Text style={{ color:'#555566', fontSize:8, fontFamily:mono }}>✕ UNEQUIP</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {RARITY_GROUPS.map(({ tier, ids }) => {
+              const tierColor = RARITY_COLORS[tier];
+              return (
+                <View key={tier} style={{ marginBottom:16 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:8 }}>
+                    <View style={{ width:24, height:1, backgroundColor:tierColor+'44' }} />
+                    <Text style={{ color:tierColor, fontSize:7, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>{tier}</Text>
+                    <View style={{ flex:1, height:1, backgroundColor:tierColor+'22' }} />
+                    <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{ids.length}</Text>
+                  </View>
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                    {ids.map(sid => {
+                      const img = ZONE_COMPANION_IMAGES[`${sid}_1`];
+                      const s = SKINS[sid];
+                      const entry = COMPANION_LORE[sid];
+                      const visited = visitedRooms.has(`${sid}_0`);
+                      const isEquipped = equippedCompanionSkin === sid;
+                      const label = entry?.name ?? s.name.slice(0,8);
+                      return (
+                        <TouchableOpacity key={sid} onPress={() => setCompanionLoreModal(sid)} activeOpacity={0.8}
+                          style={{ width:'23%', alignItems:'center' }}>
+                          <View style={{ borderRadius:6, borderWidth: isEquipped ? 2 : 1, borderColor: isEquipped ? s.color : s.color+'44', backgroundColor: isEquipped ? s.color+'18' : 'transparent' }}>
+                            {img ? (
+                              <Image source={img} style={{ width:54, height:72, borderRadius:5 }} resizeMode="contain" />
+                            ) : (
+                              <View style={{ width:54, height:72, borderRadius:5, backgroundColor:s.color+'0A', alignItems:'center', justifyContent:'center' }}>
+                                <Text style={{ color:s.color, fontSize:16 }}>{s.glyph}</Text>
+                              </View>
+                            )}
+                          </View>
+                          {isEquipped && <View style={{ position:'absolute', top:2, right:2, width:6, height:6, borderRadius:3, backgroundColor:s.color }} />}
+                          <Text style={{ color:s.color, fontSize:6, fontFamily:mono, letterSpacing:0.3, marginTop:3, textAlign:'center' }} numberOfLines={1}>{label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* ── WORLD ─────────────────────────────────────────────── */}
+          {(() => {
+            const cardW = (SCREEN_W - 32 - 16) / 3;
+            const ZoneCard = ({ id }: { id: SkinId }) => {
+              const s = SKINS[id];
+              const active = activeSkin === id;
+              const { locked, reason } = getSkinUnlockStatus(id, totalDives, isSovereign);
+              const rarity = SKIN_RARITY[id];
+              const sceneImg = SCENE_IMAGES[id]?.[0];
+              return (
+                <TouchableOpacity key={id} onPress={() => !locked && handleSkin(id)}
+                  style={{ width:cardW, height:90, borderRadius:10, overflow:'hidden',
+                    borderWidth: active ? 2 : 1, borderColor: active ? s.color : rarity.color+'44' }}>
+                  {sceneImg && <Image source={sceneImg} style={{ position:'absolute', width:'100%', height:'100%' }} resizeMode="cover" />}
+                  <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor: active ? '#00000011' : '#00000044' }} />
+                  {locked ? (
+                    <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000BB', alignItems:'center', justifyContent:'center' }}>
+                      <Text style={{ color:'#333344', fontSize:13 }}>🔒</Text>
+                      <Text style={{ color:'#333344', fontSize:6, fontFamily:mono, marginTop:2, textAlign:'center', paddingHorizontal:4 }} numberOfLines={2}>{reason}</Text>
+                    </View>
+                  ) : (
+                    <>
+                      {(() => { const cImg = ZONE_COMPANION_IMAGES[`${id}_1`]; return cImg ? (
+                        <Image source={cImg} style={{ position:'absolute', bottom:22, right:3, width:32, height:42, opacity: active ? 1 : 0.6 }} resizeMode="contain" />
+                      ) : null; })()}
+                      <View style={{ position:'absolute', top:5, right:5, paddingHorizontal:4, paddingVertical:2, borderRadius:4, backgroundColor:'#000000BB' }}>
+                        <Text style={{ color:rarity.color, fontSize:6, fontFamily:mono, fontWeight:'700' }}>{rarity.tier}</Text>
+                      </View>
+                      {active && <View style={{ position:'absolute', top:5, left:5, paddingHorizontal:4, paddingVertical:2, borderRadius:4, backgroundColor:s.color+'AA' }}>
+                        <Text style={{ color:'#000000', fontSize:6, fontFamily:mono, fontWeight:'700' }}>ON</Text>
+                      </View>}
+                      <View style={{ position:'absolute', bottom:0, left:0, right:0, backgroundColor:'#000000CC', paddingHorizontal:5, paddingVertical:4 }}>
+                        <Text style={{ color:active ? s.color : '#DDDDEE', fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:0.5 }} numberOfLines={1}>{s.name}</Text>
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+              );
+            };
+
+            const SectionHeader = ({ label, count, open, onPress, accentColor }: { label:string; count:number; open:boolean; onPress:()=>void; accentColor:string }) => (
+              <TouchableOpacity onPress={onPress} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom: open ? 8 : 0 }}>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                  <View style={{ width:3, height:12, borderRadius:2, backgroundColor:accentColor }} />
+                  <Text style={{ color:'#AAAABC', fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>{label}</Text>
+                  <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:accentColor+'22', borderWidth:1, borderColor:accentColor+'44' }}>
+                    <Text style={{ color:accentColor, fontSize:7, fontFamily:mono }}>{count}</Text>
+                  </View>
+                </View>
+                <Text style={{ color:'#333344', fontSize:10 }}>{open ? '▼' : '▶'}</Text>
+              </TouchableOpacity>
+            );
+
+            const ORIGIN_IDS:   SkinId[] = ['solform','void','aurora','crimson'];
+            const ARCANE_IDS:   SkinId[] = ['obsidian','lycheetah','chaos','sovereign'];
+            const MYSTIC_IDS:   SkinId[] = ['norse','celtic','egyptian','akashic','kabbala','noetic','lamague','delphi','sufi','quantum'];
+            // FRONTIER sub-genres
+            const CRYSTAL_IDS:    SkinId[] = ['crystal_nexus','crystal_chaos','crystal_memory','crystal_soul'];
+            const CHAOS_IDS:      SkinId[] = ['auroral_chaos','chaos_temple','chaos_filaments','glitch_cascade','obsidian_forge','obsidian_forge2','celestial_foundry'];
+            const SANCTUM_IDS:    SkinId[] = ['pulse_sanctum','noetic_sanctum','veil_atrium','lyc_nexus'];
+            const ELEMENTAL_IDS:  SkinId[] = ['apollo_jungle','mana_field','neon_cove','alabaster_chasm','antarctic_refuge','aurorian_pillar','elven_village'];
+            const DIM_IDS:        SkinId[] = ['augmented_ai','celestial_sigil','portal_valley','pulse_zone','voyagers_edge'];
+
+            // Current zone for GBA map
+            const mapSkin = (currentRoomId.split('_')[0] as SkinId);
+
+            return (
+              <View style={{ marginBottom:20 }}>
+                {/* GBA PIXEL MAP */}
+                <TouchableOpacity onPress={() => setGbaMapOpen(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom: gbaMapOpen ? 8 : 0 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:12, borderRadius:2, backgroundColor:'#44FF88' }} />
+                    <Text style={{ color:'#AAAABC', fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>GBA MAP</Text>
+                    <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#44FF8822', borderWidth:1, borderColor:'#44FF8844' }}>
+                      <Text style={{ color:'#44FF88', fontSize:7, fontFamily:mono }}>{SKIN_IDS.length}</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color:'#333344', fontSize:10 }}>{gbaMapOpen ? '▼' : '▶'}</Text>
+                </TouchableOpacity>
+                {gbaMapOpen && (
+                  <View style={{ marginBottom:12, borderRadius:12, borderWidth:1, borderColor:'#1A2A1A', backgroundColor:'#020504', overflow:'hidden' }}>
+                    <ScrollView style={{ maxHeight:420 }} showsVerticalScrollIndicator={false}>
+                      <Svg width={GBA_W} height={GBA_H} style={{ backgroundColor:'#030806' }}>
+                        {/* Region labels */}
+                        {([
+                          {label:'ORIGIN',    y:14, col:'#C49A3C'},
+                          {label:'ARCANE',    y:69, col:'#9B6BFF'},
+                          {label:'MYSTIC',    y:124,col:'#5AC878'},
+                          {label:'CRYSTAL',   y:233,col:'#44DDCC'},
+                          {label:'CHAOS',     y:285,col:'#8855FF'},
+                          {label:'SANCTUM',   y:380,col:'#AA44FF'},
+                          {label:'ELEMENTAL', y:433,col:'#88CC44'},
+                          {label:'DIMENSIONAL',y:483,col:'#44AAFF'},
+                        ] as {label:string;y:number;col:string}[]).map(r => (
+                          <SvgText key={r.label} x={2} y={r.y} fontSize={6} fill={r.col+'66'} fontWeight="bold">{r.label}</SvgText>
+                        ))}
+                        {/* Adjacency lines */}
+                        {Object.entries(GBA_ADJ).map(([sid, neighbors]) => {
+                          const from = GBA_ZONE_COORDS[sid as SkinId];
+                          if (!from) return null;
+                          return neighbors.map(nb => {
+                            const to = GBA_ZONE_COORDS[nb];
+                            if (!to || nb < sid) return null; // avoid drawing twice
+                            return (
+                              <Line key={`${sid}-${nb}`} x1={from.x} y1={from.y} x2={to.x} y2={to.y}
+                                stroke="#1A2A1A" strokeWidth={1} />
+                            );
+                          });
+                        })}
+                        {/* Zone dots */}
+                        {SKIN_IDS.map(sid => {
+                          const pos = GBA_ZONE_COORDS[sid];
+                          if (!pos) return null;
+                          const s = SKINS[sid];
+                          const isActive = sid === mapSkin;
+                          const visited = visitedRooms.has(`${sid}_0`);
+                          return (
+                            <G key={sid} onPress={() => {
+                              const room = getRoomInSkin(sid, 0);
+                              if (room) {
+                                setActiveSkin(sid);
+                                setCurrentRoomId(room.id);
+                                setActiveTab('battle');
+                                setGbaMapOpen(false);
+                              }
+                            }}>
+                              {isActive && <Circle cx={pos.x} cy={pos.y} r={11} fill="transparent" stroke={s.color} strokeWidth={1.5} opacity={0.6} />}
+                              <Circle cx={pos.x} cy={pos.y} r={isActive ? 7 : visited ? 5 : 4}
+                                fill={visited ? s.color+'CC' : s.color+'33'}
+                                stroke={isActive ? s.color : s.color+'44'}
+                                strokeWidth={isActive ? 1.5 : 0.5} />
+                              <SvgText x={pos.x} y={pos.y + 14} textAnchor="middle" fontSize={5}
+                                fill={visited ? s.color+'CC' : '#333344'}>{s.glyph}</SvgText>
+                            </G>
+                          );
+                        })}
+                      </Svg>
+                    </ScrollView>
+                    <View style={{ paddingHorizontal:10, paddingVertical:6, borderTopWidth:1, borderTopColor:'#1A2A1A', flexDirection:'row', alignItems:'center', gap:8 }}>
+                      <View style={{ width:8, height:8, borderRadius:4, backgroundColor: SKINS[mapSkin]?.color ?? '#44FF88' }} />
+                      <Text style={{ color:'#444455', fontSize:8, fontFamily:mono }}>NOW: {SKINS[mapSkin]?.name ?? mapSkin.toUpperCase()} · TAP DOT TO TRAVEL</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* WORLD list header */}
+                <TouchableOpacity onPress={() => setWorldCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: worldCollapsed ? 0 : 4 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WORLD</Text>
+                  </View>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SKIN_IDS.length} ZONES</Text>
+                    <Text style={{ color:'#333344', fontSize:11 }}>{worldCollapsed ? '▶' : '▼'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {!worldCollapsed && (<>
+                  {/* ORIGIN */}
+                  <SectionHeader label="ORIGIN" count={ORIGIN_IDS.length} open={worldOriginOpen} onPress={() => setWorldOriginOpen(v=>!v)} accentColor="#C49A3C" />
+                  {worldOriginOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{ORIGIN_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                  {/* ARCANE */}
+                  <SectionHeader label="ARCANE" count={ARCANE_IDS.length} open={worldArcaneOpen} onPress={() => setWorldArcaneOpen(v=>!v)} accentColor="#9B6BFF" />
+                  {worldArcaneOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{ARCANE_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                  {/* MYSTERY SCHOOL */}
+                  <SectionHeader label="MYSTERY SCHOOL" count={MYSTIC_IDS.length} open={worldMysticOpen} onPress={() => setWorldMysticOpen(v=>!v)} accentColor="#5AC878" />
+                  {worldMysticOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{MYSTIC_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                  {/* FRONTIER → 5 sub-genres */}
+                  <SectionHeader label="FRONTIER" count={27} open={worldFrontierOpen} onPress={() => setWorldFrontierOpen(v=>!v)} accentColor="#44FF88" />
+                  {worldFrontierOpen && (<>
+                    <SectionHeader label="  ◆ CRYSTAL" count={CRYSTAL_IDS.length} open={worldCrystalOpen} onPress={() => setWorldCrystalOpen(v=>!v)} accentColor="#44DDCC" />
+                    {worldCrystalOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{CRYSTAL_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                    <SectionHeader label="  ⚡ CHAOS FORGE" count={CHAOS_IDS.length} open={worldChaosOpen} onPress={() => setWorldChaosOpen(v=>!v)} accentColor="#8855FF" />
+                    {worldChaosOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{CHAOS_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                    <SectionHeader label="  ◎ SANCTUM" count={SANCTUM_IDS.length} open={worldSanctumOpen} onPress={() => setWorldSanctumOpen(v=>!v)} accentColor="#AA44FF" />
+                    {worldSanctumOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{SANCTUM_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                    <SectionHeader label="  ☀ ELEMENTAL" count={ELEMENTAL_IDS.length} open={worldElementalOpen} onPress={() => setWorldElementalOpen(v=>!v)} accentColor="#88CC44" />
+                    {worldElementalOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{ELEMENTAL_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+
+                    <SectionHeader label="  ⊚ DIMENSIONAL" count={DIM_IDS.length} open={worldDimOpen} onPress={() => setWorldDimOpen(v=>!v)} accentColor="#44AAFF" />
+                    {worldDimOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{DIM_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
+                  </>)}
+                </>)}
+              </View>
+            );
+          })()}
+
+          {/* ── LAMAGUE LOADOUT ─────────────────────────────────── */}
+          <TouchableOpacity onPress={() => setLoadoutCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: loadoutCollapsed ? 12 : 12, marginTop:4 }}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>LAMAGUE LOADOUT</Text>
+            </View>
+            <Text style={{ color:'#333344', fontSize:11 }}>{loadoutCollapsed ? '▶' : '▼'}</Text>
+          </TouchableOpacity>
+          {!loadoutCollapsed && ([
             { slot:'crown'  as GearSlot, gear:gearCrown,  next:nextCrown  },
             { slot:'sigil'  as GearSlot, gear:gearSigil,  next:nextSigil  },
             { slot:'mantle' as GearSlot, gear:gearMantle, next:nextMantle },
@@ -3259,8 +4360,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           })}
 
           {/* ── BONUS SLOTS (body / cape) ── */}
-          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10, marginTop:4 }}>BONUS GEAR</Text>
-          {([
+          <TouchableOpacity onPress={() => setBonusCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: bonusCollapsed ? 12 : 8, marginTop:4 }}>
+            <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono }}>BONUS GEAR</Text>
+            <Text style={{ color:'#333344', fontSize:11 }}>{bonusCollapsed ? '▶' : '▼'}</Text>
+          </TouchableOpacity>
+          {!bonusCollapsed && ([
             { slot:'body' as GearSlot, gear:gearBody, next:nextBody },
             { slot:'cape' as GearSlot, gear:gearCape, next:nextCape },
           ]).map(({ slot, gear, next }) => {
@@ -3288,29 +4392,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               </View>
             );
           })}
-
-          {/* ── SKIN ── */}
-          <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10, marginTop:8 }}>SKIN</Text>
-          <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
-            {SKIN_IDS.map(id => {
-              const s = SKINS[id];
-              const isActive = id === activeSkin;
-              const { locked, reason } = getSkinUnlockStatus(id, totalDives, isSovereign);
-              return (
-                <TouchableOpacity key={id}
-                  onPress={() => { if (!locked) { Haptics.selectionAsync(); setActiveSkin(id); AsyncStorage.setItem('sol_companion_skin', id); } }}
-                  activeOpacity={locked ? 1 : 0.7}
-                  style={{ width:'22%', padding:10, borderRadius:10, borderWidth: isActive ? 1.5 : 1,
-                    borderColor: isActive ? s.color : locked ? '#1A1A26' : '#222233',
-                    backgroundColor: isActive ? s.color+'14' : locked ? '#08080E' : 'transparent',
-                    alignItems:'center', gap:4 }}>
-                  <Text style={{ color: isActive ? s.color : locked ? '#333344' : s.color+'88', fontSize:20 }}>{locked ? '🔒' : s.glyph}</Text>
-                  <Text style={{ color: isActive ? s.color : locked ? '#333344' : '#444455', fontSize:7, letterSpacing:1, fontFamily:mono, textAlign:'center' }}>{s.name}</Text>
-                  {locked && <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{reason}</Text>}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
 
         </View>
       )}
@@ -3361,10 +4442,19 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                           </View>
                         )}
                       </View>
-                      {/* Seed stage SVG preview */}
-                      <View style={{ marginBottom:10, alignItems:'center', opacity:cateLocked ? 0.5 : 0.9 }}>
-                        <CreatureSvg archId={id} stage={0} color={cateLocked ? '#FF9F1C' : aColor} />
-                      </View>
+                      {/* Companion art preview */}
+                      {(() => {
+                        const img = ZONE_COMPANION_IMAGES[`${a.defaultSkin}_1`];
+                        return img ? (
+                          <View style={{ marginBottom:10, alignItems:'center', opacity:cateLocked ? 0.45 : 1 }}>
+                            <Image source={img} style={{ width:110, height:150, borderRadius:10 }} resizeMode="contain" />
+                          </View>
+                        ) : (
+                          <View style={{ marginBottom:10, alignItems:'center', height:60, justifyContent:'center' }}>
+                            <Text style={{ color:cateLocked ? '#FF9F1C66' : aColor+'88', fontSize:40 }}>{a.glyph}</Text>
+                          </View>
+                        );
+                      })()}
                       {cateLocked ? (
                         <Text style={{ color:'#FF9F1C88', fontSize:12, lineHeight:18, marginBottom:10, fontStyle:'italic' }}>
                           The Mystery Cat chooses only those who hold Founding Sovereign.{'\n'}Chaos cannot be summoned. Only earned.
@@ -3465,34 +4555,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       </Modal>
 
-      {/* ── COMPANION IDENTITY CARD — field tab only ─────────────────────── */}
-      {activeTab === 'field' && (
-      <View style={{ marginHorizontal:16, marginTop:10, marginBottom:4, padding:14, borderRadius:14, backgroundColor:SOL_THEME.surface, borderWidth:1, borderColor:color+'33', borderLeftWidth:3, borderLeftColor:color }}>
-        {/* Archetype badge + choose button */}
-        <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-          <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-            <Text style={{ color, fontSize:18 }}>{archetype.glyph}</Text>
-            <View>
-              <Text style={{ color:SOL_THEME.text, fontSize:12, fontWeight:'700', fontFamily:mono }}>{archetype.name}</Text>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
-            </View>
-          </View>
-          <TouchableOpacity onPress={() => setShowArchSelect(true)} style={{ paddingHorizontal:12, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:color+'66', backgroundColor:color+'12' }}>
-            <Text style={{ color, fontSize:10, fontFamily:mono, letterSpacing:1 }}>CHANGE</Text>
-          </TouchableOpacity>
-        </View>
-        {/* Name + level */}
-        <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
-          <TouchableOpacity onPress={() => { setNameDraft(companionName); setEditingName(true); }} style={{ flex:1 }}>
-            {companionName
-              ? <Text style={{ color:SOL_THEME.text, fontSize:15, fontWeight:'700', fontFamily:mono }}>{companionName} <Text style={{ color }}>✎</Text></Text>
-              : <Text style={{ color:SOL_THEME.textMuted, fontSize:12, fontStyle:'italic' }}>tap to name your companion</Text>
-            }
-          </TouchableOpacity>
-          <Text style={{ color:SOL_THEME.text, fontSize:11, fontFamily:mono, fontWeight:'700' }}>{lvl.cur.glyph}  LV.{lvl.level}  {lvl.cur.title.toUpperCase()}</Text>
-        </View>
-      </View>
-      )}
 
       {/* ── NAME MODAL ─────────────────────────────────────────────────────── */}
       <Modal visible={editingName} transparent animationType="fade">
@@ -3615,6 +4677,66 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </View>
       </Modal>
 
+      {/* ── COMPANION LORE MODAL ─────────────────────────────────────────── */}
+      <Modal visible={!!companionLoreModal} transparent animationType="fade">
+        {companionLoreModal && (() => {
+          const sid   = companionLoreModal;
+          const s     = SKINS[sid];
+          const entry = COMPANION_LORE[sid];
+          const img   = ZONE_COMPANION_IMAGES[`${sid}_1`];
+          const visited = visitedRooms.has(`${sid}_0`);
+          return (
+            <TouchableOpacity activeOpacity={1} onPress={() => setCompanionLoreModal(null)}
+              style={{ flex:1, backgroundColor:'#000000E8', justifyContent:'center', alignItems:'center', padding:28 }}>
+              <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}
+                style={{ width:'100%', backgroundColor:'#0C0C14', borderRadius:20, padding:24, borderWidth:1.5, borderColor:s.color+'66' }}>
+                {/* Art */}
+                <View style={{ alignItems:'center', marginBottom:16 }}>
+                  {img ? (
+                    <Image source={img} style={{ width:110, height:150, borderRadius:12 }} resizeMode="contain" />
+                  ) : (
+                    <View style={{ width:110, height:150, borderRadius:12, borderWidth:1, borderColor:s.color+'33', alignItems:'center', justifyContent:'center', backgroundColor:s.color+'08' }}>
+                      <Text style={{ color:s.color, fontSize:40 }}>{s.glyph}</Text>
+                    </View>
+                  )}
+                </View>
+                {/* Name + title */}
+                <Text style={{ color:s.color, fontSize:18, fontWeight:'700', fontFamily:mono, letterSpacing:2, textAlign:'center' }}>{entry?.name ?? s.name}</Text>
+                <Text style={{ color:s.color+'88', fontSize:10, fontFamily:mono, letterSpacing:1, textAlign:'center', marginTop:3, marginBottom:14 }}>{entry?.title ?? ''}</Text>
+                {/* Lore */}
+                <Text style={{ color:'#CCCCDD', fontSize:13, lineHeight:21, textAlign:'center', fontStyle:'italic' }}>
+                  {entry?.lore ?? 'This being has not yet revealed its nature.'}
+                </Text>
+                {/* Buttons */}
+                <View style={{ flexDirection:'row', gap:8, marginTop:20 }}>
+                  <TouchableOpacity onPress={() => setCompanionLoreModal(null)}
+                    style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1, borderColor:'#333344', alignItems:'center' }}>
+                    <Text style={{ color:'#666677', fontSize:10, fontFamily:mono, letterSpacing:1 }}>CLOSE</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    setEquippedCompanionSkin(equippedCompanionSkin === sid ? null : sid);
+                    setCompanionLoreModal(null);
+                  }} style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1.5,
+                    borderColor: equippedCompanionSkin === sid ? '#FF4466' : s.color+'88',
+                    backgroundColor: equippedCompanionSkin === sid ? '#FF446618' : s.color+'0A', alignItems:'center' }}>
+                    <Text style={{ color: equippedCompanionSkin === sid ? '#FF4466' : s.color, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>
+                      {equippedCompanionSkin === sid ? 'UNEQUIP' : 'EQUIP ✦'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    const room = getRoomInSkin(sid, 0);
+                    if (room) { setActiveSkin(sid); setCurrentRoomId(room.id); setActiveTab('battle'); }
+                    setCompanionLoreModal(null);
+                  }} style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1.5, borderColor:s.color, backgroundColor:s.color+'14', alignItems:'center' }}>
+                    <Text style={{ color:s.color, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>HUNT →</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          );
+        })()}
+      </Modal>
+
       {/* ── NAMING RITUAL ────────────────────────────────────────────────── */}
       <Modal visible={showNamingRitual} transparent animationType="fade">
         <View style={{ flex:1, backgroundColor:'#000000F0', justifyContent:'center', alignItems:'center', padding:32 }}>
@@ -3719,6 +4841,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                 <Text style={{ color:'#666677', fontSize:10, letterSpacing:2, fontFamily:mono }}>ENTROPY WAVES</Text>
               </View>
               <WaveDots wave={battle?.wave ?? 1} color={color} />
+              {/* Dialogue toggle */}
+              <TouchableOpacity onPress={() => { setBattleDialogueOn(v => !v); if (!battleDialogueOn) { const ls = BATTLE_COMPANION_LINES[archetype.id] ?? BATTLE_COMPANION_LINES['vigil']; setCompanionBattleLine(ls[Math.floor(Math.random()*ls.length)]); } }}
+                style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:7, borderWidth:1, borderColor: battleDialogueOn ? color+'88' : '#22223366', backgroundColor: battleDialogueOn ? color+'14' : 'transparent' }}>
+                <Text style={{ color: battleDialogueOn ? color : '#333344', fontSize:8, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{battleDialogueOn ? '◈ VOICE' : '◌ VOICE'}</Text>
+              </TouchableOpacity>
               {/* Token count */}
               <View style={{ flexDirection:'row', gap:5, alignItems:'center' }}>
                 {Array.from({ length: Math.min(tokensLeft, 6) }).map((_, i) => (
@@ -3737,14 +4864,18 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               const rc  = def.colour;
               const enemyImg = ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES];
               const disabled = attackAnim;
-              const spells = ARCHETYPE_SPELLS[archetype.id] ?? ARCHETYPE_SPELLS['vigil'];
+              const archetypeSpells = ARCHETYPE_SPELLS[archetype.id] ?? ARCHETYPE_SPELLS['vigil'];
+              const roomSkinId = (currentRoomId.split('_')[0] as SkinId);
+              const zoneSpells = ZONE_ENCOUNTER_SPELLS[roomSkinId] ?? [];
+              const spells = [...archetypeSpells, ...zoneSpells];
               return (<>
                 {/* Spell menu overlay */}
                 {spellMenuOpen && (
                   <TouchableOpacity activeOpacity={1} onPress={() => setSpellMenuOpen(false)}
                     style={{ position:'absolute', top:0, left:0, right:0, bottom:0, zIndex:20, justifyContent:'center' }}>
                     <View style={{ backgroundColor:'#06060EEE', borderRadius:14, borderWidth:1.5, borderColor:color+'44', padding:14, margin:4 }}>
-                      <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:12, textAlign:'center' }}>✦ SPELLS</Text>
+                      <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:4, textAlign:'center' }}>✦ SPELLS</Text>
+                      {zoneSpells.length > 0 && <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, letterSpacing:2, textAlign:'center', marginBottom:10 }}>+ {SKINS[roomSkinId]?.name ?? 'ZONE'} SPELLS UNLOCKED</Text>}
                       {spells.map(sp => {
                         const canCast = tokensLeft >= sp.cost;
                         return (
@@ -3766,91 +4897,156 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                   </TouchableOpacity>
                 )}
 
+                {/* Item menu overlay */}
+                {itemMenuOpen && (
+                  <TouchableOpacity activeOpacity={1} onPress={() => setItemMenuOpen(false)}
+                    style={{ position:'absolute', top:0, left:0, right:0, bottom:0, zIndex:20, justifyContent:'center' }}>
+                    <View style={{ backgroundColor:'#06060EEE', borderRadius:14, borderWidth:1.5, borderColor:'#44CC8844', padding:14, margin:4 }}>
+                      <Text style={{ color:'#44CC88', fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:12, textAlign:'center' }}>◦ ITEMS</Text>
+                      {BATTLE_ITEMS.map(item => {
+                        const rc2 = item.rarity==='epic'?'#FF9F1C':item.rarity==='rare'?'#CC66FF':item.rarity==='uncommon'?'#44AAFF':'#667788';
+                        return (
+                          <TouchableOpacity key={item.id} onPress={() => handleBattleItem(item)}
+                            style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:10, paddingHorizontal:12, marginBottom:6, borderRadius:10, borderWidth:1, borderColor:rc2+'55', backgroundColor:rc2+'0D' }}>
+                            <View style={{ flexDirection:'row', alignItems:'center', gap:10, flex:1 }}>
+                              <Text style={{ color:rc2, fontSize:16, fontFamily:mono }}>{item.glyph}</Text>
+                              <View style={{ flex:1 }}>
+                                <Text style={{ color:'#CCCCDD', fontSize:12, fontFamily:mono, fontWeight:'700' }}>{item.name}</Text>
+                                <Text style={{ color:rc2+'99', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
+                              </View>
+                            </View>
+                            <View style={{ paddingHorizontal:6, paddingVertical:3, borderRadius:5, borderWidth:1, borderColor:rc2+'66', backgroundColor:rc2+'18' }}>
+                              <Text style={{ color:rc2, fontSize:8, fontFamily:mono, fontWeight:'700' }}>{item.rarity.toUpperCase()}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:6 }}>TAP OUTSIDE TO CANCEL</Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+
                 {/* Enemy row */}
-                <View style={{ flexDirection:'row', alignItems:'center', gap:10, marginBottom:10 }}>
+                <View style={{ flexDirection:'row', alignItems:'flex-start', gap:14, marginBottom:12 }}>
                   <Animated.View style={{ transform:[{translateX:entityShakeAnim}] }}>
                     {enemyImg ? (
-                      <Image source={enemyImg} style={{ width:60, height:76, borderRadius:4 }} resizeMode="contain" />
+                      <View style={{ borderRadius:10, borderWidth:1.5, borderColor:rc+'55', overflow:'hidden', shadowColor:rc, shadowOpacity:0.5, shadowRadius:10, elevation:6 }}>
+                        <Image source={enemyImg} style={{ width:90, height:110 }} resizeMode="contain" />
+                      </View>
                     ) : (
-                      <View style={{ width:60, height:76, borderRadius:4, borderWidth:1, borderColor:rc+'33', backgroundColor:rc+'06', alignItems:'center', justifyContent:'center' }}>
+                      <View style={{ width:90, height:110, borderRadius:10, borderWidth:1.5, borderColor:rc+'44', backgroundColor:rc+'08', alignItems:'center', justifyContent:'center' }}>
                         <EnemyGlyphArt glyph={def.rarity==='legendary'?'⊛':def.rarity==='epic'?'✦':def.rarity==='rare'?'⊚':def.rarity==='uncommon'?'◈':'◌'} color={rc} />
                       </View>
                     )}
                   </Animated.View>
-                  <View style={{ flex:1, gap:4 }}>
-                    <View style={{ flexDirection:'row', alignItems:'center', gap:5, flexWrap:'wrap' }}>
-                      <Text style={{ color:rc, fontSize:12, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{battle.entityName.toUpperCase()}</Text>
-                      <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, borderWidth:1, borderColor:rc+'55', backgroundColor:rc+'14' }}>
+                  <View style={{ flex:1, gap:6, paddingTop:4 }}>
+                    <Text style={{ color:rc, fontSize:14, fontWeight:'700', letterSpacing:0.5 }}>{battle.entityName}</Text>
+                    <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                      <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor:rc+'55', backgroundColor:rc+'14' }}>
                         <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{def.rarity.toUpperCase()}</Text>
                       </View>
-                      {battle.enemyStunned && <Text style={{ color:'#FFBB00', fontSize:8, fontFamily:mono }}>STUNNED</Text>}
+                      {battle.enemyStunned && (
+                        <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:5, backgroundColor:'#FFBB0022', borderWidth:1, borderColor:'#FFBB0066' }}>
+                          <Text style={{ color:'#FFBB00', fontSize:7, fontFamily:mono, fontWeight:'700' }}>STUNNED</Text>
+                        </View>
+                      )}
                     </View>
-                    <View style={{ height:8, backgroundColor:'#1A0000', borderRadius:4, overflow:'hidden' }}>
-                      <View style={{ height:8, width:`${Math.round((battle.entityHP/battle.maxHP)*100)}%` as any,
-                        backgroundColor:rc, borderRadius:4,
-                        shadowColor:rc, shadowOpacity:0.7, shadowRadius:4, elevation:2 }} />
+                    {/* HP bar */}
+                    <View>
+                      <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
+                        <Text style={{ color:'#444455', fontSize:7, fontFamily:mono, letterSpacing:1 }}>VITALITY</Text>
+                        <Text style={{ color:rc+'AA', fontSize:8, fontFamily:mono, fontWeight:'700' }}>{battle.entityHP}/{battle.maxHP}</Text>
+                      </View>
+                      <View style={{ height:10, backgroundColor:'#12000A', borderRadius:5, overflow:'hidden', borderWidth:1, borderColor:rc+'22' }}>
+                        <View style={{ height:10, width:`${Math.round((battle.entityHP/battle.maxHP)*100)}%` as any,
+                          backgroundColor:rc, borderRadius:5,
+                          shadowColor:rc, shadowOpacity:0.9, shadowRadius:6, elevation:3 }} />
+                      </View>
                     </View>
-                    <Text style={{ color:rc+'88', fontSize:8, fontFamily:mono }}>{battle.entityHP}/{battle.maxHP} HP</Text>
+                    {/* Enemy dialogue */}
+                    <View style={{ borderLeftWidth:2, borderLeftColor:rc+'66', paddingLeft:8, marginTop:2 }}>
+                      <Text style={{ color:'#888899', fontSize:10, fontStyle:'italic', lineHeight:15 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
+                    </View>
                   </View>
                 </View>
 
-                {/* Dialogue box */}
-                <View style={{ borderWidth:1, borderColor:'#FFFFFF14', backgroundColor:'#040407', borderRadius:6, padding:8, marginBottom:10, minHeight:36, justifyContent:'center' }}>
-                  <Text style={{ color:'#AAAABC', fontSize:10, fontFamily:mono, lineHeight:16 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
-                </View>
+                {/* Companion dialogue bubble */}
+                {battleDialogueOn && companionBattleLine !== '' && (
+                  <View style={{ flexDirection:'row', alignItems:'flex-start', gap:8, marginBottom:10, paddingHorizontal:2 }}>
+                    <View style={{ width:28, height:28, borderRadius:14, borderWidth:1, borderColor:color+'66', backgroundColor:color+'14', alignItems:'center', justifyContent:'center' }}>
+                      <Text style={{ fontSize:13 }}>{skin.glyph}</Text>
+                    </View>
+                    <View style={{ flex:1, backgroundColor:color+'0E', borderRadius:12, borderTopLeftRadius:3, borderWidth:1, borderColor:color+'33', paddingHorizontal:11, paddingVertical:8 }}>
+                      <Text style={{ color:color+'CC', fontSize:9, fontFamily:mono, letterSpacing:1, marginBottom:3 }}>{(displayName || archetype.name).toUpperCase()}</Text>
+                      <Text style={{ color:'#CCCCDD', fontSize:12, fontStyle:'italic', lineHeight:18 }}>{`"${companionBattleLine}"`}</Text>
+                    </View>
+                  </View>
+                )}
 
                 {/* Player HP */}
-                <View style={{ marginBottom:10 }}>
-                  <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:3 }}>
-                    <Text style={{ color:'#44FF88', fontSize:8, fontFamily:mono, letterSpacing:1 }}>
-                      YOU{battle.playerShielded ? '  ◈ SHIELDED' : battle.defending ? '  ◈ BRACED' : ''}
-                    </Text>
-                    <Text style={{ color: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88AA', fontSize:8, fontFamily:mono }}>
+                <View style={{ marginBottom:12, padding:10, borderRadius:10, backgroundColor:'#04080A', borderWidth:1, borderColor:'#44FF8822' }}>
+                  <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                    <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                      <Text style={{ color:'#44FF88', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>YOUR VITALITY</Text>
+                      {battle.playerShielded && (
+                        <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#4488FF22', borderWidth:1, borderColor:'#4488FF66' }}>
+                          <Text style={{ color:'#4488FF', fontSize:7, fontFamily:mono, fontWeight:'700' }}>◈ SHIELDED</Text>
+                        </View>
+                      )}
+                      {battle.defending && !battle.playerShielded && (
+                        <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#4488FF11', borderWidth:1, borderColor:'#4488FF44' }}>
+                          <Text style={{ color:'#4488FFAA', fontSize:7, fontFamily:mono }}>◈ BRACED</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={{ color: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
                       {battle.playerHP}/{battle.maxPlayerHP}
                     </Text>
                   </View>
-                  <View style={{ height:8, backgroundColor:'#001A00', borderRadius:4, overflow:'hidden' }}>
-                    <View style={{ height:8, width:`${Math.round((battle.playerHP/battle.maxPlayerHP)*100)}%` as any,
-                      backgroundColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', borderRadius:4,
+                  <View style={{ height:10, backgroundColor:'#001200', borderRadius:5, overflow:'hidden', borderWidth:1, borderColor:'#44FF8811' }}>
+                    <View style={{ height:10, width:`${Math.round((battle.playerHP/battle.maxPlayerHP)*100)}%` as any,
+                      backgroundColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', borderRadius:5,
                       shadowColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88',
-                      shadowOpacity:0.6, shadowRadius:4, elevation:2 }} />
+                      shadowOpacity:0.8, shadowRadius:6, elevation:3 }} />
                   </View>
                 </View>
 
                 {/* 2×2 action grid */}
-                <View style={{ flexDirection:'row', gap:6, marginBottom:8 }}>
-                  <View style={{ flex:1, gap:6 }}>
+                <View style={{ flexDirection:'row', gap:8, marginBottom:8 }}>
+                  <View style={{ flex:1, gap:8 }}>
                     {([
-                      { id:'attack' as const, label:'⚔', name:'FIGHT',  col:'#FF5544' },
-                      { id:'defend' as const, label:'◈', name:'GUARD',  col:'#4488FF' },
+                      { id:'attack' as const, label:'⚔', name:'FIGHT',  sub:'Strike the enemy', col:'#FF5544' },
+                      { id:'defend' as const, label:'◈', name:'GUARD',  sub:'Reduce damage',    col:'#4488FF' },
                     ]).map(btn => (
                       <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={disabled}
-                        style={{ paddingVertical:14, borderRadius:10, borderWidth:1.5,
-                          borderColor: disabled ? '#1A1A1A' : btn.col+'66',
-                          backgroundColor: disabled ? '#0A0A0A' : btn.col+'12', alignItems:'center', gap:2 }}>
-                        <Text style={{ color: disabled ? '#222233' : btn.col, fontSize:18, fontFamily:mono }}>
+                        style={{ paddingVertical:16, paddingHorizontal:10, borderRadius:12, borderWidth:1.5,
+                          borderColor: disabled ? '#1A1A26' : btn.col+'55',
+                          backgroundColor: disabled ? '#080810' : btn.col+'10', alignItems:'center', gap:3 }}>
+                        <Text style={{ color: disabled ? '#2A2A3A' : btn.col, fontSize:22 }}>
                           {attackAnim && btn.id==='attack' ? '·' : btn.label}
                         </Text>
-                        <Text style={{ color: disabled ? '#1A1A2A' : btn.col+'CC', fontSize:8, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>
+                        <Text style={{ color: disabled ? '#22223A' : btn.col, fontSize:9, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>
                           {attackAnim && btn.id==='attack' ? '···' : btn.name}
                         </Text>
+                        <Text style={{ color: disabled ? '#1A1A28' : btn.col+'66', fontSize:7, fontFamily:mono, textAlign:'center' }}>{btn.sub}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                  <View style={{ flex:1, gap:6 }}>
+                  <View style={{ flex:1, gap:8 }}>
                     {([
-                      { id:'spell' as const, label:'✦', name:'SPELL', col:color },
-                      { id:'item'  as const, label:'◦', name:'ITEM',  col:'#44CC88' },
+                      { id:'spell' as const, label:'✦', name:'SPELL', sub:`${tokensLeft}T available`, col:color },
+                      { id:'item'  as const, label:'◦', name:'ITEM',  sub:'Use a relic',            col:'#44CC88' },
                     ]).map(btn => {
                       const spellDis = btn.id==='spell' && (disabled || tokensLeft < Math.min(...spells.map(s=>s.cost)));
                       const dis2 = btn.id==='spell' ? spellDis : disabled;
                       return (
                         <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={dis2}
-                          style={{ paddingVertical:14, borderRadius:10, borderWidth:1.5,
-                            borderColor: dis2 ? '#1A1A1A' : btn.col+'66',
-                            backgroundColor: dis2 ? '#0A0A0A' : btn.col+'12', alignItems:'center', gap:2 }}>
-                          <Text style={{ color: dis2 ? '#222233' : btn.col, fontSize:18, fontFamily:mono }}>{btn.label}</Text>
-                          <Text style={{ color: dis2 ? '#1A1A2A' : btn.col+'CC', fontSize:8, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>{btn.name}</Text>
+                          style={{ paddingVertical:16, paddingHorizontal:10, borderRadius:12, borderWidth:1.5,
+                            borderColor: dis2 ? '#1A1A26' : btn.col+'55',
+                            backgroundColor: dis2 ? '#080810' : btn.col+'10', alignItems:'center', gap:3 }}>
+                          <Text style={{ color: dis2 ? '#2A2A3A' : btn.col, fontSize:22, fontFamily:mono }}>{btn.label}</Text>
+                          <Text style={{ color: dis2 ? '#22223A' : btn.col, fontSize:9, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>{btn.name}</Text>
+                          <Text style={{ color: dis2 ? '#1A1A28' : btn.col+'66', fontSize:7, fontFamily:mono, textAlign:'center' }}>{btn.sub}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -3896,9 +5092,38 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                 {(() => { const lore = ENEMY_LORE[battle.entityName.toLowerCase().replace(/ /g,'_')]; return lore ? (
                   <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic', textAlign:'center', paddingHorizontal:8, lineHeight:15, opacity:0.7 }}>{lore}</Text>
                 ) : null; })()}
-                <Text style={{ color:'#222233', fontSize:9, fontFamily:mono, marginTop:4 }}>next wave rising…</Text>
+                {(() => { const wSkin = (currentRoomId.split('_')[0] as SkinId); return (
+                  <View style={{ flexDirection:'row', gap:8, marginTop:8 }}>
+                    <TouchableOpacity onPress={() => setBattle(freshZoneWave(wSkin, battle!.wave + 1, battle!.playerHP, playerStats.vit))}
+                      style={{ flex:2, paddingVertical:12, borderRadius:10, borderWidth:1.5, borderColor:color, backgroundColor:color+'14', alignItems:'center' }}>
+                      <Text style={{ color, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>NEXT WAVE →</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setBattle(freshZoneWave(wSkin, 1, undefined, playerStats.vit))}
+                      style={{ flex:1, paddingVertical:12, borderRadius:10, borderWidth:1, borderColor:'#FF664455', backgroundColor:'#FF664408', alignItems:'center' }}>
+                      <Text style={{ color:'#FF6644', fontSize:10, fontFamily:mono, letterSpacing:1 }}>HUNT</Text>
+                    </TouchableOpacity>
+                  </View>
+                ); })()}
               </View>
             )}
+
+            {/* No battle — pre-encounter prompt */}
+            {!battle && (() => {
+              const rSkin = (currentRoomId.split('_')[0] as SkinId);
+              return (
+                <View style={{ alignItems:'center', gap:10, paddingVertical:16 }}>
+                  <Text style={{ color:'#444455', fontSize:12, fontFamily:mono, letterSpacing:2 }}>ZONE: {SKINS[rSkin]?.name ?? rSkin.toUpperCase()}</Text>
+                  <Text style={{ color:SOL_THEME.textMuted, fontSize:11, textAlign:'center', lineHeight:18, fontStyle:'italic', paddingHorizontal:8 }}>
+                    {COMPANION_LORE[rSkin]?.lore ?? 'This zone holds unknown forces. Venture forward to discover what waits.'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit))}
+                    style={{ paddingVertical:14, paddingHorizontal:32, borderRadius:12, borderWidth:2, borderColor:color, backgroundColor:color+'18', alignItems:'center', marginTop:4 }}>
+                    <Text style={{ color, fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>⚔ HUNT</Text>
+                    <Text style={{ color:color+'66', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>zone encounter</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
           </View>
           ); })()}
 
@@ -3933,30 +5158,41 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          FEED TAB
+          BOND TAB
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'feed' && (
-        <View style={{ paddingHorizontal:16, paddingTop:8 }}>
+      {activeTab === 'bond' && (
+        <View style={{ paddingHorizontal:16, paddingTop:12 }}>
 
           {/* Active vigil */}
           {vigilName && (
-            <View style={{ marginBottom:12, padding:12, borderRadius:10, borderWidth:1, borderColor:color+'44', backgroundColor:color+'08', flexDirection:'row', alignItems:'center', gap:10 }}>
-              <Text style={{ color, fontSize:18 }}>◎</Text>
-              <View style={{ flex:1 }}>
-                <Text style={{ color:'#333344', fontSize:8, letterSpacing:2, fontFamily:mono }}>ACTIVE VIGIL</Text>
-                <Text style={{ color:SOL_THEME.text, fontSize:12, marginTop:1 }}>{vigilName}</Text>
+            <View style={{ marginBottom:16, padding:14, borderRadius:14, borderWidth:1, borderColor:color+'55', backgroundColor:color+'0C', flexDirection:'row', alignItems:'center', gap:12 }}>
+              <View style={{ width:36, height:36, borderRadius:18, borderWidth:1, borderColor:color+'55', backgroundColor:color+'18', alignItems:'center', justifyContent:'center' }}>
+                <Text style={{ color, fontSize:18 }}>◎</Text>
               </View>
-              <Text style={{ color:color, fontSize:8, fontFamily:mono }}>+100 day 7</Text>
+              <View style={{ flex:1 }}>
+                <Text style={{ color:color, fontSize:8, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>ACTIVE VIGIL</Text>
+                <Text style={{ color:'#CCCCDD', fontSize:13, marginTop:3, fontWeight:'600' }}>{vigilName}</Text>
+              </View>
+              <View style={{ alignItems:'flex-end' }}>
+                <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700' }}>+100</Text>
+                <Text style={{ color:'#444455', fontSize:7, fontFamily:mono }}>DAY 7</Text>
+              </View>
             </View>
           )}
 
           {/* Feed */}
-          <View onLayout={e => { feedY.current = e.nativeEvent.layout.y; }}
-            style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1, borderColor:color+'33', backgroundColor:cardBg }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>FEED</Text>
-              <Text style={{ color:'#333344', fontSize:9, fontFamily:mono }}>{fedToday.length}/3 today</Text>
-            </View>
+          <TouchableOpacity onPress={() => setNourishCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:12 }}>
+            <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+            <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>NOURISH</Text>
+            <View style={{ flex:1 }} />
+            <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{fedToday.length}/3</Text>
+            <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}> today</Text>
+            <Text style={{ color:'#333344', fontSize:11, marginLeft:4 }}>{nourishCollapsed ? '▶' : '▼'}</Text>
+          </TouchableOpacity>
+          {!nourishCollapsed && <View onLayout={e => { feedY.current = e.nativeEvent.layout.y; }}
+            style={{ marginBottom:20, padding:12, borderRadius:16, borderWidth:1, borderColor:color+'22', backgroundColor:'#08080F' }}>
+            <View style={{ flexDirection:'row', gap:8 }}>
+
             <View style={{ flexDirection:'row', gap:8 }}>
               {dailyFoods.map(food => {
                 const eaten = fedToday.includes(food.id);
@@ -3972,43 +5208,14 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               })}
             </View>
           </View>
+          </View>}
 
-          {/* Needs — always visible, no collapse */}
-          <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}>
-            <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:12 }}>COMPANION NEEDS</Text>
-            {[
-              { label:'HUNGER', value:hunger, full:'#E8C76A', desc:'Feed domain foods' },
-              { label:'WISDOM', value:wisdom, full:'#7B8FE8', desc:'LQ avg' },
-              { label:'ENERGY', value:energy, full:'#6AE8A0', desc:'Recency of study' },
-            ].map(({ label, value, full, desc }) => (
-              <View key={label} style={{ marginBottom:10 }}>
-                <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-                  <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:1.5, fontFamily:mono }}>{label}</Text>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
-                    <Text style={{ color:full, fontSize:9, fontWeight:'700', fontFamily:mono }}>{Math.round(value*100)}%</Text>
-                    <Text style={{ color:'#333344', fontSize:8, fontStyle:'italic' }}>{desc}</Text>
-                  </View>
-                </View>
-                <View style={{ height:5, backgroundColor:'#111120', borderRadius:3, overflow:'hidden' }}>
-                  <View style={{ height:5, width:`${Math.round(value*100)}%`, backgroundColor:full, borderRadius:3 }} />
-                </View>
-              </View>
-            ))}
-            <Text style={{ color:'#333344', fontSize:10, fontStyle:'italic', marginTop:4, lineHeight:16 }}>
-              {hunger<0.3&&energy<0.3 ? 'The companion rests. Come study.' : hunger>=1&&wisdom>=0.8 ? 'Well fed. The companion glows.' : 'Needs grow through the Work.'}
-            </Text>
-          </View>
-
-        </View>
-      )}
-
-      {/* ── RELICS · LORE · CODEX */}
-      {activeTab === 'gear' && (
-        <View style={{ paddingHorizontal:16, paddingTop:8 }}>
+          {/* ── RELICS · LORE · CODEX */}
+          <View style={{ paddingTop:8 }}>
 
           {/* Relics — with bonus stats */}
           <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#080810' }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:earnedRelicData.length>0?12:0 }}>
+            <TouchableOpacity onPress={() => setRelicsCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:relicsCollapsed ? 0 : earnedRelicData.length>0?12:0 }}>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                 <View style={{ width:3, height:12, borderRadius:2, backgroundColor:color }} />
                 <Text style={{ color:'#444455', fontSize:10, letterSpacing:2, fontFamily:mono }}>RELICS</Text>
@@ -4016,8 +5223,9 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                   <Text style={{ color, fontSize:8, fontFamily:mono, fontWeight:'700' }}>{earnedRelicData.length}</Text>
                 </View>
               </View>
-            </View>
-            {earnedRelicData.length > 0 ? (
+              <Text style={{ color:'#333344', fontSize:11 }}>{relicsCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!relicsCollapsed && (earnedRelicData.length > 0 ? (
               <View style={{ gap:8 }}>
                 {earnedRelicData.map(r => {
                   const bonusKeys = r.bonus ? (Object.keys(r.bonus) as (keyof PlayerStats)[]) : [];
@@ -4047,23 +5255,27 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               </View>
             ) : (
               <Text style={{ color:'#333344', fontSize:11, fontStyle:'italic', textAlign:'center', paddingVertical:10 }}>No relics yet. Complete school dives.</Text>
-            )}
+            ))}
           </View>
 
           {/* Companion Lore */}
           <View onLayout={e => { loreY.current = e.nativeEvent.layout.y; }}
             style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:'#1A1A26' }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+            <TouchableOpacity onPress={() => setLoreCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: loreCollapsed ? 0 : 10 }}>
               <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>LORE · {stageData.name}</Text>
-              <TouchableOpacity onPress={handleUploadDoc} disabled={uploadLoading}
-                style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:8, paddingVertical:3,
-                  borderRadius:6, borderWidth:1, borderColor: uploadedDoc ? color+'44' : '#1A1A26',
-                  backgroundColor: uploadedDoc ? color+'0A' : 'transparent' }}>
-                <Text style={{ color: uploadedDoc ? color : '#333344', fontSize:8, fontFamily:mono }}>
-                  {uploadLoading ? '···' : uploadedDoc ? `↑ ${uploadedDoc.name.slice(0,16)}${uploadedDoc.name.length>16?'…':''}` : '↑ upload'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <TouchableOpacity onPress={handleUploadDoc} disabled={uploadLoading}
+                  style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:8, paddingVertical:3,
+                    borderRadius:6, borderWidth:1, borderColor: uploadedDoc ? color+'44' : '#1A1A26',
+                    backgroundColor: uploadedDoc ? color+'0A' : 'transparent' }}>
+                  <Text style={{ color: uploadedDoc ? color : '#333344', fontSize:8, fontFamily:mono }}>
+                    {uploadLoading ? '···' : uploadedDoc ? `↑ ${uploadedDoc.name.slice(0,16)}${uploadedDoc.name.length>16?'…':''}` : '↑ upload'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={{ color:'#333344', fontSize:11 }}>{loreCollapsed ? '▶' : '▼'}</Text>
+              </View>
+            </TouchableOpacity>
+            {!loreCollapsed && (<>
             {liveLore.slice(0,5).map((l,i) => (
               <View key={i} style={{ borderLeftWidth:2, borderLeftColor:color+'55', paddingLeft:10, marginBottom:10 }}>
                 <Text style={{ color:SOL_THEME.text, fontSize:12, lineHeight:19, fontStyle:'italic' }}>{l.text}</Text>
@@ -4072,11 +5284,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             ))}
             {liveLore.length > 0 && <View style={{ height:1, backgroundColor:'#1A1A26', marginVertical:6 }} />}
             <Text style={{ color:'#555566', fontSize:12, lineHeight:19, fontStyle:'italic' }}>{stageData.lore}</Text>
+            </>)}
           </View>
 
           {/* Lore Codex */}
           <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:'#1A1A26', backgroundColor:'#060608' }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:loreCodex.length>0?12:0 }}>
+            <TouchableOpacity onPress={() => setCodexCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: codexCollapsed ? 0 : loreCodex.length>0?12:0 }}>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                 <View style={{ width:3, height:12, borderRadius:2, backgroundColor:'#7744CC' }} />
                 <Text style={{ color:'#444455', fontSize:10, letterSpacing:2, fontFamily:mono }}>CODEX</Text>
@@ -4086,9 +5299,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                   </View>
                 )}
               </View>
-              <Text style={{ color:'#222233', fontSize:8, fontFamily:mono }}>battle drops</Text>
-            </View>
-            {loreCodex.length > 0 ? (
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono }}>battle drops</Text>
+                <Text style={{ color:'#333344', fontSize:11 }}>{codexCollapsed ? '▶' : '▼'}</Text>
+              </View>
+            </TouchableOpacity>
+            {!codexCollapsed && (loreCodex.length > 0 ? (
               <View style={{ gap:8 }}>
                 {loreCodex.slice(0, 12).map((entry, i) => (
                   <View key={entry.id} style={{ flexDirection:'row', gap:10, paddingBottom: i < Math.min(loreCodex.length,12)-1 ? 8 : 0,
@@ -4115,10 +5331,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               <Text style={{ color:'#333344', fontSize:11, fontStyle:'italic', textAlign:'center', paddingVertical:10 }}>
                 Defeat entities in battle to unlock lore fragments.
               </Text>
-            )}
+            ))}
           </View>
 
         </View>
+      </View>
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
@@ -4129,7 +5346,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
 
           {/* ── Stat grid ──────────────────────────────────────── */}
           <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
-            {([
+            <TouchableOpacity onPress={() => setStatsCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: statsCollapsed ? 0 : 8 }}>
+              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>STATS</Text>
+              <Text style={{ color:'#333344', fontSize:11 }}>{statsCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!statsCollapsed && ([
               { glyph:'◈', label:'LQ SCORE',      value:`${(avgLQ*100).toFixed(0)}%` },
               { glyph:'⊹', label:'TOTAL DIVES',    value:`${totalDives}` },
               { glyph:'✦', label:'CURRENT STAGE',  value:`${stageData?.name ?? '—'} (${stage})` },
@@ -4145,8 +5366,11 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
 
           {/* ── Domain glyph strip — last 7 dives ──────────────── */}
           <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
-            <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:10 }}>RECENT DOMAINS</Text>
-            <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
+            <TouchableOpacity onPress={() => setDomainsCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: domainsCollapsed ? 0 : 10 }}>
+              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>RECENT DOMAINS</Text>
+              <Text style={{ color:'#333344', fontSize:11 }}>{domainsCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!domainsCollapsed && <View style={{ flexDirection:'row', justifyContent:'space-between' }}>
               {Array.from({ length:7 }).map((_, i) => {
                 const dive = recentDives[recentDives.length - 7 + i];
                 const domain = dive?.domainLabel ?? dive?.subjectName ?? null;
@@ -4160,23 +5384,28 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                   </View>
                 );
               })}
-            </View>
+            </View>}
           </View>
 
           {/* ── AI Field Note ───────────────────────────────────── */}
           <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+            <TouchableOpacity onPress={() => setFieldNoteCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: fieldNoteCollapsed ? 0 : 10 }}>
               <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>FIELD NOTE</Text>
-              <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7}>
-                <Text style={{ color: fieldNoteLoading ? '#333344' : color, fontSize:18, opacity: fieldNoteLoading ? 0.4 : 1 }}>↺</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
+                <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7}>
+                  <Text style={{ color: fieldNoteLoading ? '#333344' : color, fontSize:18, opacity: fieldNoteLoading ? 0.4 : 1 }}>↺</Text>
+                </TouchableOpacity>
+                <Text style={{ color:'#333344', fontSize:11 }}>{fieldNoteCollapsed ? '▶' : '▼'}</Text>
+              </View>
+            </TouchableOpacity>
+            {!fieldNoteCollapsed && (<>
             <Text style={{ color:SOL_THEME.text, fontSize:12, fontStyle:'italic', lineHeight:18 }}>
               {fieldNote ?? FIELD_FALLBACKS[Math.floor(Math.random()*FIELD_FALLBACKS.length)]}
             </Text>
             {fieldNoteLoading && (
               <ActivityIndicator size="small" color={SOL_THEME.textMuted} style={{ marginTop:8, alignSelf:'flex-start' }} />
             )}
+            </>)}
           </View>
 
           {/* Stage + stat sheet */}
@@ -4192,29 +5421,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             </TouchableOpacity>
           </View>
 
-          {/* Evolution + XP */}
-          <View style={{ marginBottom:14, gap:10, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
-            <View>
-              <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:5 }}>
-                <Text style={{ color, fontSize:9, letterSpacing:2, fontFamily:mono, opacity:0.75 }}>EVO · {stageData.name}</Text>
-                <Text style={{ color:'#444455', fontSize:9, fontFamily:mono }}>
-                  {stage<5 ? `${totalDives}/${stageData.nextAt} → ${STAGES[(stage+1) as EvolutionStage]?.name}` : '∞ SOVEREIGN'}
-                </Text>
-              </View>
-              <View style={{ height:5, backgroundColor:color+'18', borderRadius:3 }}>
-                <View style={{ height:5, width:`${Math.round(evProg*100)}%`, backgroundColor:color, borderRadius:3 }} />
-              </View>
-            </View>
-            <View>
-              <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-                <Text style={{ color, fontSize:9, letterSpacing:2, fontFamily:mono, opacity:0.75 }}>XP · {xp}</Text>
-                <Text style={{ color:'#444455', fontSize:9, fontFamily:mono }}>{lvl.next ? `→ ${lvl.next.title} at ${lvl.next.xp}` : 'MAX'}</Text>
-              </View>
-              <View style={{ height:3, backgroundColor:color+'18', borderRadius:2 }}>
-                <View style={{ height:3, width:`${Math.round(lvl.progress*100)}%`, backgroundColor:color, borderRadius:2, opacity:0.7 }} />
-              </View>
-            </View>
-          </View>
 
           {/* Quests — chip format */}
           <View style={{ marginBottom:14 }}>
@@ -4250,94 +5456,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             </View>
           </View>
 
-          {/* Companion Law */}
-          <View style={{ marginBottom:14, padding:12, borderRadius:10, borderWidth:1, borderColor:'#1A1A26' }}>
-            <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono, marginBottom:6 }}>COMPANION LAW</Text>
-            <Text style={{ color:'#555566', fontSize:11, lineHeight:18, fontStyle:'italic' }}>
-              Never starves. Never dies. Never guilts. Absence is rest. Evolution earned through the Work — the form is sacred and cannot be bought.
-            </Text>
-          </View>
-
-          {/* ── TAROT READING ─────────────────────────────────────────── */}
-          <View style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1, borderColor:color+'33', backgroundColor:color+'06' }}>
-            <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <Text style={{ color:color, fontSize:16 }}>⊜</Text>
-                <View>
-                  <Text style={{ color:SOL_THEME.text, fontSize:11, fontWeight:'700', fontFamily:mono }}>TAROT · THREE-CARD DRAW</Text>
-                  <Text style={{ color:'#444466', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:1 }}>
-                    PAST · PRESENT · FUTURE
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity onPress={drawTarot} disabled={tarotLoading}
-                style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:8, borderWidth:1, borderColor:color+'66', backgroundColor:color+'14' }}>
-                <Text style={{ color: tarotLoading ? '#333344' : color, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
-                  {tarotLoading ? '···' : tarotDraw ? '↺ REDRAW' : '✦ DRAW'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Art placeholder note */}
-            {!tarotDraw && (
-              <View style={{ paddingVertical:18, alignItems:'center', borderWidth:1, borderStyle:'dashed' as any, borderColor:color+'22', borderRadius:8 }}>
-                <Text style={{ color:color+'66', fontSize:22, marginBottom:6 }}>⊜ ⊚ ⊜</Text>
-                <Text style={{ color:'#333355', fontSize:10, fontStyle:'italic', textAlign:'center', lineHeight:16, paddingHorizontal:16 }}>
-                  Draw to begin. Custom card art is coming — each card will have its own sprite.
-                </Text>
-                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, marginTop:8, letterSpacing:1 }}>
-                  MAJOR ARCANA · 22 CARDS
-                </Text>
-              </View>
-            )}
-
-            {/* Drawn cards */}
-            {tarotDraw && (
-              <>
-                <View style={{ flexDirection:'row', gap:6, marginBottom:12 }}>
-                  {tarotDraw.map((card, i) => {
-                    const posLabels = ['PAST', 'PRESENT', 'FUTURE'];
-                    const posColors = [color+'88', color, color+'CC'];
-                    return (
-                      <View key={i} style={{ flex:1, alignItems:'center', padding:10, borderRadius:10, borderWidth:1,
-                        borderColor: posColors[i]+'44', backgroundColor: posColors[i]+'0C' }}>
-                        {/* Card placeholder art */}
-                        <View style={{ width:44, height:66, borderRadius:6, borderWidth:1.5, borderColor:posColors[i]+'66',
-                          backgroundColor:'#000000', alignItems:'center', justifyContent:'center', marginBottom:8,
-                          transform:[{ rotate: card.reversed ? '180deg' : '0deg' }] }}>
-                          <Text style={{ color:posColors[i], fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:0 }}>
-                            {card.glyph}
-                          </Text>
-                          <Text style={{ color:posColors[i]+'88', fontSize:14, marginTop:2 }}>⊜</Text>
-                        </View>
-                        <Text style={{ color:'#444466', fontSize:7, fontFamily:mono, letterSpacing:1, marginBottom:3 }}>{posLabels[i]}</Text>
-                        <Text style={{ color:posColors[i], fontSize:9, fontWeight:'700', textAlign:'center', lineHeight:13 }} numberOfLines={2}>{card.name}</Text>
-                        {card.reversed && <Text style={{ color:'#FF664488', fontSize:7, fontFamily:mono, marginTop:2 }}>REVERSED</Text>}
-                      </View>
-                    );
-                  })}
-                </View>
-
-                {/* Reading */}
-                {tarotLoading && (
-                  <View style={{ alignItems:'center', paddingVertical:10 }}>
-                    <Text style={{ color:color+'66', fontSize:13, letterSpacing:4 }}>· · ·</Text>
-                  </View>
-                )}
-                {tarotReading && (
-                  <View style={{ borderTopWidth:1, borderTopColor:color+'22', paddingTop:12 }}>
-                    <Text style={{ color:color+'88', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:8 }}>
-                      {archetype.name.toUpperCase()} READS THE FIELD
-                    </Text>
-                    <Text style={{ color:SOL_THEME.text, fontSize:12, lineHeight:20, fontStyle:'italic' }}>{tarotReading}</Text>
-                  </View>
-                )}
-                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, marginTop:10, textAlign:'center', letterSpacing:1 }}>
-                  ◈ Custom card art is in progress — each major arcana will have its own sprite ◈
-                </Text>
-              </>
-            )}
-          </View>
 
         </View>
       )}
@@ -4439,90 +5557,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       )}
 
       {/* ── ITEMS TAB ─────────────────────────────────────────────────────── */}
-      {activeTab === 'items' && (() => {
-        const RARITY_COL = { common:'#888888', uncommon:'#4A9EFF', rare:'#C8A96E', epic:'#9B59B6' } as Record<string,string>;
-        const counts: Record<string,number> = {};
-        for (const name of inventory) { counts[name] = (counts[name] ?? 0) + 1; }
-        const unique = Object.keys(counts);
-        const filtered = invFilter === 'all' ? unique : unique.filter(name => {
-          const l = LOOT_TABLE.find(x => x.name === name);
-          return l?.rarity === invFilter;
-        });
-        const filters: Array<{ id: 'all'|'common'|'uncommon'|'rare'|'epic', label: string }> = [
-          { id:'all', label:'ALL' }, { id:'common', label:'COMMON' }, { id:'uncommon', label:'UNCOMMON' }, { id:'rare', label:'RARE' }, { id:'epic', label:'EPIC' },
-        ];
-        return (
-          <View style={{ paddingHorizontal:16, paddingTop:10 }}>
-            {/* Header */}
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-              <Text style={{ color:color, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>◈ INVENTORY</Text>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontFamily:mono }}>{unique.length} items · {inventory.length} total</Text>
-            </View>
-            {/* Rarity filter */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }} contentContainerStyle={{ gap:6, paddingRight:8 }}>
-              {filters.map(f => (
-                <TouchableOpacity key={f.id} onPress={() => setInvFilter(f.id)}
-                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:8, borderWidth:1, borderColor: invFilter===f.id ? color : SOL_THEME.border, backgroundColor: invFilter===f.id ? color+'18' : 'transparent' }}>
-                  <Text style={{ color: invFilter===f.id ? color : SOL_THEME.textMuted, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{f.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            {/* Grid */}
-            {filtered.length === 0 ? (
-              <View style={{ alignItems:'center', paddingVertical:40 }}>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:28, marginBottom:10 }}>◈</Text>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:12, fontFamily:mono, letterSpacing:1 }}>
-                  {invFilter === 'all' ? 'No items yet — defeat entropy to earn loot' : `No ${invFilter} items yet`}
-                </Text>
-              </View>
-            ) : (
-              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
-                {filtered.map(name => {
-                  const loot = LOOT_TABLE.find(x => x.name === name);
-                  const qty = counts[name] ?? 1;
-                  const col = loot ? (RARITY_COL[loot.rarity] ?? '#888888') : '#888888';
-                  const expanded = invExpanded === name;
-                  return (
-                    <TouchableOpacity key={name} activeOpacity={0.8} onPress={() => setInvExpanded(expanded ? null : name)}
-                      style={{ width: expanded ? '100%' : '47%', borderRadius:12, borderWidth:1.5, borderColor: expanded ? col : col+'44', backgroundColor: expanded ? col+'14' : SOL_THEME.surface, padding:12, position:'relative' }}>
-                      {/* Qty badge */}
-                      {qty > 1 && (
-                        <View style={{ position:'absolute', top:6, right:6, backgroundColor:col+'CC', borderRadius:8, paddingHorizontal:5, paddingVertical:2, zIndex:1 }}>
-                          <Text style={{ color:'#000', fontSize:9, fontWeight:'700', fontFamily:mono }}>×{qty}</Text>
-                        </View>
-                      )}
-                      <Text style={{ color:col, fontSize: expanded ? 32 : 24, fontFamily:mono, textAlign:'center', marginBottom:6 }}>{loot?.glyph ?? '◌'}</Text>
-                      <Text style={{ color:SOL_THEME.text, fontSize:10, fontFamily:mono, fontWeight:'700', textAlign:'center', letterSpacing:1 }} numberOfLines={expanded ? undefined : 1}>{name}</Text>
-                      <Text style={{ color:col, fontSize:8, fontFamily:mono, textAlign:'center', letterSpacing:1, marginTop:2, opacity:0.8 }}>{loot?.rarity?.toUpperCase() ?? 'ITEM'}</Text>
-                      {expanded && loot && (
-                        <View style={{ marginTop:10, paddingTop:10, borderTopWidth:1, borderTopColor:col+'33' }}>
-                          {loot.lore ? (
-                            <Text style={{ color:SOL_THEME.textMuted, fontSize:11, lineHeight:17, fontStyle:'italic', textAlign:'center' }}>{loot.lore}</Text>
-                          ) : null}
-                          {loot.bonus && Object.keys(loot.bonus).length > 0 && (
-                            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop:8, justifyContent:'center' }}>
-                              {Object.entries(loot.bonus).map(([k,v]) => (
-                                <View key={k} style={{ paddingHorizontal:8, paddingVertical:3, borderRadius:6, backgroundColor:col+'22', borderWidth:1, borderColor:col+'44' }}>
-                                  <Text style={{ color:col, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{k.toUpperCase()} +{v}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                          <View style={{ marginTop:8, padding:8, borderRadius:8, backgroundColor:col+'08', borderWidth:1, borderColor:col+'22' }}>
-                            <Text style={{ color:SOL_THEME.textMuted, fontSize:8, letterSpacing:2, fontFamily:mono, marginBottom:4 }}>EFFECT</Text>
-                            <Text style={{ color:col, fontSize:11 }}>{getItemEffect({ name, rarity: loot?.rarity ?? 'common' })}</Text>
-                          </View>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-            <View style={{ height:80 }} />
-          </View>
-        );
-      })()}
 
     </ScrollView>
   );

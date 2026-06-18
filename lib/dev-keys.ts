@@ -1,6 +1,5 @@
-// Dev fallback keys — DO NOT commit real values here
-// Copy this file to lib/dev-keys.local.ts and add your keys there (gitignored)
+// Built-in free tier key — Cloudflare proxy (#22) replaces this when live
 export const DEV_KEYS: Record<string, string> = {
-  nvidia: '',
+  nvidia: '***REMOVED***',
   deepseek: '',
 };

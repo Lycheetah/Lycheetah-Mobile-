@@ -48,7 +48,7 @@ export type NvidiaModel =
   // Vision / Multimodal
   | 'meta/llama-3.2-11b-vision-instruct' | 'meta/llama-3.2-90b-vision-instruct'
   | 'meta/llama-4-maverick-17b-128e-instruct' | 'stepfun-ai/step-3.7-flash'
-  | 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' | 'moonshotai/kimi-k2.6'
+  | 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning'
   // Reasoning / Coding
   | 'nvidia/llama-3.3-nemotron-super-49b-v1' | 'nvidia/llama-3.3-nemotron-super-49b-v1.5'
   | 'minimaxai/minimax-m2.7' | 'minimaxai/minimax-m3' | 'bytedance/seed-oss-36b-instruct'
@@ -64,7 +64,7 @@ export function getProviderFromModel(model: AIModel): Provider {
   if (model.startsWith('claude')) return 'anthropic';
   if (model.startsWith('gpt') || model.startsWith('o1')) return 'openai';
   if (model.startsWith('deepseek-chat') || model.startsWith('deepseek-reasoner')) return 'deepseek';
-  if (model.startsWith('moonshot')) return 'kimi';
+  if (model === 'moonshot-v1-8k' || model === 'moonshot-v1-32k') return 'kimi';
   // All NVIDIA NIM models — identified by org/ prefix pattern
   if (model.includes('/')) return 'nvidia';
   return 'gemini';

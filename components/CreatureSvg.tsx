@@ -849,145 +849,367 @@ function renderWanderer(
   }
 }
 
-// ── CIPHER — signal decoder: angular torso, node-network head, scanning eye ──
+// ── CIPHER — The Decoder (Kimi v1, stages 0-5) ────────────────────────────────
 function renderCipher(stage: EvolutionStage, color: string, f: string, f2: string) {
-  const nodeR = 2 + stage * 0.4;
-  const links = stage >= 2;
-  const crown = stage >= 4;
+  const s = stage;
+
+  if (s <= 1) {
+    return (
+      <G>
+        <Polygon points="50,28 60,42 50,56 40,42" fill={f} stroke={color} strokeWidth="2" />
+        <Line x1="44" y1="42" x2="56" y2="42" stroke={color} strokeWidth="1.5" />
+        <Polygon points="42,62 50,58 58,62 58,78 50,82 42,78" fill={f} stroke={color} strokeWidth="2" />
+        <Line x1="42" y1="68" x2="30" y2="72" stroke={color} strokeWidth="1.5" />
+        <Line x1="58" y1="68" x2="70" y2="72" stroke={color} strokeWidth="1.5" />
+        <Line x1="46" y1="82" x2="44" y2="96" stroke={color} strokeWidth="1.5" />
+        <Line x1="54" y1="82" x2="56" y2="96" stroke={color} strokeWidth="1.5" />
+        {s === 1 && (<><Circle cx="30" cy="72" r="2" fill={color} /><Circle cx="70" cy="72" r="2" fill={color} /></>)}
+      </G>
+    );
+  }
+
+  if (s <= 3) {
+    const armExt = s === 3 ? 8 : 0;
+    return (
+      <G>
+        <Polygon points="50,26 62,42 50,58 38,42" fill={f} stroke={color} strokeWidth="2" />
+        <Line x1="42" y1="42" x2="58" y2="42" stroke={color} strokeWidth="1.5" />
+        <Line x1="42" y1="42" x2="58" y2="42" stroke={f2} strokeWidth="0.5" />
+        <Polygon points="40,60 50,55 60,60 60,80 50,85 40,80" fill={f} stroke={color} strokeWidth="2" />
+        <Line x1="40" y1="66" x2={22 - armExt} y2={70 - armExt/2} stroke={color} strokeWidth="1.2" />
+        <Line x1="60" y1="66" x2={78 + armExt} y2={70 - armExt/2} stroke={color} strokeWidth="1.2" />
+        <Line x1="42" y1="75" x2={26 - armExt} y2={82 - armExt/3} stroke={color} strokeWidth="1.2" />
+        <Line x1="58" y1="75" x2={74 + armExt} y2={82 - armExt/3} stroke={color} strokeWidth="1.2" />
+        <Circle cx={22 - armExt} cy={70 - armExt/2} r="2.5" fill={color} />
+        <Circle cx={78 + armExt} cy={70 - armExt/2} r="2.5" fill={color} />
+        <Circle cx={26 - armExt} cy={82 - armExt/3} r="2" fill={color} />
+        <Circle cx={74 + armExt} cy={82 - armExt/3} r="2" fill={color} />
+        {s === 3 && <Line x1={22 - armExt} y1={70 - armExt/2} x2={78 + armExt} y2={70 - armExt/2} stroke={color} strokeWidth="0.5" strokeDasharray="2,2" />}
+        <Line x1="45" y1="85" x2="42" y2="100" stroke={color} strokeWidth="1.5" />
+        <Line x1="55" y1="85" x2="58" y2="100" stroke={color} strokeWidth="1.5" />
+      </G>
+    );
+  }
+
+  const isMax = s === 5;
   return (
     <G>
-      {/* Torso — angular hex body */}
-      <Polygon points="50,55 62,65 62,85 50,95 38,85 38,65" fill={f} stroke={color} strokeWidth="2" />
-      {/* Core signal node */}
-      <Circle cx="50" cy="75" r={5 + stage} fill={color} opacity="0.9" />
-      {/* Head — geometric diamond */}
-      <Polygon points="50,30 60,42 50,54 40,42" fill={f2} stroke={color} strokeWidth="2" />
-      {/* Scanning eye */}
-      <Ellipse cx="50" cy="42" rx={3 + stage * 0.3} ry="2" fill={color} />
-      {/* Signal lines */}
-      {links && <Line x1="38" y1="65" x2="28" y2="58" stroke={color} strokeWidth="1.5" opacity="0.7" />}
-      {links && <Line x1="62" y1="65" x2="72" y2="58" stroke={color} strokeWidth="1.5" opacity="0.7" />}
-      {links && <Circle cx="28" cy="58" r={nodeR} fill={color} opacity="0.6" />}
-      {links && <Circle cx="72" cy="58" r={nodeR} fill={color} opacity="0.6" />}
-      {/* Crown node burst */}
-      {crown && <>
-        <Line x1="50" y1="30" x2="50" y2="20" stroke={color} strokeWidth="1.5" opacity="0.8" />
-        <Circle cx="50" cy="18" r="3" fill={color} opacity="0.9" />
-        <Line x1="50" y1="30" x2="42" y2="22" stroke={color} strokeWidth="1" opacity="0.6" />
-        <Line x1="50" y1="30" x2="58" y2="22" stroke={color} strokeWidth="1" opacity="0.6" />
-      </>}
-      {/* Legs */}
-      <Line x1="44" y1="95" x2="40" y2="112" stroke={color} strokeWidth="2.5" />
-      <Line x1="56" y1="95" x2="60" y2="112" stroke={color} strokeWidth="2.5" />
-      <Line x1="40" y1="112" x2="36" y2="118" stroke={color} strokeWidth="2" />
-      <Line x1="60" y1="112" x2="64" y2="118" stroke={color} strokeWidth="2" />
+      <Circle cx="50" cy="18" r="3" fill={color} />
+      <Circle cx="38" cy="22" r="2.5" fill={color} />
+      <Circle cx="62" cy="22" r="2.5" fill={color} />
+      <Line x1="38" y1="22" x2="50" y2="18" stroke={color} strokeWidth="1" />
+      <Line x1="50" y1="18" x2="62" y2="22" stroke={color} strokeWidth="1" />
+      <Line x1="38" y1="22" x2="42" y2="30" stroke={color} strokeWidth="1" />
+      <Line x1="62" y1="22" x2="58" y2="30" stroke={color} strokeWidth="1" />
+      <Polygon points="50,24 64,42 50,60 36,42" fill={f} stroke={color} strokeWidth="2" />
+      {isMax ? (<>
+        <Line x1="40" y1="38" x2="60" y2="38" stroke={color} strokeWidth="0.8" />
+        <Line x1="40" y1="42" x2="60" y2="42" stroke={color} strokeWidth="0.8" />
+        <Line x1="40" y1="46" x2="60" y2="46" stroke={color} strokeWidth="0.8" />
+        <Line x1="46" y1="36" x2="46" y2="48" stroke={color} strokeWidth="0.8" />
+        <Line x1="50" y1="36" x2="50" y2="48" stroke={color} strokeWidth="0.8" />
+        <Line x1="54" y1="36" x2="54" y2="48" stroke={color} strokeWidth="0.8" />
+      </>) : (<>
+        <Line x1="40" y1="42" x2="60" y2="42" stroke={color} strokeWidth="1.5" />
+        <Line x1="40" y1="42" x2="60" y2="42" stroke={f2} strokeWidth="0.5" />
+      </>)}
+      <Polygon points="38,58 50,52 62,58 62,82 50,88 38,82" fill={f} stroke={color} strokeWidth="2" />
+      <Line x1="45" y1="62" x2="55" y2="62" stroke={color} strokeWidth="0.5" />
+      <Line x1="45" y1="70" x2="55" y2="70" stroke={color} strokeWidth="0.5" />
+      <Line x1="45" y1="78" x2="55" y2="78" stroke={color} strokeWidth="0.5" />
+      <Line x1="38" y1="64" x2="16" y2="68" stroke={color} strokeWidth="1" />
+      <Line x1="62" y1="64" x2="84" y2="68" stroke={color} strokeWidth="1" />
+      <Line x1="40" y1="74" x2="20" y2="82" stroke={color} strokeWidth="1" />
+      <Line x1="60" y1="74" x2="80" y2="82" stroke={color} strokeWidth="1" />
+      <Line x1="42" y1="84" x2="24" y2="94" stroke={color} strokeWidth="1" />
+      <Line x1="58" y1="84" x2="76" y2="94" stroke={color} strokeWidth="1" />
+      <Circle cx="16" cy="68" r="3" fill={color} />
+      <Circle cx="84" cy="68" r="3" fill={color} />
+      <Circle cx="20" cy="82" r="2.5" fill={color} />
+      <Circle cx="80" cy="82" r="2.5" fill={color} />
+      <Circle cx="24" cy="94" r="2" fill={color} />
+      <Circle cx="76" cy="94" r="2" fill={color} />
+      <Line x1="16" y1="68" x2="84" y2="68" stroke={color} strokeWidth="0.5" strokeDasharray="2,3" />
+      <Line x1="20" y1="82" x2="80" y2="82" stroke={color} strokeWidth="0.5" strokeDasharray="2,3" />
+      <Line x1="44" y1="88" x2="40" y2="106" stroke={color} strokeWidth="1.5" />
+      <Line x1="56" y1="88" x2="60" y2="106" stroke={color} strokeWidth="1.5" />
+      {isMax && (<><Circle cx="50" cy="12" r="1.5" fill={f2} /><Line x1="50" y1="12" x2="50" y2="18" stroke={color} strokeWidth="0.5" /></>)}
     </G>
   );
 }
 
-// ── HERALD — voice bearer: flowing cloak, resonance crown, open stance ──
+// ── HERALD — The Voice (Kimi v1, stages 0-5) ──────────────────────────────────
 function renderHerald(stage: EvolutionStage, color: string, f: string, f2: string) {
-  const waveMag = 3 + stage * 1.2;
-  const crownH = stage >= 3;
+  const s = stage;
+
+  if (s <= 1) {
+    return (
+      <G>
+        <Path d="M 42,48 Q 50,42 58,48 L 66,90 Q 68,110 62,120 Q 50,128 38,120 Q 32,110 34,90 Z" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="36" rx="10" ry="11" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="40" rx="4" ry="3" fill={f2} stroke={color} strokeWidth="1" />
+        <Circle cx="46" cy="34" r="1.5" fill={color} />
+        <Circle cx="54" cy="34" r="1.5" fill={color} />
+        <Path d="M 38,58 Q 30,65 28,72" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Path d="M 62,58 Q 70,65 72,72" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Path d="M 46,55 Q 48,80 46,115" fill="none" stroke={color} strokeWidth="0.5" opacity="0.5" />
+        <Path d="M 54,55 Q 52,80 54,115" fill="none" stroke={color} strokeWidth="0.5" opacity="0.5" />
+      </G>
+    );
+  }
+
+  if (s <= 3) {
+    const waveCount = s === 3 ? 3 : 1;
+    return (
+      <G>
+        <Path d="M 38,46 Q 50,38 62,46 L 70,88 Q 74,112 66,124 Q 50,134 34,124 Q 26,112 30,88 Z" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="34" rx="11" ry="12" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="39" rx="5" ry="3.5" fill={f2} stroke={color} strokeWidth="1" />
+        <Circle cx="46" cy="32" r="1.5" fill={color} />
+        <Circle cx="54" cy="32" r="1.5" fill={color} />
+        <Path d="M 36,56 Q 24,62 18,68" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+        <Path d="M 64,56 Q 76,62 82,68" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+        {waveCount >= 1 && <Path d="M 56,36 Q 64,32 70,36" fill="none" stroke={color} strokeWidth="1" opacity="0.7" />}
+        {waveCount >= 2 && <Path d="M 58,40 Q 68,36 76,42" fill="none" stroke={color} strokeWidth="1" opacity="0.5" />}
+        {waveCount >= 3 && <Path d="M 56,44 Q 66,48 74,46" fill="none" stroke={color} strokeWidth="1" opacity="0.4" />}
+        <Path d="M 14,64 Q 10,60 8,56" fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
+        <Path d="M 86,64 Q 90,60 92,56" fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
+        <Path d="M 44,52 Q 46,85 42,128" fill="none" stroke={color} strokeWidth="0.5" opacity="0.4" />
+        <Path d="M 56,52 Q 54,85 58,128" fill="none" stroke={color} strokeWidth="0.5" opacity="0.4" />
+      </G>
+    );
+  }
+
+  const isMax = s === 5;
   return (
     <G>
-      {/* Cloak — flowing trapezoid */}
-      <Path d={`M 36 60 Q 30 85 35 108 L 65 108 Q 70 85 64 60 Z`} fill={f} stroke={color} strokeWidth="1.5" />
-      {/* Torso under cloak */}
-      <Rect x="42" y="55" width="16" height="22" rx="4" fill={f2} stroke={color} strokeWidth="2" />
-      {/* Head */}
-      <Circle cx="50" cy="40" r="13" fill={f2} stroke={color} strokeWidth="2" />
-      {/* Mouth — open to speak */}
-      <Ellipse cx="50" cy="44" rx="4" ry="2.5" fill={color} opacity="0.8" />
-      {/* Eyes */}
-      <Circle cx="46" cy="38" r="2" fill={color} />
-      <Circle cx="54" cy="38" r="2" fill={color} />
-      {/* Sound waves emanating */}
-      <Path d={`M 65 40 Q ${65+waveMag} 37 65 34`} stroke={color} strokeWidth="1.5" fill="none" opacity="0.7" />
-      <Path d={`M 69 42 Q ${69+waveMag*1.4} 37 69 32`} stroke={color} strokeWidth="1" fill="none" opacity="0.5" />
-      {crownH && <>
-        <Path d="M 38 28 L 42 20 L 50 25 L 58 20 L 62 28" stroke={color} strokeWidth="2" fill="none" />
-        <Circle cx="42" cy="20" r="2.5" fill={color} />
-        <Circle cx="50" cy="24" r="2.5" fill={color} />
-        <Circle cx="58" cy="20" r="2.5" fill={color} />
-      </>}
-      {/* Feet */}
-      <Line x1="43" y1="108" x2="40" y2="120" stroke={color} strokeWidth="2.5" />
-      <Line x1="57" y1="108" x2="60" y2="120" stroke={color} strokeWidth="2.5" />
+      <Polygon points="50,12 46,22 54,22" fill={f2} stroke={color} strokeWidth="1.5" />
+      <Line x1="42" y1="18" x2="38" y2="26" stroke={color} strokeWidth="1.5" />
+      <Line x1="58" y1="18" x2="62" y2="26" stroke={color} strokeWidth="1.5" />
+      <Circle cx="42" cy="16" r="2" fill={color} />
+      <Circle cx="58" cy="16" r="2" fill={color} />
+      <Path d="M 36,44 Q 50,34 64,44 L 74,86 Q 80,116 70,130 Q 50,142 30,130 Q 20,116 26,86 Z" fill={f} stroke={color} strokeWidth="2.5" />
+      <Ellipse cx="50" cy="32" rx="12" ry="13" fill={f} stroke={color} strokeWidth="2" />
+      <Ellipse cx="50" cy="38" rx="6" ry="4" fill={f2} stroke={color} strokeWidth="1.2" />
+      <Circle cx="45" cy="30" r="1.8" fill={color} />
+      <Circle cx="55" cy="30" r="1.8" fill={color} />
+      <Path d="M 34,54 Q 20,60 12,68" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      <Path d="M 66,54 Q 80,60 88,68" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" />
+      <Path d="M 58,34 Q 70,28 80,34" fill="none" stroke={color} strokeWidth="1.2" opacity="0.8" />
+      <Path d="M 60,38 Q 74,34 86,40" fill="none" stroke={color} strokeWidth="1" opacity="0.6" />
+      <Path d="M 58,42 Q 72,46 84,44" fill="none" stroke={color} strokeWidth="1" opacity="0.4" />
+      <Path d="M 8,64 Q 4,58 2,52" fill="none" stroke={color} strokeWidth="1.2" opacity="0.6" />
+      <Path d="M 92,64 Q 96,58 98,52" fill="none" stroke={color} strokeWidth="1.2" opacity="0.6" />
+      <Path d="M 42,50 Q 44,90 38,136" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+      <Path d="M 50,48 Q 50,95 50,138" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+      <Path d="M 58,50 Q 56,90 62,136" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+      {isMax && (<>
+        <Ellipse cx="50" cy="85" rx="45" ry="55" fill="none" stroke={color} strokeWidth="0.6" opacity="0.25" />
+        <Ellipse cx="50" cy="85" rx="55" ry="65" fill="none" stroke={color} strokeWidth="0.5" opacity="0.18" />
+        <Ellipse cx="50" cy="85" rx="65" ry="75" fill="none" stroke={color} strokeWidth="0.4" opacity="0.12" />
+        <Line x1="50" y1="10" x2="50" y2="4" stroke={color} strokeWidth="1" />
+        <Line x1="36" y1="14" x2="30" y2="10" stroke={color} strokeWidth="0.8" />
+        <Line x1="64" y1="14" x2="70" y2="10" stroke={color} strokeWidth="0.8" />
+      </>)}
     </G>
   );
 }
 
-// ── WEAVER — pattern maker: web-body, multi-arm, grid crown ──
+// ── WEAVER — The Pattern-Maker (Kimi v1, stages 0-5) ─────────────────────────
 function renderWeaver(stage: EvolutionStage, color: string, f: string, f2: string) {
-  const armCount = Math.min(3 + stage, 6);
-  const gridLines = stage >= 2;
+  const s = stage;
+
+  if (s <= 1) {
+    return (
+      <G>
+        <Circle cx="50" cy="32" r="11" fill={f} stroke={color} strokeWidth="2" />
+        <Circle cx="44" cy="30" r="2" fill={color} />
+        <Circle cx="50" cy="28" r="2.2" fill={color} />
+        <Circle cx="56" cy="30" r="2" fill={color} />
+        <Ellipse cx="50" cy="56" rx="14" ry="16" fill={f} stroke={color} strokeWidth="2" />
+        <Line x1="38" y1="50" x2="18" y2="38" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="62" y1="50" x2="82" y2="38" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="38" y1="62" x2="16" y2="74" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="62" y1="62" x2="84" y2="74" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Polygon points="18,38 14,34 20,36" fill={color} />
+        <Polygon points="82,38 86,34 80,36" fill={color} />
+        <Polygon points="16,74 12,78 18,76" fill={color} />
+        <Polygon points="84,74 88,78 82,76" fill={color} />
+        <Line x1="46" y1="72" x2="44" y2="88" stroke={color} strokeWidth="1.5" />
+        <Line x1="54" y1="72" x2="56" y2="88" stroke={color} strokeWidth="1.5" />
+      </G>
+    );
+  }
+
+  if (s <= 3) {
+    return (
+      <G>
+        <Line x1="15" y1="25" x2="85" y2="95" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="85" y1="25" x2="15" y2="95" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="20" y1="15" x2="80" y2="105" stroke={color} strokeWidth="0.5" opacity="0.2" />
+        <Line x1="80" y1="15" x2="20" y2="105" stroke={color} strokeWidth="0.5" opacity="0.2" />
+        <Circle cx="50" cy="30" r="12" fill={f} stroke={color} strokeWidth="2" />
+        <Circle cx="43" cy="28" r="2.2" fill={color} />
+        <Circle cx="50" cy="26" r="2.5" fill={color} />
+        <Circle cx="57" cy="28" r="2.2" fill={color} />
+        <Ellipse cx="50" cy="56" rx="15" ry="17" fill={f} stroke={color} strokeWidth="2" />
+        <Line x1="36" y1="48" x2="14" y2="34" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="64" y1="48" x2="86" y2="34" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="36" y1="64" x2="12" y2="78" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="64" y1="64" x2="88" y2="78" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Line x1="50" y1="40" x2="50" y2="16" stroke={color} strokeWidth="2" strokeLinecap="round" />
+        <Polygon points="14,34 10,30 16,32" fill={color} />
+        <Polygon points="86,34 90,30 84,32" fill={color} />
+        <Polygon points="12,78 8,82 14,80" fill={color} />
+        <Polygon points="88,78 92,82 86,80" fill={color} />
+        <Polygon points="50,16 46,12 54,12" fill={color} />
+        <Circle cx="14" cy="34" r="1.5" fill={f2} />
+        <Circle cx="86" cy="34" r="1.5" fill={f2} />
+        <Line x1="45" y1="73" x2="42" y2="92" stroke={color} strokeWidth="1.5" />
+        <Line x1="55" y1="73" x2="58" y2="92" stroke={color} strokeWidth="1.5" />
+      </G>
+    );
+  }
+
+  const isMax = s === 5;
   return (
     <G>
-      {/* Web threads behind body */}
-      {gridLines && <>
-        <Line x1="20" y1="50" x2="80" y2="100" stroke={color} strokeWidth="0.8" opacity="0.3" />
-        <Line x1="80" y1="50" x2="20" y2="100" stroke={color} strokeWidth="0.8" opacity="0.3" />
-        <Line x1="20" y1="75" x2="80" y2="75" stroke={color} strokeWidth="0.8" opacity="0.3" />
-        <Line x1="50" y1="45" x2="50" y2="110" stroke={color} strokeWidth="0.8" opacity="0.3" />
-      </>}
-      {/* Torso — round weaver body */}
-      <Ellipse cx="50" cy="78" rx="14" ry="18" fill={f} stroke={color} strokeWidth="2" />
-      {/* Head */}
-      <Circle cx="50" cy="48" r="14" fill={f2} stroke={color} strokeWidth="2" />
-      {/* Multiple eyes (weaver has compound eyes) */}
-      {[44, 50, 56].map((x, i) => <Circle key={i} cx={x} cy="46" r="2" fill={color} />)}
-      <Circle cx="50" cy="52" r="1.5" fill={color} opacity="0.7" />
-      {/* Arms — radiate outward based on stage */}
-      {armCount >= 3 && <Line x1="38" y1="70" x2="22" y2="58" stroke={color} strokeWidth="2.5" />}
-      {armCount >= 3 && <Line x1="62" y1="70" x2="78" y2="58" stroke={color} strokeWidth="2.5" />}
-      {armCount >= 4 && <Line x1="38" y1="78" x2="18" y2="78" stroke={color} strokeWidth="2" />}
-      {armCount >= 4 && <Line x1="62" y1="78" x2="82" y2="78" stroke={color} strokeWidth="2" />}
-      {armCount >= 5 && <Line x1="40" y1="88" x2="24" y2="98" stroke={color} strokeWidth="1.5" opacity="0.8" />}
-      {armCount >= 5 && <Line x1="60" y1="88" x2="76" y2="98" stroke={color} strokeWidth="1.5" opacity="0.8" />}
-      {/* Legs */}
-      <Line x1="44" y1="96" x2="40" y2="115" stroke={color} strokeWidth="2.5" />
-      <Line x1="56" y1="96" x2="60" y2="115" stroke={color} strokeWidth="2.5" />
-      {/* Grid crown at high stage */}
-      {stage >= 4 && <>
-        <Rect x="40" y="30" width="20" height="12" rx="2" fill="none" stroke={color} strokeWidth="1.5" />
-        <Line x1="47" y1="30" x2="47" y2="42" stroke={color} strokeWidth="1" opacity="0.6" />
-        <Line x1="53" y1="30" x2="53" y2="42" stroke={color} strokeWidth="1" opacity="0.6" />
-        <Line x1="40" y1="36" x2="60" y2="36" stroke={color} strokeWidth="1" opacity="0.6" />
-      </>}
+      <Line x1="10" y1="20" x2="90" y2="100" stroke={color} strokeWidth="0.4" opacity="0.25" />
+      <Line x1="90" y1="20" x2="10" y2="100" stroke={color} strokeWidth="0.4" opacity="0.25" />
+      <Line x1="15" y1="10" x2="85" y2="110" stroke={color} strokeWidth="0.4" opacity="0.2" />
+      <Line x1="85" y1="10" x2="15" y2="110" stroke={color} strokeWidth="0.4" opacity="0.2" />
+      <Line x1="5" y1="50" x2="95" y2="50" stroke={color} strokeWidth="0.4" opacity="0.15" />
+      <Line x1="50" y1="5" x2="50" y2="115" stroke={color} strokeWidth="0.4" opacity="0.15" />
+      <Rect x="36" y="8" width="28" height="16" fill="none" stroke={color} strokeWidth="1.5" />
+      <Line x1="42" y1="8" x2="42" y2="24" stroke={color} strokeWidth="0.8" />
+      <Line x1="50" y1="8" x2="50" y2="24" stroke={color} strokeWidth="0.8" />
+      <Line x1="58" y1="8" x2="58" y2="24" stroke={color} strokeWidth="0.8" />
+      <Line x1="36" y1="16" x2="64" y2="16" stroke={color} strokeWidth="0.8" />
+      <Circle cx="50" cy="32" r="13" fill={f} stroke={color} strokeWidth="2" />
+      <Circle cx="42" cy="30" r="2.5" fill={color} />
+      <Circle cx="50" cy="27" r="2.8" fill={color} />
+      <Circle cx="58" cy="30" r="2.5" fill={color} />
+      <Ellipse cx="50" cy="58" rx="16" ry="18" fill={f} stroke={color} strokeWidth="2" />
+      {isMax && (<>
+        <Line x1="38" y1="44" x2="62" y2="44" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="36" y1="52" x2="64" y2="52" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="36" y1="60" x2="64" y2="60" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="38" y1="68" x2="62" y2="68" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="42" y1="42" x2="42" y2="74" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="50" y1="42" x2="50" y2="76" stroke={color} strokeWidth="0.5" opacity="0.3" />
+        <Line x1="58" y1="42" x2="58" y2="74" stroke={color} strokeWidth="0.5" opacity="0.3" />
+      </>)}
+      <Line x1="34" y1="48" x2="10" y2="30" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="66" y1="48" x2="90" y2="30" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="34" y1="66" x2="8" y2="82" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="66" y1="66" x2="92" y2="82" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="50" y1="40" x2="50" y2="12" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Line x1="50" y1="76" x2="50" y2="96" stroke={color} strokeWidth="2" strokeLinecap="round" />
+      <Polygon points="10,30 6,26 12,28" fill={color} />
+      <Polygon points="90,30 94,26 88,28" fill={color} />
+      <Polygon points="8,82 4,86 10,84" fill={color} />
+      <Polygon points="92,82 96,86 90,84" fill={color} />
+      <Polygon points="50,12 46,8 54,8" fill={color} />
+      <Polygon points="50,96 46,100 54,100" fill={color} />
+      <Circle cx="10" cy="30" r="2" fill={f2} />
+      <Circle cx="90" cy="30" r="2" fill={f2} />
+      <Circle cx="8" cy="82" r="2" fill={f2} />
+      <Circle cx="92" cy="82" r="2" fill={f2} />
+      <Line x1="44" y1="76" x2="40" y2="98" stroke={color} strokeWidth="1.5" />
+      <Line x1="56" y1="76" x2="60" y2="98" stroke={color} strokeWidth="1.5" />
     </G>
   );
 }
 
-// ── REVENANT — the returner: cloaked silhouette, spiral eye, rising posture ──
+// ── REVENANT — The Returner (Kimi v1, stages 0-5) ────────────────────────────
 function renderRevenant(stage: EvolutionStage, color: string, f: string, f2: string) {
-  const riseHeight = stage * 4;
-  const spiralOpen = stage >= 2;
+  const s = stage;
+
+  if (s === 0) {
+    return (
+      <G>
+        <Path d="M 42,46 Q 50,38 58,46 L 68,88 Q 72,118 64,132 Q 50,142 36,128 Q 28,110 32,82 Z" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="34" rx="11" ry="12" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="32" rx="9" ry="8" fill="#04000F" stroke={color} strokeWidth="1" />
+        <Circle cx="46" cy="34" r="1.2" fill={color} opacity="0.5" />
+        <Circle cx="54" cy="34" r="1.2" fill={color} opacity="0.5" />
+        <Line x1="44" y1="136" x2="42" y2="146" stroke={color} strokeWidth="1.5" opacity="0.6" />
+        <Line x1="56" y1="136" x2="58" y2="146" stroke={color} strokeWidth="1.5" opacity="0.6" />
+        <Path d="M 58,50 Q 64,80 60,128" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+      </G>
+    );
+  }
+
+  if (s === 1) {
+    return (
+      <G>
+        <Path d="M 42,44 Q 50,36 58,44 L 68,86 Q 72,116 64,130 Q 50,140 36,126 Q 28,108 32,80 Z" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="32" rx="11" ry="12" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="30" rx="9" ry="8" fill="#04000F" stroke={color} strokeWidth="1" />
+        <Path d="M 50,30 Q 53,28 53,32 Q 53,36 48,34" fill="none" stroke={color} strokeWidth="1.5" />
+        <Circle cx="46" cy="32" r="1.2" fill={color} opacity="0.6" />
+        <Circle cx="54" cy="32" r="1.2" fill={color} opacity="0.6" />
+        <Line x1="44" y1="134" x2="42" y2="144" stroke={color} strokeWidth="1.5" opacity="0.6" />
+        <Line x1="56" y1="134" x2="58" y2="144" stroke={color} strokeWidth="1.5" opacity="0.6" />
+        <Path d="M 58,48 Q 64,78 60,126" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+      </G>
+    );
+  }
+
+  if (s <= 3) {
+    return (
+      <G>
+        <Circle cx="38" cy="138" r="2" fill={f} opacity="0.4" />
+        <Circle cx="62" cy="134" r="1.8" fill={f} opacity="0.35" />
+        <Circle cx="46" cy="142" r="1.5" fill={f} opacity="0.3" />
+        {s === 3 && <Circle cx="54" cy="146" r="1.2" fill={f} opacity="0.25" />}
+        <Path d="M 40,42 Q 50,34 60,42 L 70,84 Q 76,114 66,128 Q 50,138 34,124 Q 26,106 30,78 Z" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="30" rx="12" ry="13" fill={f} stroke={color} strokeWidth="2" />
+        <Ellipse cx="50" cy="28" rx="10" ry="9" fill="#04000F" stroke={color} strokeWidth="1.2" />
+        <Path d="M 50,28 Q 55,25 55,31 Q 55,38 47,35 Q 42,32 45,27 Q 48,22 54,25" fill="none" stroke={color} strokeWidth="1.8" />
+        <Circle cx="45" cy="30" r="1.3" fill={color} opacity="0.7" />
+        <Circle cx="55" cy="30" r="1.3" fill={color} opacity="0.7" />
+        <Line x1="44" y1="132" x2="40" y2="148" stroke={color} strokeWidth="1.5" opacity="0.5" />
+        <Line x1="56" y1="132" x2="60" y2="148" stroke={color} strokeWidth="1.5" opacity="0.5" />
+        <Path d="M 60,46 Q 66,76 62,124" fill="none" stroke={color} strokeWidth="0.6" opacity="0.4" />
+      </G>
+    );
+  }
+
+  const isMax = s === 5;
   return (
     <G>
-      {/* Rising shadow trails */}
-      {[...Array(3)].map((_, i) => (
-        <Ellipse key={i} cx={48 + i * 3} cy={100 - i * 8 + riseHeight} rx={3 - i * 0.5} ry={6 - i} fill={color} opacity={(0.3 - i * 0.08)} />
-      ))}
-      {/* Cloak — asymmetric, wind-blown */}
-      <Path d={`M 34 65 Q 28 90 32 115 L 50 110 L 68 115 Q 72 90 66 65 Q 58 58 50 60 Q 42 58 34 65 Z`} fill={f} stroke={color} strokeWidth="1.5" />
-      {/* Body */}
-      <Rect x="42" y="58" width="16" height="26" rx="5" fill={f2} stroke={color} strokeWidth="2" />
-      {/* Head */}
-      <Circle cx="50" cy={44 - riseHeight * 0.3} r="13" fill={f2} stroke={color} strokeWidth="2" />
-      {/* Spiral eye — the returner mark */}
-      {spiralOpen ? (
-        <Path d={`M 50 ${41 - riseHeight * 0.3} A 3 3 0 1 1 50 ${47 - riseHeight * 0.3} A 1.5 1.5 0 1 1 50 ${44 - riseHeight * 0.3}`} stroke={color} strokeWidth="1.5" fill="none" />
-      ) : (
-        <Ellipse cx="50" cy={43 - riseHeight * 0.3} rx="3" ry="2" fill={color} />
+      <Circle cx="36" cy="136" r="2.5" fill={f} opacity="0.5" />
+      <Circle cx="64" cy="130" r="2.2" fill={f} opacity="0.45" />
+      <Circle cx="44" cy="144" r="2" fill={f} opacity="0.4" />
+      <Circle cx="56" cy="148" r="1.8" fill={f} opacity="0.35" />
+      <Circle cx="32" cy="128" r="1.5" fill={f} opacity="0.3" />
+      <Path d="M 30,18 Q 50,6 70,18" fill="none" stroke={color} strokeWidth="1.2" opacity="0.6" />
+      <Path d="M 34,14 Q 50,4 66,14" fill="none" stroke={color} strokeWidth="0.8" opacity="0.4" />
+      <Path d="M 38,40 Q 50,30 62,40 L 74,80 Q 80,110 68,126 Q 50,136 30,120 Q 20,100 26,76 Z" fill={f} stroke={color} strokeWidth="2.5" />
+      <Ellipse cx="50" cy="28" rx="13" ry="14" fill={f} stroke={color} strokeWidth="2" />
+      <Ellipse cx="50" cy="26" rx="11" ry="10" fill="#04000F" stroke={color} strokeWidth="1.5" />
+      <Path d="M 50,26 Q 57,22 57,30 Q 57,40 46,36 Q 38,32 42,24 Q 46,16 56,20 Q 62,24 58,32" fill="none" stroke={color} strokeWidth="2" />
+      <Path d="M 50,28 Q 54,26 54,30 Q 54,34 48,32" fill="none" stroke={f2} strokeWidth="1" />
+      <Circle cx="44" cy="28" r="1.5" fill={f2} />
+      <Circle cx="56" cy="28" r="1.5" fill={f2} />
+      {isMax ? (<>
+        <Path d="M 50,52 Q 48,85 46,130" fill="none" stroke={color} strokeWidth="1.5" />
+        <Path d="M 50,52 Q 52,85 54,130" fill="none" stroke={color} strokeWidth="1.5" />
+        <Ellipse cx="50" cy="88" rx="8" ry="18" fill={f2} opacity="0.7" />
+        <Ellipse cx="50" cy="88" rx="5" ry="12" fill={color} opacity="0.9" />
+      </>) : (
+        <Path d="M 50,52 Q 50,90 48,132" fill="none" stroke={color} strokeWidth="0.8" opacity="0.5" />
       )}
-      {/* Return glyph on chest */}
-      <Path d={`M 46 72 Q 50 68 54 72 Q 50 76 46 72`} stroke={color} strokeWidth="1.5" fill="none" opacity="0.8" />
-      {/* Transcendent rising arc */}
-      {stage >= 5 && <Path d="M 30 40 Q 50 20 70 40" stroke={color} strokeWidth="1.5" fill="none" opacity="0.7" />}
-      {/* Legs — barely visible under cloak */}
-      <Line x1="44" y1="110" x2="42" y2="124" stroke={color} strokeWidth="2" opacity="0.7" />
-      <Line x1="56" y1="110" x2="58" y2="124" stroke={color} strokeWidth="2" opacity="0.7" />
+      <Line x1="44" y1="130" x2="38" y2="150" stroke={color} strokeWidth="1.5" opacity="0.4" />
+      <Line x1="56" y1="130" x2="62" y2="150" stroke={color} strokeWidth="1.5" opacity="0.4" />
+      <Path d="M 62,44 Q 70,74 64,122" fill="none" stroke={color} strokeWidth="0.7" opacity="0.4" />
+      <Path d="M 38,44 Q 30,70 36,118" fill="none" stroke={color} strokeWidth="0.5" opacity="0.3" />
+      {isMax && (<>
+        <Circle cx="28" cy="124" r="1.5" fill={f2} opacity="0.5" />
+        <Circle cx="72" cy="120" r="1.5" fill={f2} opacity="0.5" />
+        <Ellipse cx="50" cy="90" rx="35" ry="50" fill="none" stroke={color} strokeWidth="0.5" opacity="0.15" />
+      </>)}
     </G>
   );
 }

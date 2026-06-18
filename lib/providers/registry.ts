@@ -27,7 +27,8 @@ export function getProviderForModel(modelId: string): AIProvider {
   if (modelId.startsWith('gemini')) return GeminiProvider;
   if (modelId.startsWith('claude')) return AnthropicProvider;
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return OpenAIProvider;
-  if (modelId.startsWith('deepseek') || modelId.startsWith('moonshot')) return DeepSeekProvider;
+  if (modelId === 'deepseek-chat' || modelId === 'deepseek-reasoner') return DeepSeekProvider;
+  if (modelId === 'moonshot-v1-8k' || modelId === 'moonshot-v1-32k') return KimiProvider;
   if (
     modelId.startsWith('meta/') ||
     modelId.startsWith('nvidia/') ||

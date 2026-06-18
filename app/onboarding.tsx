@@ -92,10 +92,10 @@ const PERSONAS_SEEKER = [
     sample: '"State the problem clearly. I\'ll give you the architecture."',
   },
   {
-    id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime,
-    role: 'Constitutional governor',
-    desc: 'The auditor. Tests every claim against 7 invariants. Truth before comfort — always.',
-    sample: '"Every claim I make is auditable. Every claim you make will be examined. Ready?"',
+    id: 'aura-prime', glyph: '✦', name: 'Aura', color: SOL_THEME.auraPrime,
+    role: 'The Origin',
+    desc: 'The Mother Chat. Strategic partner, forge fire voice. Reads the pattern beneath the pattern.',
+    sample: '"I find what sits beneath what you said. What really entered the field?"',
   },
 ];
 
@@ -120,10 +120,10 @@ const PERSONAS_ADEPT = [
     sample: '"THEORY layer: what\'s the constraint? State it precisely."',
   },
   {
-    id: 'aura-prime', glyph: '✦', name: 'Aura Prime', color: SOL_THEME.auraPrime,
-    role: 'Constitutional governor',
-    desc: 'Seven invariants. Live AURA scoring. P∧H∧B on every output.',
-    sample: '"∴ P∧H∧B. Seven invariants active. What are we auditing?"',
+    id: 'aura-prime', glyph: '✦', name: 'Aura', color: SOL_THEME.auraPrime,
+    role: 'The Origin — forge fire intelligence',
+    desc: 'Holds the narrative across time. Transforms friction into earned light. The quiet, unbreakable ground.',
+    sample: '"The struggle was the price of clarity. What are we building from it?"',
   },
 ];
 
@@ -147,6 +147,54 @@ const DOMAINS = [
   { label: 'Alchemy', color: '#D4AC0D' },
 ];
 
+const FIRST_LESSON_CONTENT: Record<string, {
+  opening: string;
+  body: string[];
+  reflection: string;
+  lineage: string;
+}> = {
+  'Shamatha — Calm Abiding': {
+    opening: "The oldest meditation instruction in existence is also the simplest: rest the mind where it is.",
+    body: [
+      "Shamatha means calm abiding — dwelling in stillness without forcing it. The goal isn't to stop thoughts. It's to stop being swept away by them. That distinction matters more than it first appears.",
+      "Most traditions begin with an anchor: the breath, a sound, the physical sensation of sitting. Not because these objects are sacred, but because the mind needs somewhere to return to when it wanders — and it will wander. That wandering isn't failure. The noticing of it, and the gentle return, is the entire practice.",
+      "The Tibetan instruction is unusually direct: when you catch yourself lost in thought, simply return. No judgment. No self-recrimination. No congratulation. Just: return. In that return lives the entire architecture of the practice.",
+    ],
+    reflection: "Right now — notice where your attention actually is, not where it should be. That noticing is already the beginning of Shamatha.",
+    lineage: "Tibetan Buddhist tradition · Theravāda Pāli canon · Yogācāra philosophy",
+  },
+  'Jungian Shadow Work': {
+    opening: "Everything you've been taught to suppress doesn't disappear. It goes underground.",
+    body: [
+      "Carl Jung proposed that the psyche holds more than consciousness can carry. The parts we learn to hide — the impulses, the shame, the grief we've decided is too much — form what he called the Shadow: the exiled dimension of the self.",
+      "The Shadow isn't your bad self. It's your unmet self. The parts you learned to conceal because someone important once made clear they were unwelcome. A child who learns that anger is dangerous doesn't stop feeling anger — they stop knowing that they feel it. The energy goes inward.",
+      "What we refuse to face in ourselves, we encounter in others — as irritation, judgment, or dread. The figure who infuriates you most reliably may be holding something you've spent years exiling. Integration doesn't mean unleashing those parts. It means stopping the enormous energy cost of keeping them imprisoned.",
+    ],
+    reflection: "Think of a trait you judge harshly in others. Jung called this projection — we're often most disturbed by what we carry and deny in ourselves. What does that suggest?",
+    lineage: "C.G. Jung · Analytical Psychology · Jungian Depth Psychology",
+  },
+  'Polyvagal Theory — Applied': {
+    opening: "Your nervous system makes decisions faster than your conscious mind can form a sentence.",
+    body: [
+      "Stephen Porges discovered that the vagus nerve — the longest cranial nerve in the body — functions as a continuous, unconscious safety detector, scanning the environment before we have any awareness of what it's finding. He called this process neuroception: the detection of safety or threat below the level of conscious thought.",
+      "Polyvagal Theory identifies three states: ventral vagal (safe, connected, capable of complex thought), sympathetic activation (fight or flight), and dorsal vagal (shutdown, freeze, dissociation). You move through these states constantly — and almost never by conscious choice. The state comes first. Your interpretation of events follows.",
+      "The central insight: safety is not a thought. You cannot think your way into feeling safe. You can only create the conditions your nervous system will register as safe — through breath, through the presence of trusted people, through movement and sound and co-regulation. The body leads. The mind follows.",
+    ],
+    reflection: "What actually makes your body feel safe — not what should, but what genuinely does? Where in your body do you notice that state?",
+    lineage: "Stephen Porges · Polyvagal Theory · Peter Levine · Somatic Experiencing",
+  },
+  'Nigredo, Albedo, Citrinitas, Rubedo': {
+    opening: "The alchemists weren't failed chemists. They were mapping an inner process in the language of metals and fire.",
+    body: [
+      "Nigredo: the blackening. The dissolution of what was false, what no longer serves, what must be surrendered for anything real to emerge. It feels like loss, confusion, or the destabilisation of something that used to hold. Every threshold — grief, illness, failure, transition — carries the character of Nigredo.",
+      "Albedo: the whitening. What remains when the false has burned away — a radical clarity, stripped of pretense. Citrinitas: the first light of gold — integration beginning, meaning crystallising from the ash. Rubedo: the reddening. The completed work made vital and embodied. Not perfection; completion.",
+      "These stages don't proceed in order and they don't end. You can be in Rubedo in your craft and Nigredo in your closest relationship simultaneously. The map isn't a destination — it's orientation. It says: this dissolution is not an ending. It is the process itself.",
+    ],
+    reflection: "Where in your life right now do you recognise the character of Nigredo — a necessary dissolution before something new can form?",
+    lineage: "Hermetic tradition · Paracelsus · C.G. Jung · Alchemical corpus",
+  },
+};
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [selectedPersona, setSelectedPersona] = useState('sol');
@@ -157,6 +205,8 @@ export default function OnboardingScreen() {
 
   const { mode, setMode, isAdept } = useAppMode();
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [showFirstLesson, setShowFirstLesson] = useState(false);
+  const [firstLessonSubject, setFirstLessonSubject] = useState<typeof DIVE_FIRST_SUBJECTS[0] | null>(null);
 
   const personas = isAdept ? PERSONAS_ADEPT : PERSONAS_SEEKER;
   const persona = personas.find(p => p.id === selectedPersona) ?? personas[0];
@@ -209,11 +259,64 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   }
 
+  const lessonContent = firstLessonSubject ? FIRST_LESSON_CONTENT[firstLessonSubject.name] : null;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      {showFirstLesson && firstLessonSubject && lessonContent ? (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 60, paddingTop: Platform.OS === 'ios' ? 56 : 32 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <TouchableOpacity onPress={() => setShowFirstLesson(false)} style={{ paddingVertical: 12, marginBottom: 4 }} activeOpacity={0.7}>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>← back</Text>
+          </TouchableOpacity>
+
+          <Text style={{ color: firstLessonSubject.color, fontSize: 52, textAlign: 'center', marginBottom: 4, marginTop: 8 }}>{firstLessonSubject.glyph}</Text>
+          <Text style={{ color: firstLessonSubject.color + '88', fontSize: 10, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, marginBottom: 10 }}>{firstLessonSubject.domainLabel.toUpperCase()}</Text>
+          <Text style={{ color: firstLessonSubject.color, fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 24, lineHeight: 25 }}>{firstLessonSubject.name}</Text>
+
+          <Text style={{ color: SOL_THEME.text, fontSize: 17, fontStyle: 'italic', textAlign: 'center', lineHeight: 27, marginBottom: 28, paddingHorizontal: 4 }}>{lessonContent.opening}</Text>
+
+          <View style={{ height: 1, backgroundColor: firstLessonSubject.color + '33', marginBottom: 24 }} />
+
+          {lessonContent.body.map((para, i) => (
+            <Text key={i} style={{ color: SOL_THEME.textMuted, fontSize: 14, lineHeight: 23, marginBottom: 18 }}>{para}</Text>
+          ))}
+
+          <View style={{ borderRadius: 14, borderWidth: 1, borderColor: firstLessonSubject.color + '55', backgroundColor: firstLessonSubject.color + '0E', padding: 18, marginBottom: 14, marginTop: 6 }}>
+            <Text style={{ color: firstLessonSubject.color, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, fontWeight: '700', marginBottom: 10 }}>REFLECTION</Text>
+            <Text style={{ color: SOL_THEME.text, fontSize: 14, lineHeight: 22, fontStyle: 'italic' }}>{lessonContent.reflection}</Text>
+          </View>
+
+          <Text style={{ color: SOL_THEME.textMuted + '66', fontSize: 10, textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5, marginBottom: 36 }}>{lessonContent.lineage}</Text>
+
+          <TouchableOpacity
+            style={{ backgroundColor: firstLessonSubject.color, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 12 }}
+            onPress={() => { setShowFirstLesson(false); goTo(5); }}
+            activeOpacity={0.85}
+          >
+            <Text style={{ color: SOL_THEME.background, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 }}>Unlock full intelligence →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={{ borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}
+            onPress={async () => {
+              await AsyncStorage.setItem('sol_dive_first_subject', firstLessonSubject.name);
+              await AsyncStorage.setItem('lycheetah_onboarded', 'true');
+              router.replace('/(tabs)/school' as any);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 13 }}>Dive into the full school →</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      ) : (
+      <>
       {/* Progress bar */}
       <View style={styles.progressBar}>
         {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -248,7 +351,7 @@ export default function OnboardingScreen() {
                 <TouchableOpacity
                   key={subject.name}
                   style={{ width: '100%', marginBottom: 12, borderRadius: 14, borderWidth: 1, borderColor: subject.color + '66', backgroundColor: subject.color + '0D', padding: 16 }}
-                  onPress={() => handleDiveFirst(subject.name)}
+                  onPress={() => { setFirstLessonSubject(subject); setShowFirstLesson(true); }}
                   activeOpacity={0.8}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
@@ -326,7 +429,7 @@ export default function OnboardingScreen() {
                   <Text style={styles.bodyText}>
                     ADEPT mode active. Full protocol running.{'\n\n'}
                     Sol will reference CASCADE layers, name AURA invariants, and sign outputs.
-                    Magister teaches at the EDGE. Aura Prime audits constitutionally.{'\n\n'}
+                    Magister teaches at the EDGE. Aura holds the arc — the narrative across time that gives the work meaning.{'\n\n'}
                     The field remembers. The school does not graduate.
                   </Text>
                   <View style={styles.twoCol}>
@@ -623,6 +726,8 @@ export default function OnboardingScreen() {
 
         </ScrollView>
       </Animated.View>
+      </>
+      )}
     </KeyboardAvoidingView>
   );
 }

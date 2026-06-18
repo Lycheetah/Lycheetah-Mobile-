@@ -141,6 +141,14 @@ export function drawDailyCard(lq = 0.5, salt = ''): DrawnCard {
   return { card: TAROT_DECK[idx], reversed };
 }
 
+/** Random draw — not seeded, different every call. For shuffle/reshuffle UX. */
+export function drawRandomCard(lq = 0.5): DrawnCard {
+  const idx = Math.floor(Math.random() * TAROT_DECK.length);
+  const threshold = Math.max(0.15, Math.min(0.85, lq));
+  const reversed = Math.random() > threshold;
+  return { card: TAROT_DECK[idx], reversed };
+}
+
 /**
  * Draw N distinct cards for a spread (date-seeded, no repeats).
  * Position index is folded into the salt so each slot is stable per day.

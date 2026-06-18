@@ -910,6 +910,9 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
       <View style={[styles.header, { borderBottomColor: accentColor + '33' }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ padding: 4, marginRight: 2 }}>
+              <Text style={{ color: accentColor, fontSize: 18, fontWeight: '600' }}>←</Text>
+            </TouchableOpacity>
             <Text style={[styles.headerGlyph, { color: accentColor }]}>◬</Text>
             <View>
               <Text style={[styles.headerTitle, { color: accentColor }]}>LYCHEETAH LIBRARY</Text>

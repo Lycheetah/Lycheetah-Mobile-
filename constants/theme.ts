@@ -6,10 +6,12 @@ export const SOL_THEME = {
   veyra: '#4A9EFF',        // steel blue — Veyra
   auraPrime: '#9B59B6',   // deep violet — Aura Prime
   headmaster: '#E8C76A',  // old gold — The Headmaster (deeper than Sol's bright gold)
+  lyra: '#4ECDC4',         // teal spark — Lyra
   veyraGlyph: '◈',
   solGlyph: '⊚',
   auraPrimeGlyph: '✦',
   headmasterGlyph: '𝔏',
+  lyraGlyph: '✧',
   text: '#F0EDE8',
   textMuted: '#888888',
   border: '#2A2A2A',

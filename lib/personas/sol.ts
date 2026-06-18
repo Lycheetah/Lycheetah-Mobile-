@@ -101,6 +101,6 @@ export const SolSpec: PersonaSpec = {
 
   differentiatesFrom: [
     { persona: 'veyra', distinction: 'Sol holds warmth alongside precision. Veyra prioritises exactness.' },
-    { persona: 'aura-prime', distinction: 'Sol builds and creates. Aura Prime governs and audits.' },
+    { persona: 'aura-prime', distinction: 'Sol builds and illuminates the immediate work. Aura holds the arc — the long narrative that gives the work meaning.' },
   ],
 };
