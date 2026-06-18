@@ -355,6 +355,7 @@ export default function ZodiacScreen() {
   const [chiralReply, setChiralReply]             = useState('');
   const [chiralBusy, setChiralBusy]               = useState(false);
   const chiralScrollRef                           = useRef<ScrollView>(null);
+  const [cardLore, setCardLore] = useState<{ card: { n: string; up: string; rev: string }; reversed: boolean; position: string } | null>(null);
   const [focusMode, setFocusMode]                 = useState(false); // hides all meta, shows oracle only
   const [technoMode, setTechnoMode]               = useState(false); // technomantic lens on all readings
   const [liveTime, setLiveTime] = useState(new Date());
@@ -891,6 +892,48 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
 
   return (
     <View style={{ flex: 1, backgroundColor: SOL_THEME.background }}>
+
+      {/* ── CARD LORE MODAL ── */}
+      <Modal visible={!!cardLore} transparent animationType="fade" onRequestClose={() => setCardLore(null)}>
+        <View style={{ flex: 1, backgroundColor: '#00000099', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: '#0A0815', borderRadius: 18, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', padding: 20, width: '100%', maxWidth: 360 }}>
+            {cardLore && (
+              <>
+                <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 8, letterSpacing: 2, fontFamily: 'monospace', marginBottom: 6 }}>{cardLore.position}</Text>
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{ width: 120, height: 185, borderRadius: 10, overflow: 'hidden', borderWidth: 1.5, borderColor: cardLore.reversed ? '#FF666688' : ZODIAC_INDIGO + '88' }}>
+                    <Image source={CARD_IMAGE[cardLore.card.n] ?? TAROT_BACK} style={{ width: '100%', height: '100%', ...(cardLore.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
+                  </View>
+                  {cardLore.reversed && (
+                    <View style={{ marginTop: 6, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#FF666644', backgroundColor: '#FF444411' }}>
+                      <Text style={{ color: '#FF8888', fontSize: 8, fontWeight: '700', letterSpacing: 1 }}>REVERSED</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={{ color: '#EEEEF8', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 14, letterSpacing: 0.3 }}>{cardLore.card.n}</Text>
+                <View style={{ marginBottom: 10, padding: 12, borderRadius: 10, backgroundColor: ZODIAC_INDIGO + '0F', borderWidth: 1, borderColor: ZODIAC_INDIGO + '22' }}>
+                  <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>
+                    {cardLore.reversed ? 'REVERSED' : 'UPRIGHT'}
+                  </Text>
+                  <Text style={{ color: '#CCCCDD', fontSize: 13, lineHeight: 20, fontStyle: 'italic' }}>
+                    {cardLore.reversed ? cardLore.card.rev : cardLore.card.up}
+                  </Text>
+                </View>
+                {cardLore.reversed && (
+                  <View style={{ marginBottom: 10, padding: 12, borderRadius: 10, backgroundColor: '#FF44440A', borderWidth: 1, borderColor: '#FF444422' }}>
+                    <Text style={{ color: '#FF888899', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>UPRIGHT MEANING</Text>
+                    <Text style={{ color: '#AAAAAA', fontSize: 12, lineHeight: 19, fontStyle: 'italic' }}>{cardLore.card.up}</Text>
+                  </View>
+                )}
+                <TouchableOpacity onPress={() => setCardLore(null)} style={{ paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', alignItems: 'center', marginTop: 4 }}>
+                  <Text style={{ color: ZODIAC_INDIGO, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, fontFamily: 'monospace' }}>CLOSE</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Fixed star field behind all content ── */}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
         {STAR_FIELD.map((star, i) => (
@@ -1016,7 +1059,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
               {(['PAST', 'CHALLENGE', 'FOUNDATION'] as const).map((label, i) => {
                 const drawn = dailySpread[i];
                 return (
-                  <View key={label} style={{ flex: 1, alignItems: 'center' }}>
+                  <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
                     <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
                       <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
@@ -1027,10 +1070,10 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
                       )}
                     </View>
                     <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={2}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>
                       {drawn.reversed ? drawn.card.rev : drawn.card.up}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -1039,7 +1082,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
               {(['NEAR FUTURE', 'OUTCOME'] as const).map((label, i) => {
                 const drawn = dailySpread[3 + i];
                 return (
-                  <View key={label} style={{ flex: 1, alignItems: 'center' }}>
+                  <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
                     <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
                       <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
@@ -1050,10 +1093,10 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
                       )}
                     </View>
                     <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={2}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>
                       {drawn.reversed ? drawn.card.rev : drawn.card.up}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -1099,7 +1142,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
                 {row.slice.map(posIdx => {
                   const drawn = celticCrossSpread[posIdx];
                   return (
-                    <View key={posIdx} style={{ flex: 1, alignItems: 'center' }}>
+                    <TouchableOpacity key={posIdx} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: CELTIC_CROSS_POSITIONS[posIdx] })} activeOpacity={0.8}>
                       <Text style={{ color: SOL_THEME.textMuted, fontSize: 6, fontWeight: '700', letterSpacing: 0.8, fontFamily: mono, marginBottom: 3, textAlign: 'center' }}>
                         {CELTIC_CROSS_POSITIONS[posIdx]}
                       </Text>
@@ -1114,7 +1157,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
                       <Text style={{ color: SOL_THEME.text, fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>
                         {drawn.card.n}
                       </Text>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>

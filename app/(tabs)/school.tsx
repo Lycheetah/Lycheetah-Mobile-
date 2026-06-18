@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   StyleSheet, Platform, Alert, SafeAreaView, Animated, Easing,
-  KeyboardAvoidingView, Modal, Share, Linking, Image,
+  KeyboardAvoidingView, Modal, Share, Linking, Image, Dimensions,
 } from 'react-native';
 import DiveShareCard from '../../components/DiveShareCard';
 import * as Haptics from 'expo-haptics';
@@ -3137,8 +3137,8 @@ export default function MysterySchoolScreen() {
   if (schoolView === 'mycelium') {
     const MC = '#2ECC71';
     const MMONO = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
-    const SCREEN_W = 340;
-    const SCREEN_H = 420;
+    const SCREEN_W = Math.floor(Dimensions.get('window').width - 32);
+    const SCREEN_H = 480;
 
     // Build node + link sets from studied subjects + immediate neighbors
     const allSubjectsFlat = MYSTERY_SCHOOL_DOMAINS.flatMap(d =>
@@ -3291,10 +3291,10 @@ export default function MysterySchoolScreen() {
                       {/* Nodes */}
                       {simNodes.map((n, i) => {
                         const isThird = thirdSet.has(n.id);
-                        const r = n.studied ? 8 : (isThird ? 7 : 5);
-                        const fill = n.studied ? n.domain.color : (isThird ? '#F5A62322' : '#FFFFFF08');
-                        const stroke = n.studied ? n.domain.color : (isThird ? '#F5A623' : '#FFFFFF22');
-                        const strokeW = n.studied ? 0 : (isThird ? 1.5 : 0.5);
+                        const r = n.studied ? 10 : (isThird ? 8 : 5);
+                        const fill = n.studied ? n.domain.color : (isThird ? '#F5A62333' : '#FFFFFF14');
+                        const stroke = n.studied ? '#FFFFFF44' : (isThird ? '#F5A623' : '#FFFFFF33');
+                        const strokeW = n.studied ? 1 : (isThird ? 1.5 : 0.8);
                         const labelColor = n.studied ? '#FFFFFFCC' : (isThird ? '#F5A623AA' : '#FFFFFF33');
                         const nameShort = n.id.length > 14 ? n.id.slice(0, 13) + '…' : n.id;
                         return (
