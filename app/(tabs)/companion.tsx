@@ -2620,19 +2620,6 @@ function CompanionScene({
           </View>
         </View>
       </View>
-      {/* Quick action buttons — bottom-right of scene */}
-      <View style={{ position:'absolute', bottom:52, right:10, flexDirection:'column', gap:5, zIndex:5 }}>
-        {([
-          { tab:'battle'    as const, label:'⚔' },
-          { tab:'companion' as const, label:'⊛' },
-          { tab:'talk'      as const, label:'✦' },
-        ]).map(({ tab, label }) => (
-          <TouchableOpacity key={tab} onPress={() => onSwitchTab(tab)} activeOpacity={0.7}
-            style={{ width:30, height:30, borderRadius:8, borderWidth:1, borderColor:color+'55', backgroundColor:'#000000CC', alignItems:'center', justifyContent:'center' }}>
-            <Text style={{ color:color, fontSize:13, fontFamily:mono }}>{label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
 
       <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:color, opacity:victoryFlash }} />
 
@@ -2727,8 +2714,8 @@ export default function CompanionScreen() {
   // Section collapse state — companion tab
   const [battleDialogueOn, setBattleDialogueOn] = useState(false);
   const [companionBattleLine, setCompanionBattleLine] = useState('');
-  const [heroCollapsed,    setHeroCollapsed]    = useState(false);
-  const [companionGridCollapsed, setCompanionGridCollapsed] = useState(false);
+  const [heroCollapsed,    setHeroCollapsed]    = useState(true);
+  const [companionGridCollapsed, setCompanionGridCollapsed] = useState(true);
   const [worldCollapsed,   setWorldCollapsed]   = useState(true);
   const [worldOriginOpen,  setWorldOriginOpen]  = useState(false);
   const [worldCrystalOpen,  setWorldCrystalOpen]  = useState(false);
@@ -4116,7 +4103,8 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
   const { glowColor, cardBg } = skin;
 
   return (
-    <ScrollView ref={scrollRef} style={{ flex:1, backgroundColor:'#0D0D0D' }} contentContainerStyle={{ paddingBottom:60 }} showsVerticalScrollIndicator={false}>
+    <View style={{ flex:1, backgroundColor:'#0D0D0D' }}>
+    <ScrollView ref={scrollRef} style={{ flex:1 }} contentContainerStyle={{ paddingBottom:60 }} showsVerticalScrollIndicator={false}>
 
       {/* ── COMPANION HEADER ─────────────────────────────────────────────── */}
       <View style={{ paddingHorizontal:16, paddingTop:12, paddingBottom:4, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
@@ -5150,38 +5138,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       {activeTab === 'battle' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:6 }}>
 
-          {/* Top row: TALK + STATS */}
-          <View style={{ flexDirection:'row', gap:8, marginBottom:12 }}>
-            <TouchableOpacity onPress={openTalk} activeOpacity={0.75}
-              style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1.5, borderColor:color, backgroundColor:color+'14', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:7 }}>
-              <Text style={{ color, fontSize:16 }}>◈</Text>
-              <Text style={{ color, fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>TALK</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowStatModal(true)} activeOpacity={0.75}
-              style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1, borderColor:'#1A1A26', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:7 }}>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:16 }}>⊛</Text>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono }}>SHEET</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats chips row */}
-          <View style={{ flexDirection:'row', gap:5, marginBottom:14 }}>
-            {[
-              { l:'DIVES',  v:totalDives.toString(),                         hi: totalDives > 0 },
-              { l:'STREAK', v:streak>0?`${streak}d`:'—',                     hi: streak >= 3 },
-              { l:'LQ',     v:avgLQ>0?`${(avgLQ*100).toFixed(0)}%`:'—',     hi: avgLQ >= 0.7 },
-              { l:'WAVE',   v:`W${battle?.wave??1}`,                         hi: (battle?.wave??1) > 1 },
-              { l:'RELICS', v:earnedRelicData.length.toString(),              hi: earnedRelicData.length > 0 },
-            ].map(s => (
-              <View key={s.l} style={{ flex:1, paddingVertical:9, borderRadius:8, borderWidth:1,
-                borderColor: s.hi ? color+'33' : '#1A1A26',
-                backgroundColor: s.hi ? color+'08' : '#0A0A10', alignItems:'center', gap:2 }}>
-                <Text style={{ color: s.hi ? color+'99' : '#333344', fontSize:6, letterSpacing:1, fontFamily:mono }}>{s.l}</Text>
-                <Text style={{ color: s.hi ? color : SOL_THEME.text, fontSize:14, fontWeight:'700', fontFamily:mono }}>{s.v}</Text>
-              </View>
-            ))}
-          </View>
-
           {/* BATTLE PANEL ─────────────────────────── */}
           {(() => {
             const bDef = battle ? getEnemyDef(battle.entityName) : null;
@@ -5193,12 +5149,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
 
             {/* Header — tappable to minimize */}
             <TouchableOpacity onPress={() => setBattleMinimized(v => !v)} activeOpacity={0.85}
-              style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: battleMinimized ? 0 : 10 }}>
+              style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: battleMinimized ? 0 : 12, paddingBottom: battleMinimized ? 0 : 10, borderBottomWidth: battleMinimized ? 0 : 1, borderBottomColor:'#FF664422' }}>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#FF6644' }} />
-                <Text style={{ color:'#666677', fontSize:10, letterSpacing:2, fontFamily:mono }}>ENCOUNTERS</Text>
+                <Text style={{ color:'#FF6644', fontSize:14 }}>⚔</Text>
+                <Text style={{ color:'#CCCCDD', fontSize:12, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>ENCOUNTERS</Text>
                 {battle && !battle.won && (
-                  <Text style={{ color:'#FF664455', fontSize:9, fontFamily:mono }}>{battle.entityName}</Text>
+                  <Text style={{ color:'#FF664466', fontSize:9, fontFamily:mono }}>{battle.entityName}</Text>
                 )}
               </View>
               <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
@@ -5549,6 +5505,38 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             })()}
           </View>
           ); })()}
+
+          {/* Top row: TALK + STATS */}
+          <View style={{ flexDirection:'row', gap:8, marginBottom:12, marginTop:12 }}>
+            <TouchableOpacity onPress={openTalk} activeOpacity={0.75}
+              style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1.5, borderColor:color, backgroundColor:color+'14', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:7 }}>
+              <Text style={{ color, fontSize:16 }}>◈</Text>
+              <Text style={{ color, fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>TALK</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowStatModal(true)} activeOpacity={0.75}
+              style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1, borderColor:'#1A1A26', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:7 }}>
+              <Text style={{ color:SOL_THEME.textMuted, fontSize:16 }}>⊛</Text>
+              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono }}>SHEET</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Stats chips row */}
+          <View style={{ flexDirection:'row', gap:5, marginBottom:14 }}>
+            {[
+              { l:'DIVES',  v:totalDives.toString(),                         hi: totalDives > 0 },
+              { l:'STREAK', v:streak>0?`${streak}d`:'—',                     hi: streak >= 3 },
+              { l:'LQ',     v:avgLQ>0?`${(avgLQ*100).toFixed(0)}%`:'—',     hi: avgLQ >= 0.7 },
+              { l:'WAVE',   v:`W${battle?.wave??1}`,                         hi: (battle?.wave??1) > 1 },
+              { l:'RELICS', v:earnedRelicData.length.toString(),              hi: earnedRelicData.length > 0 },
+            ].map(s => (
+              <View key={s.l} style={{ flex:1, paddingVertical:9, borderRadius:8, borderWidth:1,
+                borderColor: s.hi ? color+'33' : '#1A1A26',
+                backgroundColor: s.hi ? color+'08' : '#0A0A10', alignItems:'center', gap:2 }}>
+                <Text style={{ color: s.hi ? color+'99' : '#333344', fontSize:6, letterSpacing:1, fontFamily:mono }}>{s.l}</Text>
+                <Text style={{ color: s.hi ? color : SOL_THEME.text, fontSize:14, fontWeight:'700', fontFamily:mono }}>{s.v}</Text>
+              </View>
+            ))}
+          </View>
 
           {/* INVENTORY ──────────────────────────────── */}
           {inventory.length > 0 && (
@@ -6139,5 +6127,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       {/* ── ITEMS TAB ─────────────────────────────────────────────────────── */}
 
     </ScrollView>
+    </View>
   );
 }
