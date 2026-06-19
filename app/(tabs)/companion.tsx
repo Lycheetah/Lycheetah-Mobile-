@@ -2827,6 +2827,8 @@ export default function CompanionScreen() {
   const [companionFilter,   setCompanionFilter]   = useState<RarityTier | 'ALL'>('ALL');
   const [battleMinimized,   setBattleMinimized]   = useState(false);
   const [autoMode,          setAutoMode]          = useState(false);
+  const [menagerie,         setMenagerie]         = useState<Array<{ name: string; date: string; zone: string }>>([]);
+  const [menagerieCollapsed, setMenagerieCollapsed] = useState(false);
   const pathCeremonyAnim = useRef(new Animated.Value(0)).current;
   const scrollRef  = useRef<any>(null);
   const feedY      = useRef(0);
@@ -2991,7 +2993,7 @@ export default function CompanionScreen() {
         'cascade_library_v3','sol_companion_skin','sol_companion_battle','sol_companion_fed',
         'sol_companion_archetype','sol_premium','sol_companion_named','sol_companion_path',
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
-        'sol_companion_spec','sol_battle_wins','sol_cosmetics','sol_equipped_skin',
+        'sol_companion_spec','sol_battle_wins','sol_cosmetics','sol_equipped_skin','sol_menagerie',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -3083,6 +3085,8 @@ export default function CompanionScreen() {
       if (cosmeticsRaw) { try { const c = JSON.parse(cosmeticsRaw); if (c.halo) setEquippedHalo(c.halo); if (c.wings) setEquippedWings(c.wings); if (c.pet) setEquippedPet(c.pet); } catch {} }
       const equippedSkinRaw = get('sol_equipped_skin') as SkinId | null;
       if (equippedSkinRaw && SKIN_IDS.includes(equippedSkinRaw)) setEquippedCompanionSkin(equippedSkinRaw);
+      const menagerieRaw = get('sol_menagerie');
+      if (menagerieRaw) { try { setMenagerie(JSON.parse(menagerieRaw)); } catch {} }
 
       const skinRaw = get('sol_companion_skin') as SkinId | null;
       if (skinRaw && SKIN_IDS.includes(skinRaw)) setActiveSkin(skinRaw);
@@ -3924,6 +3928,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       if (!already) {
         menagerie.unshift({ name: battle.entityName, date: new Date().toISOString().split('T')[0], zone: activeSkin });
         await AsyncStorage.setItem('sol_menagerie', JSON.stringify(menagerie));
+        setMenagerie([...menagerie]);
       }
       const next: BattleState = { ...battle, captured: true, captureAttempted: true, enemyLine: successLine, won: true };
       setBattle(next);
@@ -5656,6 +5661,81 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               </View>
             );
           })()}
+
+          {/* ── MENAGERIE ─────────────────────────────────────────────── */}
+          <View style={{ marginTop:20, marginBottom:16 }}>
+            <TouchableOpacity onPress={() => setMenagerieCollapsed(v => !v)}
+              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6, marginBottom: menagerieCollapsed ? 0 : 12 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#DD44FF' }} />
+                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>MENAGERIE</Text>
+                <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:6, backgroundColor:'#DD44FF22', borderWidth:1, borderColor:'#DD44FF44' }}>
+                  <Text style={{ color:'#DD44FF', fontSize:8, fontFamily:mono }}>{menagerie.length}</Text>
+                </View>
+              </View>
+              <Text style={{ color:'#333344', fontSize:11 }}>{menagerieCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+
+            {!menagerieCollapsed && (
+              menagerie.length === 0 ? (
+                <View style={{ paddingVertical:28, alignItems:'center', gap:8 }}>
+                  <Text style={{ color:'#222233', fontSize:22 }}>◈</Text>
+                  <Text style={{ color:'#333344', fontSize:9, fontFamily:mono, letterSpacing:1.5 }}>NO ENTITIES CAPTURED YET</Text>
+                  <Text style={{ color:'#22222A', fontSize:8, fontFamily:mono }}>weaken a foe in battle → CAPTURE</Text>
+                </View>
+              ) : (
+                <View style={{ gap:8 }}>
+                  {menagerie.map((entry, idx) => {
+                    // Try to match to a companion skin
+                    const matchSkin = SKIN_IDS.find(sid =>
+                      (COMPANION_LORE[sid]?.name ?? SKINS[sid].name) === entry.name
+                    );
+                    const companionImg = matchSkin ? (ZONE_COMPANION_IMAGES[`${matchSkin}_1`] ?? null) : null;
+                    const enemyImgKey = entry.name.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES;
+                    const enemyImg = !companionImg ? (ENEMY_IMAGES[enemyImgKey] ?? null) : null;
+                    const art = companionImg ?? enemyImg;
+                    const zoneColor = SKINS[entry.zone as SkinId]?.color ?? '#DD44FF';
+                    const zoneName  = SKINS[entry.zone as SkinId]?.name  ?? entry.zone.toUpperCase();
+                    const isComp = !!matchSkin;
+                    return (
+                      <View key={idx} style={{ flexDirection:'row', alignItems:'center', gap:12, paddingVertical:10, paddingHorizontal:12,
+                        borderRadius:12, borderWidth:1, borderColor: isComp ? zoneColor+'44' : '#DD44FF33',
+                        backgroundColor: isComp ? zoneColor+'08' : '#DD44FF08' }}>
+                        {/* Art */}
+                        <View style={{ width:46, height:58, borderRadius:8, borderWidth:1, borderColor: isComp ? zoneColor+'55' : '#DD44FF44',
+                          backgroundColor:'#000000', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                          {art ? (
+                            <Image source={art} style={{ width:46, height:58, borderRadius:7 }} resizeMode="contain" />
+                          ) : (
+                            <Text style={{ color: isComp ? zoneColor : '#DD44FF', fontSize:18 }}>
+                              {isComp ? (SKINS[matchSkin!].glyph) : '◈'}
+                            </Text>
+                          )}
+                        </View>
+                        {/* Info */}
+                        <View style={{ flex:1, gap:3 }}>
+                          <Text style={{ color:'#DDDDEE', fontSize:12, fontWeight:'700' }}>{entry.name}</Text>
+                          <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                            {isComp && (
+                              <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:zoneColor+'22', borderWidth:1, borderColor:zoneColor+'44' }}>
+                                <Text style={{ color:zoneColor, fontSize:6, fontFamily:mono, fontWeight:'700' }}>COMPANION</Text>
+                              </View>
+                            )}
+                            <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#0A0A14', borderWidth:1, borderColor:zoneColor+'33' }}>
+                              <Text style={{ color:zoneColor, fontSize:6, fontFamily:mono }}>{zoneName}</Text>
+                            </View>
+                          </View>
+                          <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{entry.date}</Text>
+                        </View>
+                        {/* Index */}
+                        <Text style={{ color:'#1A1A22', fontSize:10, fontFamily:mono }}>#{menagerie.length - idx}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )
+            )}
+          </View>
 
         </View>
       )}
