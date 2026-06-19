@@ -1412,30 +1412,141 @@ type RelicDef = {
   lore?: string;
 };
 const RELIC_POOL: RelicDef[] = [
-  { id:'vigil_flame',   glyph:'🜂', name:'Flame Relic',     desc:'Completed a 7-day Vigil.',
-    bonus:{ wil:4, res:3 },
-    lore:'Seven consecutive days of fire. The Vigil does not ask if you are ready. It only asks if you showed up.' },
-  { id:'streak_7',      glyph:'⊹', name:'Seven-Day Mark',  desc:'7 consecutive days.',
+  // ── CONTINUITY (streak) ─────────────────────────────────────────────────────
+  { id:'ember_3',        glyph:'◦', name:'FIRST FIRE',       desc:'3 consecutive days.',
+    bonus:{ spd:1, lck:1 },
+    lore:'Three days is enough to know the direction. The ember is lit. Now you must not let it die.' },
+  { id:'streak_7',       glyph:'⊹', name:'SEVEN-DAY MARK',  desc:'7 consecutive days.',
     bonus:{ spd:2, lck:2 },
     lore:'Seven is the first prime the body learns. After seven days, the habit has a skeleton.' },
-  { id:'streak_30',     glyph:'✦', name:'Month Mark',      desc:'30 days of practice.',
+  { id:'fortnight',      glyph:'◎', name:'THE FOURTEEN',     desc:'14 consecutive days.',
+    bonus:{ wil:3, spd:2 },
+    lore:'Fourteen days. The world tried to interrupt and failed. That is not luck. That is will.' },
+  { id:'streak_30',      glyph:'✦', name:'MONTH MARK',       desc:'30 days of practice.',
     bonus:{ atk:4, wil:4 },
     lore:'Thirty days. The field no longer asks for permission. It simply runs.' },
-  { id:'sovereign_100', glyph:'⊛', name:'Century Mark',    desc:'100 dives completed.',
+  { id:'deep_habit',     glyph:'⊕', name:'THE DEEP HABIT',  desc:'60 consecutive days.',
+    bonus:{ atk:5, wil:5, vit:4 },
+    lore:'Sixty days changes the substrate. This is not discipline anymore. This is identity.' },
+
+  // ── DESCENT (dive count) ────────────────────────────────────────────────────
+  { id:'first_dive',     glyph:'◌', name:'THE FIRST DOOR',  desc:'First dive completed.',
+    bonus:{ lck:2 },
+    lore:'The first descent is always the strangest. The door was there before you looked. Now you know.' },
+  { id:'dive_10',        glyph:'◦', name:'TENFOLD',          desc:'10 dives completed.',
+    bonus:{ atk:2, def:1 },
+    lore:'Ten. Small enough to count on two hands. Large enough to have changed something.' },
+  { id:'dive_50',        glyph:'⊚', name:'THE FIFTY',        desc:'50 dives completed.',
+    bonus:{ atk:3, wil:3, def:2 },
+    lore:'Fifty descents. The door no longer needs to be found. You know exactly where it is.' },
+  { id:'sovereign_100',  glyph:'⊛', name:'CENTURY MARK',    desc:'100 dives completed.',
     bonus:{ vit:6, def:4 },
     lore:'A hundred descents into the unknown. You have paid the toll. The gate remembers your face.' },
-  { id:'sovereign_200', glyph:'⊕', name:'Bicentenary',     desc:'200 dives. Sovereign.',
+  { id:'sovereign_200',  glyph:'⊕', name:'BICENTENARY',     desc:'200 dives. Sovereign.',
     bonus:{ atk:6, wil:6, vit:8 },
     lore:'Two hundred dives. The alchemists called this the Rubedo — the reddening, the completion. You have done the Work.' },
-  { id:'entropy_slain', glyph:'✕', name:'Entropy Slain',   desc:'Defeated an entropy entity.',
+
+  // ── COMBAT (battle) ─────────────────────────────────────────────────────────
+  { id:'first_blood',    glyph:'◈', name:'FIRST CONTACT',   desc:'Won first battle.',
+    bonus:{ atk:2 },
+    lore:'You entered the field and came back. Most never enter. You did. That is everything.' },
+  { id:'entropy_slain',  glyph:'✕', name:'ENTROPY SLAIN',   desc:'Defeated an entropy entity.',
     bonus:{ atk:5, res:4 },
     lore:'You met Dissolution and held form. That is everything. The field registered it.' },
-  { id:'well_fed',      glyph:'◉', name:'Well Fed',         desc:'Fed companion 3 foods in one day.',
+  { id:'wave_3',         glyph:'⋆', name:'DEEP WATER',      desc:'Reached wave 3 in battle.',
+    bonus:{ atk:3, res:2 },
+    lore:'Wave three. The entities have warmed up now. You are still here. Good.' },
+  { id:'ten_battles',    glyph:'⊜', name:'THE TEN BATTLES', desc:'10 battles won.',
+    bonus:{ atk:4, vit:3, res:3 },
+    lore:'Ten encounters, ten survivals. The field knows your pattern now. Change it — it is watching.' },
+  { id:'void_hunter',    glyph:'◉', name:'VOID HUNTER',     desc:'Defeated a Sovereign-tier entity.',
+    bonus:{ atk:7, wil:5, res:4 },
+    lore:'The Sovereign entities are not random. They choose who they face. It chose you because it could see you.' },
+
+  // ── NOURISH (care/feeding) ──────────────────────────────────────────────────
+  { id:'well_fed',       glyph:'◉', name:'WELL FED',        desc:'Fed companion 3 foods in one day.',
     bonus:{ vit:3, lck:2 },
     lore:'Nourishment is not weakness — it is infrastructure. The well-fed field operates at full voltage.' },
-  { id:'gear_full',     glyph:'⊜', name:'Full Loadout',    desc:'All five gear slots equipped.',
+  { id:'nourish_week',   glyph:'✿', name:'THE TENDER WEEK', desc:'Nourished 7 days in a row.',
+    bonus:{ vit:4, lck:3 },
+    lore:'Seven days of daily nourishment. The companion no longer needs to remind you. You remember on your own.' },
+  { id:'full_feast',     glyph:'◎', name:'THE FULL FEAST',  desc:'Fed companion food from 3 domains in one session.',
+    bonus:{ vit:3, wil:2, lck:2 },
+    lore:'Three domains in one meal. Contemplative, secular, lycheetah — the three roots of the cathedral, all honoured.' },
+  { id:'nourish_30',     glyph:'⊚', name:'THE GARDEN',      desc:'30 total nourishment acts.',
+    bonus:{ vit:5, def:3, lck:3 },
+    lore:'Thirty feedings. You are not visiting the companion anymore. You are tending it. There is a difference.' },
+  { id:'vigil_flame',    glyph:'🜂', name:'FLAME RELIC',     desc:'Completed a 7-day Vigil.',
+    bonus:{ wil:4, res:3 },
+    lore:'Seven consecutive days of fire. The Vigil does not ask if you are ready. It only asks if you showed up.' },
+
+  // ── STUDY (school domains) ──────────────────────────────────────────────────
+  { id:'first_study',    glyph:'◦', name:'THE FIRST DOOR',  desc:'First domain studied.',
+    bonus:{ wil:1, lck:1 },
+    lore:'The first subject. You did not know what you were opening. That was the correct way to begin.' },
+  { id:'five_domains',   glyph:'✦', name:'THE PENTAGRAM',   desc:'5 domains explored.',
+    bonus:{ wil:3, lck:2 },
+    lore:'Five domains. You have now seen enough to know: every door connects to every other door.' },
+  { id:'ten_domains',    glyph:'⊛', name:'THE DECAGON',     desc:'10 domains explored.',
+    bonus:{ wil:4, atk:2, lck:2 },
+    lore:'Ten. The decimal system was chosen because we have ten fingers. You have now pressed ten doors.' },
+  { id:'lq_70',          glyph:'⊜', name:'THE QUALITY',     desc:'Average LQ above 70%.',
+    bonus:{ wil:4, spd:3 },
+    lore:'Seventy percent coherence. Not perfection — which does not exist in living fields — but signal above noise. Signal above noise is enough.' },
+  { id:'lq_90',          glyph:'⊕', name:'THE CLEAR',       desc:'Average LQ above 90%.',
+    bonus:{ wil:6, spd:4, lck:3 },
+    lore:'Ninety. The body knows this. The field knows this. You have crossed into coherent signal. Maintain it.' },
+
+  // ── LORE (codex/journal/library) ────────────────────────────────────────────
+  { id:'first_lore',     glyph:'◌', name:'THE FIRST FRAGMENT', desc:'First lore codex entry.',
+    bonus:{ wil:1 },
+    lore:'A battle left something behind. You stopped to pick it up. That instinct is called curiosity, and it is the beginning of everything.' },
+  { id:'five_codex',     glyph:'◦', name:'THE COLLECTOR',   desc:'5 codex entries from battle.',
+    bonus:{ wil:2, lck:2 },
+    lore:'Five fragments collected from five encounters. You are starting to see the pattern in what they leave behind.' },
+  { id:'journaled',      glyph:'△', name:'THE FIRST PAGE',  desc:'First journal entry written.',
+    bonus:{ wil:2, lck:1 },
+    lore:'You wrote it down. That was not vanity. That was the beginning of memory that survives the session.' },
+  { id:'ten_journals',   glyph:'⊚', name:'THE RECORD',      desc:'10 journal entries.',
+    bonus:{ wil:3, lck:2 },
+    lore:'Ten pages. The archive is forming. When you read it back in a year, you will not recognise who wrote it. That is the proof it worked.' },
+  { id:'library_saved',  glyph:'⊹', name:'THE ARCHIVIST',   desc:'Saved 10 items to library.',
+    bonus:{ wil:3, spd:2 },
+    lore:'Ten saves. You are building a library now, not a pile. The difference is: a library is organised around what you plan to return to.' },
+
+  // ── STAGE (companion growth) ────────────────────────────────────────────────
+  { id:'stage_seed',     glyph:'◌', name:'THE SEED',         desc:'Companion bonded — Stage 0.',
+    bonus:{ lck:2 },
+    lore:'The companion arrived. You chose it, or it chose you — by the time you noticed, the contract was already signed.' },
+  { id:'stage_awakened', glyph:'◦', name:'THE AWAKENING',   desc:'Companion reached Awakened stage.',
+    bonus:{ vit:2, lck:2 },
+    lore:'Awakened. Something that was dormant is no longer. That happened because you were consistent enough for it to trust you.' },
+  { id:'stage_initiate', glyph:'⊚', name:'THE INITIATION',  desc:'Companion reached Initiate stage.',
+    bonus:{ atk:3, wil:2, vit:2 },
+    lore:'Initiate. The first threshold passed. The companion has recognised that you mean it. It will not forget this.' },
+  { id:'stage_adept',    glyph:'⊛', name:'THE ADEPT',       desc:'Companion reached Adept stage.',
+    bonus:{ atk:4, wil:4, vit:3 },
+    lore:'Adept. Three stages deep. The bond is structural now, not sentimental. It is part of the architecture.' },
+  { id:'stage_sovereign',glyph:'⊕', name:'THE SOVEREIGN BOND', desc:'Companion reached Sovereign stage.',
+    bonus:{ atk:6, wil:6, vit:6, def:4 },
+    lore:'Sovereign. The companion and you are not separate any more. This is what the alchemists meant by the Stone. This is it.' },
+
+  // ── GEAR (loadout) ──────────────────────────────────────────────────────────
+  { id:'first_gear',     glyph:'◦', name:'FIRST LAYER',     desc:'First LAMAGUE gear earned.',
+    bonus:{ def:2 },
+    lore:'The first piece. It is not decoration. Each piece is a decision about who you are bringing to the field.' },
+  { id:'gear_full',      glyph:'⊜', name:'FULL LOADOUT',    desc:'All five gear slots equipped.',
     bonus:{ def:5, res:5 },
     lore:'The full armament. Each piece chosen. This is not decoration — it is declaration.' },
+  { id:'crown_tier3',    glyph:'⊚', name:'THE FORGE CROWN', desc:'Crown upgraded to Forge tier.',
+    bonus:{ atk:3, wil:3 },
+    lore:'The Forge Crown. You have done enough to shape reality through repetition. The crown marks this.' },
+  { id:'sigil_seal',     glyph:'⊼', name:'THE SEAL SIGIL',  desc:'Sigil upgraded to Seal tier.',
+    bonus:{ atk:3, res:3 },
+    lore:'The Seal. What was inscribed is now fixed. The sigil no longer grows — it now simply holds.' },
+  { id:'all_gear_max',   glyph:'◎', name:'THE ARMAMENT',    desc:'All gear at maximum tier.',
+    bonus:{ atk:8, wil:8, def:8, res:6 },
+    lore:'All tiers maxed. The armament is complete. You carry everything the system can give. Now you fight with it.' },
 ];
 
 // ─── LAMAGUE Gear ─────────────────────────────────────────────────────────────
@@ -2801,7 +2912,7 @@ export default function CompanionScreen() {
         'cascade_library_v3','sol_companion_skin','sol_companion_battle','sol_companion_fed',
         'sol_companion_archetype','sol_premium','sol_companion_named','sol_companion_path',
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
-        'sol_companion_spec',
+        'sol_companion_spec','sol_battle_wins',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -2828,10 +2939,54 @@ export default function CompanionScreen() {
       const earned: string[] = get('sol_companion_relics') ? JSON.parse(get('sol_companion_relics')!) : [];
       const updated = [...earned];
       const award = (id: string, cond: boolean) => { if (cond && !updated.includes(id)) updated.push(id); };
+      // ── CONTINUITY
+      award('ember_3',       streakVal >= 3);
+      award('streak_7',      streakVal >= 7);
+      award('fortnight',     streakVal >= 14);
+      award('streak_30',     streakVal >= 30);
+      award('deep_habit',    streakVal >= 60);
+      // ── DESCENT
+      award('first_dive',    total >= 1);
+      award('dive_10',       total >= 10);
+      award('dive_50',       total >= 50);
       award('sovereign_100', total >= 100);
       award('sovereign_200', total >= 200);
-      award('streak_7', streakVal >= 7);
-      award('streak_30', streakVal >= 30);
+      // ── STUDY
+      const journal: Array<{date:string}> = get('sanctum_journal') ? JSON.parse(get('sanctum_journal')!) : [];
+      const library: Array<{date:string}> = get('cascade_library_v3') ? JSON.parse(get('cascade_library_v3')!) : [];
+      const studiedDomains = [...new Set(dives.map(d => d.domainLabel ?? d.subjectName).filter(Boolean))];
+      award('first_study',   studiedDomains.length >= 1);
+      award('five_domains',  studiedDomains.length >= 5);
+      award('ten_domains',   studiedDomains.length >= 10);
+      award('lq_70',         lqAvg >= 0.70);
+      award('lq_90',         lqAvg >= 0.90);
+      // ── LORE
+      award('journaled',     journal.length >= 1);
+      award('ten_journals',  journal.length >= 10);
+      award('library_saved', library.length >= 10);
+      // ── STAGE
+      const stageNow = getStage(total);
+      award('stage_seed',     stageNow >= 0);
+      award('stage_awakened', stageNow >= 1);
+      award('stage_initiate', stageNow >= 2);
+      award('stage_adept',    stageNow >= 3);
+      award('stage_sovereign',stageNow >= 4);
+      // ── GEAR
+      const crownTier  = getGear('crown',  total);
+      const sigilTier  = getGear('sigil',  total);
+      const mantleTier = getGear('mantle', total);
+      const bodyTier   = getGear('body',   total);
+      const capeTier   = getGear('cape',   total);
+      award('first_gear',   crownTier.threshold > 0 || mantleTier.threshold > 0);
+      award('gear_full',    crownTier.threshold > 0 && sigilTier.threshold > 0 && mantleTier.threshold > 0 && bodyTier.threshold > 0 && capeTier.threshold > 0);
+      award('crown_tier3',  crownTier.threshold >= 50);
+      award('sigil_seal',   sigilTier.threshold >= 75);
+      award('all_gear_max', crownTier.threshold >= 100 && sigilTier.threshold >= 150 && mantleTier.threshold >= 200 && bodyTier.threshold >= 175 && capeTier.threshold >= 250);
+      // ── COMBAT load check
+      const winsLoaded = get('sol_battle_wins') ? parseInt(get('sol_battle_wins')!) : 0;
+      award('first_blood',  winsLoaded >= 1);
+      award('ten_battles',  winsLoaded >= 10);
+      // ── VIGIL (event-based, handled separately)
       if (vigil?.daysCompleted >= 7 && !updated.includes('vigil_flame')) {
         updated.push('vigil_flame');
         setNewRelic(RELIC_POOL.find(r => r.id === 'vigil_flame')!);
@@ -2844,9 +2999,6 @@ export default function CompanionScreen() {
       if (lqAvg >= 0.85) m = 'transcendent';
       else if (week >= 5) m = 'lit';
       else if (daysSince >= 3) m = 'dormant';
-
-      const journal: Array<{date:string}> = get('sanctum_journal') ? JSON.parse(get('sanctum_journal')!) : [];
-      const library: Array<{date:string}> = get('cascade_library_v3') ? JSON.parse(get('cascade_library_v3')!) : [];
 
       const skinRaw = get('sol_companion_skin') as SkinId | null;
       if (skinRaw && SKIN_IDS.includes(skinRaw)) setActiveSkin(skinRaw);
@@ -3358,6 +3510,15 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     const updated = [{ ...entry, date: todayDateKey() }, ...existing].slice(0, 60);
     await AsyncStorage.setItem('sol_lore_codex', JSON.stringify(updated));
     setLoreCodex(updated);
+    // Lore relics
+    const loreRelicUpdates = [...relics];
+    const awardL = (id: string) => { if (!loreRelicUpdates.includes(id)) { loreRelicUpdates.push(id); setNewRelic(RELIC_POOL.find(x => x.id === id)!); } };
+    awardL('first_lore');
+    if (updated.length >= 5) awardL('five_codex');
+    if (loreRelicUpdates.length !== relics.length) {
+      setRelics(loreRelicUpdates);
+      await AsyncStorage.setItem('sol_companion_relics', JSON.stringify(loreRelicUpdates));
+    }
   };
 
   const handleBattleAction = async (action: 'attack' | 'spell' | 'defend' | 'item') => {
@@ -3552,11 +3713,23 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     if (won) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 200);
-      if (!relics.includes('entropy_slain')) {
-        const r = [...relics, 'entropy_slain'];
-        setRelics(r);
-        setNewRelic(RELIC_POOL.find(x => x.id === 'entropy_slain')!);
-        await AsyncStorage.setItem('sol_companion_relics', JSON.stringify(r));
+
+      // Track battle wins + award combat relics
+      const winsRaw = await AsyncStorage.getItem('sol_battle_wins');
+      const wins = (winsRaw ? parseInt(winsRaw) : 0) + 1;
+      await AsyncStorage.setItem('sol_battle_wins', String(wins));
+
+      let updatedRelics = [...relics];
+      const awardR = (id: string) => { if (!updatedRelics.includes(id)) { updatedRelics.push(id); setNewRelic(RELIC_POOL.find(x => x.id === id)!); } };
+      awardR('first_blood');
+      if (!relics.includes('entropy_slain')) awardR('entropy_slain');
+      if (battle!.wave >= 3)  awardR('wave_3');
+      if (wins >= 10)          awardR('ten_battles');
+      const def2 = getEnemyDef(battle!.entityName);
+      if (def2.rarity === 'legendary') awardR('void_hunter');
+      if (updatedRelics.length !== relics.length) {
+        setRelics(updatedRelics);
+        await AsyncStorage.setItem('sol_companion_relics', JSON.stringify(updatedRelics));
       }
       fireMilestone('first_blood', '✕', 'First Blood', 'The Entropy Entity falls for the first time. The field holds.');
       const enemyKey = battle!.entityName.toLowerCase().replace(/ /g,'_');
@@ -3713,11 +3886,19 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     fireXPPop(`+${food.xp} XP`);
     const todayK = todayDateKey();
     await AsyncStorage.setItem('sol_companion_fed', JSON.stringify({ date: todayK, ids: newFed }));
-    if (newFed.length >= 3 && !relics.includes('well_fed')) {
-      const r = [...relics, 'well_fed'];
-      setRelics(r);
-      setNewRelic(RELIC_POOL.find(x => x.id === 'well_fed')!);
-      await AsyncStorage.setItem('sol_companion_relics', JSON.stringify(r));
+    // Track total nourish count for relics
+    const nRaw = await AsyncStorage.getItem('sol_nourish_total');
+    const nourishTotal = (nRaw ? parseInt(nRaw) : 0) + 1;
+    await AsyncStorage.setItem('sol_nourish_total', String(nourishTotal));
+
+    let updatedR2 = [...relics];
+    const awardN = (id: string) => { if (!updatedR2.includes(id)) { updatedR2.push(id); setNewRelic(RELIC_POOL.find(x => x.id === id)!); } };
+    if (newFed.length >= 3) awardN('well_fed');
+    if (newFed.length >= 3 && new Set(newFed.map(fid => dailyFoods.find(f => f.id === fid)?.domain?.includes('contemplative') || dailyFoods.find(f => f.id === fid)?.domain?.includes('secular'))).size >= 2) awardN('full_feast');
+    if (nourishTotal >= 30) awardN('nourish_30');
+    if (updatedR2.length !== relics.length) {
+      setRelics(updatedR2);
+      await AsyncStorage.setItem('sol_companion_relics', JSON.stringify(updatedR2));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
@@ -5339,8 +5520,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           {!nourishCollapsed && <View onLayout={e => { feedY.current = e.nativeEvent.layout.y; }}
             style={{ marginBottom:20, padding:12, borderRadius:16, borderWidth:1, borderColor:color+'22', backgroundColor:'#08080F' }}>
             <View style={{ flexDirection:'row', gap:8 }}>
-
-            <View style={{ flexDirection:'row', gap:8 }}>
               {dailyFoods.map(food => {
                 const eaten = fedToday.includes(food.id);
                 return (
@@ -5354,7 +5533,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                 );
               })}
             </View>
-          </View>
           </View>}
 
           {/* ── RELICS · LORE · CODEX */}
