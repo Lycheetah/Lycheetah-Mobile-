@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.6.1] — 2026-06-19 — RELICS · HP SHIMMER · COSMETICS PERSISTENCE
+
+### RELIC SYSTEM — COMPLETE
+- **40 relics across 8 categories**: CONTINUITY · DESCENT · COMBAT · NOURISH · STUDY · LORE · STAGE · GEAR
+- **All triggers wired**: load-time (streaks, dives, LQ, stage, gear) + event-time (battle wins, nourish, lore codex saves)
+- **Lore relics**: `first_lore` + `five_codex` award on `saveToCodex` — first codex entry + 5th entry
+- **Gear relics**: `gear_full` (all 5 slots active), `all_gear_max` (all at max tier), `crown_tier3`, `sigil_seal`
+- **Combat load check**: `ten_battles` + `first_blood` checked on focus from `sol_battle_wins` AsyncStorage key
+- **`sol_battle_wins` in multiGet**: battle win counter now loaded on tab focus for returning users
+
+### BATTLE — HP SHIMMER
+- **HP shimmer live**: white flash Animated.View overlay on player HP bar on each damage/heal event
+- **Trigger fixed**: shimmer now fires on `battle.playerHP` change (was `companionHP` — never triggered)
+
+### COSMETICS — PERSISTENCE
+- **`sol_cosmetics` persisted**: equipped halo/wings/pet saved to AsyncStorage on equip/remove
+- **Loaded on focus**: cosmetics state restored from `sol_cosmetics` on tab open
+- **REMOVE wired**: removes save to AsyncStorage immediately
+
+---
+
 ## [4.6.0] — 2026-06-19 — SOL.V.4.6 — THE CATHEDRAL
 
 > Full release: v3.54 → v4.6.0. The companion world, the zodiac engine, and the mystery school — all complete.
