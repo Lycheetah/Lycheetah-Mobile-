@@ -2727,29 +2727,31 @@ export default function CompanionScreen() {
   // Section collapse state — companion tab
   const [battleDialogueOn, setBattleDialogueOn] = useState(false);
   const [companionBattleLine, setCompanionBattleLine] = useState('');
-  const [worldCollapsed,   setWorldCollapsed]   = useState(false);
-  const [worldOriginOpen,  setWorldOriginOpen]  = useState(true);
+  const [heroCollapsed,    setHeroCollapsed]    = useState(false);
+  const [companionGridCollapsed, setCompanionGridCollapsed] = useState(false);
+  const [worldCollapsed,   setWorldCollapsed]   = useState(true);
+  const [worldOriginOpen,  setWorldOriginOpen]  = useState(false);
   const [worldCrystalOpen,  setWorldCrystalOpen]  = useState(false);
   const [worldChaosOpen,    setWorldChaosOpen]    = useState(false);
   const [worldSanctumOpen,  setWorldSanctumOpen]  = useState(false);
   const [worldElementalOpen,setWorldElementalOpen]= useState(false);
   const [worldDimOpen,      setWorldDimOpen]      = useState(false);
-  const [gbaMapOpen,        setGbaMapOpen]        = useState(true);
-  const [worldArcaneOpen,  setWorldArcaneOpen]  = useState(true);
-  const [worldMysticOpen,  setWorldMysticOpen]  = useState(true);
+  const [gbaMapOpen,        setGbaMapOpen]        = useState(false);
+  const [worldArcaneOpen,  setWorldArcaneOpen]  = useState(false);
+  const [worldMysticOpen,  setWorldMysticOpen]  = useState(false);
   const [worldFrontierOpen,setWorldFrontierOpen]= useState(false);
-  const [loadoutCollapsed, setLoadoutCollapsed] = useState(false);
+  const [loadoutCollapsed, setLoadoutCollapsed] = useState(true);
   const [bonusCollapsed,   setBonusCollapsed]   = useState(true);
   // Section collapse state — bond tab
-  const [inventoryCollapsed, setInventoryCollapsed] = useState(false);
-  const [nourishCollapsed, setNourishCollapsed] = useState(false);
-  const [relicsCollapsed,  setRelicsCollapsed]  = useState(false);
-  const [loreCollapsed,    setLoreCollapsed]    = useState(false);
+  const [inventoryCollapsed, setInventoryCollapsed] = useState(true);
+  const [nourishCollapsed, setNourishCollapsed] = useState(true);
+  const [relicsCollapsed,  setRelicsCollapsed]  = useState(true);
+  const [loreCollapsed,    setLoreCollapsed]    = useState(true);
   const [codexCollapsed,   setCodexCollapsed]   = useState(true);
   // Section collapse state — field tab
-  const [statsCollapsed,   setStatsCollapsed]   = useState(false);
-  const [domainsCollapsed, setDomainsCollapsed] = useState(false);
-  const [fieldNoteCollapsed, setFieldNoteCollapsed] = useState(false);
+  const [statsCollapsed,   setStatsCollapsed]   = useState(true);
+  const [domainsCollapsed, setDomainsCollapsed] = useState(true);
+  const [fieldNoteCollapsed, setFieldNoteCollapsed] = useState(true);
   const [invFilter,      setInvFilter]     = useState<'all'|'common'|'uncommon'|'rare'|'epic'>('all');
   const [invExpanded,    setInvExpanded]   = useState<string | null>(null);
   const [loreCodex,      setLoreCodex]     = useState<Array<{id:string; enemy:string; text:string; date:string; type:'enemy'|'loot'}>>([]);
@@ -4322,8 +4324,15 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         <View style={{ paddingHorizontal:16, paddingBottom:16, marginTop:8 }}>
 
           {/* ── COMPANION HERO ─────────────────────────────────────── */}
-          <View style={{ marginBottom:24 }}>
-            {/* Hero card */}
+          <View style={{ marginBottom: heroCollapsed ? 8 : 24 }}>
+            <TouchableOpacity onPress={() => setHeroCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: heroCollapsed ? 0 : 10 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>ACTIVE COMPANION</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:11 }}>{heroCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!heroCollapsed && (
             <View style={{ borderRadius:18, borderWidth:1, borderColor:color+'44', backgroundColor:'#08080F', overflow:'hidden' }}>
               {/* Zone art as full-bleed header */}
               {SCENE_IMAGES[activeSkin]?.[0] && (
@@ -4363,15 +4372,20 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                 </View>
               </View>
             </View>
+            )}
           </View>
 
           {/* ── Zone Companion Roster — by Rarity ─────────────────── */}
-          <View style={{ marginBottom:20 }}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
-              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
-              <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, marginLeft:'auto' }}>{SKIN_IDS.length} TOTAL</Text>
-            </View>
+          <View style={{ marginBottom: companionGridCollapsed ? 8 : 20 }}>
+            <TouchableOpacity onPress={() => setCompanionGridCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: companionGridCollapsed ? 0 : 10 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
+                <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SKIN_IDS.length} TOTAL</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:11 }}>{companionGridCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!companionGridCollapsed && (<>
             {/* Rarity filter pills */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }} contentContainerStyle={{ gap:6, paddingRight:8 }}>
               {(['ALL', ...RARITY_ORDER] as const).map(tier => {
@@ -4435,6 +4449,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                 </View>
               );
             })}
+            </>)}
           </View>
 
           {/* ── WORLD ─────────────────────────────────────────────── */}
