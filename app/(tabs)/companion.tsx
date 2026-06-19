@@ -2912,7 +2912,7 @@ export default function CompanionScreen() {
         'cascade_library_v3','sol_companion_skin','sol_companion_battle','sol_companion_fed',
         'sol_companion_archetype','sol_premium','sol_companion_named','sol_companion_path',
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
-        'sol_companion_spec','sol_battle_wins',
+        'sol_companion_spec','sol_battle_wins','sol_cosmetics',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -2999,6 +2999,9 @@ export default function CompanionScreen() {
       if (lqAvg >= 0.85) m = 'transcendent';
       else if (week >= 5) m = 'lit';
       else if (daysSince >= 3) m = 'dormant';
+
+      const cosmeticsRaw = get('sol_cosmetics');
+      if (cosmeticsRaw) { try { const c = JSON.parse(cosmeticsRaw); if (c.halo) setEquippedHalo(c.halo); if (c.wings) setEquippedWings(c.wings); if (c.pet) setEquippedPet(c.pet); } catch {} }
 
       const skinRaw = get('sol_companion_skin') as SkinId | null;
       if (skinRaw && SKIN_IDS.includes(skinRaw)) setActiveSkin(skinRaw);
@@ -3193,13 +3196,13 @@ export default function CompanionScreen() {
   }, [dreamFragment]);
 
   useEffect(() => {
-    if (companionHP <= 0) return;
+    if (!battle || battle.playerHP <= 0) return;
     hpShimmerAnim.setValue(0);
     Animated.sequence([
-      Animated.timing(hpShimmerAnim, { toValue:1, duration:280, useNativeDriver:true }),
-      Animated.timing(hpShimmerAnim, { toValue:0, duration:520, useNativeDriver:true }),
+      Animated.timing(hpShimmerAnim, { toValue:1, duration:220, useNativeDriver:true }),
+      Animated.timing(hpShimmerAnim, { toValue:0, duration:480, useNativeDriver:true }),
     ]).start();
-  }, [companionHP]);
+  }, [battle?.playerHP]);
 
   const fireXPPop = (label: string) => {
     setXpPop(label);
@@ -4589,10 +4592,12 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                     {!item && <Text style={{ color:'#333355', fontSize:9, fontFamily:mono, marginTop:2 }}>Art dropping soon · {catalogue.length} designs ready</Text>}
                   </View>
                   {item && (
-                    <TouchableOpacity onPress={() => {
+                    <TouchableOpacity onPress={async () => {
+                      const next = { halo: label === 'HALO' ? null : equippedHalo, wings: label === 'WINGS' ? null : equippedWings, pet: label === 'PET' ? null : equippedPet };
                       if (label === 'HALO') setEquippedHalo(null);
                       else if (label === 'WINGS') setEquippedWings(null);
                       else setEquippedPet(null);
+                      await AsyncStorage.setItem('sol_cosmetics', JSON.stringify(next));
                     }} style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:6, borderWidth:1, borderColor:'#FF444433' }}>
                       <Text style={{ color:'#FF4444AA', fontSize:8, fontFamily:mono }}>REMOVE</Text>
                     </TouchableOpacity>
@@ -5251,6 +5256,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                         {[25,50,75].map(seg => (
                           <View key={seg} style={{ position:'absolute', left:`${seg}%` as any, top:0, bottom:0, width:1, backgroundColor:'#00000044' }} />
                         ))}
+                        <Animated.View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#FFFFFF', opacity:hpShimmerAnim, borderRadius:8 }} pointerEvents="none" />
                       </View>
                       {pdanger && (
                         <Text style={{ color:'#FF4444AA', fontSize:7, fontFamily:mono, marginTop:5, letterSpacing:1 }}>▼ CRITICAL · HEAL OR RETREAT</Text>
