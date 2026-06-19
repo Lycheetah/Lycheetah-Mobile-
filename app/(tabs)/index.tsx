@@ -4169,6 +4169,28 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         })()}
       </Modal>
 
+      {/* Floating ⚔ encounter button — navigates to companion BATTLE tab */}
+      <TouchableOpacity
+        onPress={() => router.push('/(tabs)/companion')}
+        activeOpacity={0.8}
+        style={{
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 96 : 68,
+          left: 14,
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: '#08000C',
+          borderWidth: 1.5,
+          borderColor: '#FF664466',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 500,
+        }}
+      >
+        <Text style={{ color: '#FF6644', fontSize: 16, lineHeight: 19 }}>⚔</Text>
+      </TouchableOpacity>
+
     </KeyboardAvoidingView>
   );
 }

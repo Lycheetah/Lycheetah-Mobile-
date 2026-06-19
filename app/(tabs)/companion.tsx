@@ -1622,6 +1622,7 @@ type BattleState = {
   lastPlayerDmg: number;
   captured: boolean;
   captureAttempted: boolean;
+  entitySkinId?: SkinId;
 };
 
 // ─── Player stat model ───────────────────────────────────────────────────────
@@ -2036,30 +2037,93 @@ const ZONE_ENEMY_POOL: Partial<Record<SkinId, string[]>> = {
   quantum:   ['Static','Recursion','Fracture Prime','The Threshold','Entropy Prime'],
 };
 
-function pickZoneEnemy(skinId: SkinId, wave: number): EnemyDef {
+// ─── Unified entity system — companions appear as encounters ──────────────────
+// [skinId, relativeWeight] per zone. Higher weight = more likely to encounter.
+const ZONE_COMPANION_POOL: Partial<Record<SkinId, [SkinId, number][]>> = {
+  solform:   [['solform',5],['void',1]],
+  void:      [['void',5],['solform',1],['crimson',0.3]],
+  aurora:    [['aurora',5],['void',0.8]],
+  crimson:   [['crimson',5],['obsidian',1],['chaos',0.3]],
+  obsidian:  [['obsidian',5],['crimson',1]],
+  lycheetah: [['lycheetah',5],['solform',0.8]],
+  chaos:     [['chaos',5],['crimson',1],['sovereign',0.3]],
+  sovereign: [['sovereign',5],['chaos',0.8]],
+  norse:     [['norse',5],['celtic',1]],
+  celtic:    [['celtic',5],['norse',1],['delphi',0.3]],
+  egyptian:  [['egyptian',5],['akashic',0.8]],
+  akashic:   [['akashic',5],['egyptian',0.8],['kabbala',0.3]],
+  kabbala:   [['kabbala',5],['akashic',0.8]],
+  noetic:    [['noetic',5],['quantum',0.8]],
+  lamague:   [['lamague',5],['akashic',0.3]],
+  delphi:    [['delphi',5],['celtic',0.8]],
+  sufi:      [['sufi',5],['delphi',0.3]],
+  quantum:   [['quantum',5],['noetic',0.8]],
+};
+
+function makeCompanionEntityDef(skinId: SkinId): EnemyDef {
+  const skin = SKINS[skinId];
+  const tier = SKIN_RARITY[skinId]?.tier ?? 'ORIGIN';
+  const hpM  = tier==='ORIGIN'?0.65:tier==='ARCANE'?0.9:tier==='MYTHIC'?1.3:tier==='LEGENDARY'?1.7:2.1;
+  const atk  = tier==='ORIGIN'?7:tier==='ARCANE'?11:tier==='MYTHIC'?15:tier==='LEGENDARY'?20:26;
+  const xpM  = tier==='ORIGIN'?1.2:tier==='ARCANE'?1.6:tier==='MYTHIC'?2.1:tier==='LEGENDARY'?2.8:3.6;
+  const rar  = tier==='ORIGIN'?'common':tier==='ARCANE'?'rare':tier==='MYTHIC'?'epic':'legendary';
+  const lore = COMPANION_LORE[skinId];
+  const displayName = lore?.name ?? skin.name;
+  const entryLine = lore?.lore ? lore.lore.slice(0,90)+'…' : `${displayName} materialises from the zone's energy.`;
+  return {
+    name: displayName, rarity: rar,
+    weight: tier==='ORIGIN'?3:tier==='ARCANE'?2:1,
+    hpMult: hpM, xpMult: xpM, atk, colour: skin.color,
+    lines: {
+      enter: entryLine,
+      attack: [`${skin.glyph} ${displayName} surges!`, 'Zone energy crackles.', 'It tests your resolve.'],
+      death:  `${displayName} acknowledges you. The bond is possible.`,
+    },
+  };
+}
+
+function pickZoneEnemy(skinId: SkinId, wave: number): { def: EnemyDef; companionId?: SkinId } {
+  const compPool = ZONE_COMPANION_POOL[skinId] ?? [];
+  const compWeight = compPool.reduce((s, [, w]) => s + w, 0);
+  const enemyWeight = 5;
+  const total = compWeight + enemyWeight;
+  const roll  = Math.random() * total;
+
+  if (roll < compWeight) {
+    let cumul = 0;
+    for (const [cId, w] of compPool) {
+      cumul += w;
+      if (roll < cumul) return { def: makeCompanionEntityDef(cId), companionId: cId };
+    }
+  }
+  // Entropy enemy
   const names = ZONE_ENEMY_POOL[skinId];
   if (names && Math.random() < 0.7) {
-    // 70% chance: zone-specific enemy
     const name = names[Math.floor(Math.random() * names.length)];
     const found = ENEMY_ROSTER.find(e => e.name === name);
-    if (found) return found;
+    if (found) return { def: found };
   }
-  return pickEnemy(wave);
+  return { def: pickEnemy(wave) };
 }
 
 function freshZoneWave(skinId: SkinId, wave: number, keepPlayerHP?: number, vit?: number): BattleState {
-  const enemy  = pickZoneEnemy(skinId, wave);
+  const { def: enemy, companionId } = pickZoneEnemy(skinId, wave);
   const baseHP = 60 + wave * 25;
   const hp     = Math.round(baseHP * enemy.hpMult);
   const xp     = Math.round((wave * 20) * enemy.xpMult);
   const maxPlayerHP = 70 + (vit ?? 12) * 3 + wave * 5;
+  const entryLog = companionId
+    ? `✦ ${enemy.name} has been sighted in ${SKINS[skinId]?.name ?? skinId}!`
+    : `◈ Encounter in ${SKINS[skinId]?.name ?? skinId}!`;
   return {
     wave, entityName: enemy.name, entityHP: hp, maxHP: hp,
     playerHP: keepPlayerHP ?? maxPlayerHP, maxPlayerHP,
     tokens: waveTokens(wave), won: false, defending: false,
     enemyLine: enemy.lines.enter, loot: null,
-    log: [`◈ Encounter in ${SKINS[skinId]?.name ?? skinId}!`], waveXP: xp,
-    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0, captured: false, captureAttempted: false,
+    log: [entryLog], waveXP: xp,
+    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0,
+    captured: false, captureAttempted: false,
+    entitySkinId: companionId,
   };
 }
 
@@ -2758,6 +2822,9 @@ export default function CompanionScreen() {
   const dreamAnim = useRef(new Animated.Value(0)).current;
   const [evoPath,           setEvoPath]           = useState<EvoPath | null>(null);
   const [showPathCeremony,  setShowPathCeremony]  = useState(false);
+  const [companionFilter,   setCompanionFilter]   = useState<RarityTier | 'ALL'>('ALL');
+  const [battleMinimized,   setBattleMinimized]   = useState(false);
+  const [autoMode,          setAutoMode]          = useState(false);
   const pathCeremonyAnim = useRef(new Animated.Value(0)).current;
   const scrollRef  = useRef<any>(null);
   const feedY      = useRef(0);
@@ -3536,6 +3603,14 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     }
   };
 
+  // Auto-mode: fires an attack 2.5s after each state change, while autoMode is on
+  useEffect(() => {
+    if (!autoMode || !battle || battle.won || attackAnim) return;
+    const t = setTimeout(() => { handleBattleAction('attack'); }, 2500);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoMode, battle?.entityHP, battle?.playerHP, battle?.won, attackAnim]);
+
   const handleBattleAction = async (action: 'attack' | 'spell' | 'defend' | 'item') => {
     if (!battle || battle.won || attackAnim) return;
     if (action === 'spell') { setSpellMenuOpen(true); return; }
@@ -4292,11 +4367,25 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
 
           {/* ── Zone Companion Roster — by Rarity ─────────────────── */}
           <View style={{ marginBottom:20 }}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:14 }}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:10 }}>
               <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
               <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
               <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, marginLeft:'auto' }}>{SKIN_IDS.length} TOTAL</Text>
             </View>
+            {/* Rarity filter pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }} contentContainerStyle={{ gap:6, paddingRight:8 }}>
+              {(['ALL', ...RARITY_ORDER] as const).map(tier => {
+                const active = companionFilter === tier;
+                const tc = tier === 'ALL' ? '#AAAABC' : RARITY_COLORS[tier];
+                return (
+                  <TouchableOpacity key={tier} onPress={() => setCompanionFilter(tier)} activeOpacity={0.75}
+                    style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:12, borderWidth:1,
+                      borderColor: active ? tc : tc+'33', backgroundColor: active ? tc+'22' : 'transparent' }}>
+                    <Text style={{ color: active ? tc : tc+'55', fontSize:8, fontFamily:mono, letterSpacing:1.5, fontWeight:'700' }}>{tier}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
             {equippedCompanionSkin && (
               <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:12, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:SKIN_RARITY[equippedCompanionSkin].color+'44', backgroundColor:SKIN_RARITY[equippedCompanionSkin].color+'0A' }}>
                 <Text style={{ color:SKIN_RARITY[equippedCompanionSkin].color, fontSize:8, fontFamily:mono, letterSpacing:1 }}>EQUIPPED</Text>
@@ -4306,7 +4395,9 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                 </TouchableOpacity>
               </View>
             )}
-            {RARITY_GROUPS.map(({ tier, ids }) => {
+            {RARITY_GROUPS
+              .filter(({ tier }) => companionFilter === 'ALL' || tier === companionFilter)
+              .map(({ tier, ids }) => {
               const tierColor = RARITY_COLORS[tier];
               return (
                 <View key={tier} style={{ marginBottom:16 }}>
@@ -4316,28 +4407,27 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                     <View style={{ flex:1, height:1, backgroundColor:tierColor+'22' }} />
                     <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{ids.length}</Text>
                   </View>
-                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
                     {ids.map(sid => {
                       const img = ZONE_COMPANION_IMAGES[`${sid}_1`];
                       const s = SKINS[sid];
                       const entry = COMPANION_LORE[sid];
-                      const visited = visitedRooms.has(`${sid}_0`);
                       const isEquipped = equippedCompanionSkin === sid;
-                      const label = entry?.name ?? s.name.slice(0,8);
+                      const label = entry?.name ?? s.name.slice(0,10);
                       return (
                         <TouchableOpacity key={sid} onPress={() => setCompanionLoreModal(sid)} activeOpacity={0.8}
-                          style={{ width:'23%', alignItems:'center' }}>
-                          <View style={{ borderRadius:6, borderWidth: isEquipped ? 2 : 1, borderColor: isEquipped ? s.color : s.color+'44', backgroundColor: isEquipped ? s.color+'18' : 'transparent' }}>
+                          style={{ width:'22%', alignItems:'center' }}>
+                          <View style={{ borderRadius:8, borderWidth: isEquipped ? 2 : 1, borderColor: isEquipped ? s.color : s.color+'44', backgroundColor: isEquipped ? s.color+'18' : s.color+'08', overflow:'hidden' }}>
                             {img ? (
-                              <Image source={img} style={{ width:54, height:72, borderRadius:5 }} resizeMode="contain" />
+                              <Image source={img} style={{ width:62, height:82, borderRadius:7 }} resizeMode="contain" />
                             ) : (
-                              <View style={{ width:54, height:72, borderRadius:5, backgroundColor:s.color+'0A', alignItems:'center', justifyContent:'center' }}>
-                                <Text style={{ color:s.color, fontSize:16 }}>{s.glyph}</Text>
+                              <View style={{ width:62, height:82, borderRadius:7, alignItems:'center', justifyContent:'center' }}>
+                                <Text style={{ color:s.color, fontSize:20 }}>{s.glyph}</Text>
                               </View>
                             )}
                           </View>
-                          {isEquipped && <View style={{ position:'absolute', top:2, right:2, width:6, height:6, borderRadius:3, backgroundColor:s.color }} />}
-                          <Text style={{ color:s.color, fontSize:6, fontFamily:mono, letterSpacing:0.3, marginTop:3, textAlign:'center' }} numberOfLines={1}>{label}</Text>
+                          {isEquipped && <View style={{ position:'absolute', top:3, right:3, width:7, height:7, borderRadius:4, backgroundColor:s.color }} />}
+                          <Text style={{ color:s.color, fontSize:7, fontFamily:mono, letterSpacing:0.3, marginTop:4, textAlign:'center' }} numberOfLines={1}>{label}</Text>
                         </TouchableOpacity>
                       );
                     })}
@@ -5081,35 +5171,50 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           <View onLayout={e => { battleY.current = e.nativeEvent.layout.y; }}
             style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1.5, borderColor:panelBorderColor, backgroundColor:panelBg }}>
 
-            {/* Header */}
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+            {/* Header — tappable to minimize */}
+            <TouchableOpacity onPress={() => setBattleMinimized(v => !v)} activeOpacity={0.85}
+              style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: battleMinimized ? 0 : 10 }}>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                 <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#FF6644' }} />
-                <Text style={{ color:'#666677', fontSize:10, letterSpacing:2, fontFamily:mono }}>ENTROPY WAVES</Text>
+                <Text style={{ color:'#666677', fontSize:10, letterSpacing:2, fontFamily:mono }}>ENCOUNTERS</Text>
+                {battle && !battle.won && (
+                  <Text style={{ color:'#FF664455', fontSize:9, fontFamily:mono }}>{battle.entityName}</Text>
+                )}
               </View>
-              <WaveDots wave={battle?.wave ?? 1} color={color} />
-              {/* Dialogue toggle */}
-              <TouchableOpacity onPress={() => { setBattleDialogueOn(v => !v); if (!battleDialogueOn) { const ls = BATTLE_COMPANION_LINES[archetype.id] ?? BATTLE_COMPANION_LINES['vigil']; setCompanionBattleLine(ls[Math.floor(Math.random()*ls.length)]); } }}
-                style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:7, borderWidth:1, borderColor: battleDialogueOn ? color+'88' : '#22223366', backgroundColor: battleDialogueOn ? color+'14' : 'transparent' }}>
-                <Text style={{ color: battleDialogueOn ? color : '#333344', fontSize:8, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{battleDialogueOn ? '◈ VOICE' : '◌ VOICE'}</Text>
-              </TouchableOpacity>
-              {/* Token count */}
-              <View style={{ flexDirection:'row', gap:5, alignItems:'center' }}>
-                {Array.from({ length: Math.min(tokensLeft, 6) }).map((_, i) => (
-                  <View key={i} style={{ width:7, height:7, borderRadius:4,
-                    backgroundColor: color,
-                    shadowColor: color, shadowOpacity: 0.8, shadowRadius: 4, elevation: 3 }} />
-                ))}
-                <Text style={{ color: tokensLeft > 0 ? color : '#FF444488', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:0.5 }}>
-                  {tokensLeft}T
-                </Text>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                <WaveDots wave={battle?.wave ?? 1} color={color} />
+                {/* AUTO toggle */}
+                {battle && !battle.won && (
+                  <TouchableOpacity onPress={e => { e.stopPropagation?.(); setAutoMode(v => !v); }}
+                    style={{ paddingHorizontal:7, paddingVertical:3, borderRadius:6, borderWidth:1,
+                      borderColor: autoMode ? '#44FF8866' : '#22223355',
+                      backgroundColor: autoMode ? '#44FF8814' : 'transparent' }}>
+                    <Text style={{ color: autoMode ? '#44FF88' : '#333344', fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
+                      {autoMode ? '⚙ AUTO' : '◌ AUTO'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {/* Dialogue toggle */}
+                <TouchableOpacity onPress={e => { e.stopPropagation?.(); setBattleDialogueOn(v => !v); if (!battleDialogueOn) { const ls = BATTLE_COMPANION_LINES[archetype.id] ?? BATTLE_COMPANION_LINES['vigil']; setCompanionBattleLine(ls[Math.floor(Math.random()*ls.length)]); } }}
+                  style={{ paddingHorizontal:7, paddingVertical:3, borderRadius:6, borderWidth:1, borderColor: battleDialogueOn ? color+'88' : '#22223366', backgroundColor: battleDialogueOn ? color+'14' : 'transparent' }}>
+                  <Text style={{ color: battleDialogueOn ? color : '#333344', fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{battleDialogueOn ? '◈' : '◌'}</Text>
+                </TouchableOpacity>
+                {/* Token count */}
+                {battle && (
+                  <Text style={{ color: tokensLeft > 0 ? color : '#FF444488', fontSize:9, fontFamily:mono, fontWeight:'700' }}>
+                    {tokensLeft}T
+                  </Text>
+                )}
+                <Text style={{ color:'#333344', fontSize:10 }}>{battleMinimized ? '▶' : '▼'}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
-            {battle && !battle.won && (() => {
+            {!battleMinimized && battle && !battle.won && (() => {
               const def = getEnemyDef(battle.entityName);
               const rc  = def.colour;
-              const enemyImg = ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES];
+              const enemyImg = battle.entitySkinId
+                ? (ZONE_COMPANION_IMAGES[`${battle.entitySkinId}_1`] ?? null)
+                : (ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES] ?? null);
               const disabled = attackAnim;
               const archetypeSpells = ARCHETYPE_SPELLS[archetype.id] ?? ARCHETYPE_SPELLS['vigil'];
               const roomSkinId = (currentRoomId.split('_')[0] as SkinId);
@@ -5377,7 +5482,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             })()}
 
             {/* Wave cleared */}
-            {battle?.won && (
+            {!battleMinimized && battle?.won && (
               <View style={{ alignItems:'center', gap:6, paddingVertical:10 }}>
                 <LootFloat visible={lootFloatVisible} color={color} onDone={() => setLootFloatVisible(false)} />
                 <Text style={{ color:'#FF6644', fontSize:22, fontFamily:mono }}>✕ CLEARED</Text>
@@ -5406,7 +5511,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
             )}
 
             {/* No battle — pre-encounter prompt */}
-            {!battle && (() => {
+            {!battleMinimized && !battle && (() => {
               const rSkin = (currentRoomId.split('_')[0] as SkinId);
               return (
                 <View style={{ alignItems:'center', gap:10, paddingVertical:16 }}>
