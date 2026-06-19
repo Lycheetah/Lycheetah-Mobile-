@@ -1,8 +1,8 @@
 // ─── LYCHEETAH CUSTOM TAROT DECK ─────────────────────────────────────────────
-// Drop art into assets/tarot/ with the exact filenames listed below.
-// .jpg = real Lycheetah art landed  |  .png = placeholder card back (still incoming)
-// Missing 12: Strength, Hermit, Wheel of Fortune, Justice, Hanged Man, Death,
-//             Temperance, Devil + Ace/Two/Three/Four of Pentacles (source pages 2,4,9)
+// .jpg = real Lycheetah art   |  null = no art yet → falls back to TAROT_BACK
+// Art still needed (12): Strength, Hermit, Wheel of Fortune, Justice, Hanged Man,
+//   Death, Temperance, Devil, Ace/Two/Three/Four of Pentacles.
+// To add art: save as assets/tarot/<filename>.jpg and replace null with require()
 
 export const CARD_IMAGE: Record<string, ReturnType<typeof require> | null> = {
   // ── Major Arcana ──
@@ -14,14 +14,14 @@ export const CARD_IMAGE: Record<string, ReturnType<typeof require> | null> = {
   'The Hierophant':     require('../../assets/tarot/the_hierophant.jpg'),
   'The Lovers':         require('../../assets/tarot/the_lovers.jpg'),
   'The Chariot':        require('../../assets/tarot/the_chariot.jpg'),
-  'Strength':           require('../../assets/tarot/strength.png'),
-  'The Hermit':         require('../../assets/tarot/the_hermit.png'),
-  'Wheel of Fortune':   require('../../assets/tarot/wheel_of_fortune.png'),
-  'Justice':            require('../../assets/tarot/justice.png'),
-  'The Hanged Man':     require('../../assets/tarot/the_hanged_man.png'),
-  'Death':              require('../../assets/tarot/death.png'),
-  'Temperance':         require('../../assets/tarot/temperance.png'),
-  'The Devil':          require('../../assets/tarot/the_devil.png'),
+  'Strength':           null,
+  'The Hermit':         null,
+  'Wheel of Fortune':   null,
+  'Justice':            null,
+  'The Hanged Man':     null,
+  'Death':              null,
+  'Temperance':         null,
+  'The Devil':          null,
   'The Tower':          require('../../assets/tarot/the_tower.jpg'),
   'The Star':           require('../../assets/tarot/the_star.jpg'),
   'The Moon':           require('../../assets/tarot/the_moon.jpg'),
@@ -74,10 +74,10 @@ export const CARD_IMAGE: Record<string, ReturnType<typeof require> | null> = {
   'Queen of Swords':    require('../../assets/tarot/queen_of_swords.jpg'),
   'King of Swords':     require('../../assets/tarot/king_of_swords.jpg'),
   // ── Pentacles ──
-  'Ace of Pentacles':   require('../../assets/tarot/ace_of_pentacles.png'),
-  'Two of Pentacles':   require('../../assets/tarot/two_of_pentacles.png'),
-  'Three of Pentacles': require('../../assets/tarot/three_of_pentacles.png'),
-  'Four of Pentacles':  require('../../assets/tarot/four_of_pentacles.png'),
+  'Ace of Pentacles':   null,
+  'Two of Pentacles':   null,
+  'Three of Pentacles': null,
+  'Four of Pentacles':  null,
   'Five of Pentacles':  require('../../assets/tarot/five_of_pentacles.jpg'),
   'Six of Pentacles':   require('../../assets/tarot/six_of_pentacles.jpg'),
   'Seven of Pentacles': require('../../assets/tarot/seven_of_pentacles.jpg'),

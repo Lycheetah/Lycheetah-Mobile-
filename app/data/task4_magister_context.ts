@@ -3,6 +3,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArchetypeId } from './task1_companion_specs';
+import { MAGISTER_CARE_TAG_INSTRUCTION } from '../../lib/personas/headmaster';
+import { MYSTERY_SCHOOL_DOMAINS } from '../../lib/mystery-school/subjects';
 
 // ─── ASYNCSTORAGE KEYS ─────────────────────────────────────────────
 
@@ -90,14 +92,42 @@ Recent battle: ${battleStr}
 The Magister knows this companion intimately. Reference it naturally — not every response, but when the user asks about their path, their growth, or their challenges. The companion is a mirror of the user's actual learning history.`;
 }
 
+// ─── SUBJECT CARE LOOKUP ─────────────────────────────────────────
+
+function lookupSubjectCare(subjectName: string): string | null {
+  const raw = subjectName.replace(/^Teach me about:\s*/i, '').trim();
+  for (const domain of MYSTERY_SCHOOL_DOMAINS) {
+    const found = domain.subjects.find(s => s.name === raw);
+    if (found && found.care && found.care !== 'standard') {
+      return found.care;
+    }
+  }
+  return null;
+}
+
+function buildSubjectCareBlock(subjectName: string | null): string {
+  if (!subjectName) return '';
+  const care = lookupSubjectCare(subjectName);
+  if (!care) return '';
+  const raw = subjectName.replace(/^Teach me about:\s*/i, '').trim();
+  if (care === 'crisis-adjacent') {
+    return `\n\nSUBJECT CARE NOTE: "${raw}" is classified CRISIS-ADJACENT. Before opening the classroom door, read the student's emotional register. If there are any signs of lived distress rather than intellectual curiosity, run the crisis protocol (THE_FIRST_MAP) before teaching. People who enter this subject are sometimes there because they are living it.`;
+  }
+  if (care === 'elevated') {
+    return `\n\nSUBJECT CARE NOTE: "${raw}" is classified ELEVATED CARE. This subject touches personal suffering or identity disruption. Teach with presence. Read the student's register carefully — intellectual curiosity and lived pain often look similar at the start.`;
+  }
+  return '';
+}
+
 // ─── FULL SYSTEM PROMPT BUILDER ──────────────────────────────────
 
-export async function buildMagisterSystemPrompt(basePrompt: string): Promise<string> {
+export async function buildMagisterSystemPrompt(basePrompt: string, activeSubjectName?: string): Promise<string> {
   const state = await getCompanionState();
   const contextBlock = buildMagisterContext(state);
+  const subjectCareBlock = buildSubjectCareBlock(activeSubjectName ?? null);
   return `${basePrompt}
 
-${contextBlock}`;
+${contextBlock}${subjectCareBlock}${MAGISTER_CARE_TAG_INSTRUCTION}`;
 }
 
 // ─── USAGE IN index.tsx ──────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -6,6 +7,7 @@ import { SOL_THEME } from '../constants/theme';
 import { AppModeProvider } from '../lib/app-mode';
 import { AccessibilityProvider } from '../lib/accessibility';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { EmergencyBeacon } from '../components/EmergencyBeacon';
 
 const ONBOARDING_KEY = 'lycheetah_onboarded';
 
@@ -27,22 +29,25 @@ export default function RootLayout() {
     <ErrorBoundary>
     <AccessibilityProvider>
     <AppModeProvider>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: SOL_THEME.background },
-          headerTintColor: SOL_THEME.primary,
-          headerTitleStyle: { color: SOL_THEME.text },
-          contentStyle: { backgroundColor: SOL_THEME.background },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="onboarding"
-          options={{ headerShown: false, gestureEnabled: false }}
-        />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      </Stack>
+      <View style={{ flex: 1 }}>
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: SOL_THEME.background },
+            headerTintColor: SOL_THEME.primary,
+            headerTitleStyle: { color: SOL_THEME.text },
+            contentStyle: { backgroundColor: SOL_THEME.background },
+          }}
+        >
+          <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="onboarding"
+            options={{ headerShown: false, gestureEnabled: false }}
+          />
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        </Stack>
+        <EmergencyBeacon />
+      </View>
     </AppModeProvider>
     </AccessibilityProvider>
     </ErrorBoundary>

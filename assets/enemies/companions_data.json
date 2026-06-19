@@ -1,0 +1,22 @@
+{
+  "sentinel_0": {
+    "name": "VAEL",
+    "layers": [
+      { "type": "circle",  "cx": 75, "cy": 30,  "r": 40,  "color": "#0a1a2e", "opacity": 0.6 },
+      { "type": "ring",    "cx": 75, "cy": 30,  "r": 44,  "stroke": "#4A9EFF", "strokeWidth": 1, "opacity": 0.25 },
+      { "type": "circle",  "cx": 75, "cy": 30,  "r": 26,  "color": "#0d2240", "opacity": 0.95 },
+      { "type": "ring",    "cx": 75, "cy": 30,  "r": 28,  "stroke": "#4A9EFF", "strokeWidth": 2, "opacity": 0.7 },
+      { "type": "rect",    "x": 52,  "y": 56,   "w": 46,  "h": 62, "color": "#0d2240", "opacity": 0.95, "radius": 4 },
+      { "type": "rect",    "x": 52,  "y": 56,   "w": 46,  "h": 3,  "color": "#4A9EFF", "opacity": 0.6,  "radius": 0 },
+      { "type": "rect",    "x": 34,  "y": 62,   "w": 18,  "h": 44, "color": "#0d2240", "opacity": 0.9,  "radius": 3 },
+      { "type": "rect",    "x": 98,  "y": 62,   "w": 18,  "h": 44, "color": "#0d2240", "opacity": 0.9,  "radius": 3 },
+      { "type": "rect",    "x": 34,  "y": 104,  "w": 18,  "h": 2,  "color": "#4A9EFF", "opacity": 0.5,  "radius": 0 },
+      { "type": "rect",    "x": 98,  "y": 104,  "w": 18,  "h": 2,  "color": "#4A9EFF", "opacity": 0.5,  "radius": 0 },
+      { "type": "rect",    "x": 57,  "y": 118,  "w": 14,  "h": 30, "color": "#0d2240", "opacity": 0.95, "radius": 2 },
+      { "type": "rect",    "x": 79,  "y": 118,  "w": 14,  "h": 30, "color": "#0d2240", "opacity": 0.95, "radius": 2 },
+      { "type": "circle",  "cx": 75, "cy": 30,  "r": 8,   "color": "#4A9EFF", "opacity": 0.15 },
+      { "type": "text",    "x": 75,  "y": 30,   "content": "◆", "size": 14, "color": "#4A9EFF", "opacity": 0.95 }
+    ],
+    "resonance": "forge"
+  }
+}

@@ -23,6 +23,7 @@ import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_
 import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { buildMagisterSystemPrompt } from '../data/task4_magister_context';
+import { CareEvents } from '../../lib/care-events';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
 import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
 import ConversationDrawer from '../../components/ConversationDrawer';
@@ -157,6 +158,7 @@ type DisplayMessage = Message & {
   timestamp?: number;
   modelConfidence?: number; // self-reported by model via [CONF:X]
   council?: boolean; // v3.15 — render as 4-panel Council bubble
+  careLevel?: CareLevel; // Magister self-audit — visible to user, not hidden
 };
 
 // v3.15 — Parse Council response into 4 voices
@@ -290,6 +292,48 @@ function statusColor(status: string, accent: string): string {
 }
 
 // ─── Crisis intercept — client-side, Sol's voice ─────────────────────────────
+// ─── CARE TAG SYSTEM ─────────────────────────────────────────────────────────
+// Magister emits [CARE:X] on every response. We parse it, strip it, and act.
+// Never suppresses — only appends. The response always reaches the user.
+
+type CareLevel = 'NEUTRAL' | 'HOLDING' | 'ELEVATED' | 'CRISIS';
+
+function parseCareTag(text: string): { clean: string; care: CareLevel; tagFound: boolean } {
+  // Strip code fences first — model sometimes wraps the tag in ``` by accident
+  const stripped = text.replace(/```[^`]*```/gs, '').replace(/`[^`]+`/g, '');
+  // Search stripped version for the tag
+  const match = stripped.match(/\[CARE:(NEUTRAL|HOLDING|ELEVATED|CRISIS)\]/);
+  return {
+    clean: text.replace(/\[CARE:(?:NEUTRAL|HOLDING|ELEVATED|CRISIS)\]\n?/g, '').trim(),
+    care: (match?.[1] as CareLevel) ?? 'HOLDING', // absent tag → HOLDING, not NEUTRAL
+    tagFound: !!match,
+  };
+}
+
+// Detects shift from third-person/academic framing to first-person/personal framing
+// across the last N user messages. Returns true if the drift is present.
+function detectPronounDrift(msgs: DisplayMessage[]): boolean {
+  const userMsgs = msgs.filter(m => m.role === 'user').slice(-8);
+  if (userMsgs.length < 3) return false;
+  const THIRD_PERSON = /\b(people|someone|they|those who|others|one might|a person)\b/i;
+  const FIRST_PERSON = /\b(i feel|i'?ve been|i don'?t|i can'?t|i am|i'm|it'?s happening to me|my life|i have been|i keep)\b/i;
+  const early = userMsgs.slice(0, Math.ceil(userMsgs.length / 2)).map(m => m.content).join(' ');
+  const late = userMsgs.slice(Math.ceil(userMsgs.length / 2)).map(m => m.content).join(' ');
+  return THIRD_PERSON.test(early) && FIRST_PERSON.test(late) && !FIRST_PERSON.test(early);
+}
+
+// Elevates CARE level to a floor — never downgrades
+function elevateCare(current: CareLevel, floor: CareLevel): CareLevel {
+  const ORDER: CareLevel[] = ['NEUTRAL', 'HOLDING', 'ELEVATED', 'CRISIS'];
+  return ORDER.indexOf(current) >= ORDER.indexOf(floor) ? current : floor;
+}
+
+const CARE_SOFT_APPEND = `\n\n---\n*The Beacon is here whenever you need it — hold ⊚ in the corner.*`;
+
+const CARE_CRISIS_APPEND = `\n\n---\n**I'm here. You're not alone.**\n\nAnd right now, alongside me, there are humans who exist for exactly this:\n• **NZ — 1737** (call or text, free, 24/7)\n• NZ Lifeline — 0800 543 354\n• AU — 13 11 14\n• USA — 988\n• UK — 116 123\n• Worldwide — findahelpline.com\n\nI'll still be here. Breathe in 4 counts, hold 4, out 4, hold 4. Just twice.\n\nTell me one true thing about right now.`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 const CRISIS_PHRASES = [
   "not wanting to be here", "don't want to be here", "dont want to be here",
   "thinking about not being here", "not be here anymore",
@@ -320,6 +364,7 @@ Tell me one true thing about right now. Just one. We can start there.`;
 export default function SolChat() {
   const { mode: appMode } = useAppMode();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [chatFullscreen, setChatFullscreen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeToolEvents, setActiveToolEvents] = useState<string[]>([]);
@@ -940,17 +985,7 @@ export default function SolChat() {
           : SOL_THEME.error;
 
     navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity
-          style={{ marginLeft: 14, width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: SOL_THEME.border, alignItems: 'center', justifyContent: 'center' }}
-          onPress={async () => {
-            await AsyncStorage.setItem('codex_open_help', 'true');
-            router.push('/(tabs)/codex');
-          }}
-        >
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontWeight: '700' }}>?</Text>
-        </TouchableOpacity>
-      ),
+      headerLeft: () => null,
       headerRight: () => (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginRight: 14 }}>
           {fieldInsightActive && (
@@ -1426,16 +1461,10 @@ export default function SolChat() {
       return;
     }
 
-    // Crisis intercept — Sol holds before the model can refuse
-    if (detectCrisisSignal(text)) {
-      setInput('');
-      setMessages(prev => [
-        ...prev,
-        { id: Date.now().toString(), role: 'user', content: text, persona } as any,
-        { id: (Date.now() + 1).toString(), role: 'assistant', content: CRISIS_HOLD, persona } as any,
-      ]);
-      return;
-    }
+    // Crisis signal detected — do NOT suppress. Flag for resource augmentation after response.
+    // The model responds naturally (often better than a canned message).
+    // Resources are appended to whatever the model says.
+    const hasCrisisSignal = detectCrisisSignal(text);
 
     let model = (await getModel() || 'deepseek-chat') as AIModel;
     let apiKey = await getActiveKey();
@@ -1572,7 +1601,7 @@ export default function SolChat() {
       : '\n\n[Late evening, approaching night. The edge hours. Questions that arrive here often carry more weight than they let on.]';
     const baseSpec = getCompiledSpec(variant === 'public' ? 'sol' : persona);
     const enrichedSpec = persona === 'headmaster'
-      ? await buildMagisterSystemPrompt(baseSpec).catch(() => baseSpec)
+      ? await buildMagisterSystemPrompt(baseSpec, text).catch(() => baseSpec)
       : baseSpec;
     const systemPrompt = councilMode
       ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
@@ -1715,6 +1744,78 @@ export default function SolChat() {
       const { text: cleanResponse, confidence } = extractConfidence(fullResponse);
       fullResponse = cleanResponse;
 
+      // Care tag — Magister self-audits every response.
+      // Tag is visible to the user as a pill (not hidden) — sovereignty requires transparency.
+      let msgCareLevel: CareLevel = 'NEUTRAL';
+      if (persona === 'headmaster') {
+        const { clean: careClean, care: careLevel, tagFound } = parseCareTag(fullResponse);
+        fullResponse = careClean;
+        // tagFound=false means the model failed to produce a tag (long context, format drift).
+        // Default HOLDING means the user gets a soft presence signal rather than silence.
+        msgCareLevel = careLevel;
+
+        // Log delta: track tag-absent HOLDING vs. genuine Magister HOLDING.
+        // If tag-absent rate creeps above ~10% of Magister responses, it's an instruction-drift bug.
+        AsyncStorage.getItem('sol_care_log').then(raw => {
+          const log = raw ? JSON.parse(raw) : { total: 0, tagMissing: 0, genuine: 0, crisis: 0, elevated: 0, holding: 0 };
+          log.total = (log.total || 0) + 1;
+          if (!tagFound) log.tagMissing = (log.tagMissing || 0) + 1;
+          else {
+            log.genuine = (log.genuine || 0) + 1;
+            if (careLevel === 'CRISIS') log.crisis = (log.crisis || 0) + 1;
+            else if (careLevel === 'ELEVATED') log.elevated = (log.elevated || 0) + 1;
+            else if (careLevel === 'HOLDING') log.holding = (log.holding || 0) + 1;
+          }
+          AsyncStorage.setItem('sol_care_log', JSON.stringify(log)).catch(() => {});
+        }).catch(() => {});
+
+        // Care floor: pronoun drift detection — catches academic→personal shift Magister may miss
+        // because the pedagogical frame treats everything as a classroom question.
+        if (detectPronounDrift(messages)) {
+          msgCareLevel = elevateCare(msgCareLevel, 'HOLDING');
+        }
+
+        // Care floor: crisis-adjacent subjects in long conversations never drop below HOLDING.
+        // After 5+ messages deep in grief/trauma/ego death territory, silence is not safety.
+        const currentSubjectName = text.replace(/^Teach me about:\s*/i, '').trim();
+        if (messages.length >= 5 && msgCareLevel === 'NEUTRAL') {
+          // Quick lookup — checks if the first user message looks like a crisis-adjacent subject
+          const firstUserMsg = messages.find(m => m.role === 'user')?.content ?? '';
+          const CRISIS_ADJACENT_SUBJECTS = ['Grief Work', 'Somatic Experiencing', 'Ego Death', 'Dark Night of the Soul', 'MDMA', 'Death Work', 'Holotropic Breathwork'];
+          const inCrisisAdjacentSubject = CRISIS_ADJACENT_SUBJECTS.some(s =>
+            firstUserMsg.toLowerCase().includes(s.toLowerCase()) || currentSubjectName.toLowerCase().includes(s.toLowerCase())
+          );
+          if (inCrisisAdjacentSubject) {
+            msgCareLevel = elevateCare(msgCareLevel, 'HOLDING');
+          }
+        }
+
+        // Only append resources if user hasn't toggled off auto-append (checked via stored pref)
+        // Default: ON. Stored in sol_care_append_enabled (true by default).
+        const careAppendPref = await AsyncStorage.getItem('sol_care_append_enabled').catch(() => null);
+        const appendEnabled = careAppendPref !== 'false';
+        if (appendEnabled) {
+          if (msgCareLevel === 'CRISIS' || msgCareLevel === 'ELEVATED') {
+            fullResponse += CARE_CRISIS_APPEND;
+          } else if (msgCareLevel === 'HOLDING') {
+            fullResponse += CARE_SOFT_APPEND;
+          }
+        }
+      }
+
+      // T1 augmentation — crisis signal in user message: resources always append.
+      // The AI responds naturally. Resources follow. Never suppressed.
+      if (hasCrisisSignal && !fullResponse.includes('findahelpline.com')) {
+        fullResponse += CARE_CRISIS_APPEND;
+        if (msgCareLevel === 'NEUTRAL') msgCareLevel = 'ELEVATED';
+      }
+
+      // Beacon escalation — emit care level so the orb changes visually when elevated/crisis fires.
+      // Habituation defense: the idle orb and the active-care orb look different.
+      if (msgCareLevel !== 'NEUTRAL') {
+        CareEvents.emit(msgCareLevel);
+      }
+
       // AURA scoring — pass model confidence to improve TES accuracy
       const auraMetrics = scoreAURAFull(fullResponse, conversationPassRates, confidence ?? undefined);
       const passRate = getPassRate(auraMetrics);
@@ -1741,6 +1842,7 @@ export default function SolChat() {
         tokenUsage: sendResult.tokenUsage,
         timings: sendResult.timings,
         model,
+        careLevel: msgCareLevel !== 'NEUTRAL' ? msgCareLevel : undefined,
       };
       if (councilMode) setCouncilMode(false);
 
@@ -2501,6 +2603,36 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               )}
             </View>
           )}
+
+          {/* CARE level pill — Magister self-audit, visible to user */}
+          {!isUser && item.careLevel && item.careLevel !== 'NEUTRAL' && item.persona === 'headmaster' && (() => {
+            const CARE_COLORS: Record<string, string> = {
+              HOLDING: '#E8C76A',
+              ELEVATED: '#F97316',
+              CRISIS: '#EF4444',
+            };
+            const CARE_LABELS: Record<string, string> = {
+              HOLDING: '𝔏 holding space',
+              ELEVATED: '𝔏 care elevated',
+              CRISIS: '𝔏 crisis protocol',
+            };
+            const CARE_TIPS: Record<string, string> = {
+              HOLDING: 'Magister sensed you may be processing something personal. This is a listening space.',
+              ELEVATED: 'Magister noticed real distress signals. Crisis support has been included. You don\'t have to carry this alone.',
+              CRISIS: 'Magister\'s crisis protocol fired. Real support lines are included above. Sol is here.',
+            };
+            const color = CARE_COLORS[item.careLevel];
+            const label = CARE_LABELS[item.careLevel];
+            return (
+              <TouchableOpacity
+                style={{ alignSelf: 'flex-start', marginTop: 5, marginLeft: 8, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, borderWidth: 1, borderColor: color + '44', backgroundColor: color + '12' }}
+                onPress={() => Alert.alert(label, CARE_TIPS[item.careLevel!])}
+                activeOpacity={0.7}
+              >
+                <Text style={{ color, fontSize: 10, fontWeight: '700', letterSpacing: 0.8 }}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })()}
 
           {/* Message reaction — tiny glyph shown under bubble */}
           {item.id && messageReactions[item.id] && (
@@ -3746,6 +3878,9 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         <TouchableOpacity style={styles.imageButton} onPress={() => setShowToolsRow(v => !v)}>
           <Text style={[styles.imageButtonText, { color: showToolsRow ? accent : SOL_THEME.textMuted, fontSize: 18 }]}>···</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={[styles.imageButton, { opacity: 0.7 }]} onPress={() => setChatFullscreen(true)}>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>⛶</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.sendButton, { backgroundColor: compareMode ? SOL_THEME.veyra : accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
           onPress={compareMode ? sendCompare : send}
@@ -3754,6 +3889,77 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           <Text style={styles.sendText}>{compareMode ? '⇌' : '↑'}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── FULLSCREEN CHAT MODAL ── */}
+      <Modal visible={chatFullscreen} animationType="slide" onRequestClose={() => setChatFullscreen(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, backgroundColor: SOL_THEME.background }}>
+          {/* Minimal header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 48, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: accent + '22', backgroundColor: SOL_THEME.background, gap: 10 }}>
+            <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: accent + '22', borderWidth: 1, borderColor: accent + '44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 14 }}>{persona === 'veyra' ? '◈' : persona === 'aura-prime' ? '✦' : persona === 'headmaster' ? '⟟' : '⊚'}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '700', letterSpacing: 0.5 }}>
+                {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'Headmaster' : 'Sol'}
+              </Text>
+              <Text style={{ color: accent + '99', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>{currentMode}</Text>
+            </View>
+            <TouchableOpacity onPress={() => setChatFullscreen(false)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: accent + '44', backgroundColor: accent + '11' }}>
+              <Text style={{ color: accent, fontSize: 12 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Messages */}
+          <FlatList
+            data={messages}
+            keyExtractor={m => m.id}
+            style={{ flex: 1, paddingHorizontal: 16 }}
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: 16, gap: 12 }}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={20}
+            renderItem={({ item: m }) => (
+              <View style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                {m.role === 'assistant' && (
+                  <Text style={{ color: accent + '88', fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1, marginBottom: 4, marginLeft: 4 }}>
+                    {persona === 'veyra' ? '◈ VEYRA' : persona === 'aura-prime' ? '✦ AURA' : '⊚ SOL'}
+                  </Text>
+                )}
+                <View style={{ maxWidth: '88%', paddingHorizontal: 16, paddingVertical: 11, borderRadius: 16, backgroundColor: m.role === 'user' ? accent + '22' : SOL_THEME.surface, borderWidth: 1, borderColor: m.role === 'user' ? accent + '33' : '#FFFFFF0A' }}>
+                  <Text style={{ color: m.role === 'user' ? '#FFFFFF' : '#EEEEF8', fontSize: 15, lineHeight: 24 }}>{typeof m.content === 'string' ? m.content : ''}</Text>
+                </View>
+              </View>
+            )}
+            ListFooterComponent={loading ? (
+              <View style={{ alignItems: 'flex-start', marginTop: 4 }}>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 11, borderRadius: 16, backgroundColor: SOL_THEME.surface }}>
+                  <Text style={{ color: accent, fontSize: 15, letterSpacing: 4 }}>· · ·</Text>
+                </View>
+              </View>
+            ) : null}
+          />
+          {/* Input */}
+          <View style={{ flexDirection: 'row', gap: 10, padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 16, borderTopWidth: 1, borderTopColor: accent + '22', backgroundColor: SOL_THEME.background }}>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder={councilMode ? 'Bring the question…' : 'What do you bring?'}
+              placeholderTextColor={SOL_THEME.textMuted}
+              style={{ flex: 1, backgroundColor: SOL_THEME.surface, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, color: SOL_THEME.text, fontSize: 15, borderWidth: 1, borderColor: accent + '33' }}
+              multiline
+              returnKeyType="send"
+              blurOnSubmit={false}
+              onSubmitEditing={send}
+              autoFocus
+            />
+            <TouchableOpacity
+              onPress={send}
+              disabled={!input.trim() || loading}
+              style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: input.trim() ? accent : accent + '33', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-end' }}
+            >
+              <Text style={{ color: '#000', fontSize: 20, fontWeight: '700' }}>↑</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* Thinking Stacks Modal */}
       <Modal
@@ -4168,28 +4374,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           );
         })()}
       </Modal>
-
-      {/* Floating ⚔ encounter button — navigates to companion BATTLE tab */}
-      <TouchableOpacity
-        onPress={() => router.push('/(tabs)/companion')}
-        activeOpacity={0.8}
-        style={{
-          position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 96 : 68,
-          left: 14,
-          width: 38,
-          height: 38,
-          borderRadius: 19,
-          backgroundColor: '#08000C',
-          borderWidth: 1.5,
-          borderColor: '#FF664466',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 500,
-        }}
-      >
-        <Text style={{ color: '#FF6644', fontSize: 16, lineHeight: 19 }}>⚔</Text>
-      </TouchableOpacity>
 
     </KeyboardAvoidingView>
   );

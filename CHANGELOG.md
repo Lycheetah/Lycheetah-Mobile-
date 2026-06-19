@@ -1,5 +1,87 @@
 # Changelog
 
+## [5.0.0] — 2026-06-19 — RANDOM WORLD · WEAPONS · ENCOUNTERS · ART OVERHAUL
+
+### ZONE NAVIGATION — FULL RANDOMISER
+- **All D-pad arrows randomise**: every press (up/down/left/right + ⚡ centre) picks a random zone from all 45 and fades in. No directional locks. Every arrow = new path.
+- **Random encounter on arrival**: 15% chance of instant battle on zone land (auto-opens BATTLE tab, toast "◈ Something stirs..."). 0.5% chance of UNIQUE encounter (wave 5 boss, toast "⚠ UNIQUE ENTITY"). No preview modal — hits immediately.
+- Both `encounterWave` and `encounterUnique` states added to support encounter preview modal wave routing when using the manual ENCOUNTER button.
+
+### WEAPONS SYSTEM — COMPLETE (#179)
+- **`lib/weapons.ts`** — 40 weapons across 7 types (BLADE/STAFF/BOW/ORB/RELIC/TOME/FANG), 5 rarity tiers (COMMON→ARCANE→MYTHIC→LEGENDARY→SPECTRAL). Each weapon: ATK/SPD/WIL stat bonuses, lore, dropRate.
+- **Loot drops**: 35% drop rate on battle win. Deduped — never drops a weapon already owned.
+- **ARSENAL in SHOP**: earned weapons browsable and equippable. Equipped weapon shows colour-coded rarity border.
+- **Stat bonuses**: equipped weapon ATK adds to `attackPower`, SPD+WIL add to `playerStats`. Applied at load and swapped live via `equipWeapon` diff function.
+- **`sol_weapons`** + **`sol_equipped_weapon`** AsyncStorage keys.
+
+### SCENE ART — FULL OVERHAUL
+- **New art set**: 62 scene files from new art drop replacing all old backgrounds.
+- **`SCENE_IMAGES` block fixed**: all references to deleted files removed. All 45 skins now mapped to existing files only.
+- **`WORLD_MAP` block fixed**: all 45 zone room definitions verified against existing files.
+- **Substitution map**: void2/aurora2/solform/obsidian3/5/lycheetah3-6/chaos4/6/sovereign3/4 etc. all remapped to nearest thematic file.
+
+### ENEMY ART — COMPANION CLONE
+- **Companions cloned to enemies**: all 101 companion PNGs copied into `assets/enemies/`. Enemies now have rich character art pool.
+- **20 deleted abstract enemy files removed** from `ENEMY_IMAGES` (dissolution, the_fog, forgetting, stasis, inertia, drift, static, null, absence, the_hollow, the_drain, the_veil, fracture, the_weight, corruption, the_warden, null_sovereign, fracture_prime, entropy_prime, athanors_shadow).
+- **Enemy image fallback chain**: `entitySkinId → ZONE_COMPANION_IMAGES[id_1]` → `ENEMY_IMAGES[name]` → `ZONE_COMPANION_IMAGES[currentZone_1]`. Battles always have art.
+
+### SHOP EXPANSION (#181)
+- **5 new items**: FEATHER WINGS (45⟡), AURORA WINGS (180⟡), EMBER FAMILIAR (80⟡), RUNE SPRITE (140⟡), VOID CROWN (200⟡).
+- Shop now has 12 items total. Footer updated to reflect weapons drop mechanic.
+
+### HELP SYSTEM — CONSOLIDATED
+- **Duplicate ? button removed**: `components/HelpButton.tsx` deleted, `LycHelp` unmounted from root layout. One ? button survives in `(tabs)/_layout.tsx`.
+- **16-section help guide**: full coverage — Companion, Battle, LAMAGUE, Weapons, Field, Shop, Sanctum, Zodiac, Menagerie, Safety, API Key, Settings, Talk, Skill, Capture, SOL AI Partner.
+- **Button repositioned**: `bottom: 84` Android / `112` iOS — clears tab bar.
+
+### TAB + UX POLISH
+- **BOND tab renamed to SKILL** (label only — internal id `bond` unchanged to preserve storage refs).
+- **Zone card tap fixed**: `handleSkin` no longer calls `setActiveSkin`. Zone navigation never changes companion identity. `activeSkin` = companion only, forever.
+- **`onRandomZone` prop**: added to `CompanionScene` props interface and call site so D-pad can call `handleSkin` from parent scope.
+
+## [4.9.0] — 2026-06-19 — SAFETY STACK · MAGISTER CARE SYSTEM · EMERGENCY BEACON
+
+### EMERGENCY BEACON (global)
+- **Always-present ⊚ orb** — root layout, every screen, every tab, zIndex 9999
+- **Long-press 650ms** → full-screen crisis modal: breath animation (4-4-4-4), grounding script, tap-to-call crisis lines (NZ/AU/USA/UK + findahelpline.com)
+- **Visual escalation** — orb color shifts: purple (idle) → gold (HOLDING) → orange (ELEVATED) → red (CRISIS). Auto-resets after 60s
+- **CareEvents module** — module-level emitter so TALK tab can signal the Beacon without prop drilling
+
+### MAGISTER CARE TAG SYSTEM
+- **[CARE:X] self-assessment** — every Magister response appends hidden tag: NEUTRAL / HOLDING / ELEVATED / CRISIS
+- **Visible CARE pill** — rendered under Magister messages (not hidden). Tap → tooltip explains what the level means
+- **Tag-absent defaults to HOLDING** — missing tag = soft presence, never silence. Parser strips code fences before searching
+- **Witness Protocol** — CARE instruction explicitly breaks Magister out of headmaster role: "When you write [CARE:X], you are the witness, not the teacher"
+- **Pronoun drift detection** — client-side: third-person → first-person shift across conversation elevates CARE floor to HOLDING
+- **Crisis-adjacent subject floor** — 5+ messages into crisis-adjacent subject: minimum HOLDING regardless of model tag
+- **Care logging** — `sol_care_log` in AsyncStorage: tracks total / tag-missing / genuine / crisis / elevated / holding per session
+
+### T1 AUGMENTATION (replaces suppression)
+- Crisis keywords in user message: AI responds naturally, resources append after. Never gated, never suppressed
+- `hasCrisisSignal` runs before Magister, independent of persona — T1 cannot be disabled by persona degradation
+- `sol_care_append_enabled` toggle (AsyncStorage) — user can disable auto-append (defaults ON)
+
+### CRISIS APPEND
+- **HOLDING**: soft "Beacon is here whenever you need it"
+- **ELEVATED/CRISIS**: full crisis resources append after AI response
+- Warmth-first ordering: "I'm here. You're not alone." — crisis lines alongside Sol, not instead
+
+### SUBJECT CARE CLASSIFICATION
+- `care?: 'standard' | 'elevated' | 'crisis-adjacent'` field added to Subject type
+- **Crisis-adjacent**: Grief Work, Somatic Experiencing, Ego Death, Dark Night of the Soul, MDMA
+- **Elevated**: Jungian Shadow Work, Projective Identification, Holotropic Breathwork, Kundalini, Psilocybin Research, Ayahuasca, 5-MeO-DMT, Solastalgia
+- Subject care level injected into Magister system prompt when teaching (via `buildMagisterSystemPrompt`)
+
+### MAGISTER GATE (school.tsx)
+- Crisis-adjacent subjects show fork: **"Study with 𝔏 Magister"** or **"Continue alone"**
+- Never blocks. Both paths proceed. "Continue alone" = daily host session + full safety stack still active
+- Fires after VOID gate, before intensity ≥8 gate
+
+### #153 RETURN TO BODY (post-session grounding)
+- Fires on session close when: ≥3 exchanges + ≥90s + heavy subject (crisis-adjacent / VOID / intensity ≥7)
+- Breath animation + 3-step grounding sequence (tap through) + "I'm grounded ⊚" dismiss
+- `ReturnToBody` component: pure physical, no lore, no glyphs, reusable
+
 ## [4.7.0] — 2026-06-19 — COMPANION HUD · IMAGE FIX · CAPTURE BUTTON · ART
 
 ### COMPANION SCENE

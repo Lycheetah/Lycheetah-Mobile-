@@ -325,6 +325,8 @@ export default function ZodiacScreen() {
   const [psiDraft, setPsiDraft]       = useState<{ type: PsiEntryType; target: string; impression: string; outcome: string; result: PsiResult }>({ type: 'RV', target: '', impression: '', outcome: '', result: 'pending' });
   const [selectedWheelSign, setSelectedWheelSign] = useState<number | null>(null);
 
+  // ── Fullscreen section overlay ──
+  const [fullscreenSection, setFullscreenSection] = useState<string | null>(null);
   // ── Collapsible sections ──
   const [oracleCollapsed, setOracleCollapsed]     = useState(false);
   const [skyCollapsed, setSkyCollapsed]           = useState(false);
@@ -968,251 +970,70 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header — compact */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, marginBottom: 4, gap: 12 }}>
-        <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center', width: 68, height: 68 }}>
-          {/* Rotating outer arc ring */}
-          <Animated.View style={{
-            position: 'absolute', width: 68, height: 68, borderRadius: 34,
-            borderWidth: 1.5, borderTopColor: ZODIAC_INDIGO + 'BB', borderRightColor: ZODIAC_INDIGO + '33',
-            borderBottomColor: 'transparent', borderLeftColor: ZODIAC_INDIGO + '55',
-            transform: [{ rotate: ringInterp }],
-          }} />
-          {/* Counter-rotating inner glint */}
-          <Animated.View style={{
-            position: 'absolute', width: 60, height: 60, borderRadius: 30,
-            borderWidth: 0.5, borderTopColor: '#C8A96E66', borderRightColor: 'transparent',
-            borderBottomColor: '#C8A96E33', borderLeftColor: 'transparent',
-            transform: [{ rotate: ringInterp2 }],
-          }} />
-          <View style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: ZODIAC_INDIGO + '0C', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 30, lineHeight: 36 }}>☽</Text>
+      {/* ── ATMOSPHERIC HEADER ── */}
+      <View style={{ borderRadius: 20, borderWidth: 1, borderColor: ZODIAC_INDIGO + '33', backgroundColor: '#050010', padding: 18, marginBottom: 14, overflow: 'hidden' }}>
+        {/* Watermark glyph */}
+        <Text style={{ position: 'absolute', right: -12, top: -24, fontSize: 150, color: ZODIAC_INDIGO + '07', lineHeight: 170, fontFamily: mono }}>☽</Text>
+        {/* Gold star scatter */}
+        <Text style={{ position: 'absolute', left: 14,  top: 8,  color: '#C8A96E22', fontSize: 8 }}>✦</Text>
+        <Text style={{ position: 'absolute', left: 58,  top: 4,  color: '#C8A96E18', fontSize: 6 }}>◦</Text>
+        <Text style={{ position: 'absolute', left: 108, top: 10, color: '#C8A96E14', fontSize: 7 }}>·</Text>
+        {/* Main content row */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+            {/* Rotating orb */}
+            <View style={{ position: 'relative', width: 54, height: 54, alignItems: 'center', justifyContent: 'center' }}>
+              <Animated.View style={{ position: 'absolute', width: 54, height: 54, borderRadius: 27, borderWidth: 1.5, borderTopColor: ZODIAC_INDIGO + 'BB', borderRightColor: ZODIAC_INDIGO + '33', borderBottomColor: 'transparent', borderLeftColor: ZODIAC_INDIGO + '55', transform: [{ rotate: ringInterp }] }} />
+              <Animated.View style={{ position: 'absolute', width: 46, height: 46, borderRadius: 23, borderWidth: 0.5, borderTopColor: '#C8A96E66', borderRightColor: 'transparent', borderBottomColor: '#C8A96E33', borderLeftColor: 'transparent', transform: [{ rotate: ringInterp2 }] }} />
+              <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: ZODIAC_INDIGO + '0C', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 22, lineHeight: 28 }}>☽</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: ZODIAC_INDIGO + 'AA', letterSpacing: 4, fontFamily: mono }}>◎ THE CELESTIAL FIELD</Text>
+              <Text style={{ fontSize: 22, fontWeight: '700', color: '#EEEEF8', letterSpacing: 0.5, marginTop: 2 }}>The Stars</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 3, fontStyle: 'italic' }}>Chaos magic. Sacred science.</Text>
+            </View>
           </View>
-          <Text style={{ position: 'absolute', top: 2, right: -2, color: '#C8A96E', fontSize: 8 }}>✦</Text>
-          <Text style={{ position: 'absolute', bottom: 3, left: -2, color: ZODIAC_INDIGO + 'BB', fontSize: 7 }}>◦</Text>
+          {/* Mode toggles stacked */}
+          <View style={{ gap: 6, alignItems: 'flex-end' }}>
+            <TouchableOpacity onPress={() => setTechnoMode(v => !v)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: CHIRAL_VIOLET + (technoMode ? 'CC' : '44'), backgroundColor: technoMode ? CHIRAL_VIOLET + '22' : 'transparent' }}>
+              <Text style={{ color: technoMode ? CHIRAL_VIOLET : CHIRAL_VIOLET + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>{technoMode ? '⚡ TECHNO' : '⚡ MODE'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setFocusMode(v => !v)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + (focusMode ? 'CC' : '44'), backgroundColor: focusMode ? ZODIAC_INDIGO + '22' : 'transparent' }}>
+              <Text style={{ color: focusMode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>{focusMode ? '✦ FULL' : '◎ FOCUS'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: ZODIAC_INDIGO, fontSize: 11, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>THE STARS</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 2, fontStyle: 'italic' }}>Chaos magic. Sacred science. The sky speaks.</Text>
-          <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 9, marginTop: 3, fontFamily: mono, letterSpacing: 1 }}>
+        {/* Live data strip */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '22', flexWrap: 'wrap' }}>
+          <Text style={{ color: ZODIAC_INDIGO + 'BB', fontSize: 11, fontFamily: mono, letterSpacing: 1 }}>
             {liveTime.getHours() >= 6 && liveTime.getHours() < 20 ? '☀' : '☽'}{' '}
             {String(liveTime.getHours()).padStart(2, '0')}:{String(liveTime.getMinutes()).padStart(2, '0')}:{String(liveTime.getSeconds()).padStart(2, '0')}
-            {' · '}{ZODIAC_SIGNS[getTodaySunSign()].glyph}
           </Text>
-          <Text style={{ color: todayPlanet.color + 'CC', fontSize: 8, marginTop: 2, fontFamily: mono, letterSpacing: 0.5 }}>
-            {todayPlanet.glyph} {todayPlanet.planet} day · {todayPlanet.keywords}
-          </Text>
+          <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 12 }}>·</Text>
+          <Text style={{ color: ZODIAC_SIGNS[getTodaySunSign()].color, fontSize: 12 }}>{ZODIAC_SIGNS[getTodaySunSign()].glyph}</Text>
+          <Text style={{ color: '#CCCCDD', fontSize: 11 }}>{ZODIAC_SIGNS[getTodaySunSign()].name}</Text>
+          <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 12 }}>·</Text>
+          <Text style={{ color: todayPlanet.color + 'CC', fontSize: 10, fontFamily: mono }}>{todayPlanet.glyph} {todayPlanet.planet} day</Text>
         </View>
-        {/* Technomantic Mode toggle */}
-        <TouchableOpacity
-          onPress={() => setTechnoMode(v => !v)}
-          style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: CHIRAL_VIOLET + (technoMode ? 'CC' : '44'), backgroundColor: technoMode ? CHIRAL_VIOLET + '22' : 'transparent' }}
-        >
-          <Text style={{ color: technoMode ? CHIRAL_VIOLET : CHIRAL_VIOLET + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>{technoMode ? '⚡ TECHNO' : '⚡ MODE'}</Text>
-        </TouchableOpacity>
-        {/* Focus mode toggle — hide all meta, show oracle only */}
-        <TouchableOpacity
-          onPress={() => setFocusMode(v => !v)}
-          style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + (focusMode ? 'CC' : '44'), backgroundColor: focusMode ? ZODIAC_INDIGO + '22' : 'transparent' }}
-        >
-          <Text style={{ color: focusMode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>{focusMode ? '✦ FULL' : '◎ FOCUS'}</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* SPREAD — FIVE-CARD / CELTIC CROSS — HERO FEATURE */}
-      <View style={{ padding: 16, borderRadius: 12, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: SOL_THEME.surface, marginBottom: 16 }}>
-        <TouchableOpacity onPress={() => setTarotCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: tarotCollapsed ? 0 : 12 }}>
-          <Text style={{ color: '#C8A96E', fontSize: 9, fontFamily: mono }}>⊛</Text>
-          <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>
-            {spreadMode === '5card' ? 'FIVE-CARD SPREAD' : 'CELTIC CROSS'}
-          </Text>
-          <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 8, fontFamily: mono, letterSpacing: 1 }}>RITUAL DIVINATION</Text>
-          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11 }}>{tarotCollapsed ? '▶' : '▼'}</Text>
+      {/* Daily oracle — card block */}
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: '#040010', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setOracleCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
+          <TouchableOpacity onPress={() => setFullscreenSection('oracle')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ZODIAC_INDIGO + '22', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 18, fontFamily: mono }}>◎</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 11, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>THE ORACLE</Text>
+            <Text style={{ color: ZODIAC_INDIGO + '77', fontSize: 9, fontFamily: mono }}>card · rune · sky · convergence</Text>
+          </View>
+          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11 }}>{oracleCollapsed ? '▶' : '▼'}</Text>
         </TouchableOpacity>
-        {!tarotCollapsed && !focusMode && (
-        <View>
-          {/* Mode toggle */}
-          <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', overflow: 'hidden', marginBottom: 14 }}>
-            {(['5card', 'celtic'] as const).map(mode => (
-              <TouchableOpacity key={mode}
-                onPress={() => { setSpreadMode(mode); setSpreadReading(null); setCelticReading(null); }}
-                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: spreadMode === mode ? ZODIAC_INDIGO + '33' : 'transparent' }}
-              >
-                <Text style={{ color: spreadMode === mode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
-                  {mode === '5card' ? 'FIVE CARD' : 'CELTIC CROSS'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {/* Ritual invocation — moon phase based */}
-          <View style={{ marginBottom: 14, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '22', backgroundColor: ZODIAC_INDIGO + '08', alignItems: 'center' }}>
-            <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 8, fontWeight: '700', letterSpacing: 2, fontFamily: mono, marginBottom: 4 }}>✦  OPEN THE CIRCLE  ✦</Text>
-            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11, fontStyle: 'italic', textAlign: 'center', lineHeight: 17 }}>
-              {MOON_INVOCATIONS[moonPhase.name] ?? 'The circle opens. What must be seen?'}
-            </Text>
-          </View>
-
-          {spreadMode === '5card' ? (
-          <View>
-            {/* Row 1: PAST · CHALLENGE · FOUNDATION */}
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
-              {(['PAST', 'CHALLENGE', 'FOUNDATION'] as const).map((label, i) => {
-                const drawn = dailySpread[i];
-                return (
-                  <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
-                    <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                      <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
-                      {drawn.reversed && (
-                        <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}>
-                          <Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>
-                      {drawn.reversed ? drawn.card.rev : drawn.card.up}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            {/* Row 2: NEAR FUTURE · OUTCOME */}
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12, paddingHorizontal: '12.5%' }}>
-              {(['NEAR FUTURE', 'OUTCOME'] as const).map((label, i) => {
-                const drawn = dailySpread[3 + i];
-                return (
-                  <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
-                    <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                      <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
-                      {drawn.reversed && (
-                        <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}>
-                          <Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>
-                      {drawn.reversed ? drawn.card.rev : drawn.card.up}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            {spreadReading ? (
-              <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33' }}>
-                {spreadReading.split('\n\n').filter(p => p.trim()).map((para, i, arr) => (
-                  <View key={i} style={{ marginBottom: i < arr.length - 1 ? 14 : 10, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: i === 0 ? ZODIAC_INDIGO : i === arr.length - 1 ? '#C8A96E' : ZODIAC_INDIGO + '44' }}>
-                    <Text style={{ color: i === 0 ? '#EEEEF8' : i === arr.length - 1 ? '#C8A96E' : SOL_THEME.text, fontSize: i === 0 ? 14 : 13, lineHeight: i === 0 ? 23 : 21, fontStyle: 'italic', fontWeight: i === 0 ? '600' : '400', letterSpacing: i === 0 ? 0.2 : 0 }}>
-                      {para.trim()}
-                    </Text>
-                  </View>
-                ))}
-                <View style={{ alignItems: 'center', paddingTop: 8, marginBottom: 10 }}>
-                  <Text style={{ color: ZODIAC_INDIGO + '55', fontSize: 9, letterSpacing: 3, fontFamily: mono }}>✦  ⊚  ✦</Text>
-                  <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 8, fontStyle: 'italic', letterSpacing: 1, fontFamily: mono, marginTop: 4 }}>The thread is sealed.</Text>
-                </View>
-                <TouchableOpacity onPress={() => setSpreadReading(null)} style={{ alignSelf: 'center' }}>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>✕  new reading</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => generateSpreadReading(dailySpread)}
-                disabled={spreadLoading}
-                style={{ paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', backgroundColor: spreadLoading ? '#0D0A1A' : ZODIAC_INDIGO + 'CC', alignItems: 'center', gap: 4 }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1 }}>
-                  {spreadLoading ? 'The cards are speaking...' : 'READ THE SPREAD  ☽'}
-                </Text>
-                {!spreadLoading && <Text style={{ color: '#FFFFFF66', fontSize: 8, fontFamily: mono, letterSpacing: 2 }}>INVOKE THE ORACLE</Text>}
-              </TouchableOpacity>
-            )}
-          </View>
-          ) : (
-          <View>
-            {/* Celtic Cross — 10 cards in 3 rows: 3 + 3 + 4 */}
-            {[
-              { slice: [0, 1, 2] },
-              { slice: [3, 4, 5] },
-              { slice: [6, 7, 8, 9] },
-            ].map((row, rowIdx) => (
-              <View key={rowIdx} style={{ flexDirection: 'row', gap: 4, marginBottom: rowIdx < 2 ? 6 : 12 }}>
-                {row.slice.map(posIdx => {
-                  const drawn = celticCrossSpread[posIdx];
-                  return (
-                    <TouchableOpacity key={posIdx} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: CELTIC_CROSS_POSITIONS[posIdx] })} activeOpacity={0.8}>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 6, fontWeight: '700', letterSpacing: 0.8, fontFamily: mono, marginBottom: 3, textAlign: 'center' }}>
-                        {CELTIC_CROSS_POSITIONS[posIdx]}
-                      </Text>
-                      <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 3 }}>
-                        <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
-                        {drawn.reversed && (
-                          <View style={{ position: 'absolute', top: 2, right: 2, backgroundColor: '#FF444422', borderRadius: 2, paddingHorizontal: 2 }}>
-                            <Text style={{ color: '#FF8888', fontSize: 5, fontWeight: '700' }}>REV</Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={{ color: SOL_THEME.text, fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>
-                        {drawn.card.n}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
-            {celticReading ? (
-              <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33' }}>
-                {celticReading.split('\n\n').filter(p => p.trim()).map((para, i, arr) => (
-                  <View key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 10, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: i === arr.length - 1 ? '#C8A96E' : i === 0 ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55' }}>
-                    <Text style={{ color: i === arr.length - 1 ? '#C8A96ECC' : i === 0 ? '#EEEEF8' : SOL_THEME.text, fontSize: i === 0 ? 14 : 13, lineHeight: i === 0 ? 23 : 22, fontStyle: 'italic', fontWeight: i === 0 ? '600' : '400' }}>
-                      {para.trim()}
-                    </Text>
-                  </View>
-                ))}
-                <View style={{ alignItems: 'center', paddingTop: 8, marginBottom: 10 }}>
-                  <Text style={{ color: ZODIAC_INDIGO + '55', fontSize: 9, letterSpacing: 3, fontFamily: mono }}>✦  ⊚  ✦</Text>
-                  <Text style={{ color: '#C8A96E55', fontSize: 8, fontStyle: 'italic', letterSpacing: 1, fontFamily: mono, marginTop: 4 }}>The cross is sealed. The staff is read.</Text>
-                </View>
-                <TouchableOpacity onPress={() => setCelticReading(null)} style={{ alignSelf: 'center' }}>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>✕  new reading</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => generateCelticReading(celticCrossSpread)}
-                disabled={celticLoading}
-                style={{ paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', backgroundColor: celticLoading ? '#0D0A1A' : ZODIAC_INDIGO + 'CC', alignItems: 'center', gap: 4 }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1 }}>
-                  {celticLoading ? 'The cross is turning...' : 'READ THE CELTIC CROSS  ✦'}
-                </Text>
-                {!celticLoading && <Text style={{ color: '#FFFFFF66', fontSize: 8, fontFamily: mono, letterSpacing: 2 }}>TEN CARDS · FULL ORACLE</Text>}
-              </TouchableOpacity>
-            )}
-          </View>
-          )}
-        </View>
-        )}
-      </View>
-
-      {/* Daily oracle — section header + collapsible */}
-      <TouchableOpacity
-        onPress={() => setOracleCollapsed(v => !v)}
-        hitSlop={{ top: 12, bottom: 12, left: 0, right: 0 }}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, marginBottom: oracleCollapsed ? 0 : 4, marginTop: 4 }}
-      >
-        <View style={{ flex: 1, height: 0.5, backgroundColor: ZODIAC_INDIGO + '44' }} />
-        <Text style={{ color: '#C8A96E', fontSize: 8, fontFamily: mono, marginHorizontal: 4 }}>✦</Text>
-        <Text style={{ color: ZODIAC_INDIGO + 'CC', fontSize: 10, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>ORACLE · READING</Text>
-        <Text style={{ color: '#C8A96E', fontSize: 8, fontFamily: mono, marginHorizontal: 4 }}>✦</Text>
-        <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 11 }}>{oracleCollapsed ? '▶' : '▼'}</Text>
-        <View style={{ flex: 1, height: 0.5, backgroundColor: ZODIAC_INDIGO + '44' }} />
-      </TouchableOpacity>
-
+        {!oracleCollapsed && <View style={{ height: 1, backgroundColor: ZODIAC_INDIGO + '22' }} />}
       {!oracleCollapsed && (
-      <View>
+      <View style={{ padding: 14 }}>
       {/* Daily oracle — full-width tarot card then rune strip */}
       {/* Tarot card */}
       <Animated.View style={{ marginBottom: 10, opacity: cardOpacity, transform: [{ translateY: cardSlide }] }}>
@@ -1313,38 +1134,51 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         )}
       </View>
 
-      {/* Oracle reading — directly below the card */}
-      <View style={{ marginBottom: 16, borderRadius: 14, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: '#05000D', overflow: 'hidden' }}>
+      {/* Oracle reading — RITUAL CENTRE */}
+      <Animated.View style={{ marginBottom: 16, borderRadius: 18, borderWidth: 1.5, borderColor: ZODIAC_INDIGO, backgroundColor: '#030010', overflow: 'hidden', opacity: oraclePulse.interpolate({ inputRange: [0.6, 1], outputRange: [0.85, 1] }) }}>
+        {/* Glyph watermark */}
+        <Text style={{ position: 'absolute', right: 12, bottom: 8, fontSize: 80, color: ZODIAC_INDIGO + '09', fontFamily: mono, lineHeight: 90 }}>◎</Text>
+        {/* Header */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: ZODIAC_INDIGO + '22', alignItems: 'center' }}>
+          <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 3, fontFamily: mono, marginBottom: 2 }}>◎  THE ORACLE  ◎</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontStyle: 'italic' }}>card · rune · sky · convergence</Text>
+        </View>
+        {/* Question input */}
         <TextInput
           value={oracleInput}
           onChangeText={setOracleInput}
-          placeholder="Ask the oracle something... or leave blank"
+          placeholder="Speak your question... or be silent"
           placeholderTextColor={ZODIAC_INDIGO + '44'}
-          style={{ paddingHorizontal: 16, paddingVertical: 12, color: '#FFFFFFCC', fontSize: 13, borderBottomWidth: 1, borderBottomColor: ZODIAC_INDIGO + '22', fontStyle: oracleInput ? 'normal' : 'italic' }}
+          style={{ paddingHorizontal: 20, paddingVertical: 14, color: '#FFFFFFCC', fontSize: 13, borderBottomWidth: 1, borderBottomColor: ZODIAC_INDIGO + '1A', textAlign: 'center', fontStyle: oracleInput ? 'normal' : 'italic' }}
         />
+        {/* Invoke button */}
         <TouchableOpacity
           onPress={generateOracleReading}
           disabled={oracleLoading}
-          style={{ paddingVertical: 14, alignItems: 'center', backgroundColor: oracleLoading ? '#FFFFFF08' : ZODIAC_INDIGO + '1A' }}
+          style={{ paddingVertical: 16, alignItems: 'center', backgroundColor: oracleLoading ? '#FFFFFF06' : ZODIAC_INDIGO + '18' }}
           activeOpacity={0.75}
         >
-          <Text style={{ color: oracleLoading ? ZODIAC_INDIGO + '66' : ZODIAC_INDIGO, fontSize: 11, fontWeight: '700', letterSpacing: 2.5, fontFamily: mono }}>
-            {oracleLoading ? '· · · reading · · ·' : '◎  READ THE ORACLE'}
+          <Text style={{ color: oracleLoading ? ZODIAC_INDIGO + '55' : ZODIAC_INDIGO + 'DD', fontSize: 11, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>
+            {oracleLoading ? '·  ·  ·  the oracle sees  ·  ·  ·' : '◎  INVOKE THE ORACLE'}
           </Text>
         </TouchableOpacity>
+        {/* Reading output */}
         {oracleReading && (
-          <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33' }}>
-            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 8, fontWeight: '700', letterSpacing: 2, fontFamily: mono, marginBottom: 10 }}>◎ THE ORACLE SPEAKS</Text>
-            <Text style={{ color: '#D0C8E8', fontSize: 14, lineHeight: 23, fontStyle: 'italic' }}>{oracleReading}</Text>
+          <View style={{ padding: 20, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33', alignItems: 'center', gap: 10 }}>
+            <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 8, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>✦  RECEIVED  ✦</Text>
+            <Text style={{ color: '#E8E0FF', fontSize: 18, lineHeight: 28, fontStyle: 'italic', textAlign: 'center', letterSpacing: 0.5 }}>{oracleReading}</Text>
+            <View style={{ width: 40, height: 1, backgroundColor: ZODIAC_INDIGO + '44' }} />
           </View>
         )}
-      </View>
+      </Animated.View>
       </View>
       )}
+      </View>
 
-      {/* Rune strip — standalone, always visible */}
+      {/* Rune strip — always visible */}
       <Animated.View style={{ marginBottom: 16, opacity: runeOpacity, transform: [{ translateY: runeSlide }] }}>
-        <View style={{ borderRadius: 14, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: '#06000E', flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 16 }}>
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: dailyRune.reversed ? '#FF666633' : ZODIAC_INDIGO + '55', backgroundColor: '#060010', flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 16, overflow: 'hidden' }}>
+          <Text style={{ position: 'absolute', right: -8, top: -10, fontSize: 90, color: ZODIAC_INDIGO + '08', fontFamily: mono, lineHeight: 100 }}>{dailyRune.rune.symbol}</Text>
           {/* Rune glyph circle */}
           <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: ZODIAC_INDIGO + '18', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Text style={{ color: ZODIAC_INDIGO, fontSize: 32, fontWeight: '700', lineHeight: 40, ...(dailyRune.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }}>{dailyRune.rune.symbol}</Text>
@@ -1375,20 +1209,20 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         </View>
       </Animated.View>
 
-      {/* TODAY'S SKY — always visible, no birth data needed */}
-      <View style={{ padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#2A2A4A', backgroundColor: '#07071A', marginBottom: 14, overflow: 'hidden' }}>
-        <Image source={ZODIAC_SKY_BG} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0.18, borderRadius: 14 }} resizeMode="cover" />
-        <Text style={{ position: 'absolute', top: 8,  right: 18, color: '#FFFFFF22', fontSize: 7, fontFamily: mono }}>·</Text>
-        <Text style={{ position: 'absolute', top: 22, right: 36, color: '#FFFFFF18', fontSize: 5, fontFamily: mono }}>·</Text>
-        <Text style={{ position: 'absolute', top: 12, right: 54, color: '#C8A96E33', fontSize: 8, fontFamily: mono }}>◦</Text>
-        <TouchableOpacity onPress={() => setSkyCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: skyCollapsed ? 0 : 10 }}>
-          <Text style={{ color: '#C8A96E', fontSize: 12, fontFamily: mono }}>☀</Text>
-          <Text style={{ color: ZODIAC_INDIGO, fontSize: 9, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>TODAY'S SKY</Text>
-          <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 7, fontFamily: mono, letterSpacing: 1 }}>LIVE POSITIONS</Text>
-          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11 }}>{skyCollapsed ? '▶' : '▼'}</Text>
+      {/* TODAY'S SKY — always visible */}
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#C8A96E33', backgroundColor: '#07071A', marginBottom: 14, overflow: 'hidden' }}>
+        <Image source={ZODIAC_SKY_BG} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0.15, borderRadius: 16 }} resizeMode="cover" />
+        <TouchableOpacity onPress={() => setSkyCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
+          <Text style={{ color: '#C8A96E', fontSize: 16 }}>☀</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#C8A96E', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>TODAY'S SKY</Text>
+            <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 9, fontFamily: mono }}>live planetary positions</Text>
+          </View>
+          <Text style={{ color: '#C8A96EAA', fontSize: 11 }}>{skyCollapsed ? '▶' : '▼'}</Text>
         </TouchableOpacity>
+        {!skyCollapsed && <View style={{ height: 1, backgroundColor: '#C8A96E1A' }} />}
         {!skyCollapsed && !focusMode && (
-        <View>
+        <View style={{ padding: 14 }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#C8A96E88', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 3 }}>SUN IN</Text>
@@ -1478,13 +1312,18 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       </View>
 
       {/* THE WHEEL — interactive zodiac circle */}
-      <View style={{ padding: 16, borderRadius: 14, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: '#060010', marginBottom: 16, alignItems: 'center' }}>
-        <TouchableOpacity onPress={() => setWheelCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: wheelCollapsed ? 0 : 14, alignSelf: 'stretch' }}>
-          <Text style={{ color: ZODIAC_INDIGO, fontSize: 9, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>✦ THE WHEEL</Text>
-          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 10 }}>{wheelCollapsed ? '▶' : '▼'}</Text>
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: '#060010', marginBottom: 16, alignItems: 'center', overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setWheelCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, alignSelf: 'stretch' }}>
+          <Text style={{ color: ZODIAC_INDIGO, fontSize: 16 }}>✦</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>THE WHEEL</Text>
+            <Text style={{ color: ZODIAC_INDIGO + '77', fontSize: 9, fontFamily: mono }}>12 signs · interactive</Text>
+          </View>
+          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11 }}>{wheelCollapsed ? '▶' : '▼'}</Text>
         </TouchableOpacity>
+        {!wheelCollapsed && <View style={{ height: 1, backgroundColor: ZODIAC_INDIGO + '22', width: '100%' }} />}
         {!wheelCollapsed && !focusMode && (
-        <View style={{ width: '100%', alignItems: 'center' }}>
+        <View style={{ width: '100%', alignItems: 'center', padding: 14 }}>
         <View style={{ width: 264, height: 264, position: 'relative' }}>
           {/* Slow-rotating outer ring */}
           <Animated.View style={{
@@ -1567,6 +1406,156 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
             </View>
           )}
         </View>
+        </View>
+        )}
+      </View>
+
+      {/* SPREAD — FIVE-CARD / CELTIC CROSS */}
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#C8A96E44', backgroundColor: '#06000E', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setTarotCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: '#C8A96E0C', fontFamily: mono, lineHeight: 72 }}>⊛</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: tarotCollapsed ? 0 : 4 }}>
+            <TouchableOpacity onPress={() => setFullscreenSection('spread')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#C8A96E18', borderWidth: 1, borderColor: '#C8A96E44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#C8A96E', fontSize: 18, fontFamily: mono }}>⊛</Text>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#C8A96E', fontSize: 11, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>{spreadMode === '5card' ? 'FIVE-CARD SPREAD' : 'CELTIC CROSS'}</Text>
+              <Text style={{ color: ZODIAC_INDIGO + '77', fontSize: 9, fontFamily: mono }}>ritual divination · deeper session</Text>
+            </View>
+            <Text style={{ color: '#C8A96EAA', fontSize: 11 }}>{tarotCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {tarotCollapsed && <Text style={{ color: '#C8A96E55', fontSize: 9, fontStyle: 'italic', lineHeight: 14, marginLeft: 46 }}>5-card spread or Celtic Cross — invoke when you need a deeper read.</Text>}
+        </TouchableOpacity>
+        {!tarotCollapsed && <View style={{ height: 1, backgroundColor: '#C8A96E22' }} />}
+        {!tarotCollapsed && !focusMode && (
+        <View style={{ padding: 14 }}>
+          {/* Mode toggle */}
+          <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', overflow: 'hidden', marginBottom: 14 }}>
+            {(['5card', 'celtic'] as const).map(mode => (
+              <TouchableOpacity key={mode}
+                onPress={() => { setSpreadMode(mode); setSpreadReading(null); setCelticReading(null); }}
+                style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: spreadMode === mode ? ZODIAC_INDIGO + '33' : 'transparent' }}
+              >
+                <Text style={{ color: spreadMode === mode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
+                  {mode === '5card' ? 'FIVE CARD' : 'CELTIC CROSS'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Ritual invocation */}
+          <View style={{ marginBottom: 14, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '22', backgroundColor: ZODIAC_INDIGO + '08', alignItems: 'center' }}>
+            <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 8, fontWeight: '700', letterSpacing: 2, fontFamily: mono, marginBottom: 4 }}>✦  OPEN THE CIRCLE  ✦</Text>
+            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11, fontStyle: 'italic', textAlign: 'center', lineHeight: 17 }}>
+              {MOON_INVOCATIONS[moonPhase.name] ?? 'The circle opens. What must be seen?'}
+            </Text>
+          </View>
+
+          {spreadMode === '5card' ? (
+          <View>
+            {/* Row 1: PAST · CHALLENGE · FOUNDATION */}
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+              {(['PAST', 'CHALLENGE', 'FOUNDATION'] as const).map((label, i) => {
+                const drawn = dailySpread[i];
+                return (
+                  <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
+                    <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                      <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
+                      {drawn.reversed && <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}><Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text></View>}
+                    </View>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>{drawn.reversed ? drawn.card.rev : drawn.card.up}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {/* Row 2: NEAR FUTURE · OUTCOME */}
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12, paddingHorizontal: '12.5%' }}>
+              {(['NEAR FUTURE', 'OUTCOME'] as const).map((label, i) => {
+                const drawn = dailySpread[3 + i];
+                return (
+                  <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
+                    <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
+                      <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
+                      {drawn.reversed && <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}><Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text></View>}
+                    </View>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>{drawn.reversed ? drawn.card.rev : drawn.card.up}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {spreadReading ? (
+              <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33' }}>
+                {spreadReading.split('\n\n').filter(p => p.trim()).map((para, i, arr) => (
+                  <View key={i} style={{ marginBottom: i < arr.length - 1 ? 14 : 10, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: i === 0 ? ZODIAC_INDIGO : i === arr.length - 1 ? '#C8A96E' : ZODIAC_INDIGO + '44' }}>
+                    <Text style={{ color: i === 0 ? '#EEEEF8' : i === arr.length - 1 ? '#C8A96E' : SOL_THEME.text, fontSize: i === 0 ? 14 : 13, lineHeight: i === 0 ? 23 : 21, fontStyle: 'italic', fontWeight: i === 0 ? '600' : '400' }}>{para.trim()}</Text>
+                  </View>
+                ))}
+                <View style={{ alignItems: 'center', paddingTop: 8, marginBottom: 10 }}>
+                  <Text style={{ color: ZODIAC_INDIGO + '55', fontSize: 9, letterSpacing: 3, fontFamily: mono }}>✦  ⊚  ✦</Text>
+                  <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 8, fontStyle: 'italic', letterSpacing: 1, fontFamily: mono, marginTop: 4 }}>The thread is sealed.</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSpreadReading(null)} style={{ alignSelf: 'center' }}>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>✕  new reading</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => generateSpreadReading(dailySpread)} disabled={spreadLoading}
+                style={{ paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', backgroundColor: spreadLoading ? '#0D0A1A' : ZODIAC_INDIGO + 'CC', alignItems: 'center', gap: 4 }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1 }}>{spreadLoading ? 'The cards are speaking...' : 'READ THE SPREAD  ☽'}</Text>
+                {!spreadLoading && <Text style={{ color: '#FFFFFF66', fontSize: 8, fontFamily: mono, letterSpacing: 2 }}>INVOKE THE ORACLE</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+          ) : (
+          <View>
+            {/* Celtic Cross — 10 cards in 3 rows: 3 + 3 + 4 */}
+            {[{ slice: [0, 1, 2] }, { slice: [3, 4, 5] }, { slice: [6, 7, 8, 9] }].map((row, rowIdx) => (
+              <View key={rowIdx} style={{ flexDirection: 'row', gap: 4, marginBottom: rowIdx < 2 ? 6 : 12 }}>
+                {row.slice.map(posIdx => {
+                  const drawn = celticCrossSpread[posIdx];
+                  const isCrossing = posIdx === 1;
+                  const imgRotate = isCrossing ? (drawn.reversed ? '270deg' : '90deg') : (drawn.reversed ? '180deg' : '0deg');
+                  return (
+                    <TouchableOpacity key={posIdx} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: CELTIC_CROSS_POSITIONS[posIdx] })} activeOpacity={0.8}>
+                      <Text style={{ color: isCrossing ? ZODIAC_INDIGO : SOL_THEME.textMuted, fontSize: 6, fontWeight: '700', letterSpacing: 0.8, fontFamily: mono, marginBottom: 3, textAlign: 'center' }}>{CELTIC_CROSS_POSITIONS[posIdx]}</Text>
+                      <View style={{ width: '100%', aspectRatio: isCrossing ? 1.54 : 0.65, borderRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: isCrossing ? ZODIAC_INDIGO + 'AA' : ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 3 }}>
+                        <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', width: '154%', height: '65%', transform: [{ rotate: imgRotate }] }} resizeMode="cover" />
+                        {drawn.reversed && <View style={{ position: 'absolute', top: 2, right: 2, backgroundColor: '#FF444422', borderRadius: 2, paddingHorizontal: 2 }}><Text style={{ color: '#FF8888', fontSize: 5, fontWeight: '700' }}>REV</Text></View>}
+                        {isCrossing && <View style={{ position: 'absolute', bottom: 2, left: 2, backgroundColor: ZODIAC_INDIGO + '33', borderRadius: 2, paddingHorizontal: 3, paddingVertical: 1 }}><Text style={{ color: ZODIAC_INDIGO, fontSize: 5, fontWeight: '700' }}>✕</Text></View>}
+                      </View>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>{drawn.card.n}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ))}
+            {celticReading ? (
+              <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33' }}>
+                {celticReading.split('\n\n').filter(p => p.trim()).map((para, i, arr) => (
+                  <View key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 10, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: i === arr.length - 1 ? '#C8A96E' : i === 0 ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55' }}>
+                    <Text style={{ color: i === arr.length - 1 ? '#C8A96ECC' : i === 0 ? '#EEEEF8' : SOL_THEME.text, fontSize: i === 0 ? 14 : 13, lineHeight: i === 0 ? 23 : 22, fontStyle: 'italic', fontWeight: i === 0 ? '600' : '400' }}>{para.trim()}</Text>
+                  </View>
+                ))}
+                <View style={{ alignItems: 'center', paddingTop: 8, marginBottom: 10 }}>
+                  <Text style={{ color: ZODIAC_INDIGO + '55', fontSize: 9, letterSpacing: 3, fontFamily: mono }}>✦  ⊚  ✦</Text>
+                  <Text style={{ color: '#C8A96E55', fontSize: 8, fontStyle: 'italic', letterSpacing: 1, fontFamily: mono, marginTop: 4 }}>The cross is sealed. The staff is read.</Text>
+                </View>
+                <TouchableOpacity onPress={() => setCelticReading(null)} style={{ alignSelf: 'center' }}>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>✕  new reading</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity onPress={() => generateCelticReading(celticCrossSpread)} disabled={celticLoading}
+                style={{ paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', backgroundColor: celticLoading ? '#0D0A1A' : ZODIAC_INDIGO + 'CC', alignItems: 'center', gap: 4 }}>
+                <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 1 }}>{celticLoading ? 'The cross is turning...' : 'READ THE CELTIC CROSS  ✦'}</Text>
+                {!celticLoading && <Text style={{ color: '#FFFFFF66', fontSize: 8, fontFamily: mono, letterSpacing: 2 }}>TEN CARDS · FULL ORACLE</Text>}
+              </TouchableOpacity>
+            )}
+          </View>
+          )}
         </View>
         )}
       </View>
@@ -1670,16 +1659,25 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       )}
 
       {/* PSI PRACTICE LOG */}
-      <View style={{ padding: 14, borderRadius: 12, borderWidth: 1, borderColor: PSI_PURPLE + '33', backgroundColor: PSI_PURPLE + '08', marginBottom: 16 }}>
-        <TouchableOpacity onPress={() => setPsiCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: psiCollapsed ? 0 : 10 }}>
-          <Text style={{ color: PSI_PURPLE, fontSize: 12, fontFamily: mono }}>ψ</Text>
-          <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>PSI PRACTICE</Text>
-          <Text style={{ color: PSI_PURPLE + '55', fontSize: 7, fontFamily: mono, letterSpacing: 1 }}>CONSCIOUSNESS RESEARCH</Text>
-          <Text style={{ color: PSI_PURPLE + 'AA', fontSize: 11 }}>{psiCollapsed ? '▶' : '▼'}</Text>
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: PSI_PURPLE + '44', backgroundColor: '#060012', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setPsiCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: PSI_PURPLE + '0C', fontFamily: mono, lineHeight: 72 }}>ψ</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: psiCollapsed ? 0 : 4 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: PSI_PURPLE + '18', borderWidth: 1, borderColor: PSI_PURPLE + '44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: PSI_PURPLE, fontSize: 18, fontFamily: mono }}>ψ</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>PSI PRACTICE</Text>
+              <Text style={{ color: PSI_PURPLE + '77', fontSize: 9, fontFamily: mono }}>consciousness research · frontier science</Text>
+            </View>
+            <Text style={{ color: PSI_PURPLE + 'AA', fontSize: 11 }}>{psiCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {psiCollapsed && <Text style={{ color: PSI_PURPLE + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Remote viewing · precognition · ganzfeld. Log your sessions. Let the record speak.</Text>}
         </TouchableOpacity>
+        {!psiCollapsed && <View style={{ height: 1, backgroundColor: PSI_PURPLE + '22' }} />}
 
         {!psiCollapsed && !focusMode && (
-        <View>
+        <View style={{ padding: 14 }}>
         <View style={{ padding: 10, borderRadius: 8, backgroundColor: PSI_PURPLE + '0A', borderWidth: 1, borderColor: PSI_PURPLE + '22', marginBottom: 10 }}>
           <Text style={{ color: PSI_PURPLE + 'BB', fontSize: 9, lineHeight: 14, fontFamily: mono }}>
             ψ FRONTIER SCIENCE — Psi phenomena are genuinely contested. The evidence exists (Radin meta-analyses, STARGATE declassified, GCP 30-year dataset) and is genuinely uncertain. This is not mysticism and not consensus. Log what you observe. Draw your own conclusions.
@@ -1807,15 +1805,24 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       </View>
 
       {/* ── LAMAGUE SIGIL FORGE ── */}
-      <View style={{ padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#CC88FF44', backgroundColor: '#0A0018', marginBottom: 16 }}>
-        <TouchableOpacity onPress={() => setSigilCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: sigilCollapsed ? 0 : 14 }}>
-          <Text style={{ color: '#CC88FF', fontSize: 12, fontFamily: mono }}>⟟</Text>
-          <Text style={{ color: '#CC88FF', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>SIGIL FORGE</Text>
-          <Text style={{ color: '#CC88FF55', fontSize: 7, fontFamily: mono, letterSpacing: 1 }}>LAMAGUE RITUAL</Text>
-          <Text style={{ color: '#CC88FFAA', fontSize: 11 }}>{sigilCollapsed ? '▶' : '▼'}</Text>
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#CC88FF44', backgroundColor: '#08001A', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setSigilCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: '#CC88FF0C', fontFamily: mono, lineHeight: 72 }}>⟟</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: sigilCollapsed ? 0 : 4 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#CC88FF18', borderWidth: 1, borderColor: '#CC88FF44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#CC88FF', fontSize: 18, fontFamily: mono }}>⟟</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#CC88FF', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>SIGIL FORGE</Text>
+              <Text style={{ color: '#CC88FF77', fontSize: 9, fontFamily: mono }}>LAMAGUE ritual · intention into form</Text>
+            </View>
+            <Text style={{ color: '#CC88FFAA', fontSize: 11 }}>{sigilCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {sigilCollapsed && <Text style={{ color: '#CC88FF55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Speak an intention. The Forge crystallises it into a living symbol.</Text>}
         </TouchableOpacity>
+        {!sigilCollapsed && <View style={{ height: 1, backgroundColor: '#CC88FF22' }} />}
         {!sigilCollapsed && !focusMode && (
-          <View style={{ gap: 12 }}>
+          <View style={{ padding: 14, gap: 12 }}>
             {/* Ritual type row */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {(['manifestation','protection','banishing','binding','wisdom','chaos','love','clarity']).map(t => (
@@ -1866,15 +1873,24 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       </View>
 
       {/* ── THE CHIRAL LENS ── */}
-      <View style={{ padding: 14, borderRadius: 12, borderWidth: 1, borderColor: CHIRAL_VIOLET + '55', backgroundColor: CHIRAL_VIOLET + '08', marginBottom: 16 }}>
-        <TouchableOpacity onPress={() => setChiralCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: chiralCollapsed ? 0 : 8 }}>
-          <Text style={{ color: CHIRAL_VIOLET, fontSize: 13, fontFamily: mono }}>∿</Text>
-          <Text style={{ color: CHIRAL_VIOLET, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>THE CHIRAL LENS</Text>
-          <Text style={{ color: CHIRAL_VIOLET + '55', fontSize: 7, fontFamily: mono, letterSpacing: 1 }}>REALITY INVERSION</Text>
-          <Text style={{ color: CHIRAL_VIOLET + 'AA', fontSize: 11 }}>{chiralCollapsed ? '▶' : '▼'}</Text>
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: CHIRAL_VIOLET + '44', backgroundColor: '#07000F', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setChiralCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: CHIRAL_VIOLET + '0C', fontFamily: mono, lineHeight: 72 }}>∿</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: chiralCollapsed ? 0 : 4 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: CHIRAL_VIOLET + '18', borderWidth: 1, borderColor: CHIRAL_VIOLET + '44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: CHIRAL_VIOLET, fontSize: 18, fontFamily: mono }}>∿</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: CHIRAL_VIOLET, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>THE CHIRAL LENS</Text>
+              <Text style={{ color: CHIRAL_VIOLET + '77', fontSize: 9, fontFamily: mono }}>reality inversion · the mirror protocol</Text>
+            </View>
+            <Text style={{ color: CHIRAL_VIOLET + 'AA', fontSize: 11 }}>{chiralCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {chiralCollapsed && <Text style={{ color: CHIRAL_VIOLET + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>State a reality. The Lens shows its mirror — the adjacent truth the algorithm optimises away from.</Text>}
         </TouchableOpacity>
+        {!chiralCollapsed && <View style={{ height: 1, backgroundColor: CHIRAL_VIOLET + '22' }} />}
         {!chiralCollapsed && !focusMode && (
-          <View>
+          <View style={{ padding: 14 }}>
             <Text style={{ color: '#666688', fontSize: 10, lineHeight: 16, marginBottom: 12, fontStyle: 'italic' }}>
               State a reality you are holding — a belief, a reading, a situation. The Lens shows you its mirror: the adjacent truth, the current the algorithm optimizes away from. Not a contradiction. A different molecule.
             </Text>
@@ -1899,15 +1915,24 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       </View>
 
       {/* ── THE ZONK ZONE ── */}
-      <View style={{ padding: 14, borderRadius: 12, borderWidth: 1, borderColor: ZONK_GOLD + '44', backgroundColor: ZONK_GOLD + '08', marginBottom: 16 }}>
-        <TouchableOpacity onPress={() => setZonkCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: zonkCollapsed ? 0 : 8 }}>
-          <Text style={{ color: ZONK_GOLD, fontSize: 12, fontFamily: mono }}>◬</Text>
-          <Text style={{ color: ZONK_GOLD, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>THE ZONK ZONE</Text>
-          <Text style={{ color: ZONK_GOLD + '55', fontSize: 7, fontFamily: mono, letterSpacing: 1 }}>SPECULATIVE FIELD</Text>
-          <Text style={{ color: ZONK_GOLD + 'AA', fontSize: 11 }}>{zonkCollapsed ? '▶' : '▼'}</Text>
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZONK_GOLD + '44', backgroundColor: '#0A0900', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setZonkCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: ZONK_GOLD + '0C', fontFamily: mono, lineHeight: 72 }}>◬</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: zonkCollapsed ? 0 : 4 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ZONK_GOLD + '18', borderWidth: 1, borderColor: ZONK_GOLD + '44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: ZONK_GOLD, fontSize: 18, fontFamily: mono }}>◬</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: ZONK_GOLD, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>THE ZONK ZONE</Text>
+              <Text style={{ color: ZONK_GOLD + '77', fontSize: 9, fontFamily: mono }}>speculative field · grains of truth in the sand</Text>
+            </View>
+            <Text style={{ color: ZONK_GOLD + 'AA', fontSize: 11 }}>{zonkCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {zonkCollapsed && <Text style={{ color: ZONK_GOLD + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Wild hypotheses welcome. Aura walks you through it — naming every register, finding the grain.</Text>}
         </TouchableOpacity>
+        {!zonkCollapsed && <View style={{ height: 1, backgroundColor: ZONK_GOLD + '22' }} />}
         {!zonkCollapsed && !focusMode && (
-        <View>
+        <View style={{ padding: 14 }}>
         <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, lineHeight: 16, marginBottom: 12, fontStyle: 'italic' }}>
           A field of lies and abstract thought. Throw in a wild hypothesis, an impossible question, a pattern you can't shake. Aura walks you through it — naming every register, finding the grain of truth in the sand. Forge a pillar, or watch it dissolve. Nothing here is proven. Everything is worth exploring.
         </Text>
@@ -1975,16 +2000,21 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         )}
       </View>
 
-      {/* YOUR CHART — natal data (at bottom, after psi + zonk) */}
+      {/* YOUR CHART — natal data */}
       {birthData && !editingBirth && sunSign && (
-        <View style={{ padding: 16, borderRadius: 14, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', backgroundColor: ZODIAC_INDIGO + '0C', marginBottom: 16, overflow: 'hidden' }}>
-          <Text style={{ position: 'absolute', top: -18, right: -6, fontSize: 88, color: ZODIAC_INDIGO + '0C', lineHeight: 100, fontFamily: mono }}>⊚</Text>
-          <TouchableOpacity onPress={() => setNatalCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: natalCollapsed ? 0 : 14 }}>
-            <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>⊚ YOUR NATAL CHART</Text>
-            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 10 }}>{natalCollapsed ? '▶' : '▼'}</Text>
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', backgroundColor: '#060010', marginBottom: 16, overflow: 'hidden' }}>
+          <Text style={{ position: 'absolute', top: -18, right: -6, fontSize: 88, color: ZODIAC_INDIGO + '09', lineHeight: 100, fontFamily: mono }}>⊚</Text>
+          <TouchableOpacity onPress={() => setNatalCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 16 }}>⊚</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>YOUR NATAL CHART</Text>
+              <Text style={{ color: ZODIAC_INDIGO + '77', fontSize: 9, fontFamily: mono }}>{sunSign.glyph} {sunSign.name}{moonSign ? ` · ☽ ${moonSign.name}` : ''}</Text>
+            </View>
+            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 11 }}>{natalCollapsed ? '▶' : '▼'}</Text>
           </TouchableOpacity>
+          {!natalCollapsed && <View style={{ height: 1, backgroundColor: ZODIAC_INDIGO + '22' }} />}
           {!natalCollapsed && !focusMode && (
-          <View>
+          <View style={{ padding: 16 }}>
           {/* Sun */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: ZODIAC_INDIGO + '22' }}>
             <View style={{ width: 44, alignItems: 'center' }}>
