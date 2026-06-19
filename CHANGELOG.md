@@ -1,5 +1,28 @@
 # Changelog
 
+## [4.7.0] — 2026-06-19 — COMPANION HUD · IMAGE FIX · CAPTURE BUTTON · ART
+
+### COMPANION SCENE
+- **Image fix**: CompanionScene now shows the companion of the current zone (was always showing archetype default)
+- **HUD header**: Name + LVL/Stage + HP bar + HP numbers at top of every scene — persists across zones
+- **Quick action buttons**: ⚔ BATTLE / ⊛ COMPANION / ✦ TALK buttons on right side of scene
+- **Player HP in HUD**: HUD now shows player vitality, not enemy HP (bug fixed)
+- **Removed**: devStagePin viewer and XP/stage strip — info now in HUD
+
+### CAPTURE SYSTEM
+- **CAPTURE button**: Full-width button in battle UI below 2×2 grid
+- **Catch chance shown**: percentage displayed live based on enemy HP
+- **One attempt per encounter**: button grays to BINDING ATTEMPTED after use
+
+### PERSISTENCE
+- **equippedCompanionSkin persisted**: `sol_equipped_skin` — equipped companion survives app restarts
+- **Art corrected**: anoth_lycheetah_edition / anoth_lycheetah_special were content-swapped — fixed
+
+### ART
+- **64 companion files**: all re-sourced from jukebox-bg-removed set in Downloads
+
+---
+
 ## [4.6.1] — 2026-06-19 — RELICS · HP SHIMMER · COSMETICS PERSISTENCE
 
 ### RELIC SYSTEM — COMPLETE
