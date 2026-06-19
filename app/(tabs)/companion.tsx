@@ -169,7 +169,7 @@ const RARITY_COLORS: Record<RarityTier, string> = {
   ORIGIN: '#888899', ARCANE: '#7BA7C7', MYTHIC: '#FFD700', LEGENDARY: '#B490FF', SPECTRAL: '#8855FF',
 };
 // Hidden from companion grid — kept in SKIN_IDS for navigation
-const SKIN_GRID_HIDDEN = new Set<SkinId>(['noetic', 'kabbala', 'obsidian', 'pulse_sanctum']);
+const SKIN_GRID_HIDDEN = new Set<SkinId>(['noetic', 'kabbala', 'pulse_sanctum']);
 const RARITY_GROUPS: { tier: RarityTier; ids: SkinId[] }[] = RARITY_ORDER.map(tier => ({
   tier,
   ids: SKIN_IDS.filter(s => SKIN_RARITY[s].tier === tier && !SKIN_GRID_HIDDEN.has(s)),
@@ -1620,6 +1620,8 @@ type BattleState = {
   enemyStunned: boolean;
   playerShielded: boolean;
   lastPlayerDmg: number;
+  captured: boolean;
+  captureAttempted: boolean;
 };
 
 // ─── Player stat model ───────────────────────────────────────────────────────
@@ -1970,7 +1972,7 @@ function freshWave(wave: number, keepPlayerHP?: number, vit?: number): BattleSta
     tokens: waveTokens(wave), won: false, defending: false,
     enemyLine: enemy.lines.enter, loot: null,
     log: [], waveXP: xp,
-    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0,
+    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0, captured: false, captureAttempted: false,
   };
 }
 
@@ -2057,7 +2059,7 @@ function freshZoneWave(skinId: SkinId, wave: number, keepPlayerHP?: number, vit?
     tokens: waveTokens(wave), won: false, defending: false,
     enemyLine: enemy.lines.enter, loot: null,
     log: [`◈ Encounter in ${SKINS[skinId]?.name ?? skinId}!`], waveXP: xp,
-    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0,
+    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0, captured: false, captureAttempted: false,
   };
 }
 
@@ -2227,7 +2229,7 @@ function CompanionScene({
   battleHP, battleMaxHP, battleEntityName, battleWave, entityShakeAnim, eating, evoPath, devStagePin,
   gearCrown, gearBody, gearCape, gearMantle, companionSpec, equippedCompanionSkin,
   currentRoomId, navigateRoom, getLockStatus, showRoomLabel, sceneFade,
-  roomLore, roomLoreAnim, onDismissLore,
+  roomLore, roomLoreAnim, onDismissLore, onSwitchTab,
 }: {
   stage: EvolutionStage; mood: CompanionMood; skin: typeof SKINS[SkinId]; archetype: Archetype;
   onTap: () => void; phrase: string | null; phraseAnim: Animated.Value; onDismissPhrase: () => void;
@@ -2246,6 +2248,7 @@ function CompanionScene({
   roomLore: string | null;
   roomLoreAnim: Animated.Value;
   onDismissLore: () => void;
+  onSwitchTab: (tab: 'battle'|'companion'|'bond'|'field'|'talk') => void;
 }) {
   const stageData = STAGES[stage];
   const { color, bgColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
@@ -2498,7 +2501,7 @@ function CompanionScene({
               {(() => {
                 const s = devStagePin !== null ? devStagePin : stage;
                 const stageKey = s <= 1 ? 1 : s <= 3 ? 2 : (s === 5 && skin.id === 'lycheetah') ? 5 : 3;
-                const zoneImg = ZONE_COMPANION_IMAGES[`${equippedCompanionSkin ?? archetype.defaultSkin}_${stageKey}`];
+                const zoneImg = ZONE_COMPANION_IMAGES[`${equippedCompanionSkin ?? skin.id}_${stageKey}`];
                 if (zoneImg) return <Image source={zoneImg} style={{ width:150, height:220 }} resizeMode="contain" />;
                 const ck = `${archetype.id}_${s}`;
                 const imgSrc = COMPANION_IMAGES[ck];
@@ -2533,11 +2536,39 @@ function CompanionScene({
         <Text style={{ color, fontSize:12, fontFamily:mono, letterSpacing:2, opacity:0.75, marginTop:6 }}>{STAGES[stage].ground}</Text>
       </View>
 
-      {companionName ? (
-        <View style={{ position:'absolute', top:10, left:0, right:0, alignItems:'center' }}>
-          <Text style={{ color, fontSize:11, fontFamily:mono, letterSpacing:2, opacity:0.75 }}>{companionName}</Text>
+      {/* HUD — top strip: name / stage / HP */}
+      <View style={{ position:'absolute', top:8, left:10, right:10, flexDirection:'row', alignItems:'flex-start', zIndex:5, gap:6 }} pointerEvents="none">
+        <View style={{ flex:1 }}>
+          <Text style={{ color, fontSize:11, fontFamily:mono, letterSpacing:2, fontWeight:'700', textShadowColor:'#000000', textShadowOffset:{width:0,height:1}, textShadowRadius:6 }} numberOfLines={1}>
+            {companionName || skin.name}
+          </Text>
+          <Text style={{ color:'#445566', fontSize:7, fontFamily:mono, letterSpacing:2, marginTop:1 }}>
+            LVL {stage} · {stageData.name}
+          </Text>
         </View>
-      ) : null}
+        <View style={{ alignItems:'flex-end', gap:3 }}>
+          <Text style={{ color: battleHP < battleMaxHP * 0.25 ? '#FF6644' : '#44FF88', fontSize:8, fontFamily:mono, fontWeight:'700', textShadowColor:'#000000', textShadowRadius:4 }}>
+            {battleHP}<Text style={{ color:'#334455', fontSize:7 }}>/{battleMaxHP}</Text>
+          </Text>
+          <View style={{ width:70, height:4, backgroundColor:'#0A180A', borderRadius:3, overflow:'hidden' }}>
+            <View style={{ height:4, width:`${Math.round((battleHP / Math.max(1, battleMaxHP)) * 100)}%` as any,
+              backgroundColor: battleHP < battleMaxHP * 0.25 ? '#FF4444' : battleHP < battleMaxHP * 0.55 ? '#FFAA22' : '#44FF88', borderRadius:3 }} />
+          </View>
+        </View>
+      </View>
+      {/* Quick action buttons — bottom-right of scene */}
+      <View style={{ position:'absolute', bottom:52, right:10, flexDirection:'column', gap:5, zIndex:5 }}>
+        {([
+          { tab:'battle'    as const, label:'⚔' },
+          { tab:'companion' as const, label:'⊛' },
+          { tab:'talk'      as const, label:'✦' },
+        ]).map(({ tab, label }) => (
+          <TouchableOpacity key={tab} onPress={() => onSwitchTab(tab)} activeOpacity={0.7}
+            style={{ width:30, height:30, borderRadius:8, borderWidth:1, borderColor:color+'55', backgroundColor:'#000000CC', alignItems:'center', justifyContent:'center' }}>
+            <Text style={{ color:color, fontSize:13, fontFamily:mono }}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:color, opacity:victoryFlash }} />
 
@@ -2891,7 +2922,7 @@ export default function CompanionScreen() {
         'cascade_library_v3','sol_companion_skin','sol_companion_battle','sol_companion_fed',
         'sol_companion_archetype','sol_premium','sol_companion_named','sol_companion_path',
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
-        'sol_companion_spec','sol_battle_wins','sol_cosmetics',
+        'sol_companion_spec','sol_battle_wins','sol_cosmetics','sol_equipped_skin',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -2981,6 +3012,8 @@ export default function CompanionScreen() {
 
       const cosmeticsRaw = get('sol_cosmetics');
       if (cosmeticsRaw) { try { const c = JSON.parse(cosmeticsRaw); if (c.halo) setEquippedHalo(c.halo); if (c.wings) setEquippedWings(c.wings); if (c.pet) setEquippedPet(c.pet); } catch {} }
+      const equippedSkinRaw = get('sol_equipped_skin') as SkinId | null;
+      if (equippedSkinRaw && SKIN_IDS.includes(equippedSkinRaw)) setEquippedCompanionSkin(equippedSkinRaw);
 
       const skinRaw = get('sol_companion_skin') as SkinId | null;
       if (skinRaw && SKIN_IDS.includes(skinRaw)) setActiveSkin(skinRaw);
@@ -3776,6 +3809,67 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     Haptics.selectionAsync();
   };
 
+  const CAPTURE_FAIL_LINES = [
+    'You cannot hold what has no shape.',
+    'Not yet. I am not finished with you.',
+    'The sigil breaks. I remain.',
+    'Your vessel is not ready for me.',
+    'Try again. I respect the attempt.',
+    'The binding slips. Fight harder first.',
+    'I slip through every net you weave.',
+    'Weaken me further. Then we talk.',
+  ];
+  const CAPTURE_SUCCESS_LINES = [
+    'So. You have named me. I will carry that.',
+    'The contract is sealed. I am yours to study.',
+    'Contained. For now. This is interesting.',
+    'I did not expect to be caught. Well done.',
+    'The field collapses inward. I follow you now.',
+    'You earned this. I yield.',
+    'Strange. I feel still. Lead on.',
+  ];
+
+  const handleCapture = async () => {
+    if (!battle || battle.won || battle.captured || attackAnim) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    const hpPct = battle.entityHP / battle.maxHP;
+    const lckBonus = (relics.includes('first_blood') ? 0.05 : 0) + (relics.includes('ten_battles') ? 0.08 : 0);
+    // Higher catch rate at lower HP — max ~70% at 0 HP, ~15% at full HP
+    const catchChance = Math.max(0.05, Math.min(0.70, (1 - hpPct) * 0.65 + lckBonus));
+    const roll = Math.random();
+    const success = roll < catchChance;
+
+    if (success) {
+      const successLine = CAPTURE_SUCCESS_LINES[Math.floor(Math.random() * CAPTURE_SUCCESS_LINES.length)];
+      const menagerieRaw = await AsyncStorage.getItem('sol_menagerie');
+      const menagerie: Array<{ name: string; date: string; zone: string }> = menagerieRaw ? JSON.parse(menagerieRaw) : [];
+      const already = menagerie.some(m => m.name === battle.entityName);
+      if (!already) {
+        menagerie.unshift({ name: battle.entityName, date: new Date().toISOString().split('T')[0], zone: activeSkin });
+        await AsyncStorage.setItem('sol_menagerie', JSON.stringify(menagerie));
+      }
+      const next: BattleState = { ...battle, captured: true, captureAttempted: true, enemyLine: successLine, won: true };
+      setBattle(next);
+      await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(next));
+      showToast(already ? `${battle.entityName} already in MENAGERIE` : `${battle.entityName} captured!`);
+    } else {
+      const failLine = CAPTURE_FAIL_LINES[Math.floor(Math.random() * CAPTURE_FAIL_LINES.length)];
+      // Failed capture — enemy retaliates
+      const def = getEnemyDef(battle.entityName);
+      const dmg = Math.max(1, Math.round(def.atk * 1.3));
+      const newPlayerHP = Math.max(0, battle.playerHP - dmg);
+      const next: BattleState = {
+        ...battle, captureAttempted: true, enemyLine: failLine,
+        playerHP: newPlayerHP, log: [...battle.log, `◈ Capture failed — ${battle.entityName} retaliates for ${dmg}`],
+      };
+      setBattle(next);
+      await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(next));
+      if (newPlayerHP <= 0) {
+        setTimeout(() => _commitBattleResult(false), 600);
+      }
+    }
+  };
+
   const handleBattleItem = async (item: BattleItem) => {
     if (!battle || battle.won || attackAnim) return;
     setItemMenuOpen(false);
@@ -3980,8 +4074,8 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         stage={stage} mood={mood} skin={skin} archetype={archetype}
         onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim} onDismissPhrase={dismissPhrase}
         companionName={displayName}
-        battleHP={battle?.entityHP ?? 0}
-        battleMaxHP={battle?.maxHP ?? 80}
+        battleHP={battle?.playerHP ?? 80}
+        battleMaxHP={battle?.maxPlayerHP ?? 80}
         battleEntityName={battle?.entityName ?? ''}
         battleWave={battle?.wave ?? 1}
         entityShakeAnim={entityShakeAnim}
@@ -4002,6 +4096,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         roomLore={roomLore}
         roomLoreAnim={roomLoreAnim}
         onDismissLore={dismissLore}
+        onSwitchTab={tab => { setActiveTab(tab); setTabMinimized(false); }}
       />
 
       {xpPop && (
@@ -4010,59 +4105,6 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
         </Animated.Text>
       )}
 
-      {/* ── DEV STAGE VIEWER (moved to top for fast access) ─────────────── */}
-      {__DEV__ && (
-        <View style={{ marginHorizontal:16, marginTop:8, marginBottom:4, padding:10, borderRadius:10, borderWidth:1, borderColor:'#FF440055', backgroundColor:'#FF000008' }}>
-          <Text style={{ color:'#FF4444', fontSize:8, letterSpacing:2, fontFamily:mono, marginBottom:6 }}>⚠ DEV — STAGE VIEWER</Text>
-          <View style={{ flexDirection:'row', gap:6, flexWrap:'wrap' }}>
-            {([0,1,2,3,4,5] as EvolutionStage[]).map(s => (
-              <TouchableOpacity key={s} onPress={() => setDevStagePin(devStagePin === s ? null : s)}
-                style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:6, borderWidth:1,
-                  borderColor: devStagePin === s ? '#FF4444' : '#FF444433',
-                  backgroundColor: devStagePin === s ? '#FF000033' : 'transparent' }}>
-                <Text style={{ color: devStagePin === s ? '#FF6666' : '#FF444488', fontSize:11, fontFamily:mono }}>
-                  {s === 0 ? 'S0' : s === 1 ? 'S1★' : `S${s}`}
-                </Text>
-              </TouchableOpacity>
-            ))}
-            {devStagePin !== null && (
-              <TouchableOpacity onPress={() => setDevStagePin(null)} style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:6, borderWidth:1, borderColor:'#FFFFFF22' }}>
-                <Text style={{ color:'#FFFFFF44', fontSize:11, fontFamily:mono }}>RESET</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text style={{ color:'#FF444466', fontSize:9, fontFamily:mono, marginTop:4 }}>
-            {devStagePin !== null ? `PINNED TO STAGE ${devStagePin}` : 'REAL STAGE'}
-          </Text>
-        </View>
-      )}
-
-
-      {/* ── XP / STAGE PROGRESS STRIP ───────────────────────────────────── */}
-      <View style={{ marginHorizontal:16, marginTop:8, marginBottom:6, padding:10, borderRadius:10, borderWidth:1, borderColor:color+'22', backgroundColor:color+'08', flexDirection:'row', gap:12, alignItems:'center' }}>
-        {/* Stage progress */}
-        <View style={{ flex:1 }}>
-          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-            <Text style={{ color:color, fontSize:8, fontFamily:mono, letterSpacing:1, fontWeight:'700' }}>EVO · {stageData.name}</Text>
-            <Text style={{ color:'#333355', fontSize:8, fontFamily:mono }}>{stage<5 ? `${totalDives}/${stageData.nextAt}` : '∞'}</Text>
-          </View>
-          <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden' }}>
-            <View style={{ height:3, width:`${Math.round(evProg*100)}%` as any, backgroundColor:color, borderRadius:2 }} />
-          </View>
-        </View>
-        {/* Divider */}
-        <View style={{ width:1, height:28, backgroundColor:color+'22' }} />
-        {/* XP progress */}
-        <View style={{ flex:1 }}>
-          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-            <Text style={{ color:color+'CC', fontSize:8, fontFamily:mono, letterSpacing:1 }}>{lvl.cur.glyph} LV.{lvl.level}</Text>
-            <Text style={{ color:'#333355', fontSize:8, fontFamily:mono }}>{xp} XP</Text>
-          </View>
-          <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden' }}>
-            <View style={{ height:3, width:`${Math.round(lvl.progress*100)}%` as any, backgroundColor:color+'AA', borderRadius:2 }} />
-          </View>
-        </View>
-      </View>
 
 
       {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
@@ -4259,7 +4301,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:12, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:SKIN_RARITY[equippedCompanionSkin].color+'44', backgroundColor:SKIN_RARITY[equippedCompanionSkin].color+'0A' }}>
                 <Text style={{ color:SKIN_RARITY[equippedCompanionSkin].color, fontSize:8, fontFamily:mono, letterSpacing:1 }}>EQUIPPED</Text>
                 <Text style={{ color:'#CCCCDD', fontSize:9, fontFamily:mono, fontWeight:'700' }}>{COMPANION_LORE[equippedCompanionSkin]?.name ?? SKINS[equippedCompanionSkin].name}</Text>
-                <TouchableOpacity onPress={() => setEquippedCompanionSkin(null)} style={{ marginLeft:'auto' }}>
+                <TouchableOpacity onPress={async () => { setEquippedCompanionSkin(null); await AsyncStorage.setItem('sol_equipped_skin', ''); }} style={{ marginLeft:'auto' }}>
                   <Text style={{ color:'#555566', fontSize:8, fontFamily:mono }}>✕ UNEQUIP</Text>
                 </TouchableOpacity>
               </View>
@@ -4916,8 +4958,10 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                     style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1, borderColor:'#333344', alignItems:'center' }}>
                     <Text style={{ color:'#666677', fontSize:10, fontFamily:mono, letterSpacing:1 }}>CLOSE</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    setEquippedCompanionSkin(equippedCompanionSkin === sid ? null : sid);
+                  <TouchableOpacity onPress={async () => {
+                    const next = equippedCompanionSkin === sid ? null : sid;
+                    setEquippedCompanionSkin(next);
+                    await AsyncStorage.setItem('sol_equipped_skin', next ?? '');
                     setCompanionLoreModal(null);
                   }} style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1.5,
                     borderColor: equippedCompanionSkin === sid ? '#FF4466' : s.color+'88',
@@ -5285,6 +5329,27 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                     })}
                   </View>
                 </View>
+
+                {/* CAPTURE button — full width */}
+                {!battle.won && (
+                  <TouchableOpacity
+                    onPress={handleCapture}
+                    disabled={disabled || battle.captureAttempted || battle.captured}
+                    style={{ paddingVertical:12, paddingHorizontal:10, borderRadius:12, borderWidth:1.5, marginBottom:8,
+                      borderColor: (disabled || battle.captureAttempted) ? '#1A0A1A' : '#DD44FF55',
+                      backgroundColor: (disabled || battle.captureAttempted) ? '#080408' : '#DD44FF10',
+                      flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    <Text style={{ color: (disabled || battle.captureAttempted) ? '#2A1A2A' : '#DD44FF', fontSize:16, fontFamily:mono }}>◈</Text>
+                    <View>
+                      <Text style={{ color: (disabled || battle.captureAttempted) ? '#221A22' : '#DD44FF', fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>
+                        {battle.captureAttempted ? 'BINDING ATTEMPTED' : 'CAPTURE'}
+                      </Text>
+                      <Text style={{ color: (disabled || battle.captureAttempted) ? '#1A0A1A' : '#AA44CC66', fontSize:7, fontFamily:mono }}>
+                        {battle.captureAttempted ? 'one attempt per encounter' : `${Math.round(Math.max(5, Math.min(70, (1 - battle.entityHP/battle.maxHP)*65)))}% chance · weakened foes easier`}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
 
                 {/* Out of spell tokens notice */}
                 {tokensLeft === 0 && (
