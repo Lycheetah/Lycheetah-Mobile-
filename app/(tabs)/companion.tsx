@@ -1779,6 +1779,43 @@ const LOOT_TABLE: LootItem[] = [
   { id:'eye_entropy',     name:'ENTROPY EYE',      rarity:'epic',     glyph:'◈', bonus:{ wil:8, lck:6, spd:4 }, lore:'Entropy Prime looked back. This is what fell out.' },
   { id:'heart_athanor',   name:"ATHANOR'S EMBER",  rarity:'epic',     glyph:'△', bonus:{ atk:8, vit:6, res:6 },  lore:"The shadow-companion's heart-coal. Carries memory of every archetype it inverted." },
 ];
+type CosmeticRarity = 'ORIGIN' | 'ARCANE' | 'MYTHIC' | 'LEGENDARY' | 'SPECTRAL';
+type CosmeticItem = { id: string; name: string; rarity: CosmeticRarity; glyph: string; file: string | null };
+const RARITY_COLOR: Record<CosmeticRarity, string> = {
+  ORIGIN: '#C49A3C', ARCANE: '#4488FF', MYTHIC: '#9B6BFF', LEGENDARY: '#FFD700', SPECTRAL: '#FF44FF',
+};
+const HALO_ITEMS: CosmeticItem[] = [
+  { id:'halo_simple',  name:'SIMPLE HALO',   rarity:'ORIGIN',    glyph:'◯', file:null },
+  { id:'halo_rune',    name:'RUNIC BAND',    rarity:'ARCANE',    glyph:'ᚱ', file:null },
+  { id:'halo_orbit',   name:'ORBITAL CROWN', rarity:'MYTHIC',    glyph:'⊛', file:null },
+  { id:'halo_crown',   name:'SOLAR CROWN',   rarity:'LEGENDARY', glyph:'☀', file:null },
+  { id:'halo_void',    name:'VOID SINGULARITY',rarity:'SPECTRAL',glyph:'◈', file:null },
+];
+const WINGS_ITEMS: CosmeticItem[] = [
+  { id:'wings_feather', name:'FEATHERED WINGS', rarity:'ORIGIN',    glyph:'◁', file:null },
+  { id:'wings_moth',    name:'MOTH WINGS',      rarity:'ARCANE',    glyph:'◈', file:null },
+  { id:'wings_crystal', name:'CRYSTAL WINGS',   rarity:'MYTHIC',    glyph:'✦', file:null },
+  { id:'wings_solar',   name:'SOLAR FLARE',     rarity:'LEGENDARY', glyph:'⋆', file:null },
+  { id:'wings_void',    name:'VOID WINGS',      rarity:'SPECTRAL',  glyph:'◉', file:null },
+];
+const PET_ITEMS: CosmeticItem[] = [
+  { id:'pet_glimmer',   name:'GLIMMER',     rarity:'ORIGIN',    glyph:'✧', file:null },
+  { id:'pet_seedling',  name:'SEEDLING',    rarity:'ORIGIN',    glyph:'✿', file:null },
+  { id:'pet_puffmoth',  name:'PUFFMOTH',    rarity:'ORIGIN',    glyph:'◦', file:null },
+  { id:'pet_inkfin',    name:'INKFIN',      rarity:'ARCANE',    glyph:'∿', file:null },
+  { id:'pet_runecat',   name:'RUNECAT',     rarity:'ARCANE',    glyph:'ᚱ', file:null },
+  { id:'pet_jeleph',    name:'JELEPH',      rarity:'ARCANE',    glyph:'◉', file:null },
+  { id:'pet_shardling', name:'SHARDLING',   rarity:'MYTHIC',    glyph:'✦', file:null },
+  { id:'pet_veilcat',   name:'VEILCAT',     rarity:'MYTHIC',    glyph:'◈', file:null },
+  { id:'pet_nullhare',  name:'NULLHARE',    rarity:'MYTHIC',    glyph:'⊜', file:null },
+  { id:'pet_solcub',    name:'SOLCUB',      rarity:'LEGENDARY', glyph:'☀', file:null },
+  { id:'pet_cinderbird',name:'CINDERBIRD',  rarity:'LEGENDARY', glyph:'◎', file:null },
+  { id:'pet_athanor',   name:'ATHANOR',     rarity:'LEGENDARY', glyph:'△', file:null },
+  { id:'pet_voidling',  name:'VOIDLING',    rarity:'SPECTRAL',  glyph:'◌', file:null },
+  { id:'pet_prismshard',name:'PRISMSHARD',  rarity:'SPECTRAL',  glyph:'✦', file:null },
+  { id:'pet_nebulox',   name:'NEBULOX',     rarity:'SPECTRAL',  glyph:'⊚', file:null },
+];
+
 const BATTLE_COMPANION_LINES: Record<string, string[]> = {
   vigil:     ['The archive will outlast you.','I have seen your kind before.','Every entropy has a counter-force.','You cannot erase what is already known.','The lantern holds.'],
   alchemist: ['Transmutation is your only way out.','Everything breaks — I just speed it up.','Dissolve or be dissolved.','The forge is already lit.','Gold or ash — your choice.'],
@@ -2477,6 +2514,7 @@ export default function CompanionScreen() {
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
   const [activeTab,      setActiveTab]     = useState<'battle'|'bond'|'companion'|'field'|'talk'>('battle');
+  const [tabMinimized,   setTabMinimized]  = useState(false);
 
   // Section collapse state — companion tab
   const [battleDialogueOn, setBattleDialogueOn] = useState(false);
@@ -2568,6 +2606,10 @@ export default function CompanionScreen() {
   const [dreamFragment, setDreamFragment] = useState<{ domain: string; glyph: string; color: string; text: string } | null>(null);
   const [companionLoreModal,    setCompanionLoreModal]    = useState<SkinId | null>(null);
   const [equippedCompanionSkin, setEquippedCompanionSkin] = useState<SkinId | null>(null);
+  const [equippedHalo,  setEquippedHalo]  = useState<string | null>(null);
+  const [equippedWings, setEquippedWings] = useState<string | null>(null);
+  const [equippedPet,   setEquippedPet]   = useState<string | null>(null);
+  const [cosmeticsCollapsed, setCosmeticsCollapsed] = useState(true);
   const dreamAnim = useRef(new Animated.Value(0)).current;
   const [evoPath,           setEvoPath]           = useState<EvoPath | null>(null);
   const [showPathCeremony,  setShowPathCeremony]  = useState(false);
@@ -3872,21 +3914,25 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           const active = activeTab === t.id;
           return (
             <TouchableOpacity key={t.id}
-              onPress={() => { Haptics.selectionAsync(); setActiveTab(t.id); }}
+              onPress={() => {
+                Haptics.selectionAsync();
+                if (activeTab === t.id) { setTabMinimized(v => !v); }
+                else { setActiveTab(t.id); setTabMinimized(false); }
+              }}
               activeOpacity={0.75}
               style={{ flex:1, paddingVertical:9, borderRadius:11, alignItems:'center', gap:2,
                 backgroundColor: active ? color+'22' : 'transparent',
                 borderWidth: active ? 1 : 0,
                 borderColor: active ? color+'66' : 'transparent' }}>
               <Text style={{ color: active ? color : '#444455', fontSize:13, fontFamily:mono }}>{t.label}</Text>
-              <Text style={{ color: active ? color+'CC' : '#333344', fontSize:6, letterSpacing:1.5, fontFamily:mono, fontWeight:'700' }}>{t.name}</Text>
+              <Text style={{ color: active ? (tabMinimized ? color+'55' : color+'CC') : '#333344', fontSize:6, letterSpacing:1.5, fontFamily:mono, fontWeight:'700' }}>{active && tabMinimized ? '▶' : t.name}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
       {/* ── TALK TAB ─────────────────────────────────────────────────────── */}
-      {activeTab === 'talk' && (
+      {activeTab === 'talk' && !tabMinimized && (
         <View style={{ flex:1, marginHorizontal:16, marginTop:8, borderRadius:16, borderWidth:1, borderColor:auraMode?'#E991B855':color+'33', backgroundColor:SOL_THEME.surface, overflow:'hidden' }}>
           {/* Header */}
           <View style={{ flexDirection:'row', alignItems:'center', gap:10, padding:14, paddingBottom:10, borderBottomWidth:1, borderBottomColor:auraMode?'#E991B822':color+'22' }}>
@@ -3992,7 +4038,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       )}
 
       {/* ── COMPANION TAB ─────────────────────────────────────────────────── */}
-      {activeTab === 'companion' && (
+      {activeTab === 'companion' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingBottom:16, marginTop:8 }}>
 
           {/* ── COMPANION HERO ─────────────────────────────────────── */}
@@ -4320,6 +4366,70 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
               </View>
             );
           })}
+
+          {/* ── COSMETICS ───────────────────────────────────────────── */}
+          <TouchableOpacity onPress={() => setCosmeticsCollapsed(v => !v)}
+            style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: cosmeticsCollapsed ? 0 : 10, marginTop:8 }}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#FF44FF' }} />
+              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COSMETICS</Text>
+              <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#FF44FF18', borderWidth:1, borderColor:'#FF44FF33' }}>
+                <Text style={{ color:'#FF44FFAA', fontSize:7, fontFamily:mono }}>COMING</Text>
+              </View>
+            </View>
+            <Text style={{ color:'#333344', fontSize:11 }}>{cosmeticsCollapsed ? '▶' : '▼'}</Text>
+          </TouchableOpacity>
+          {!cosmeticsCollapsed && (() => {
+            const CosmeticSlot = ({ label, icon, equipped, catalogue }: { label:string; icon:string; equipped:string|null; catalogue:CosmeticItem[] }) => {
+              const item = equipped ? catalogue.find(c => c.id === equipped) : null;
+              const rc = item ? RARITY_COLOR[item.rarity] : '#333344';
+              return (
+                <View style={{ flexDirection:'row', alignItems:'center', gap:12, marginBottom:8,
+                  padding:12, borderRadius:12, borderWidth:1,
+                  borderColor: item ? rc+'44' : '#1A1A26',
+                  backgroundColor: item ? rc+'08' : '#080810' }}>
+                  <View style={{ width:44, height:44, borderRadius:10, borderWidth:1,
+                    borderColor: item ? rc+'66' : '#1A1A26',
+                    backgroundColor: item ? rc+'14' : '#0A0A14',
+                    alignItems:'center', justifyContent:'center' }}>
+                    <Text style={{ color: item ? rc : '#2A2A3A', fontSize:20 }}>{item ? item.glyph : icon}</Text>
+                  </View>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color: item ? SOL_THEME.text : '#333344', fontSize:12, fontWeight:'700', fontFamily:mono }}>
+                      {item ? item.name : `${label} · EMPTY`}
+                    </Text>
+                    {item && (
+                      <View style={{ marginTop:3, flexDirection:'row', alignItems:'center', gap:5 }}>
+                        <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:3, backgroundColor:rc+'22', borderWidth:1, borderColor:rc+'44' }}>
+                          <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{item.rarity}</Text>
+                        </View>
+                      </View>
+                    )}
+                    {!item && <Text style={{ color:'#333355', fontSize:9, fontFamily:mono, marginTop:2 }}>Art dropping soon · {catalogue.length} designs ready</Text>}
+                  </View>
+                  {item && (
+                    <TouchableOpacity onPress={() => {
+                      if (label === 'HALO') setEquippedHalo(null);
+                      else if (label === 'WINGS') setEquippedWings(null);
+                      else setEquippedPet(null);
+                    }} style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:6, borderWidth:1, borderColor:'#FF444433' }}>
+                      <Text style={{ color:'#FF4444AA', fontSize:8, fontFamily:mono }}>REMOVE</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            };
+            return (
+              <View>
+                <CosmeticSlot label="HALO"  icon="◯" equipped={equippedHalo}  catalogue={HALO_ITEMS}  />
+                <CosmeticSlot label="WINGS" icon="◁" equipped={equippedWings} catalogue={WINGS_ITEMS} />
+                <CosmeticSlot label="PET"   icon="✧" equipped={equippedPet}   catalogue={PET_ITEMS}   />
+                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:4, marginBottom:8, letterSpacing:1 }}>
+                  25 DESIGNS READY · SPRITES GENERATING · TAP TO EQUIP WHEN LIVE
+                </Text>
+              </View>
+            );
+          })()}
 
         </View>
       )}
@@ -4718,7 +4828,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       {/* ════════════════════════════════════════════════════════════════════
           BATTLE TAB
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'battle' && (
+      {activeTab === 'battle' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:6 }}>
 
           {/* Top row: TALK + STATS */}
@@ -4880,17 +4990,32 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                       )}
                     </View>
                     {/* HP bar */}
-                    <View>
-                      <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-                        <Text style={{ color:'#444455', fontSize:7, fontFamily:mono, letterSpacing:1 }}>VITALITY</Text>
-                        <Text style={{ color:rc+'AA', fontSize:8, fontFamily:mono, fontWeight:'700' }}>{battle.entityHP}/{battle.maxHP}</Text>
-                      </View>
-                      <View style={{ height:10, backgroundColor:'#12000A', borderRadius:5, overflow:'hidden', borderWidth:1, borderColor:rc+'22' }}>
-                        <View style={{ height:10, width:`${Math.round((battle.entityHP/battle.maxHP)*100)}%` as any,
-                          backgroundColor:rc, borderRadius:5,
-                          shadowColor:rc, shadowOpacity:0.9, shadowRadius:6, elevation:3 }} />
-                      </View>
-                    </View>
+                    {(() => {
+                      const hp = battle.entityHP; const maxHp = battle.maxHP;
+                      const pct = Math.max(0, Math.min(1, hp / maxHp));
+                      const danger = pct < 0.3;
+                      const barColor = danger ? '#FF4444' : pct < 0.6 ? '#FFAA22' : rc;
+                      return (
+                        <View>
+                          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:5 }}>
+                            <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                              <Text style={{ color:'#444455', fontSize:7, fontFamily:mono, letterSpacing:1 }}>VITALITY</Text>
+                              {danger && <Text style={{ color:'#FF444488', fontSize:7, fontFamily:mono }}>▼ LOW</Text>}
+                            </View>
+                            <Text style={{ color:barColor, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{hp}<Text style={{ color:'#333344', fontSize:7 }}>/{maxHp}</Text></Text>
+                          </View>
+                          <View style={{ height:14, backgroundColor:'#0A0005', borderRadius:7, overflow:'hidden', borderWidth:1, borderColor:barColor+'33' }}>
+                            <View style={{ position:'absolute', top:0, left:0, height:14, width:`${Math.round(pct*100)}%` as any,
+                              backgroundColor:barColor, borderRadius:7,
+                              shadowColor:barColor, shadowOpacity:0.9, shadowRadius:8, elevation:4 }} />
+                            <View style={{ position:'absolute', top:2, left:2, right:`${Math.round((1-pct)*100)}%` as any, height:3, backgroundColor:'#FFFFFF1A', borderRadius:3 }} />
+                            {[25,50,75].map(seg => (
+                              <View key={seg} style={{ position:'absolute', left:`${seg}%` as any, top:0, bottom:0, width:1, backgroundColor:'#00000044' }} />
+                            ))}
+                          </View>
+                        </View>
+                      );
+                    })()}
                     {/* Enemy dialogue */}
                     <View style={{ borderLeftWidth:2, borderLeftColor:rc+'66', paddingLeft:8, marginTop:2 }}>
                       <Text style={{ color:'#888899', fontSize:10, fontStyle:'italic', lineHeight:15 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
@@ -4911,33 +5036,47 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
                   </View>
                 )}
 
-                {/* Player HP */}
-                <View style={{ marginBottom:12, padding:10, borderRadius:10, backgroundColor:'#04080A', borderWidth:1, borderColor:'#44FF8822' }}>
-                  <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                    <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
-                      <Text style={{ color:'#44FF88', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>YOUR VITALITY</Text>
-                      {battle.playerShielded && (
-                        <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#4488FF22', borderWidth:1, borderColor:'#4488FF66' }}>
-                          <Text style={{ color:'#4488FF', fontSize:7, fontFamily:mono, fontWeight:'700' }}>◈ SHIELDED</Text>
+                {/* Player HP — cinematic bar */}
+                {(() => {
+                  const php = battle.playerHP; const maxPhp = battle.maxPlayerHP;
+                  const ppct = Math.max(0, Math.min(1, php / maxPhp));
+                  const pdanger = ppct < 0.3;
+                  const pbarColor = pdanger ? '#FF4444' : ppct < 0.55 ? '#FFAA22' : '#44FF88';
+                  return (
+                    <View style={{ marginBottom:12, padding:10, borderRadius:12, backgroundColor:'#020D04', borderWidth:1, borderColor: pdanger ? '#FF444433' : '#44FF8822' }}>
+                      <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                        <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                          <Text style={{ color:pbarColor, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>YOUR VITALITY</Text>
+                          {battle.playerShielded && (
+                            <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#4488FF22', borderWidth:1, borderColor:'#4488FF66' }}>
+                              <Text style={{ color:'#4488FF', fontSize:7, fontFamily:mono, fontWeight:'700' }}>◈ SHIELDED</Text>
+                            </View>
+                          )}
+                          {battle.defending && !battle.playerShielded && (
+                            <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#4488FF11', borderWidth:1, borderColor:'#4488FF44' }}>
+                              <Text style={{ color:'#4488FFAA', fontSize:7, fontFamily:mono }}>◈ BRACED</Text>
+                            </View>
+                          )}
                         </View>
-                      )}
-                      {battle.defending && !battle.playerShielded && (
-                        <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#4488FF11', borderWidth:1, borderColor:'#4488FF44' }}>
-                          <Text style={{ color:'#4488FFAA', fontSize:7, fontFamily:mono }}>◈ BRACED</Text>
-                        </View>
+                        <Text style={{ color:pbarColor, fontSize:11, fontFamily:mono, fontWeight:'700' }}>
+                          {php}<Text style={{ color:'#333344', fontSize:8 }}>/{maxPhp}</Text>
+                        </Text>
+                      </View>
+                      <View style={{ height:16, backgroundColor:'#001200', borderRadius:8, overflow:'hidden', borderWidth:1, borderColor:pbarColor+'22' }}>
+                        <View style={{ position:'absolute', top:0, left:0, height:16, width:`${Math.round(ppct*100)}%` as any,
+                          backgroundColor:pbarColor, borderRadius:8,
+                          shadowColor:pbarColor, shadowOpacity:0.9, shadowRadius:8, elevation:4 }} />
+                        <View style={{ position:'absolute', top:2, left:2, right:`${Math.round((1-ppct)*100)}%` as any, height:4, backgroundColor:'#FFFFFF1E', borderRadius:4 }} />
+                        {[25,50,75].map(seg => (
+                          <View key={seg} style={{ position:'absolute', left:`${seg}%` as any, top:0, bottom:0, width:1, backgroundColor:'#00000044' }} />
+                        ))}
+                      </View>
+                      {pdanger && (
+                        <Text style={{ color:'#FF4444AA', fontSize:7, fontFamily:mono, marginTop:5, letterSpacing:1 }}>▼ CRITICAL · HEAL OR RETREAT</Text>
                       )}
                     </View>
-                    <Text style={{ color: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                      {battle.playerHP}/{battle.maxPlayerHP}
-                    </Text>
-                  </View>
-                  <View style={{ height:10, backgroundColor:'#001200', borderRadius:5, overflow:'hidden', borderWidth:1, borderColor:'#44FF8811' }}>
-                    <View style={{ height:10, width:`${Math.round((battle.playerHP/battle.maxPlayerHP)*100)}%` as any,
-                      backgroundColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88', borderRadius:5,
-                      shadowColor: battle.playerHP < battle.maxPlayerHP*0.3 ? '#FF4444' : '#44FF88',
-                      shadowOpacity:0.8, shadowRadius:6, elevation:3 }} />
-                  </View>
-                </View>
+                  );
+                })()}
 
                 {/* 2×2 action grid */}
                 <View style={{ flexDirection:'row', gap:8, marginBottom:8 }}>
@@ -5168,7 +5307,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       {/* ════════════════════════════════════════════════════════════════════
           BOND TAB
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'bond' && (
+      {activeTab === 'bond' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:12 }}>
 
           {/* Active vigil */}
@@ -5349,7 +5488,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
       {/* ════════════════════════════════════════════════════════════════════
           FIELD TAB
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'field' && (
+      {activeTab === 'field' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
 
           {/* ── Stat grid ──────────────────────────────────────── */}
