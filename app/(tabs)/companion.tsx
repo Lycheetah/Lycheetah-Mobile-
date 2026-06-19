@@ -119,22 +119,22 @@ const SKIN_RARITY: Record<SkinId, { tier: string; color: string }> = {
   void:      { tier: 'ORIGIN',    color: '#888899' },
   aurora:    { tier: 'ORIGIN',    color: '#888899' },
   crimson:   { tier: 'ORIGIN',    color: '#888899' },
+  lycheetah: { tier: 'ORIGIN',    color: '#888899' },
+  sovereign: { tier: 'ORIGIN',    color: '#888899' },
+  norse:     { tier: 'ORIGIN',    color: '#888899' },
+  delphi:    { tier: 'ORIGIN',    color: '#888899' },
   obsidian:  { tier: 'ARCANE',    color: '#7BA7C7' },
-  lycheetah: { tier: 'ARCANE',    color: '#7BA7C7' },
   chaos:     { tier: 'ARCANE',    color: '#9B6BFF' },
-  sovereign: { tier: 'MYTHIC',    color: '#FFD700' },
-  norse:     { tier: 'MYTHIC',    color: '#FFD700' },
   celtic:    { tier: 'MYTHIC',    color: '#FFD700' },
   egyptian:  { tier: 'MYTHIC',    color: '#FFD700' },
   akashic:   { tier: 'LEGENDARY', color: '#B490FF' },
   kabbala:   { tier: 'LEGENDARY', color: '#B490FF' },
   noetic:    { tier: 'LEGENDARY', color: '#B490FF' },
   lamague:   { tier: 'LEGENDARY', color: '#CC88FF' },
-  delphi:    { tier: 'LEGENDARY', color: '#B490FF' },
   sufi:      { tier: 'LEGENDARY', color: '#B490FF' },
   quantum:        { tier: 'LEGENDARY', color: '#60D8FF' },
   // New World Zones (v4.4.0)
-  auroral_chaos:     { tier: 'SPECTRAL',  color: '#8855FF' },
+  auroral_chaos:     { tier: 'ORIGIN',    color: '#888899' },
   chaos_temple:      { tier: 'SPECTRAL',  color: '#6600CC' },
   apollo_jungle:     { tier: 'MYTHIC',    color: '#88CC44' },
   celestial_sigil:   { tier: 'LEGENDARY', color: '#88AAFF' },
@@ -168,10 +168,12 @@ type RarityTier = typeof RARITY_ORDER[number];
 const RARITY_COLORS: Record<RarityTier, string> = {
   ORIGIN: '#888899', ARCANE: '#7BA7C7', MYTHIC: '#FFD700', LEGENDARY: '#B490FF', SPECTRAL: '#8855FF',
 };
+// Hidden from companion grid — kept in SKIN_IDS for navigation
+const SKIN_GRID_HIDDEN = new Set<SkinId>(['noetic', 'kabbala', 'obsidian', 'pulse_sanctum']);
 const RARITY_GROUPS: { tier: RarityTier; ids: SkinId[] }[] = RARITY_ORDER.map(tier => ({
   tier,
-  ids: SKIN_IDS.filter(s => SKIN_RARITY[s].tier === tier),
-}));
+  ids: SKIN_IDS.filter(s => SKIN_RARITY[s].tier === tier && !SKIN_GRID_HIDDEN.has(s)),
+})).filter(g => g.ids.length > 0);
 
 // ─── Scene background images (drop PNGs into assets/scenes/) ─────────────────
 // Skin scenes: daily rotation per skin. Add files → push to array.
@@ -2644,6 +2646,7 @@ export default function CompanionScreen() {
   const [loadoutCollapsed, setLoadoutCollapsed] = useState(false);
   const [bonusCollapsed,   setBonusCollapsed]   = useState(true);
   // Section collapse state — bond tab
+  const [inventoryCollapsed, setInventoryCollapsed] = useState(false);
   const [nourishCollapsed, setNourishCollapsed] = useState(false);
   const [relicsCollapsed,  setRelicsCollapsed]  = useState(false);
   const [loreCollapsed,    setLoreCollapsed]    = useState(false);
@@ -2746,35 +2749,11 @@ export default function CompanionScreen() {
       const prevSkin = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length];
       target = getRoomInSkin(prevSkin, 0);
     } else {
-      // UP/DOWN: navigate via GBA adjacency map, picking spatially correct neighbor
-      const currentPos = GBA_ZONE_COORDS[current.skinId];
-      const neighbors  = (GBA_ADJ[current.skinId] ?? []) as SkinId[];
-      const withPos = neighbors
-        .map(nb => ({ skinId: nb, pos: GBA_ZONE_COORDS[nb] }))
-        .filter(c => c.pos !== undefined) as { skinId: SkinId; pos: {x:number;y:number} }[];
-
-      let bestSkin: SkinId | undefined;
-      if (direction === 'up') {
-        const above = withPos.filter(c => c.pos.y < (currentPos?.y ?? 9999));
-        if (above.length > 0) {
-          above.sort((a, b) => b.pos.y - a.pos.y);
-          bestSkin = above[0].skinId;
-        } else {
-          bestSkin = SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length];
-        }
-      } else {
-        const below = withPos.filter(c => c.pos.y > (currentPos?.y ?? 0));
-        if (below.length > 0) {
-          below.sort((a, b) => a.pos.y - b.pos.y);
-          bestSkin = below[0].skinId;
-        } else {
-          bestSkin = SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length];
-        }
-      }
-      if (bestSkin) {
-        target = getRoomInSkin(bestSkin, current.roomIndex);
-        if (!target || target.unlockStage > effectiveStage) target = getRoomInSkin(bestSkin, 0);
-      }
+      // UP/DOWN: simple sequential zone travel
+      const nextSkin = direction === 'up'
+        ? SKIN_ORDER[(skinIndex - 1 + SKIN_ORDER.length) % SKIN_ORDER.length]
+        : SKIN_ORDER[(skinIndex + 1) % SKIN_ORDER.length];
+      target = getRoomInSkin(nextSkin, 0);
     }
     if (!target) return;
     if (target.unlockStage > effectiveStage) { showToast(`Reach stage ${target.unlockStage} to unlock this area`); return; }
@@ -5384,27 +5363,32 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
           {/* INVENTORY ──────────────────────────────── */}
           {inventory.length > 0 && (
             <View style={{ marginBottom:14, padding:14, borderRadius:14, borderWidth:1, borderColor:color+'22', backgroundColor:'#080808' }}>
-              <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <TouchableOpacity onPress={() => setInventoryCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: inventoryCollapsed ? 0 : 10 }}>
                 <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>INVENTORY</Text>
-                <Text style={{ color:'#333344', fontSize:9, fontFamily:mono }}>{inventory.length}/50</Text>
-              </View>
-              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
-                {(() => {
-                  const counts: Record<string, number> = {};
-                  inventory.forEach(name => { counts[name] = (counts[name]??0)+1; });
-                  return Object.entries(counts).map(([name, count]) => {
-                    const item = LOOT_TABLE.find(l => l.name === name);
-                    const c = item?.rarity==='epic'?'#FF9F1C':item?.rarity==='rare'?'#CC66FF':item?.rarity==='uncommon'?'#44AAFF':'#555566';
-                    return (
-                      <View key={name} style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:8, paddingVertical:5, borderRadius:7, borderWidth:1, borderColor:c+'44', backgroundColor:c+'0C' }}>
-                        <Text style={{ color:c, fontSize:11, fontFamily:mono }}>{item?.glyph??'◈'}</Text>
-                        <Text style={{ color:c, fontSize:9, fontFamily:mono, letterSpacing:1 }}>{name}</Text>
-                        {count>1 && <Text style={{ color:c+'88', fontSize:8, fontFamily:mono }}>×{count}</Text>}
-                      </View>
-                    );
-                  });
-                })()}
-              </View>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                  <Text style={{ color:'#333344', fontSize:9, fontFamily:mono }}>{inventory.length}/50</Text>
+                  <Text style={{ color:'#333344', fontSize:11 }}>{inventoryCollapsed ? '▶' : '▼'}</Text>
+                </View>
+              </TouchableOpacity>
+              {!inventoryCollapsed && (
+                <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                  {(() => {
+                    const counts: Record<string, number> = {};
+                    inventory.forEach(name => { counts[name] = (counts[name]??0)+1; });
+                    return Object.entries(counts).map(([name, count]) => {
+                      const item = LOOT_TABLE.find(l => l.name === name);
+                      const c = item?.rarity==='epic'?'#FF9F1C':item?.rarity==='rare'?'#CC66FF':item?.rarity==='uncommon'?'#44AAFF':'#555566';
+                      return (
+                        <View key={name} style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:8, paddingVertical:5, borderRadius:7, borderWidth:1, borderColor:c+'44', backgroundColor:c+'0C' }}>
+                          <Text style={{ color:c, fontSize:11, fontFamily:mono }}>{item?.glyph??'◈'}</Text>
+                          <Text style={{ color:c, fontSize:9, fontFamily:mono, letterSpacing:1 }}>{name}</Text>
+                          {count>1 && <Text style={{ color:c+'88', fontSize:8, fontFamily:mono }}>×{count}</Text>}
+                        </View>
+                      );
+                    });
+                  })()}
+                </View>
+              )}
             </View>
           )}
 
