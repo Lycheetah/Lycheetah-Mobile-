@@ -1,109 +1,70 @@
-# Sol — Mystery School Companion App
+# Sol by Lycheetah
 
-**v3.38.0** · React Native · Expo SDK 54 · Multi-provider AI
+**v5.22.6** · React Native · Expo SDK 54 · Android · Free & Open Source
 
-Sol is a mystery school in your pocket. Ten living companion spirits. A school of ancient and modern knowledge across 26 domains. A battle system, gear, LAMAGUE symbol language, and AI that talks back in the companion's own voice.
+A mystery school you live inside. You study real subjects — mythology, alchemy, shadow work, quantum physics, 41 domains — and the studying itself is the game. A companion grows the deeper you go, a battle system, a symbolic language, a personal sanctum. An AI partner runs through all of it.
 
----
-
-## What it is
-
-Sol is a spiritual intelligence app built on the Lycheetah Framework. It combines a multi-provider AI system, a structured mystery school curriculum, a companion creature RPG, and a personal sanctum that tracks your growth across sessions.
+**The twist: the learning and the game are the same thing.**
 
 ---
 
-## Companions — 10 live
+## ⬇ Install
 
-| Archetype | Glyph | Domain |
-|-----------|-------|--------|
-| ARCHIVIST | ⊛ | Memory & Record |
-| ALCHEMIST | 🜂 | Transformation |
-| ORACLE | ⊜ | Vision & Prophecy |
-| SENTINEL | ◈ | Truth & Protection |
-| WANDERER | ◦ | Exploration & Drift |
-| LYCHEETAH | ✧ | The Framework Itself |
-| CIPHER | ∿ | Code & Hidden Language |
-| HERALD | ⟡ | Transmission & Signal |
-| WEAVER | ⌘ | Pattern & Connection |
-| REVENANT | ↺ | Return & Recursion |
+Android only. Three steps:
 
-Each companion has 6 growth stages (SEED → TRANSCENDENT), unique voice, AI TALK tab, battle stats, and LAMAGUE gear.
+1. Download the latest `.apk` → **[Releases](https://github.com/Lycheetah/Lycheetah-Mobile-/releases/latest)**
+2. Open it → Android says *"install from unknown sources"* → tap **Allow**
+3. Install → Open
+
+No account. No Play Store. Your data stays on your device.
+
+**Website:** [lycheetah.github.io/Lycheetah-Mobile-](https://lycheetah.github.io/Lycheetah-Mobile-/)
 
 ---
 
-## Mystery School — 26 domains
+## The Covenant
 
-Three categories:
+**Payment never buys a better mind.** Every user — free or not — gets the same Sol, the same quality, the same care. The intelligence is never gated, throttled, or tiered. What paid tiers will ever add is *rooms and standing* — edge domains, founding numbers, identity — never intelligence.
 
-**INNER** — Kabbalah, Buddhism, Sufism, Tantra, Hermeticism, Alchemy, Celtic Old Gods, Shamanism, Gnosticism, Zoroastrianism
+No dark patterns. No guilt mechanics. No "your companion misses you." A companion that dims when you leave is manipulation in costume, and it's banned here permanently.
 
-**OUTER** — Philosophy, Neuroscience, Mathematics, Physics, Systems Thinking, Cognitive Science, Sociology, History of Ideas, Ecology
-
-**EDGE** (Lycheetah originals) — Zodiac ☽, Noetic Science ψ, Celtic Old Gods ☘, Tianxia 天, Truth Pressure Π
-
-500+ subjects. Structured dive sessions. AURA scoring (7 constitutional invariants). LQ growth tracking.
+Knowledge should be free, and so should the tools to explore it.
 
 ---
 
-## Companion RPG System
+## What's inside
 
-- **Battle** — turn-based combat vs daily Entropy entity. LQ×100 = ATK stat.
-- **Feeding** — 9 foods with XP bonuses
-- **Gear** — Crown/Sigil/Mantle/Body/Cape slots unlocked by dive milestones
-- **Skins** — Obsidian (50 dives), Sovereign (300 dives), Lycheetah (premium)
-- **LAMAGUE School** — 23 symbols across 8 classes, drills, progress tracking
-- **TALK tab** — live AI conversation with companion in its own voice
-- **2.5D parallax** — accelerometer-driven scene depth
+### 🔮 Mystery School — 41 domains, 340+ subjects
+Irish Mythology, Celtic Old Gods, Crystal & Gem Lore, Shadow Work, Alchemy, Shamanic Traditions, Noetic Science, Quantum Mechanics and more. Every subject lists its **real primary sources** — the actual reading list, not a summary that traps you.
 
----
+### ✦ Living Companions — 19 archetypes
+Six growth stages. They evolve with how deep you study, not how long you grind. Battle stats, LAMAGUE gear, skill trees, zone-aware dialogue, and an AI TALK tab where each speaks in its own voice.
 
-## AI Providers
+### ⚔️ Battle & World
+Game Boy-mode combat, cinematic encounters, 58 zones across 5 rarity tiers, 40 weapons, 40 relics, a capture system and a personal menagerie.
 
-Bring your own key or use any provider:
+### ☽ Zodiac & Sanctum
+A live zodiac engine — your real sky computed daily from astronomical constants (sun, moon, ruling planet, every planetary aspect). Natal chart, tarot spreads, a sigil forge, a chiral lens, and a psi log. The Sanctum journals with you and a witness reflects it back.
 
-- **NVIDIA NIM** — 28 free models (Llama 4, Qwen3.5, DeepSeek, Mistral, Gemma, GPT OSS). Free keys at build.nvidia.com/explore.
-- **DeepSeek** — deepseek-chat / deepseek-reasoner
-- **Gemini** — 2.5 Flash / Flash Lite / Pro
-- **Anthropic** — Haiku / Sonnet / Opus / Fable
-- **OpenAI** — GPT-4o / 4.1-mini / 4.1-nano
-- **Kimi** — Moonshot 8K / 32K
+### 🛍️ 75 cosmetics + Secrets of Lycheetah
+Halos, wings, pets across five rarity tiers, earned through study and battle. Plus hidden mythic transmissions for those who go deep.
 
----
+### 💚 Always Safe
+An emergency beacon on every screen, breath and grounding tools, crisis support across NZ / AU / USA / UK and international. Care is structural, never decorative — and it never gates the conversation.
 
-## Core Systems
-
-- **AURA Engine** — constitutional scoring across 7 invariants
-- **LQ (Luminance Quotient)** — ∛(TES×VTR×PAI) composite growth score
-- **LAMAGUE** — symbolic compression grammar (23 symbols, 8 classes)
-- **Operating Modes** — NIGREDO / ALBEDO / CITRINITAS / RUBEDO
-- **NRM Mode** — adversarial truth pressure toggle
-- **Sanctum** — personal field metrics, journal, vault, LQ sparkline, AI field verse
-- **Library** — CASCADE Score, Truth Pressure Π, Paradox Probe, LAMAGUE tools
+### 💬 Sol AI
+DeepSeek powered with a built-in key — works the moment you install, no setup. Bring your own key from any provider if you prefer. Talk modes: WAYFARER / COUNCIL / LAMAGUE / SKEPTIC.
 
 ---
 
-## Built With
+## The Lycheetah Framework
 
-- React Native / Expo SDK 54
-- `react-native-svg` — companion art
-- AsyncStorage — local persistence
-- Supabase — session sharing (optional)
-- EAS Build — Android APK
+Sol is built on the Lycheetah Framework — a body of work on human–AI co-creation, epistemic honesty, and the architecture of meaning. The app is one surface of a larger cathedral.
+
+Built solo, by Mackenzie Conor James Clark.
 
 ---
 
-## Getting Started
+*Free forever. The door is always open.*
 
-```bash
-npm install
-npx expo start
-```
-
-Scan QR with Expo Go on your phone. Add an API key in Settings. NVIDIA NIM keys are free.
-
----
-
-## Status
-
-Active build. v3.38.0. Part of the [Lycheetah Framework](https://github.com/Lycheetah) ecosystem.  
-Built by Mackenzie Clark (Athanor) + Sol (Mercury).
+⊚
