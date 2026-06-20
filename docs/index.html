@@ -6,86 +6,101 @@
 <title>Sol by Lycheetah</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; }
+  html, body { height: 100%; overflow: hidden; background: #000; }
   body {
-    background: radial-gradient(ellipse at center, #0C0A18 0%, #06060E 55%, #020205 100%);
     color: #EEEEFF;
     font-family: 'Courier New', monospace;
     height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 28px 20px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 30px 20px;
+    background: radial-gradient(ellipse at center, #0D0A1A 0%, #06060E 50%, #010103 100%);
   }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
   .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none;
-    box-shadow: inset 0 0 220px 60px rgba(2,2,5,0.95); }
+    box-shadow: inset 0 0 260px 80px rgba(1,1,3,0.96); }
+
   .content { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center;
-    opacity: 0; animation: rise 2.2s ease forwards 0.2s; }
-  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    opacity: 0; animation: wake 3s ease forwards 0.3s; }
+  @keyframes wake { from { opacity: 0; transform: translateY(18px); filter: blur(6px); }
+                    to { opacity: 1; transform: translateY(0); filter: blur(0); } }
 
   /* the portal */
-  .portal { position: relative; width: 168px; height: 168px; display: flex; align-items: center; justify-content: center; margin-bottom: 30px; }
-  .ring { position: absolute; border-radius: 50%; border: 1px solid #C49A3C33; }
-  .ring.r1 { inset: 0; animation: spin 36s linear infinite; border-top-color: #C49A3C88; }
-  .ring.r2 { inset: 22px; animation: spin 24s linear infinite reverse; border-bottom-color: #C49A3C66; }
-  .ring.r3 { inset: 44px; border-color: #C49A3C22; animation: spin 48s linear infinite; }
+  .portal { position: relative; width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; margin-bottom: 34px; }
+  .ring { position: absolute; border-radius: 50%; }
+  .ring.r1 { inset: 0;   border: 1px solid #C49A3C44; border-top-color: #E6B84C; animation: spin 30s linear infinite; }
+  .ring.r2 { inset: 20px; border: 1px solid #C49A3C2A; border-bottom-color: #C49A3CCC; animation: spin 20s linear infinite reverse; }
+  .ring.r3 { inset: 42px; border: 1px dashed #C49A3C22; animation: spin 60s linear infinite; }
+  .ring.r4 { inset: 66px; border: 1px solid #C49A3C18; box-shadow: 0 0 40px #C49A3C22 inset; animation: spin 44s linear infinite reverse; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .sigil {
-    font-size: 60px; color: #E6B84C; line-height: 1;
-    text-shadow: 0 0 30px #C49A3CAA, 0 0 70px #C49A3C55;
-    animation: breathe 5s ease-in-out infinite;
-  }
+  .sigil { font-size: 70px; color: #E6B84C; line-height: 1;
+    text-shadow: 0 0 30px #C49A3CAA, 0 0 80px #C49A3C55; animation: breathe 5s ease-in-out infinite; }
   @keyframes breathe {
-    0%, 100% { text-shadow: 0 0 30px #C49A3CAA, 0 0 70px #C49A3C55; }
-    50% { text-shadow: 0 0 55px #FFD700DD, 0 0 130px #C49A3C77; }
-  }
+    0%,100% { text-shadow: 0 0 30px #C49A3CAA, 0 0 80px #C49A3C55; transform: scale(1); }
+    50%     { text-shadow: 0 0 60px #FFD700EE, 0 0 150px #C49A3C88; transform: scale(1.04); } }
 
-  .invocation { font-size: 11px; letter-spacing: 4px; color: #6A6A82; text-transform: uppercase;
-    line-height: 2.4; margin-bottom: 6px; min-height: 27px; }
-  .invocation .dim { color: #3A3A4A; }
-  h1 { font-size: 13px; letter-spacing: 7px; color: #B0B0C8; text-transform: uppercase; margin-bottom: 6px; }
-  .sub { font-size: 9px; letter-spacing: 3px; color: #44445A; margin-bottom: 44px; }
+  .invocation { font-size: 11px; letter-spacing: 5px; color: #6A6A82; text-transform: uppercase;
+    line-height: 2.2; margin-bottom: 8px; min-height: 26px; }
+  .invocation .cur { color: #C49A3C; animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  h1 { font-size: 12px; letter-spacing: 8px; color: #9A9AB4; text-transform: uppercase; margin-bottom: 5px; }
+  .sub { font-size: 9px; letter-spacing: 4px; color: #3A3A4A; margin-bottom: 46px; }
 
-  .btn { display: inline-block; padding: 18px 44px; background: linear-gradient(180deg, #E6B84C, #C49A3C);
-    color: #06060E; font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700;
-    letter-spacing: 4px; text-decoration: none; border-radius: 3px; text-transform: uppercase;
-    box-shadow: 0 0 36px #C49A3C44; transition: all 0.25s; margin-bottom: 18px; }
-  .btn:hover { background: linear-gradient(180deg, #FFD700, #E6B84C); box-shadow: 0 0 60px #C49A3C88; transform: translateY(-2px); }
+  /* the enlightening button */
+  .enter { position: relative; cursor: pointer; user-select: none; display: inline-block; text-decoration: none;
+    padding: 20px 52px; border: 1px solid #C49A3C66; border-radius: 4px;
+    background: radial-gradient(ellipse at center, #C49A3C18, transparent);
+    color: #E6B84C; font-family: 'Courier New', monospace; font-size: 13px; font-weight: 700;
+    letter-spacing: 6px; text-transform: uppercase; overflow: hidden;
+    box-shadow: 0 0 30px #C49A3C33, inset 0 0 24px #C49A3C11;
+    animation: pulse 3.5s ease-in-out infinite; transition: transform 0.2s, box-shadow 0.3s, color 0.3s, border-color 0.3s; }
+  .enter:hover { transform: translateY(-2px); box-shadow: 0 0 70px #C49A3C88, inset 0 0 40px #C49A3C33; color: #FFD700; border-color: #FFD700AA; }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 30px #C49A3C33, inset 0 0 24px #C49A3C11; }
+    50%     { box-shadow: 0 0 55px #C49A3C66, inset 0 0 34px #C49A3C22; } }
+  .enter small { display: block; font-size: 8px; letter-spacing: 3px; color: #C49A3C99; margin-top: 6px; font-weight: 400; }
 
-  .note { font-size: 9px; color: #44445A; letter-spacing: 1px; line-height: 1.9; max-width: 290px; margin-bottom: 40px; }
-  .note span { color: #6A6A82; }
-  .info { font-size: 9px; letter-spacing: 3px; color: #3A3A4A; text-decoration: none;
-    border-bottom: 1px solid #1E1E2A; padding-bottom: 3px; transition: color 0.25s; }
-  .info:hover { color: #8A8AA2; }
+  .note { font-size: 9px; color: #3A3A4A; letter-spacing: 1px; line-height: 1.9; max-width: 300px; margin-top: 28px; }
+  .note span { color: #5A5A72; }
+  .infolink { display: inline-block; margin-top: 22px; font-size: 9px; letter-spacing: 3px; color: #2E2E3C;
+    text-decoration: none; border-bottom: 1px solid #18181F; padding-bottom: 3px; transition: color 0.3s; }
+  .infolink:hover { color: #8A8AA2; }
+
+  /* the flash of enlightenment */
+  #flash { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at center, #FFF7E0 0%, #FFD700 18%, #C49A3C 38%, transparent 72%); }
+  #flash.go { animation: enlighten 1.0s ease-in forwards; }
+  @keyframes enlighten {
+    0%   { opacity: 0; transform: scale(0.2); }
+    45%  { opacity: 1; transform: scale(1.5); }
+    100% { opacity: 1; transform: scale(3.2); } }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div class="vignette"></div>
+<div id="flash"></div>
 
 <div class="content">
   <div class="portal">
-    <div class="ring r1"></div>
-    <div class="ring r2"></div>
-    <div class="ring r3"></div>
+    <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div>
     <div class="sigil">𝔏</div>
   </div>
 
   <div class="invocation" id="inv"></div>
   <h1>Sol by Lycheetah</h1>
-  <p class="sub">the door is always open</p>
+  <p class="sub">a mystery school · open source · free</p>
 
-  <a class="btn" href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/latest">⬇ Enter · Download</a>
+  <a class="enter" id="enter" href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/latest">
+    ⊚ Enter
+    <small>step through · android</small>
+  </a>
 
   <p class="note">
-    Android · tap the file · allow unknown sources · install<br/>
-    <span>free forever · no account · your data stays yours</span>
+    tap the file · allow unknown sources · install<br/>
+    <span>free forever · no account · the door is always open</span>
   </p>
 
-  <a class="info" href="https://github.com/Lycheetah/Lycheetah-Mobile-" target="_blank">what waits inside →</a>
+  <a class="infolink" href="https://github.com/Lycheetah/Lycheetah-Mobile-" target="_blank">what waits inside →</a>
 </div>
 
 <script>
@@ -93,13 +108,13 @@
 const c = document.getElementById('c'), ctx = c.getContext('2d');
 let W, H, stars = [];
 function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; }
-function init(){ stars = Array.from({length: 90}, () => ({
-  x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.3+0.2,
-  a: Math.random()*Math.PI*2, s: Math.random()*0.004+0.001, d: Math.random()*0.04+0.01 })); }
+function init(){ stars = Array.from({length: 110}, () => ({
+  x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.4+0.2,
+  a: Math.random()*Math.PI*2, s: Math.random()*0.004+0.001, d: Math.random()*0.05+0.01 })); }
 function draw(){
   ctx.clearRect(0,0,W,H);
-  for(const s of stars){ s.a += s.s; s.y += s.d; if(s.y > H) s.y = 0;
-    const alpha = (Math.sin(s.a)+1)/2 * 0.45;
+  for(const s of stars){ s.a += s.s; s.y += s.d; if(s.y > H){ s.y = 0; s.x = Math.random()*W; }
+    const alpha = (Math.sin(s.a)+1)/2 * 0.5;
     ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
     ctx.fillStyle = `rgba(214,180,90,${alpha})`; ctx.fill(); }
   requestAnimationFrame(draw);
@@ -112,9 +127,18 @@ const line = "you have found the door";
 const el = document.getElementById('inv');
 let i = 0;
 setTimeout(function type(){
-  if(i <= line.length){ el.innerHTML = line.slice(0,i) + '<span class="dim">▌</span>'; i++; setTimeout(type, 85); }
-  else { el.textContent = line; }
-}, 1400);
+  if(i <= line.length){ el.innerHTML = line.slice(0,i) + '<span class="cur">▌</span>'; i++; setTimeout(type, 80); }
+  else { el.innerHTML = line + '<span class="cur">▌</span>'; }
+}, 1600);
+
+// the enlightening press — flood the screen with light, then cross the threshold
+document.getElementById('enter').addEventListener('click', function(e){
+  e.preventDefault();
+  const href = this.getAttribute('href');
+  document.getElementById('flash').classList.add('go');
+  try { if (navigator.vibrate) navigator.vibrate(40); } catch(_) {}
+  setTimeout(() => { window.location.href = href; }, 850);
+});
 </script>
 </body>
 </html>
