@@ -1,114 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sol by Lycheetah</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sol by Lycheetah</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(ellipse at center, #0C0A18 0%, #06060E 55%, #020205 100%);
+    color: #EEEEFF;
+    font-family: 'Courier New', monospace;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 28px 20px;
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    box-shadow: inset 0 0 220px 60px rgba(2,2,5,0.95); }
+  .content { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center;
+    opacity: 0; animation: rise 2.2s ease forwards 0.2s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* the portal */
+  .portal { position: relative; width: 168px; height: 168px; display: flex; align-items: center; justify-content: center; margin-bottom: 30px; }
+  .ring { position: absolute; border-radius: 50%; border: 1px solid #C49A3C33; }
+  .ring.r1 { inset: 0; animation: spin 36s linear infinite; border-top-color: #C49A3C88; }
+  .ring.r2 { inset: 22px; animation: spin 24s linear infinite reverse; border-bottom-color: #C49A3C66; }
+  .ring.r3 { inset: 44px; border-color: #C49A3C22; animation: spin 48s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sigil {
+    font-size: 60px; color: #E6B84C; line-height: 1;
+    text-shadow: 0 0 30px #C49A3CAA, 0 0 70px #C49A3C55;
+    animation: breathe 5s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { text-shadow: 0 0 30px #C49A3CAA, 0 0 70px #C49A3C55; }
+    50% { text-shadow: 0 0 55px #FFD700DD, 0 0 130px #C49A3C77; }
+  }
+
+  .invocation { font-size: 11px; letter-spacing: 4px; color: #6A6A82; text-transform: uppercase;
+    line-height: 2.4; margin-bottom: 6px; min-height: 27px; }
+  .invocation .dim { color: #3A3A4A; }
+  h1 { font-size: 13px; letter-spacing: 7px; color: #B0B0C8; text-transform: uppercase; margin-bottom: 6px; }
+  .sub { font-size: 9px; letter-spacing: 3px; color: #44445A; margin-bottom: 44px; }
+
+  .btn { display: inline-block; padding: 18px 44px; background: linear-gradient(180deg, #E6B84C, #C49A3C);
+    color: #06060E; font-family: 'Courier New', monospace; font-size: 12px; font-weight: 700;
+    letter-spacing: 4px; text-decoration: none; border-radius: 3px; text-transform: uppercase;
+    box-shadow: 0 0 36px #C49A3C44; transition: all 0.25s; margin-bottom: 18px; }
+  .btn:hover { background: linear-gradient(180deg, #FFD700, #E6B84C); box-shadow: 0 0 60px #C49A3C88; transform: translateY(-2px); }
+
+  .note { font-size: 9px; color: #44445A; letter-spacing: 1px; line-height: 1.9; max-width: 290px; margin-bottom: 40px; }
+  .note span { color: #6A6A82; }
+  .info { font-size: 9px; letter-spacing: 3px; color: #3A3A4A; text-decoration: none;
+    border-bottom: 1px solid #1E1E2A; padding-bottom: 3px; transition: color 0.25s; }
+  .info:hover { color: #8A8AA2; }
+</style>
 </head>
 <body>
+<canvas id="c"></canvas>
+<div class="vignette"></div>
 
-    <!-- HERO -->
-    <section class="hero">
-        <div class="glyph-large">&#8858;</div>
-        <h1 class="app-name">Sol by Lycheetah</h1>
-        <p class="tagline">"A mystery school. A companion. A way of seeing."</p>
-        <div class="hero-buttons">
-            <a href="#download" class="btn btn-primary">Download APK</a>
-            <a href="https://github.com/lycheetah" class="btn btn-ghost">View on GitHub</a>
-        </div>
-    </section>
+<div class="content">
+  <div class="portal">
+    <div class="ring r1"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="sigil">𝔏</div>
+  </div>
 
-    <!-- WHAT IS SOL -->
-    <section class="what-is-sol">
-        <div class="card">
-            <div class="card-glyph">&#120075;</div>
-            <h3 class="card-title">The Mystery School</h3>
-            <p class="card-desc">33 domains across 5 epistemic layers. Buddhist philosophy to quantum mechanics to the VOID. Sol decides what enters. Your companion guides every dive.</p>
-        </div>
-        <div class="card">
-            <div class="card-glyph">&#10022;</div>
-            <h3 class="card-title">Your Companion</h3>
-            <p class="card-desc">A living RPG entity that grows with you. 10 archetypes. Battle, feed, talk, evolve through 6 stages. LAMAGUE gear earned through study. It speaks back.</p>
-        </div>
-        <div class="card">
-            <div class="card-glyph">&#9789;</div>
-            <h3 class="card-title">The Stars ☽</h3>
-            <p class="card-desc">Animated star field. Daily card draw. Daily rune. Natal chart computed from your birthdate. 3-card tarot spread. Ask the stars a direct question. All astronomical. All real.</p>
-        </div>
-    </section>
+  <div class="invocation" id="inv"></div>
+  <h1>Sol by Lycheetah</h1>
+  <p class="sub">the door is always open</p>
 
-    <!-- UPDATE BANNER -->
-    <section class="update-banner">
-        <p class="update-label">&#9678; WHAT JUST DROPPED IN v3.44</p>
-        <div class="update-grid">
-            <div class="update-item">&#9685; Zodiac tab is now a living sky. 38 stars breathe behind everything. Oracle cards rise from below on open. Moon phase pulses. A rotating arc orbits the header glyph. Sol readings fade in like transmissions.</div>
-            <div class="update-item">&#11835; VOID zone goes live. A 5th epistemic layer beyond OPEN. Dream Zone. Simulation Theory. Contact and UAP. A 3-question grounding gate before you enter. Your companion goes dark. Not a teacher here.</div>
-            <div class="update-item">&#9793; Celtic Old Gods fully open. The Auraicept na n-Éces. The Áes Síde. Each mystery credits the teacher who carried it here. The school names its lineage.</div>
-            <div class="update-item">&#9661; 40 free AI models via NVIDIA NIM. Built into the app. No key needed. Llama 4 Maverick. DeepSeek V4. Mistral Large. GPT OSS 120B. Pick your engine.</div>
-            <div class="update-item">&#9737; School header compacted. TODAY'S SKY visible immediately. Sun position. Moon sign. Phase. All computed locally. No API. No server. Just astronomy.</div>
-            <div class="update-item">&#10022; Companion RPG deepened. XP strip. LV badge. Rarity-reactive battle panels. Tarot FIELD tab. 10 archetypes each with placeholder art and full growth curve.</div>
-        </div>
-    </section>
+  <a class="btn" href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/latest">⬇ Enter · Download</a>
 
-    <!-- EPISTEMIC LAYERS -->
-    <section class="layers">
-        <p class="layers-label">Knowledge has depth. So does the school.</p>
-        <div class="layers-row">
-            <span class="pill pill-indigo">&#931;&#9679; FOUNDATION</span>
-            <span class="pill pill-muted">&#931;~ MIDDLE</span>
-            <span class="pill pill-gold">&#931;&#9672; EDGE</span>
-            <span class="pill pill-open">&#931;&#8709; OPEN</span>
-            <span class="pill pill-void">&#931;&#9676; VOID</span>
-        </div>
-    </section>
+  <p class="note">
+    Android · tap the file · allow unknown sources · install<br/>
+    <span>free forever · no account · your data stays yours</span>
+  </p>
 
-    <!-- FEATURES LIST -->
-    <section class="features">
-        <div class="features-grid">
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> 10 companions. 6 growth stages. Battle system with rarity tiers</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> 33 mystery school domains across 5 epistemic layers</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> VOID zone — grounded entry only. Experimental forever</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Daily tarot draw. Daily Elder Futhark rune. 3-card spread with AI reading</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Natal chart. Sun. Moon. Rising. Real astronomy. No third-party API</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Ask the stars a question. Sol answers from your natal chart</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> LAMAGUE — a symbolic compression language. Learn it through the school</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> 40 free AI models via NVIDIA NIM. Built in. No key needed to start</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Local only. Your data never leaves your device. No account. No tracking</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Free. Open gate. Always. The intelligence is never gated</div>
-        </div>
-    </section>
+  <a class="info" href="https://github.com/Lycheetah/Lycheetah-Mobile-" target="_blank">what waits inside →</a>
+</div>
 
-    <!-- DOWNLOAD -->
-    <section class="download" id="download">
-        <div class="download-card">
-            <h2 class="download-title">Get the App</h2>
-            <p class="download-subtitle">Android · Sideload APK · Free</p>
-            <a href="#" class="btn btn-download">&#11015; Download Sol APK</a>
-            <p class="download-meta">v3.44 · Android 8.0+ · No Play Store required · APK incoming</p>
-            <div class="install-note">
-                <p class="install-heading">How to install:</p>
-                <ol>
-                    <li>Download the APK file</li>
-                    <li>On your Android device: Settings &#8594; Security &#8594; Allow from this source</li>
-                    <li>Open the downloaded file and install</li>
-                    <li>Launch Sol</li>
-                </ol>
-            </div>
-        </div>
-    </section>
+<script>
+// drifting gold star field
+const c = document.getElementById('c'), ctx = c.getContext('2d');
+let W, H, stars = [];
+function resize(){ W = c.width = innerWidth; H = c.height = innerHeight; }
+function init(){ stars = Array.from({length: 90}, () => ({
+  x: Math.random()*W, y: Math.random()*H, r: Math.random()*1.3+0.2,
+  a: Math.random()*Math.PI*2, s: Math.random()*0.004+0.001, d: Math.random()*0.04+0.01 })); }
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  for(const s of stars){ s.a += s.s; s.y += s.d; if(s.y > H) s.y = 0;
+    const alpha = (Math.sin(s.a)+1)/2 * 0.45;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(214,180,90,${alpha})`; ctx.fill(); }
+  requestAnimationFrame(draw);
+}
+addEventListener('resize', () => { resize(); init(); });
+resize(); init(); draw();
 
-    <!-- FOOTER -->
-    <footer class="footer">
-        <div class="footer-glyph">&#8858;</div>
-        <p>Sol by Lycheetah · Built by Mac Clark</p>
-        <p><a href="mailto:lycheetahsol@gmail.com">lycheetahsol@gmail.com</a></p>
-        <p><a href="https://github.com/lycheetah" class="footer-link">GitHub</a></p>
-        <p class="footer-quote">"The mystery school is not a place you graduate from. It is a way of seeing."</p>
-    </footer>
-
+// the invocation types itself
+const line = "you have found the door";
+const el = document.getElementById('inv');
+let i = 0;
+setTimeout(function type(){
+  if(i <= line.length){ el.innerHTML = line.slice(0,i) + '<span class="dim">▌</span>'; i++; setTimeout(type, 85); }
+  else { el.textContent = line; }
+}, 1400);
+</script>
 </body>
 </html>
