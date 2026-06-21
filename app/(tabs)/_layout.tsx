@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, Platform, TouchableOpacity, Modal, ScrollView, SafeAreaView } from 'react-native';
+import {
+  View, Text, Platform, TouchableOpacity, Modal, ScrollView,
+  TextInput, KeyboardAvoidingView, Linking, Animated, AppState,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../../constants/theme';
 import { useAppMode } from '../../lib/app-mode';
+import { getActiveKey, getModel } from '../../lib/storage';
+import { sendMessage, AIModel } from '../../lib/ai-client';
+import WelcomeTour from '../../components/WelcomeTour';
 
 type IconProps = { color: string; focused: boolean };
 
@@ -13,109 +20,108 @@ const TabIcon = ({ glyph, color }: { glyph: string; color: string }) => (
 );
 
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+const ACCENT = '#8855FF';
 
+// Global help sections — shown in the help modal
 const HELP_SECTIONS = [
-  {
-    glyph: '⊚',
-    title: 'SOL — AI PARTNER',
-    color: SOL_THEME.primary,
-    body: 'Your thinking partner. Type anything — Sol, Aura, Veyra, or Magister responds. Switch personas in Settings. Each has a different voice and domain focus. Conversation persists between sessions.',
-  },
-  {
-    glyph: '𝔏',
-    title: 'MYSTERY SCHOOL',
-    color: SOL_THEME.headmaster ?? '#E8D5A0',
-    body: '24 domains. 188+ subjects. Tap any subject to begin a deep dive — your guide leads the session. Dives earn XP and unlock companion evolution. Heavy subjects (shadow work, crisis-adjacent) trigger safety checks. The school never closes.',
-  },
-  {
-    glyph: '✦',
-    title: 'COMPANION',
-    color: '#F5A623',
-    body: 'Your entity evolves through 6 stages: SEED → SPARK → FLAME → FORGE → SOVEREIGN → ASCENDANT. Feed it to keep energy up. Tap the scene to interact. In the COMPANION sub-tab: tap a card → EQUIP ✦ to place it on scene. Filter by rarity tier with the pills at the top.',
-  },
-  {
-    glyph: '⚔',
-    title: 'BATTLE',
-    color: '#CC4444',
-    body: 'Every D-pad arrow navigates to a random zone. 15% chance of encounter on arrival — battle opens instantly. 0.5% chance of a UNIQUE (wave 5 boss). In battle: ATTACK, DEFEND, cast SPELLS (cost tokens), use ITEMS. CAPTURE weakens enemy first then tap the ◈ button. Win to earn ⟡ coins + weapon drops (35% rate).',
-  },
-  {
-    glyph: '◈',
-    title: 'LAMAGUE',
-    color: '#8855FF',
-    body: 'The compressed language of Sol. Symbols carry layered meaning — each glyph is a seed-thought. Drill in the School or FIELD tab. Gear and spells are named in LAMAGUE. The council of 4 agents invents and ratifies new symbols continuously.',
-  },
-  {
-    glyph: '⚔',
-    title: 'WEAPONS',
-    color: '#EC4899',
-    body: '40 weapons across 7 types: BLADE, STAFF, BOW, ORB, RELIC, TOME, FANG. Drop from battle wins at 35% rate. 5 rarity tiers: COMMON → ARCANE → MYTHIC → LEGENDARY → SPECTRAL. Each adds ATK/SPD/WIL bonus. Equip one at a time in SHOP → ARSENAL.',
-  },
-  {
-    glyph: '◉',
-    title: 'FIELD',
-    color: '#44AAFF',
-    body: 'Zone navigator. 45 zones across 5 rarity tiers. Activate VIGIL to track your active session. View your full LAMAGUE loadout, equipped gear, and zone lore. Arrow buttons always randomise to a new zone.',
-  },
-  {
-    glyph: '⟡',
-    title: 'SHOP',
-    color: '#C49A3C',
-    body: 'Spend ⟡ coins earned from battle wins. STARTER PACK gives +200⟡ free — claim it once. Buy halos, wings, pets to equip on your companion scene. Weapons drop in battle only — not purchasable. New items added each build.',
-  },
-  {
-    glyph: '◎',
-    title: 'SANCTUM',
-    color: '#1ABC9C',
-    body: 'Your private layer. Dive history, LQ score sparkline, field journal, streak tracking. Zodiac natal chart coming — sun/moon/rising from your birthdate. Nothing here is visible to battle or school.',
-  },
-  {
-    glyph: '☽',
-    title: 'ZODIAC',
-    color: '#9B59B6',
-    body: 'Celestial readings tab. Natal chart from your birthdate (coming): sun, moon, rising, all 12 houses and planetary positions. Readings generated through Sol\'s voice and tied to your dive history.',
-  },
-  {
-    glyph: '◎',
-    title: 'MENAGERIE',
-    color: '#DD44FF',
-    body: 'Captured enemies live here. Weaken an enemy in battle below 40% HP then tap CAPTURE (◈). One attempt per encounter. Captured entities stored permanently. Party mode coming — bring them into battle.',
-  },
-  {
-    glyph: '⊚',
-    title: 'SAFETY',
-    color: '#44FF88',
-    body: 'Long-press the ⊚ orb (bottom-right of any screen) for the crisis line. Sol never blocks conversation. Sanctum is always open. Heavy school subjects trigger a gentle check-in. All care features are on by default and cannot be turned off.',
-  },
-  {
-    glyph: '🔑',
-    title: 'API KEY',
-    color: '#E67E22',
-    body: 'Sol needs an AI key to respond. Gemini is free: aistudio.google.com/apikey → sign in → Create API Key → paste in Settings → Provider Keys. Also supports OpenAI, Anthropic, DeepSeek, Kimi.',
-  },
-  {
-    glyph: '⚙',
-    title: 'SETTINGS',
-    color: '#778899',
-    body: 'Persona (Sol/Aura/Veyra/Magister), provider keys, display name, app mode (Seeker/Adept), Skeptic Mode (reframes mystical language as psychological utility). All preferences persist locally — nothing sent to servers.',
-  },
-  {
-    glyph: '✦',
-    title: 'TALK',
-    color: '#C084FC',
-    body: 'Direct companion conversation tab. Switch modes: WAYFARER (open) / COUNCIL (multi-voice) / LAMAGUE (symbol-first) / SKEPTIC (psychological framing). Mode persists between sessions. Wayfarer is the default.',
-  },
-  {
-    glyph: '◌',
-    title: 'SKILL',
-    color: '#555577',
-    body: 'Tracks your bond score — total dives, streak, sessions. Skill tree coming: earn points from dives and battle wins, spend on permanent stat upgrades and passive abilities.',
-  },
+  { glyph: '⊚', title: 'SOL — AI PARTNER', color: SOL_THEME.primary,
+    body: 'Your thinking partner. Type anything — Sol, Aura, Veyra, or Magister responds. Switch personas in Settings. Each has a different voice and domain focus. Conversation persists between sessions. Use the mode chips (WAYFARER / COUNCIL / LAMAGUE / SKEPTIC) to change how Sol responds.' },
+  { glyph: '𝔏', title: 'MYSTERY SCHOOL', color: SOL_THEME.headmaster ?? '#E8D5A0',
+    body: '41 domains, 340+ subjects — Mythology, Alchemy, Shadow Work, Quantum, Noetic Science, LAMAGUE, Celtic Old Gods, Crystal Lore and more.\n\nDIVE: tap a domain → tap a subject → a live lesson begins. The teacher builds one idea at a time and ends each lesson on an open door (the next mystery) — so you always want the next dive.\n\nKEEP IT: every lesson has ✦ Save to Field · 🔊 Listen · ⧉ Copy/Save. Knowledge doesn\'t evaporate.\n\nDives EARN: XP (evolves your companion) + ✦ dive-currency (spend on companions) + your streak.\n\nWORKSHOP (from the LAMAGUE header): PROBE a concept under pressure · CEMENT a symbol by drilling · GLOSSARY the full symbol library.\n\nSubjects carry primary-source reading lists — tap 📚 to open them.' },
+  { glyph: '✦', title: 'COMPANION', color: '#F5A623',
+    body: 'Your living companion grows as you study — its aura, glyphs and glow intensify across 6 stages (SEED → SPARK → FLAME → FORGE → SOVEREIGN → ASCENDANT).\n\nTAP IT for voice lines (it reacts to what you\'ve actually studied). FEED it daily. EQUIP gear + cosmetics (halos/wings/pets).\n\nTRAVEL: tap 🗺 MAP (top-left) for the world map — every zone has a code (A1, B2…) and is one tap. Or use the mini-map (top-center) to hop to a neighbour. ⚔ ENCOUNTER (bottom) starts a battle in your zone.\n\nEARN COMPANIONS: most are unlocked with ✦ DIVES (your study currency — earn by studying, spend in the companion grid). Some are CAPTURE-only (catch in battle), some shop. A starter set is free. Filter the grid by rarity.\n\nBATTLE: your companion fights with you; weaken an enemy then CAPTURE to your Menagerie.' },
+  { glyph: '⚔', title: 'BATTLE', color: '#CC4444',
+    body: 'D-pad navigates zones — 15% encounter chance on arrival. In battle: ATTACK, DEFEND, cast SPELLS (cost tokens), use ITEMS. Weaken an enemy below 40% HP then CAPTURE (◈) to add it to your MENAGERIE. Win → ⟡ coins + weapon drops. Your study depth increases battle power.' },
+  { glyph: '◈', title: 'LAMAGUE LANGUAGE', color: '#8855FF',
+    body: 'Sol\'s compressed epistemic language. Each glyph is a seed-thought encoding a whole class of relation or force. Study in the School tab (LAMAGUE domain). Use the ◈ WORKSHOP (from LAMAGUE header) for PROBE / CEMENT / GLOSSARY. Your companion earns LAMAGUE gear as you level up.' },
+  { glyph: '⬡', title: 'CRYSTAL & GEM FORGE', color: '#7ED6DF',
+    body: 'Open the Crystal & Gem Lore domain in the School → expand the classroom → find ⬡ GEM FORGE at the bottom. Name your gem, describe it, and Sol generates a photorealistic image using FLUX AI. Six subjects including Crystallography, Piezoelectricity, and gem traditions across cultures.' },
+  { glyph: '☽', title: 'ZODIAC — THE CELESTIAL FIELD', color: '#9B59B6',
+    body: 'The live sky, calculated from astronomical constants (no API needed).\n\nTHE SKY: header shows the current sun sign, moon sign, moon phase and ruling planet — live, ticking. Tap THE SKY tile for full transit detail + planetary aspects (☌ ✶ □ △ ☍).\n\nNATAL: enter your birth details for a personal chart reading in Sol\'s voice, woven against your dive history.\n\n⟟ SIGIL FORGE: turn an intention into a living symbol — TYPE it or DRAW it (FLUX generates the glyph), then save to your lexicon.\n\n◆ GEM FORGE: forge a meaningful artificial gem from your intention/feeling/element — Sol writes its invocation + care ritual and generates a photoreal image.\n\nEach tile expands for a full reading.' },
+  { glyph: '◉', title: 'SANCTUM', color: '#F5A623',
+    body: 'Your private layer. TODAY: set intention + reflection. JOURNAL: write freely — The Witness AI responds and weaves your entries into a Living Book. VAULT: save insights. CHAIN: Sovereign on-chain identity (Solana SBTs, deploying soon). FIELD: your aura profile and LQ arc.' },
+  { glyph: '⟡', title: 'SHOP + ARSENAL', color: '#C49A3C',
+    body: 'Spend ⟡ Lumens earned from battle wins and study. STARTER PACK gives +200⟡ free. Buy halos, wings, and pets in the SHOP. Weapons only drop in battle — not purchasable. ✧ Veras knowledge-dust accumulates from journaling and dives.' },
+  { glyph: '◌', title: 'WORKSHOP', color: '#AA77FF',
+    body: 'Access from School → LAMAGUE domain → ◈ WORKSHOP button. Three modes: PROBE (Sol stress-tests your ideas and finds the cracks), CEMENT (flashcard drill until a concept is embodied), GLOSSARY (full 50+ symbol library, searchable by class). The forge for your thinking.' },
+  { glyph: '📚', title: 'PRIMARY SOURCES', color: '#1ABC9C',
+    body: 'Many subjects carry a reading list — tap the 📚 PRIMARY SOURCES row inside any subject detail to expand it. Primary sources have a gold dot; secondary have a grey dot. Celtic Old Gods, Irish Mythology, Irish Literature, and Crystal Lore are fully sourced.' },
+  { glyph: '🔑', title: 'API KEY', color: '#E67E22',
+    body: 'The School, Gem Forge, Zodiac, and companion work without any key. A key unlocks AI conversation. Gemini is free: aistudio.google.com/apikey → Create API Key → paste in Settings → Provider Keys. Also supports OpenAI, Anthropic, DeepSeek, Kimi.' },
+  { glyph: '⚙', title: 'SETTINGS', color: '#778899',
+    body: 'Persona (Sol/Aura/Veyra/Magister), provider keys, display name, app mode (Seeker/Adept). Seeker mode uses warmer language; Adept mode uses more precise epistemic register. All preferences stored locally — nothing sent to servers.' },
+  { glyph: '💚', title: 'SAFETY', color: '#44FF88',
+    body: 'Sol never blocks conversation. Heavy school subjects (intensity 8+) trigger a gentle check-in before diving. The crisis support link at the bottom of this panel connects to Beyond Blue. All care features are always on, for every user.' },
 ];
 
 export default function TabLayout() {
   const { t } = useAppMode();
-  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
+  const [tourForced, setTourForced] = useState(false);
+  const [openHelpSection, setOpenHelpSection] = useState<string | null>(null);  // collapsible per-tab help zones
+  const [askInput, setAskInput] = useState('');
+  const [askAnswer, setAskAnswer] = useState('');
+  const [askLoading, setAskLoading] = useState(false);
+  const [askDone, setAskDone] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const [coins, setCoins] = useState(0);
+  const [veras, setVeras] = useState(0);
+
+  const loadCurrencies = useCallback(async () => {
+    const [c, v] = await Promise.all([
+      AsyncStorage.getItem('sol_coins'),
+      AsyncStorage.getItem('sol_veras'),
+    ]);
+    setCoins(c ? parseInt(c) : 0);
+    setVeras(v ? parseInt(v) : 0);
+  }, []);
+
+  useEffect(() => {
+    loadCurrencies();
+    const interval = setInterval(loadCurrencies, 5000);
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') loadCurrencies();
+    });
+    return () => { clearInterval(interval); sub.remove(); };
+  }, [loadCurrencies]);
+
+  const askHelp = async () => {
+    const q = askInput.trim();
+    if (!q) return;
+    setAskLoading(true);
+    setAskAnswer('');
+    setAskDone(false);
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!apiKey) {
+        setAskAnswer("No API key set yet — go to Settings → Provider Keys and add a free Gemini key from aistudio.google.com/apikey. Takes 30 seconds.");
+        setAskLoading(false);
+        setAskDone(true);
+        return;
+      }
+      const context = HELP_SECTIONS.map(s => `${s.title}: ${s.body}`).join('\n\n');
+      const result = await sendMessage(
+        [{ role: 'user', content: q }],
+        `You are Sol's help agent inside the Sol app by Lycheetah. Answer the user's question about how to use the app. Be direct and specific. Under 120 words. Use the following app guide:\n\n${context}`,
+        apiKey, (model || 'gemini-2.5-flash') as AIModel,
+        undefined, 'normal', 180, 0.7,
+      );
+      setAskAnswer(result?.text?.trim() || "Couldn't get a response — try again.");
+      setAskDone(true);
+      setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+    } catch {
+      setAskAnswer('Something went wrong. Check your key in Settings and try again.');
+      setAskDone(true);
+    }
+    setAskLoading(false);
+  };
+
+  const closeHelp = () => {
+    setHelpVisible(false);
+    setAskInput('');
+    setAskAnswer('');
+    setAskDone(false);
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -127,7 +133,7 @@ export default function TabLayout() {
             height: Platform.OS === 'ios' ? 82 : 60,
             paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           },
-          tabBarScrollEnabled: true,
+
           tabBarActiveTintColor: SOL_THEME.primary,
           tabBarInactiveTintColor: SOL_THEME.textMuted,
           headerStyle: { backgroundColor: SOL_THEME.background },
@@ -138,6 +144,32 @@ export default function TabLayout() {
             letterSpacing: 2,
             fontFamily: mono,
           },
+          headerLeft: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#C49A3C33', backgroundColor: '#C49A3C0A' }}>
+                <Text style={{ color: '#C49A3C', fontSize: 11, fontFamily: mono, fontWeight: '700' }}>⟡</Text>
+                <Text style={{ color: '#C49A3C', fontSize: 11, fontFamily: mono, fontWeight: '700' }}>{coins}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#AA77FF33', backgroundColor: '#AA77FF0A' }}>
+                <Text style={{ color: '#AA77FF', fontSize: 11, fontFamily: mono, fontWeight: '700' }}>✧</Text>
+                <Text style={{ color: '#AA77FF', fontSize: 11, fontFamily: mono, fontWeight: '700' }}>{veras}</Text>
+              </View>
+            </View>
+          ),
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => setHelpVisible(true)}
+              style={{
+                width: 32, height: 32, borderRadius: 16,
+                borderWidth: 1, borderColor: ACCENT + '55',
+                backgroundColor: ACCENT + '14',
+                alignItems: 'center', justifyContent: 'center',
+                marginRight: 14,
+              }}
+            >
+              <Text style={{ color: ACCENT, fontSize: 14, fontWeight: '700', fontFamily: mono }}>?</Text>
+            </TouchableOpacity>
+          ),
           tabBarLabelStyle: {
             fontSize: 10,
             fontWeight: '600',
@@ -145,137 +177,144 @@ export default function TabLayout() {
           },
         }}
       >
-        <Tabs.Screen
-          name="zodiac"
-          options={{
-            title: 'THE STARS',
-            tabBarLabel: 'Zodiac',
-            tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="☽" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="school"
-          options={{
-            title: t('MYSTERY SCHOOL'),
-            tabBarLabel: t('School'),
-            tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: 'SOL',
-            tabBarLabel: 'Sol',
-            tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊚" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="library"
-          options={{
-            href: null,
-            title: 'LIBRARY',
-          }}
-        />
-        <Tabs.Screen
-          name="companion"
-          options={{
-            title: 'COMPANION',
-            tabBarLabel: 'Companion',
-            tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="✦" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="sanctum"
-          options={{
-            title: t('THE SANCTUM'),
-            tabBarLabel: t('Sanctum'),
-            tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="settings"
-          options={{
-            title: 'SETTINGS',
-            tabBarLabel: 'Settings',
-            tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⚙" color={color} />,
-          }}
-        />
-        <Tabs.Screen
-          name="codex"
-          options={{
-            href: null,
-            title: 'CODEX',
-          }}
-        />
-        <Tabs.Screen
-          name="customize"
-          options={{
-            href: null,
-            title: 'CUSTOMIZE',
-          }}
-        />
-        <Tabs.Screen
-          name="modes"
-          options={{
-            href: null,
-            title: 'FIELD',
-          }}
-        />
+        <Tabs.Screen name="zodiac" options={{ title: 'THE STARS', tabBarLabel: 'Zodiac', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="☽" color={color} /> }} />
+        <Tabs.Screen name="school" options={{ title: t('MYSTERY SCHOOL'), tabBarLabel: t('School'), tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} /> }} />
+        <Tabs.Screen name="index" options={{ title: 'SOL', tabBarLabel: 'Sol', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊚" color={color} /> }} />
+        <Tabs.Screen name="library" options={{ href: null, title: 'LIBRARY' }} />
+        <Tabs.Screen name="companion" options={{ title: 'COMPANION', tabBarLabel: 'Companion', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="✦" color={color} /> }} />
+        <Tabs.Screen name="sanctum" options={{ title: t('THE SANCTUM'), tabBarLabel: t('Sanctum'), tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} /> }} />
+        <Tabs.Screen name="settings" options={{ title: 'SETTINGS', tabBarLabel: 'Settings', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⚙" color={color} /> }} />
+        <Tabs.Screen name="codex" options={{ href: null, title: 'CODEX' }} />
+        <Tabs.Screen name="customize" options={{ href: null, title: 'CUSTOMIZE' }} />
+        <Tabs.Screen name="modes" options={{ href: null, title: 'FIELD' }} />
+        <Tabs.Screen name="workshop" options={{ href: null, title: 'WORKSHOP' }} />
       </Tabs>
 
-      {/* Floating help button — top-right, header level */}
-      <TouchableOpacity
-        onPress={() => setHelpOpen(true)}
-        activeOpacity={0.8}
-        style={{
-          position: 'absolute',
-          top: Platform.OS === 'ios' ? 56 : 36,
-          right: 54,
-          width: 30,
-          height: 30,
-          borderRadius: 15,
-          backgroundColor: '#07070E',
-          borderWidth: 1,
-          borderColor: SOL_THEME.primary + '66',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-        }}
-      >
-        <Text style={{ color: SOL_THEME.primary, fontSize: 13, fontFamily: mono, fontWeight: '700', lineHeight: 16 }}>?</Text>
-      </TouchableOpacity>
+      {/* ── WELCOME TOUR — first-open guided walkthrough (re-openable via ? help) ── */}
+      <WelcomeTour force={tourForced} onClose={() => setTourForced(false)} />
 
-      {/* Help sheet */}
-      <Modal visible={helpOpen} transparent animationType="slide" onRequestClose={() => setHelpOpen(false)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000099' }}>
-          <SafeAreaView style={{ backgroundColor: '#08080F', borderTopLeftRadius: 18, borderTopRightRadius: 18, borderTopWidth: 1, borderColor: SOL_THEME.primary + '33', maxHeight: '82%' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#10101A' }}>
-              <Text style={{ color: SOL_THEME.primary, fontSize: 11, fontFamily: mono, letterSpacing: 2.5, fontWeight: '700', flex: 1 }}>HELP</Text>
-              <Text style={{ color: '#444455', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>SOL · BY LYCHEETAH</Text>
-              <TouchableOpacity onPress={() => setHelpOpen(false)} style={{ marginLeft: 16, padding: 4 }}>
-                <Text style={{ color: '#445566', fontSize: 16 }}>✕</Text>
-              </TouchableOpacity>
+      {/* ── GLOBAL HELP MODAL ── */}
+      <Modal visible={helpVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeHelp}>
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: SOL_THEME.background }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: ACCENT + '22' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: ACCENT, fontSize: 12, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>◈ HOW CAN I HELP?</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2 }}>Ask anything. Browse the guide below.</Text>
             </View>
-            <ScrollView
-              style={{ paddingHorizontal: 20 }}
-              contentContainerStyle={{ paddingTop: 18, paddingBottom: 40 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {HELP_SECTIONS.map((s, i) => (
-                <View key={s.title} style={{ marginBottom: 20 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <Text style={{ color: s.color, fontSize: 16 }}>{s.glyph}</Text>
-                    <Text style={{ color: s.color, fontSize: 10, fontFamily: mono, letterSpacing: 2, fontWeight: '700' }}>{s.title}</Text>
-                  </View>
-                  <Text style={{ color: '#6677AA', fontSize: 13, lineHeight: 20 }}>{s.body}</Text>
-                  {i < HELP_SECTIONS.length - 1 && (
-                    <View style={{ height: 1, backgroundColor: '#10101A', marginTop: 18 }} />
+            <TouchableOpacity onPress={closeHelp} style={{ padding: 6 }}>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 18 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+
+            {/* Take the guided tour */}
+            <TouchableOpacity
+              onPress={() => { setHelpVisible(false); setTimeout(() => setTourForced(true), 250); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: ACCENT + '55', backgroundColor: ACCENT + '0E', marginBottom: 18 }}>
+              <Text style={{ fontSize: 22, color: ACCENT }}>⊚</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: ACCENT, fontSize: 13, fontWeight: '700' }}>Take the guided tour</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2 }}>A 7-step walkthrough — what each part is, how to use it, why it matters.</Text>
+              </View>
+              <Text style={{ color: ACCENT, fontSize: 16 }}>→</Text>
+            </TouchableOpacity>
+
+            {/* AI ask bar */}
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: askDone ? 10 : 0 }}>
+                <TextInput
+                  value={askInput}
+                  onChangeText={setAskInput}
+                  placeholder="Ask about any feature..."
+                  placeholderTextColor={SOL_THEME.textMuted + '66'}
+                  style={{ flex: 1, backgroundColor: SOL_THEME.surface, borderWidth: 1, borderColor: ACCENT + '44',
+                    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, color: SOL_THEME.text, fontSize: 13 }}
+                  onSubmitEditing={askHelp}
+                  returnKeyType="send"
+                />
+                <TouchableOpacity onPress={askHelp} disabled={!askInput.trim() || askLoading}
+                  style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: askInput.trim() && !askLoading ? ACCENT : ACCENT + '33' }}>
+                  <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '700' }}>{askLoading ? '…' : '↑'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* AI answer */}
+              {(askAnswer || askLoading) ? (
+                <View style={{ borderRadius: 12, borderWidth: 1, borderColor: ACCENT + '44',
+                  backgroundColor: ACCENT + '09', padding: 14 }}>
+                  <Text style={{ color: ACCENT, fontSize: 8, fontFamily: mono, letterSpacing: 2, marginBottom: 8 }}>◈ SOL</Text>
+                  <Text style={{ color: askLoading ? SOL_THEME.textMuted : SOL_THEME.text, fontSize: 13, lineHeight: 20, fontStyle: askLoading ? 'italic' : 'normal' }}>
+                    {askLoading ? 'reading the guide...' : askAnswer}
+                  </Text>
+                  {askDone && (
+                    <TouchableOpacity onPress={() => { setAskAnswer(''); setAskInput(''); setAskDone(false); }} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>ASK ANOTHER</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
-              ))}
-            </ScrollView>
-          </SafeAreaView>
-        </View>
+              ) : null}
+            </View>
+
+            {/* Divider */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <View style={{ flex: 1, height: 1, backgroundColor: ACCENT + '22' }} />
+              <Text style={{ color: ACCENT + '55', fontSize: 8, fontFamily: mono, letterSpacing: 2 }}>APP GUIDE</Text>
+              <View style={{ flex: 1, height: 1, backgroundColor: ACCENT + '22' }} />
+            </View>
+
+            {/* Guide cards — collapsible per-tab how-to zones. Tap a title to expand. */}
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontFamily: mono, letterSpacing: 1.5, marginTop: 8, marginBottom: 4 }}>TAP A SECTION FOR HOW TO USE IT</Text>
+            {HELP_SECTIONS.map(s => {
+              const open = openHelpSection === s.title;
+              return (
+                <View key={s.title} style={{ borderBottomWidth: 1, borderBottomColor: SOL_THEME.border + '44' }}>
+                  <TouchableOpacity
+                    onPress={() => setOpenHelpSection(open ? null : s.title)}
+                    activeOpacity={0.7}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 13 }}>
+                    <View style={{ width: 32, height: 32, borderRadius: 9, alignItems: 'center', justifyContent: 'center',
+                      backgroundColor: s.color + '18', borderWidth: 1, borderColor: s.color + (open ? '88' : '44') }}>
+                      <Text style={{ fontSize: 14, color: s.color }}>{s.glyph}</Text>
+                    </View>
+                    <Text style={{ flex: 1, color: s.color, fontSize: 11, fontWeight: '700', fontFamily: mono, letterSpacing: 1 }}>{s.title}</Text>
+                    <Text style={{ color: s.color + 'AA', fontSize: 12 }}>{open ? '▾' : '▸'}</Text>
+                  </TouchableOpacity>
+                  {open && (
+                    <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20, paddingLeft: 44, paddingBottom: 14 }}>{s.body}</Text>
+                  )}
+                </View>
+              );
+            })}
+
+            {/* Footer links */}
+            <View style={{ marginTop: 24, gap: 10 }}>
+              <TouchableOpacity onPress={() => Linking.openURL('mailto:lycheetahsol@gmail.com?subject=BUG%20REPORT')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 10,
+                  borderWidth: 1, borderColor: '#FF444433', backgroundColor: '#FF44440A' }}>
+                <Text style={{ fontSize: 18 }}>🐛</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#FF6666', fontSize: 11, fontWeight: '700', fontFamily: mono }}>REPORT A BUG</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>lycheetahsol@gmail.com</Text>
+                </View>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>→</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => Linking.openURL('https://www.beyondblue.org.au/get-support/get-immediate-support')}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 10,
+                  borderWidth: 1, borderColor: '#44FF8833', backgroundColor: '#44FF880A' }}>
+                <Text style={{ fontSize: 18 }}>💚</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#44FF88', fontSize: 11, fontWeight: '700', fontFamily: mono }}>CRISIS SUPPORT</Text>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>If you need to talk to someone right now</Text>
+                </View>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

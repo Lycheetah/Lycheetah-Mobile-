@@ -8,10 +8,14 @@ export const GeminiProvider: AIProvider = {
   keyPlaceholder: 'AIza...',
   keyHint: 'Free at aistudio.google.com/apikey',
   models: [
-    { id: 'gemini-2.5-flash',              label: 'Gemini 2.5 Flash',      tier: 'free', note: 'FREE · Recommended · Start here' },
+    { id: 'gemini-3.5-flash',              label: 'Gemini 3.5 Flash',      tier: 'free', note: 'FREE · Newest flagship · Start here' },
+    { id: 'gemini-3-flash',                label: 'Gemini 3 Flash',        tier: 'free', note: 'FREE · Fast + capable' },
+    { id: 'gemini-3.1-flash',              label: 'Gemini 3.1 Flash',      tier: 'free', note: 'FREE · Latest 3.1' },
+    { id: 'gemini-2.5-flash',              label: 'Gemini 2.5 Flash',      tier: 'free', note: 'FREE · Reliable workhorse' },
     { id: 'gemini-2.5-flash-lite',         label: 'Gemini 2.5 Flash Lite', tier: 'free', note: 'FREE · Fastest · High volume' },
-    { id: 'gemini-2.5-pro',               label: 'Gemini 2.5 Pro',         tier: 'free', note: 'FREE · Most capable Gemini · Deep reasoning' },
-    { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', tier: 'free', note: 'FREE · Preview · Newest' },
+    { id: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite', tier: 'free', note: 'FREE · 500/day · Preview' },
+    { id: 'gemini-2.5-pro',               label: 'Gemini 2.5 Pro',         tier: 'free', note: 'FREE · Deep reasoning' },
+    { id: 'gemma-4-31b-it',               label: 'Gemma 4 31B',            tier: 'free', note: 'FREE · 1500/day · Unlimited tokens' },
   ],
   async send(messages, systemPrompt, apiKey, model, onChunk, streamSpeed = 'normal', onUsage, tokenBudget = 8192, temperature = 0.9) {
     const startTime = Date.now();

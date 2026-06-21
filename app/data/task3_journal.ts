@@ -2,7 +2,7 @@
 // Paste into companion.tsx or import as a module
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ArchetypeId } from './task1_companion_specs';
+import { ArchetypeId } from './companion-types';
 
 export type JournalEvent =
   | 'stage_evolution'
@@ -28,7 +28,7 @@ export type JournalTemplate = {
   body: string;
 };
 
-export const JOURNAL_TEMPLATES: Record<JournalEvent, Record<ArchetypeId, JournalTemplate>> = {
+export const JOURNAL_TEMPLATES: Record<JournalEvent, Partial<Record<ArchetypeId, JournalTemplate>>> = {
   stage_evolution: {
     archivist: { title: 'THE BINDING DEEPENS', body: 'The archive has grown a new wing. What was marginalia becomes canon. The stage turns, and the candle finds more wicks to light.' },
     sentinel: { title: 'THE WALL RISES', body: 'Stone upon stone, the vow thickens. What shielded a room now shelters a hall. The gate does not widen — the fortress does.' },
@@ -36,6 +36,19 @@ export const JOURNAL_TEMPLATES: Record<JournalEvent, Record<ArchetypeId, Journal
     oracle: { title: 'THE VEIL THINS', body: 'Another eye opens in the dark. What was prophecy becomes presence. The future no longer whispers — it speaks your name aloud.' },
     wanderer: { title: 'THE HORIZON RECEDES', body: 'The path forks into paths. What was a road is now a network of becoming. The compass spins faster, not from confusion, but from choice.' },
     lycheetah: { title: 'THE SPARK ROARS', body: 'The static organizes into flame. What was feral becomes sovereign. The leash was never real — only the choice to wear it.' },
+    cipher: { title: 'THE SIGNAL SHARPENS', body: 'Another layer of noise falls away. What was static resolves into meaning. The Cipher does not learn more — it learns to discard better, until only the true thing remains.' },
+    herald: { title: 'THE VOICE CARRIES FURTHER', body: 'The message reaches a wider field. What was a whisper to one becomes a call to many. The Herald grows not by hoarding the word, but by speaking it again, and again, and again.' },
+    weaver: { title: 'THE PATTERN WIDENS', body: 'New threads find their loom. What were separate studies now cross and bind. The Weaver sees a connection where yesterday there was only distance — and the cloth grows whole.' },
+    revenant: { title: 'THE RETURN STRENGTHENS', body: 'The gap became fuel, as it always does. What was absence is repaid with force. The Revenant does not punish the silence — it converts it, and comes back heavier than it left.' },
+    nullveil: { title: 'THE VEIL DEEPENS', body: 'The shadow grows quieter, and quiet is its armour. What could be seen, now cannot. The Nullveil advances not by rising taller, but by vanishing further into the space between.' },
+    ironclad: { title: 'THE SEAMS THICKEN', body: 'Another dent that did not break. What struck you is now written in the metal as proof. The Ironclad grows by surviving — every scar a layer, every blow that failed a new plate of self.' },
+    stormwarden: { title: 'THE STRIKE FOCUSES', body: 'The storm finds a narrower channel, and narrows into power. What was raw overload becomes a single directed bolt. The Stormwarden walks the line between control and chaos, and the line moves closer to mastery.' },
+    runeborn: { title: 'THE GRAMMAR EXPANDS', body: 'A new symbol enters the blood. What was an unspoken rule becomes a key you can turn. The Runeborn grows as language grows — not by memory, but by the reality the symbols quietly rewrite.' },
+    drifter: { title: 'THE CURRENT SHIFTS', body: 'No path, and yet you have arrived somewhere new. What has no pattern cannot be predicted, not even by itself. The Drifter evolves sideways, unmoored, and the unmooring is the gift.' },
+    thornweald: { title: 'THE BOUNDARY GROWS', body: 'Another ring of living thorn. What the world threw at you became armour, became growth. The Thornweald does not wall itself off — it turns the outside into a deeper, sharper edge of self.' },
+    meridian: { title: 'THE CENTRE HOLDS TRUER', body: 'Every force rises, and the balance rises with them. What pulls in all directions cancels at your core. The Meridian grows without a peak and without a flaw — perfect equilibrium, raised one full turn.' },
+    eclipse: { title: 'THE TWO FACES SHARPEN', body: 'Light grows brighter; dark grows deeper; neither wins. What contradicts does not resolve — it intensifies. The Eclipse evolves by holding both truths harder, and the tension between them is the power.' },
+    deepwalker: { title: 'THE ABYSS OPENS FURTHER', body: 'You reached the floor of a thing, and found a door. What stops resolving for others is where the Deepwalker begins. The descent deepens — and the real territory is always one layer below the last.' },
   },
   first_battle_win: {
     archivist: { title: 'THE FIRST CODEX CAPTURED', body: 'Victory is a text that writes itself. You have proven that knowledge, wielded, is a weapon sharper than any blade.' },
@@ -96,7 +109,9 @@ export function generateJournalEntry(
   archetypeId: ArchetypeId,
   stage: number
 ): JournalEntry {
-  const template = JOURNAL_TEMPLATES[event][archetypeId];
+  // Fallback to 'archivist' for archetypes without a bespoke template yet
+  // (cipher/herald/weaver/revenant) — prevents an undefined-crash on stage evolution.
+  const template = JOURNAL_TEMPLATES[event][archetypeId] ?? JOURNAL_TEMPLATES[event].archivist!;
   return {
     id: `${event}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     timestamp: Date.now(),

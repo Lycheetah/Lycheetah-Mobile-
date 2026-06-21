@@ -7,12 +7,12 @@ import {
   Linking,
   Animated,
   ScrollView,
-  StyleSheet,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { CareEvents } from '../lib/care-events';
 
-type CareLevel = 'NEUTRAL' | 'HOLDING' | 'ELEVATED' | 'CRISIS';
+type CareLevel = 'NEUTRAL' | 'HOLDING' | 'ELEVATED' | 'CRISIS'; // kept for CareEvents type
 
 const PHASES = [
   { key: 'in',       label: 'Breathe in...',  duration: 4000, scale: 1.35 },
@@ -32,35 +32,17 @@ const CRISIS_LINES = [
 export function EmergencyBeacon() {
   const [visible, setVisible] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
-  const [alertLevel, setAlertLevel] = useState<CareLevel>('NEUTRAL');
 
-  // Subscribe to care events from TALK tab — orb changes when ELEVATED/CRISIS fires
+  // Subscribe to care events — auto-open crisis modal on CRISIS level
   useEffect(() => {
     return CareEvents.subscribe(level => {
-      setAlertLevel(level);
-      // Auto-clear back to NEUTRAL after 60s so it doesn't stay red permanently
-      setTimeout(() => setAlertLevel('NEUTRAL'), 60000);
+      if (level === 'CRISIS') setVisible(true);
     });
   }, []);
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const circleAnim = useRef(new Animated.Value(0.65)).current;
-  const pulseLoop = useRef<Animated.CompositeAnimation | null>(null);
   const breathAnim = useRef<Animated.CompositeAnimation | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // orb subtle pulse when idle
-  useEffect(() => {
-    pulseLoop.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.18, duration: 2200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 2200, useNativeDriver: true }),
-      ])
-    );
-    pulseLoop.current.start();
-    return () => pulseLoop.current?.stop();
-  }, []);
 
   // breath cycle when modal open
   useEffect(() => {
@@ -92,44 +74,13 @@ export function EmergencyBeacon() {
     return () => clearTimeout(phaseTimer.current ?? undefined);
   }, [visible]);
 
-  const handlePressIn = () => {
-    longPressTimer.current = setTimeout(() => setVisible(true), 650);
-  };
-
-  const handlePressOut = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-  };
-
   const dismiss = () => setVisible(false);
 
   const phase = PHASES[phaseIdx];
 
-  const orbBorderColor = alertLevel === 'CRISIS' ? '#EF444488'
-    : alertLevel === 'ELEVATED' ? '#F9731688'
-    : alertLevel === 'HOLDING' ? '#E8C76A55'
-    : '#A855F744';
-  const orbGlyphColor = alertLevel === 'CRISIS' ? '#EF4444'
-    : alertLevel === 'ELEVATED' ? '#F97316'
-    : alertLevel === 'HOLDING' ? '#E8C76A'
-    : '#C084FC';
-
   return (
     <>
-      {/* Always-on floating orb — color escalates with CARE level */}
-      <Animated.View style={[styles.orb, { transform: [{ scale: pulseAnim }] }]} pointerEvents="box-none">
-        <TouchableOpacity
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          style={[styles.orbTouch, { borderColor: orbBorderColor }]}
-          activeOpacity={0.6}
-          accessibilityLabel="Emergency Beacon — hold for crisis support"
-          accessibilityRole="button"
-        >
-          <Text style={[styles.orbGlyph, { color: orbGlyphColor }]}>⊚</Text>
-        </TouchableOpacity>
-      </Animated.View>
-
-      {/* Crisis Modal */}
+      {/* Crisis Modal — triggered by care events from TALK tab */}
       <Modal
         visible={visible}
         transparent={false}
@@ -203,33 +154,7 @@ export function EmergencyBeacon() {
   );
 }
 
-const ORB_SIZE = 30;
-
 const styles = StyleSheet.create({
-  orb: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 54 : 38,
-    right: 14,
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-    zIndex: 9999,
-    elevation: 20,
-  },
-  orbTouch: {
-    width: ORB_SIZE,
-    height: ORB_SIZE,
-    borderRadius: ORB_SIZE / 2,
-    backgroundColor: '#1A0E2A',
-    borderWidth: 1,
-    borderColor: '#A855F744',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  orbGlyph: {
-    color: '#C084FC',
-    fontSize: 13,
-    lineHeight: 16,
-  },
   modalBg: {
     flex: 1,
     backgroundColor: '#080810',

@@ -97,7 +97,7 @@ const DEAD_MODELS = [
 ];
 export async function getModel(): Promise<string> {
   const stored = await AsyncStorage.getItem(KEYS.MODEL);
-  if (!stored || !stored.trim() || DEAD_MODELS.includes(stored.trim())) return 'meta/llama-3.3-70b-instruct';
+  if (!stored || !stored.trim() || DEAD_MODELS.includes(stored.trim())) return 'deepseek-chat';
   return stored.trim();
 }
 
@@ -118,9 +118,9 @@ export async function getConversation(): Promise<Message[]> {
 export async function clearConversation() { await AsyncStorage.removeItem(KEYS.CONVERSATION); }
 
 // Persona
-export async function savePersona(persona: 'sol' | 'veyra' | 'aura-prime' | 'headmaster') { await AsyncStorage.setItem(KEYS.PERSONA, persona); }
-export async function getPersona(): Promise<'sol' | 'veyra' | 'aura-prime' | 'headmaster'> {
-  return ((await AsyncStorage.getItem(KEYS.PERSONA)) as 'sol' | 'veyra' | 'aura-prime' | 'headmaster') || 'sol';
+export async function savePersona(persona: 'sol' | 'veyra' | 'aura-prime' | 'headmaster' | 'lyra') { await AsyncStorage.setItem(KEYS.PERSONA, persona); }
+export async function getPersona(): Promise<'sol' | 'veyra' | 'aura-prime' | 'headmaster' | 'lyra'> {
+  return ((await AsyncStorage.getItem(KEYS.PERSONA)) as 'sol' | 'veyra' | 'aura-prime' | 'headmaster' | 'lyra') || 'sol';
 }
 
 // User name

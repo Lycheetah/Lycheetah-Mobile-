@@ -87,7 +87,7 @@ export async function scheduleCognitiveWeather(
 
     await Notifications.scheduleNotificationAsync({
       identifier: 'cognitive-weather',
-      content: { title, body, data: { type: 'cognitive-weather' }, sound: null },
+      content: { title, body, data: { type: 'cognitive-weather' } },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour,

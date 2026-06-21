@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Platform, Linking, Share,
+  StyleSheet, Alert, Platform, Linking, Share, Vibration, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getCognitiveWeatherEnabled, setCognitiveWeatherEnabled, getCognitiveWeatherHour, setCognitiveWeatherHour } from '../../lib/cognitive-weather';
@@ -35,6 +35,9 @@ import {
 export default function SettingsScreen() {
   const router = useRouter();
   const { mode, setMode } = useAppMode();
+  const [restoreOpen, setRestoreOpen] = useState(false);
+  const [restoreText, setRestoreText] = useState('');
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});  // collapsible settings groups — default all collapsed
   const [providerKeys, setProviderKeys] = useState<Record<string, string>>({});
   const [savedKeys, setSavedKeys] = useState<Record<string, string>>({});
   const [model, setModel] = useState<string>('gemini-2.5-flash');
@@ -53,6 +56,7 @@ export default function SettingsScreen() {
   const [weatherEnabled, setWeatherEnabled] = useState(false);
   const [weatherHour, setWeatherHour] = useState(8);
   const [chaosMode, setChaosMode] = useState(false);
+  const [skepticMode, setSkepticMode] = useState(false);
   const [weirdQEnabled, setWeirdQEnabled_] = useState(false);
   const [weirdQHour, setWeirdQHour_] = useState(9);
   const [streakReminderOn, setStreakReminderOn] = useState(false);
@@ -66,6 +70,7 @@ export default function SettingsScreen() {
   const [devMode, setDevMode] = useState(false);
   const [devTapCount, setDevTapCount] = useState(0);
   const [commitmentOpen, setCommitmentOpen] = useState(false);
+  const [bridgeOpen, setBridgeOpen] = useState(false);
   const { highContrast, setHighContrast } = useAccessibility();
 
   useEffect(() => {
@@ -86,6 +91,7 @@ export default function SettingsScreen() {
     getCognitiveWeatherEnabled().then(setWeatherEnabled);
     getCognitiveWeatherHour().then(setWeatherHour);
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
+    AsyncStorage.getItem('sol_skeptic_mode').then(v => setSkepticMode(v === 'true'));
     getWeirdQEnabled().then(setWeirdQEnabled_);
     getWeirdQHour().then(setWeirdQHour_);
     getStreakReminderEnabled().then(setStreakReminderOn);
@@ -138,13 +144,22 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const SectionDivider = ({ label, glyph }: { label: string; glyph: string }) => (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 28, marginBottom: 4 }}>
-      <Text style={{ color: accentColor, fontSize: 14 }}>{glyph}</Text>
-      <Text style={{ color: accentColor, fontSize: 9, fontWeight: '700', letterSpacing: 2.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{label}</Text>
-      <View style={{ flex: 1, height: 1, backgroundColor: accentColor + '30' }} />
-    </View>
-  );
+  // Collapsible group headers — Settings opens as a scannable menu, expand what you need.
+  const SectionDivider = ({ label, glyph }: { label: string; glyph: string }) => {
+    const open = !!openGroups[label];
+    return (
+      <TouchableOpacity
+        onPress={() => setOpenGroups(g => ({ ...g, [label]: !g[label] }))}
+        activeOpacity={0.7}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 4, paddingVertical: 8 }}
+      >
+        <Text style={{ color: accentColor, fontSize: 14 }}>{glyph}</Text>
+        <Text style={{ color: accentColor, fontSize: 10, fontWeight: '700', letterSpacing: 2.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{label}</Text>
+        <View style={{ flex: 1, height: 1, backgroundColor: accentColor + '30' }} />
+        <Text style={{ color: accentColor + 'AA', fontSize: 12 }}>{open ? '▾' : '▸'}</Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -167,6 +182,7 @@ export default function SettingsScreen() {
 
       {/* ─── IDENTITY ─── */}
       <SectionDivider label="IDENTITY" glyph="◈" />
+      {openGroups['IDENTITY'] && (<>
 
       <Text style={styles.sectionTitle}>YOUR NAME</Text>
       <Text style={styles.sectionNote}>Sol, Veyra and Aura Prime address you by name.</Text>
@@ -194,9 +210,31 @@ export default function SettingsScreen() {
       >
         <View style={{ flex: 1 }}>
           <Text style={{ color: highContrast ? accentColor : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>High Contrast Text</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Boosts all muted text to minimum readable contrast. Text only — no colour scheme change.</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Renders all text bolder for easier reading on the dark background. Switch tabs to see it apply everywhere.</Text>
         </View>
         <Text style={{ color: highContrast ? accentColor : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{highContrast ? '◉' : '○'}</Text>
+      </TouchableOpacity>
+
+      {/* Text size guidance — real global font scaling now works */}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface, marginBottom: 16 }}>
+        <Text style={{ fontSize: 18, marginTop: 1 }}>🔍</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>Larger Text</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Sovereign Sol now scales with your device font size. Increase it in your phone's Display / Accessibility settings and all text here grows with it — adjust it to your own eyes.</Text>
+        </View>
+      </View>
+
+      {/* Skeptic Mode */}
+      <TouchableOpacity
+        onPress={async () => { const next = !skepticMode; setSkepticMode(next); await AsyncStorage.setItem('sol_skeptic_mode', next ? 'true' : 'false'); }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: skepticMode ? '#44AAFF88' : SOL_THEME.border, backgroundColor: skepticMode ? '#44AAFF0E' : SOL_THEME.surface, marginBottom: 16 }}
+        activeOpacity={0.8}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: skepticMode ? '#44AAFF' : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>Skeptic Mode  <Text style={{ fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⊗</Text></Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Reframes mystical and symbolic language as psychological utility. Same insight — different register. Shown as a ⊗ badge in Sanctum when active.</Text>
+        </View>
+        <Text style={{ color: skepticMode ? '#44AAFF' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{skepticMode ? '◉' : '○'}</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>
@@ -228,6 +266,8 @@ export default function SettingsScreen() {
         <Text style={[styles.variantToggle, { color: accentColor }]}>{isPrivate ? '◉' : '○'}</Text>
       </TouchableOpacity>
 
+      </>)}
+
       {/* ─── AI PROVIDERS ─── */}
       <TouchableOpacity
         onPress={() => {
@@ -239,6 +279,7 @@ export default function SettingsScreen() {
       >
         <SectionDivider label="AI PROVIDERS" glyph="⊙" />
       </TouchableOpacity>
+      {openGroups['AI PROVIDERS'] && (<>
 
       <View style={styles.freeBanner}>
         <Text style={styles.freeBannerTitle}>★ START FREE</Text>
@@ -339,7 +380,10 @@ export default function SettingsScreen() {
       })}
 
       {/* ─── EXPERIENCE ─── */}
+      </>)}
+
       <SectionDivider label="EXPERIENCE" glyph="◌" />
+      {openGroups['EXPERIENCE'] && (<>
 
       <Text style={styles.sectionTitle}>◌ EXPERIENCE MODE</Text>
       <Text style={styles.sectionNote}>Two doors into the same building. The AI voice changes with each.</Text>
@@ -434,7 +478,10 @@ export default function SettingsScreen() {
       )}
 
       {/* ─── NOTIFICATIONS ─── */}
+      </>)}
+
       <SectionDivider label="NOTIFICATIONS" glyph="⛅" />
+      {openGroups['NOTIFICATIONS'] && (<>
 
       <Text style={styles.sectionTitle}>⛅ COGNITIVE WEATHER</Text>
       <Text style={styles.sectionNote}>Daily field report — LQ, phase, and AURA alignment delivered at your chosen hour.</Text>
@@ -709,31 +756,28 @@ export default function SettingsScreen() {
       </>}
 
       {/* ─── APP ─── */}
+      </>)}
+
       <SectionDivider label="APP" glyph="⊚" />
+      {openGroups['APP'] && (<>
 
       <TouchableOpacity
         style={[styles.shareAppButton, { marginBottom: 10, borderColor: accentColor + '55' }]}
         onPress={async () => {
           try {
-            const [conversation, diveLog, customSubjects, memory, solMem, ctxMem, projCtx] = await Promise.all([
-              AsyncStorage.getItem('lycheetah_conversation'),
-              AsyncStorage.getItem('sol_dive_log'),
-              AsyncStorage.getItem('sol_custom_subjects'),
-              AsyncStorage.getItem('sol_memory_v1'),
-              AsyncStorage.getItem('sol_memory_v1'),
-              AsyncStorage.getItem('lycheetah_context_memory'),
-              AsyncStorage.getItem('lycheetah_project_context'),
-            ]);
+            // True full backup — every key in the store, not a hardcoded subset.
+            const keys = await AsyncStorage.getAllKeys();
+            const pairs = await AsyncStorage.multiGet(keys);
+            const data: Record<string, string | null> = {};
+            pairs.forEach(([k, v]) => { data[k] = v; });
             const payload = {
+              _sovereign_sol_backup: true,
+              version: '5.23.0',
               exported: new Date().toISOString(),
-              conversation: conversation ? JSON.parse(conversation) : [],
-              diveLog: diveLog ? JSON.parse(diveLog) : [],
-              customSubjects: customSubjects ? JSON.parse(customSubjects) : [],
-              solMemory: solMem ? JSON.parse(solMem) : [],
-              contextMemory: ctxMem ? JSON.parse(ctxMem) : [],
-              projectContext: projCtx || '',
+              keyCount: keys.length,
+              data,
             };
-            await Share.share({ message: JSON.stringify(payload, null, 2), title: 'Sol — My Data Export' });
+            await Share.share({ message: JSON.stringify(payload), title: 'Sovereign Sol — Full Backup' });
           } catch {
             Alert.alert('Export failed', 'Could not read your data — try again.');
           }
@@ -741,7 +785,15 @@ export default function SettingsScreen() {
       >
         <Text style={[styles.shareAppText, { color: accentColor }]}>↑ Export Everything</Text>
       </TouchableOpacity>
-      <Text style={[styles.sectionNote, { marginBottom: 16, marginTop: -6 }]}>Dive log · conversations · memories · context — everything, as JSON. Your mind is yours.</Text>
+      <Text style={[styles.sectionNote, { marginTop: -6 }]}>A complete backup of EVERYTHING — companion, progress, journal, dives, cosmetics, memories. Save it before switching phones. Your data is yours.</Text>
+
+      <TouchableOpacity
+        style={[styles.shareAppButton, { marginTop: 10, marginBottom: 10, borderColor: accentColor + '55' }]}
+        onPress={() => { setRestoreText(''); setRestoreOpen(true); }}
+      >
+        <Text style={[styles.shareAppText, { color: accentColor }]}>↓ Restore from Backup</Text>
+      </TouchableOpacity>
+      <Text style={[styles.sectionNote, { marginBottom: 16, marginTop: -6 }]}>Paste a backup to restore everything on a new device. Overwrites current data — back up first.</Text>
 
       <TouchableOpacity style={styles.dangerButton} onPress={handleClearHistory}>
         <Text style={styles.dangerText}>Clear Conversation History</Text>
@@ -974,6 +1026,40 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* ── SYSTEM BRIDGE ─────────────────────────────────────────────────── */}
+      <View style={{ marginBottom: 16, borderRadius: 14, borderWidth: 1, borderColor: '#FF660044', backgroundColor: '#FF66000A' }}>
+        <TouchableOpacity onPress={() => setBridgeOpen(o => !o)}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 }}
+          activeOpacity={0.7}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: '#FF8844', fontSize: 12 }}>⚠</Text>
+            <Text style={{ color: '#FF8844', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>EXPERIMENTAL — DEVELOPER BRIDGE</Text>
+          </View>
+          <Text style={{ color: '#FF884488', fontSize: 10 }}>{bridgeOpen ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+        {bridgeOpen && (
+          <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 8 }}>
+            <Text style={{ color: '#FF884499', fontSize: 11, lineHeight: 17, marginBottom: 4 }}>
+              Sandboxed OS APIs. These can open system screens and trigger device features — they cannot modify system settings or cause damage (OS-enforced sandbox). Shown as a developer surface for transparency.
+            </Text>
+            {[
+              { label: 'Open App Settings', glyph: '⚙', action: () => Linking.openSettings().catch(() => Alert.alert('Cannot open settings on this device.')) },
+              { label: 'Send Test Vibration', glyph: '⊙', action: () => { try { Vibration.vibrate([100, 50, 100]); } catch { Alert.alert('Vibration not available.'); } } },
+              { label: 'Share Sol App URL', glyph: '↑', action: () => Share.share({ message: 'Sovereign Sol — a mystery school you live inside. Free, open source, yours: https://github.com/Lycheetah/Lycheetah-Mobile-', title: 'Sovereign Sol' }).catch(() => {}) },
+              { label: 'Open Support Email', glyph: '✉', action: () => Linking.openURL('mailto:lycheetahsol@gmail.com?subject=BUG').catch(() => Alert.alert('No email client available.')) },
+              { label: 'Open GitHub Releases', glyph: '⊚', action: () => Linking.openURL('https://github.com/Lycheetah/Lycheetah-Mobile-/releases').catch(() => Alert.alert('Cannot open URL.')) },
+            ].map(btn => (
+              <TouchableOpacity key={btn.label} onPress={btn.action}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#FF664433', backgroundColor: '#FF66440A' }}
+                activeOpacity={0.7}>
+                <Text style={{ color: '#FF8844', fontSize: 14 }}>{btn.glyph}</Text>
+                <Text style={{ color: '#FF8844CC', fontSize: 12, fontWeight: '600' }}>{btn.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
       {/* ── THE LYCHEETAH COMMITMENT ───────────────────────────────────────── */}
       <View style={{ marginBottom: 24, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
         <TouchableOpacity onPress={() => setCommitmentOpen(o => !o)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }} activeOpacity={0.7}>
@@ -1025,8 +1111,66 @@ export default function SettingsScreen() {
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v4.8.0</Text>
+        <Text style={styles.footerVersion}>v5.23.0</Text>
       </View>
+
+      {/* ── RESTORE FROM BACKUP ── */}
+      <Modal visible={restoreOpen} transparent animationType="fade" onRequestClose={() => setRestoreOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000000F2', justifyContent: 'center', padding: 22 }}>
+          <View style={{ backgroundColor: '#0B0B12', borderRadius: 18, borderWidth: 1.5, borderColor: accentColor + '55', padding: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ color: accentColor, fontSize: 13, fontWeight: '800', letterSpacing: 1 }}>↓ RESTORE FROM BACKUP</Text>
+              <TouchableOpacity onPress={() => setRestoreOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ color: accentColor + 'AA', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18, marginBottom: 12 }}>
+              Paste a Sovereign Sol backup below. This overwrites your current data, then reloads. Export your current data first if you want to keep it.
+            </Text>
+            <TextInput
+              value={restoreText}
+              onChangeText={setRestoreText}
+              placeholder='Paste backup JSON here…'
+              placeholderTextColor={SOL_THEME.textMuted}
+              multiline
+              style={{ minHeight: 110, maxHeight: 200, borderWidth: 1, borderColor: accentColor + '33', borderRadius: 10, padding: 12, color: SOL_THEME.text, fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', backgroundColor: '#05050A', textAlignVertical: 'top', marginBottom: 14 }}
+            />
+            <TouchableOpacity
+              style={{ backgroundColor: accentColor, borderRadius: 12, paddingVertical: 14, alignItems: 'center', opacity: restoreText.trim() ? 1 : 0.4 }}
+              disabled={!restoreText.trim()}
+              onPress={() => {
+                let parsed: any;
+                try { parsed = JSON.parse(restoreText.trim()); }
+                catch { Alert.alert('Invalid backup', 'That is not valid JSON. Paste the full backup exactly as exported.'); return; }
+                if (!parsed?._sovereign_sol_backup || !parsed?.data) {
+                  Alert.alert('Not a Sovereign Sol backup', 'This file is missing the backup marker. Paste a backup made by Export Everything.');
+                  return;
+                }
+                const entries = Object.entries(parsed.data).filter(([, v]) => typeof v === 'string') as [string, string][];
+                Alert.alert(
+                  'Restore everything?',
+                  `This will overwrite your current data with ${entries.length} keys from a backup exported ${parsed.exported ? new Date(parsed.exported).toLocaleDateString() : 'previously'}, then reload. This cannot be undone.`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Restore', style: 'destructive', onPress: async () => {
+                      try {
+                        await AsyncStorage.multiSet(entries);
+                        setRestoreOpen(false);
+                        Alert.alert('Restored ✓', 'Your data is back. Please fully close and reopen the app to load it.');
+                      } catch {
+                        Alert.alert('Restore failed', 'Could not write the data. Try again.');
+                      }
+                    } },
+                  ],
+                );
+              }}
+            >
+              <Text style={{ color: '#000', fontSize: 14, fontWeight: '800', letterSpacing: 0.5 }}>Restore</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      </>)}
     </ScrollView>
   );
 }

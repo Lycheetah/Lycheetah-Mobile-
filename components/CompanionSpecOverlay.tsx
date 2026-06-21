@@ -37,7 +37,13 @@ const BASE_ORBIT = 62;
 const MAX_GLYPHS = 5;
 
 export function CompanionSpecOverlay({ spec, color, stage }: Props) {
-  const { auraType, auraIntensity, glyphSet, coreGlow, orbitCount, resonance } = spec;
+  const { auraType, auraIntensity: auraIntensityBase, glyphSet, coreGlow, orbitCount: orbitCountBase, resonance } = spec;
+  // EVOLUTION (effect-based, universal — no per-stage art). Higher stage = brighter aura,
+  // more orbiting glyphs, larger core. Makes all 19 companions visibly evolve from study.
+  const s = Math.max(0, Math.min(5, stage));
+  const stageBoost = 0.55 + (s / 5) * 0.75;                       // 0.55 (stage 0) → 1.30 (stage 5)
+  const auraIntensity = Math.min(1.25, auraIntensityBase * stageBoost);
+  const orbitCount = Math.min(MAX_GLYPHS, orbitCountBase + Math.floor(s / 2)); // +1 glyph every 2 stages
 
   // ── Orbit rotation ──────────────────────────────────────────────────────────
   const orbitAnim = useRef(new Animated.Value(0)).current;
@@ -96,7 +102,7 @@ export function CompanionSpecOverlay({ spec, color, stage }: Props) {
   const r3Op = aura3.interpolate({ inputRange: [0, 1], outputRange: [0, 0.16 * auraIntensity] });
   const r3Sc = aura3.interpolate({ inputRange: [0, 1], outputRange: [0.5, 2.0] });
 
-  const coreR    = coreGlow === 'sharp' ? 5 : coreGlow === 'crystal' ? 9 : 14;
+  const coreR    = (coreGlow === 'sharp' ? 5 : coreGlow === 'crystal' ? 9 : 14) + s * 2;  // core grows with evolution
   const coreOpLo = 0.25 * auraIntensity;
   const coreOpHi = 0.8 * auraIntensity;
   const coreOp   = coreAnim.interpolate({ inputRange: [0, 1], outputRange: [coreOpLo, coreOpHi] });

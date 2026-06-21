@@ -1599,36 +1599,6 @@ If no strong LAMAGUE signal, respond: "No dominant LAMAGUE signal identified."`;
         </>
       )}
 
-      {/* COMMONS — coming soon */}
-      {view === 'community' && !selectedEntry && (
-        <View style={{ alignItems: 'center', paddingTop: 8 }}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>⊞</Text>
-          <Text style={{ color: accentColor, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', fontSize: 12, letterSpacing: 3, marginBottom: 12, textAlign: 'center' }}>THE COMMONS</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, lineHeight: 22, textAlign: 'center', marginBottom: 28, maxWidth: 300 }}>
-            A shared hall where Forge entries, dive sessions, and LAMAGUE expressions travel beyond your device.{'\n\n'}The infrastructure is built. Opening when the first Founding Sovereigns arrive.
-          </Text>
-
-          {/* What will be here */}
-          {[
-            { glyph: '⚗', label: 'Shared Forge entries', desc: 'Truth Pressure scores from the community' },
-            { glyph: '◈', label: 'Cement blocks', desc: 'LAMAGUE expressions contributed by all users' },
-            { glyph: '⊚', label: 'Open Seat threads', desc: 'Study sessions shared from the School' },
-          ].map(item => (
-            <View key={item.label} style={{ width: '100%', flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '22', backgroundColor: accentColor + '06', marginBottom: 10 }}>
-              <Text style={{ color: accentColor, fontSize: 22 }}>{item.glyph}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', marginBottom: 2 }}>{item.label}</Text>
-                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{item.desc}</Text>
-              </View>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>Soon</Text>
-            </View>
-          ))}
-
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', marginTop: 20, opacity: 0.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
-            YOUR PLACE IS KEPT
-          </Text>
-        </View>
-      )}
 
       {/* GLOSSARY VIEW */}
       {view === 'glossary' && (

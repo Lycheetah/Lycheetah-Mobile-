@@ -5,7 +5,9 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator,
   StyleSheet, Alert, Clipboard, Share, Image, Animated, Modal, PanResponder,
 } from 'react-native';
-import Markdown from 'react-native-markdown-display';
+import MarkdownRaw from 'react-native-markdown-display';
+// v7 types reject the valid `selectable` prop (works at runtime) — loosen once here.
+const Markdown = MarkdownRaw as any;
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { compressForUpload } from '../../lib/image-compress';
@@ -13,6 +15,7 @@ import { canWatchAd, showRewardedAd } from '../../lib/ads';
 import * as Haptics from 'expo-haptics';
 import { Accelerometer } from 'expo-sensors';
 import * as Speech from 'expo-speech';
+import { speakText, stopTTS } from '../../lib/tts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from '../../constants/theme';
 import { sendMessage, sendWithTools, sendViaFreeTier, Message, AIModel, getProviderFromModel, solSpeak } from '../../lib/ai-client';
@@ -27,7 +30,6 @@ import { CareEvents } from '../../lib/care-events';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
 import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
 import ConversationDrawer from '../../components/ConversationDrawer';
-import InitiationModal from '../../components/InitiationModal';
 import {
   saveConversation as saveConv, loadConversation, listConversations,
   deleteConversation, renameConversation, createNewConversation, autoTitle, ConversationMeta,
@@ -59,6 +61,7 @@ import {
 import { updateFieldProfile, getFieldProfile, formatProfileForContext } from '../../lib/intelligence/field-profile';
 import { getFieldNote } from '../../lib/field-notes';
 import { scheduleCognitiveWeather } from '../../lib/cognitive-weather';
+import { generateImage } from '../../lib/image-gen';
 // Legacy tool imports — kept for non-tool-calling providers (Gemini, DeepSeek, Kimi)
 import { calculate, detectCalcIntent } from '../../lib/tools/calculator';
 import { readURL, detectURLIntent } from '../../lib/tools/url-reader';
@@ -374,12 +377,14 @@ export default function SolChat() {
   const [isNRMActive, setIsNRMActive] = useState(false);
   const [persona, setPersona] = useState<Persona>('sol');
   const [councilMode, setCouncilMode] = useState(false);
+  const [talkMode, setTalkMode] = useState<'WAYFARER'|'COUNCIL'|'LAMAGUE'|'SKEPTIC'|'GLYPHIC'>('WAYFARER');
   const [userName, setUserName] = useState('');
   const [conversationPassRates, setConversationPassRates] = useState<number[]>([]);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
   const [pendingDoc, setPendingDoc] = useState<{ name: string; content: string; mimeType: string } | null>(null);
   const [expandedAura, setExpandedAura] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [replyStyle, setReplyStyle] = useState<ReplyStyleId>(DEFAULT_STYLE_ID);
@@ -439,12 +444,10 @@ export default function SolChat() {
   const fieldPulseAnim = useRef(new Animated.Value(0)).current;
   const fieldPulseLoop = useRef<Animated.CompositeAnimation | null>(null);
   const [sanctumField, setSanctumField] = useState<string>('');
-  const [showInitiation, setShowInitiation] = useState(false);
   const [showYoureReady, setShowYoureReady] = useState(false);
   const [showFrameworkCards, setShowFrameworkCards] = useState(false);
   const [showAuraExplainer, setShowAuraExplainer] = useState(false);
   const [auraExplainerShown, setAuraExplainerShown] = useState(false);
-  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [cementContext, setCementContext] = useState<string>('');
   const [schoolSubjectContext, setSchoolSubjectContext] = useState<string>('');
   const [sovereignPulse, setSovereignPulse] = useState<string | null>(null);
@@ -452,7 +455,19 @@ export default function SolChat() {
   const [fieldEcho, setFieldEcho] = useState<string | null>(null);
   const [lastAura, setLastAura] = useState<{ passed: number; total: number } | null>(null);
   const [lastAuraFull, setLastAuraFull] = useState<AURAMetrics | null>(null);
+  // Live scoring mode — swap the per-message readout between AURA invariants and CASCADE layers, or off.
+  const [scoringMode, setScoringMode] = useState<'AURA' | 'CASCADE' | 'OFF'>('AURA');
+  const [lastCascade, setLastCascade] = useState<{ layer: string; pi: number; paradox: boolean } | null>(null);
+  const cycleScoringMode = useCallback(() => {
+    setScoringMode(prev => {
+      const next = prev === 'AURA' ? 'CASCADE' : prev === 'CASCADE' ? 'OFF' : 'AURA';
+      AsyncStorage.setItem('sol_scoring_mode', next);
+      if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      return next;
+    });
+  }, [hapticsOn]);
   const [showIntegrityModal, setShowIntegrityModal] = useState(false);
+  const [showSolIdentity, setShowSolIdentity] = useState(false);
   const [typingMode, setTypingMode] = useState<Mode | null>(null);
   const [showGlyphModal, setShowGlyphModal] = useState(false);
   const [sessionGlyph, setSessionGlyph] = useState<string | null>(null);
@@ -461,6 +476,16 @@ export default function SolChat() {
   const [distillLoading, setDistillLoading] = useState(false);
   const [showStacksModal, setShowStacksModal] = useState(false);
   const [showToolsRow, setShowToolsRow] = useState(false);
+  const [showImgGen, setShowImgGen] = useState(false);
+  const [imgGenPrompt, setImgGenPrompt] = useState('');
+  const [imgGenLoading, setImgGenLoading] = useState(false);
+  const [imgGenResult, setImgGenResult] = useState<string|null>(null);
+  const [imgGenRatio, setImgGenRatio] = useState<'square'|'portrait'|'landscape'>('square');
+  const IMG_GEN_RATIOS = {
+    square:    { w: 1024, h: 1024, ar: 1 },
+    portrait:  { w:  832, h: 1152, ar: 832/1152 },
+    landscape: { w: 1152, h:  832, ar: 1152/832 },
+  } as const;
   const [showLamaguePicker, setShowLamaguePicker] = useState(false);
   const [dnaLoading, setDnaLoading] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
@@ -707,7 +732,7 @@ export default function SolChat() {
             if (!sent) {
               const hour = new Date().getHours();
               const timeNote = hour < 5 ? 'in the late hours' : hour < 12 ? 'this morning' : hour < 17 ? 'this afternoon' : 'this evening';
-              const openingLine = `Something brought you here ${timeNote}.\n\nThe School has 22 doors — each one a domain worth mastering. Pick a subject, start a dive, and let the field do the rest.\n\nYour companion is waiting. The battle is already underway. The forge is lit.\n\nI'm Sol.`;
+              const openingLine = `Something brought you here ${timeNote}.\n\n41 domains. 340+ subjects. A companion that grows with you. A battle already underway.\n\nPick a door in the School. Start a dive. Let the field do the rest.\n\nI'm Sol.`;
               const firstMsg: DisplayMessage = {
                 id: 'sol_first_magic',
                 role: 'assistant',
@@ -878,7 +903,7 @@ export default function SolChat() {
 
   // Stop speech when tab loses focus
   useFocusEffect(useCallback(() => {
-    return () => { Speech.stop(); setSpeakingId(null); };
+    return () => { stopTTS(); Speech.stop(); setSpeakingId(null); };
   }, []));
 
   // Re-check API key when tab gains focus (user may have just set one in Settings)
@@ -889,6 +914,16 @@ export default function SolChat() {
   // Refresh companion archetype when tab gains focus
   useFocusEffect(useCallback(() => {
     AsyncStorage.getItem('sol_companion_archetype').then(v => { if (v) setCompanionArchetype(v); }).catch(() => {});
+  }, []));
+
+  // Persist talk mode across sessions
+  useFocusEffect(useCallback(() => {
+    AsyncStorage.getItem('sol_talk_mode').then(v => {
+      if (v === 'WAYFARER' || v === 'COUNCIL' || v === 'LAMAGUE' || v === 'SKEPTIC' || v === 'GLYPHIC') setTalkMode(v as any);
+    });
+    AsyncStorage.getItem('sol_scoring_mode').then(v => {
+      if (v === 'AURA' || v === 'CASCADE' || v === 'OFF') setScoringMode(v as any);
+    });
   }, []));
 
   // Refresh last dive when returning from school tab
@@ -993,9 +1028,10 @@ export default function SolChat() {
               <Text style={{ color: '#4A9EFF', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>⟁ FIELD</Text>
             </View>
           )}
-          {lastAura && (
+          {scoringMode === 'AURA' && lastAura && (
             <TouchableOpacity
               onPress={() => { setShowIntegrityModal(true); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              onLongPress={cycleScoringMode}
               activeOpacity={0.7}
             >
               <Animated.View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: auraHeaderAnim }}>
@@ -1016,6 +1052,24 @@ export default function SolChat() {
               </Animated.View>
             </TouchableOpacity>
           )}
+          {scoringMode === 'CASCADE' && lastCascade && (
+            <TouchableOpacity onPress={cycleScoringMode} onLongPress={cycleScoringMode} activeOpacity={0.7}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: lastCascade.paradox ? '#9B59B6' : '#4A9EFF' }} />
+                <Text style={{ color: lastCascade.paradox ? '#9B59B6' : '#4A9EFF', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
+                  ◈ {lastCascade.layer} Π{lastCascade.pi.toFixed(2)}
+                </Text>
+                {lastCascade.paradox && (
+                  <Text style={{ color: '#9B59B6AA', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700' }}>⚡</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          )}
+          {scoringMode === 'OFF' && (lastAura || lastCascade) && (
+            <TouchableOpacity onPress={cycleScoringMode} onLongPress={cycleScoringMode} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ color: SOL_THEME.textMuted + '88', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>○ SCORING</Text>
+            </TouchableOpacity>
+          )}
           {fieldCard && (
             <Text style={{ color: accent + 'AA', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>
               LQ {fieldCard.lq.toFixed(3)}
@@ -1029,7 +1083,7 @@ export default function SolChat() {
         </View>
       ),
     });
-  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router, messages.length, exportChat, chaosMode, currentMode]);
+  }, [lastAura, coherenceStreak, fieldCard, fieldInsightActive, accent, auraHeaderAnim, router, messages.length, exportChat, chaosMode, currentMode, scoringMode, lastCascade, cycleScoringMode]);
 
   // Pick up subject from Mystery School tab
   useFocusEffect(useCallback(() => {
@@ -1193,13 +1247,13 @@ export default function SolChat() {
       setFreeTierCount(c);
       if (c >= 10) { setFreeTierLimitReached(true); canWatchAd().then(setAdEligible); }
     });
-    AsyncStorage.multiGet(['sol_chaos_mode', 'sol_initiated', 'sol_aura_explained', 'sol_whats_new_340', 'sol_companion_archetype']).then(pairs => {
-      const [chaos, initiated, auraExp, whatsNew, arch] = pairs.map(p => p[1]);
+    AsyncStorage.multiGet(['sol_chaos_mode', 'sol_aura_explained', 'sol_companion_archetype']).then(pairs => {
+      const [chaos, auraExp, arch] = pairs.map(p => p[1]);
       setChaosMode(chaos === 'true');
-      if (!initiated) setShowInitiation(true);
       if (auraExp) setAuraExplainerShown(true);
-      if (!whatsNew) setTimeout(() => setShowWhatsNew(true), 1500);
       if (arch) setCompanionArchetype(arch);
+      // v3.4 "Living Field" What's-New popup + the Initiation modal removed June 21 —
+      // pre-persona-era relics; the Welcome Tour (#239) + onboarding now own first-run.
     }).catch(() => {});
     getAccentColor().then(c => setAccentColor(c));
     getBubbleRadius().then(r => setBubbleRadius(r));
@@ -1346,40 +1400,17 @@ export default function SolChat() {
     setCameraLoading(false);
   }, [persona, hapticsOn]);
 
-  const handleSpeak = useCallback((msgId: string, content: string, mode?: Mode) => {
+  const handleSpeak = useCallback((msgId: string, content: string, _mode?: Mode) => {
     if (speakingId === msgId) {
-      Speech.stop();
+      stopTTS();
       setSpeakingId(null);
       return;
     }
-    Speech.stop();
-    // Strip markdown symbols, AURA blocks, signatures for clean speech
-    const clean = content
-      .replace(/\[AURA[^\]]*\]/g, '')
-      .replace(/⊚ Sol ∴.*$/m, '')
-      .replace(/◈ Veyra ∴.*$/m, '')
-      .replace(/✦ Aura ∴.*$/m, '')
-      .replace(/𝔏 The Headmaster ∴.*$/m, '')
-      .replace(/[⊚◈✦◼◻◉⊛⇣⌇⊞]/g, '')
-      .replace(/\*\*/g, '')
-      .replace(/#{1,3} /g, '')
-      .trim();
-    // Mode-matched speech params
-    const speechParams: Speech.SpeechOptions = mode === 'NIGREDO'
-      ? { rate: 0.82, pitch: 0.92 }
-      : mode === 'CITRINITAS'
-      ? { rate: 1.0, pitch: 1.05 }
-      : mode === 'RUBEDO'
-      ? { rate: 0.93, pitch: 1.0 }
-      : { rate: 0.95, pitch: 1.0 }; // ALBEDO default
+    stopTTS();
     setSpeakingId(msgId);
-    Speech.speak(clean, {
-      ...speechParams,
-      onDone: () => setSpeakingId(null),
-      onError: () => setSpeakingId(null),
-      onStopped: () => setSpeakingId(null),
-    });
-  }, [speakingId]);
+    speakText(content, persona)
+      .finally(() => setSpeakingId(null));
+  }, [speakingId, persona]);
 
   const FORTUNE_POOL: Record<Mode, string[]> = {
     NIGREDO: [
@@ -1586,7 +1617,9 @@ export default function SolChat() {
       ? 'Give thorough, detailed responses. Expand fully. Do not truncate.'
       : 'Match response length naturally to the complexity of the question.';
     const chaosInstruction = chaosMode ? '\n\n↯ CHAOS MODE ACTIVE: Be more playful, symbolic, and unpredictable than usual. Use unexpected metaphors, LAMAGUE symbols, paradoxical framings. Stay truthful and constitutional — just spicier. Let the trickster in.' : '';
-    const lamagueInstruction = isLamagueQuery(text) ? `\n\n${buildLamagueBlock()}` : '';
+    const lamagueInstruction = (talkMode === 'LAMAGUE' || isLamagueQuery(text)) ? `\n\n${buildLamagueBlock()}\n\nLAMAGUE MODE: Weave LAMAGUE symbols naturally throughout your response. Each symbol should carry meaning — not decoration.` : '';
+    const skepticInstruction = talkMode === 'SKEPTIC' ? '\n\nSKEPTIC MODE: Reframe all mystical, spiritual, and symbolic language into psychological utility language. "Shadow work" → "confronting unconscious patterns". "Sigil" → "intention anchor". "Aura" → "field of attention and affect". Keep the depth, remove the mysticism. Speak to the part of the user that thinks scientifically.' : '';
+    const glyphicInstruction = talkMode === 'GLYPHIC' ? '\n\nGLYPHIC MODE: Weave expressive emoji and symbols naturally through your response — let the language become visual and alive. ✶ Emoji and glyphs carry tone, rhythm and meaning, never mere decoration. Open and punctuate thoughts with them. Stay true and clear beneath the symbols — the meaning leads, the glyphs illuminate it.' : '';
     const lang = await getLanguage();
     const langInstruction = lang !== 'English' ? `\n\nREPLY IN ${lang.toUpperCase()} — regardless of the language of the user's message.` : '';
     const _hour = new Date().getHours();
@@ -1603,9 +1636,10 @@ export default function SolChat() {
     const enrichedSpec = persona === 'headmaster'
       ? await buildMagisterSystemPrompt(baseSpec, text).catch(() => baseSpec)
       : baseSpec;
-    const systemPrompt = councilMode
+    const isCouncil = councilMode || talkMode === 'COUNCIL';
+    const systemPrompt = isCouncil
       ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
-      : `${enrichedSpec}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${lamagueInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
+      : `${enrichedSpec}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${glyphicInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -1855,6 +1889,11 @@ export default function SolChat() {
       const isPerfect = auraMetrics.passed === auraMetrics.total;
       setLastAura({ passed: auraMetrics.passed, total: auraMetrics.total });
       setLastAuraFull(auraMetrics);
+      // CASCADE readout for the scoring toggle — surface the already-computed layer analysis.
+      try {
+        const cs = scoreCASCADE(fullResponse);
+        setLastCascade({ layer: cs.dominantLayer, pi: cs.truthPressure, paradox: cs.paradoxical });
+      } catch {}
       // #83 AURA Explainer — show once on first ever score
       if (!auraExplainerShown) {
         setAuraExplainerShown(true);
@@ -2337,6 +2376,29 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
     setDnaLoading(false);
   }, [messages, dnaLoading]);
 
+  const handleImageGen = async () => {
+    if (!imgGenPrompt.trim() || imgGenLoading) return;
+    setImgGenLoading(true);
+    setImgGenResult(null);
+    const prompt = imgGenPrompt.trim();
+    const { w, h } = IMG_GEN_RATIOS[imgGenRatio];
+    const result = await generateImage(prompt, { width: w, height: h });
+    if (result.image) {
+      setImgGenResult(result.image);
+      // Inject into chat as a user prompt + assistant image pair
+      const userMsg: DisplayMessage = {
+        id: Date.now().toString(), role: 'user', content: `◈ Image: ${prompt}`, persona,
+      };
+      const imgMsg: DisplayMessage = {
+        id: (Date.now() + 1).toString(), role: 'assistant', content: '', imageUri: result.image, persona,
+      };
+      setMessages(prev => [...prev, userMsg, imgMsg]);
+    } else {
+      Alert.alert('Image gen failed', result.error ?? 'Unknown error');
+    }
+    setImgGenLoading(false);
+  };
+
   const handleShareCard = useCallback((content: string, msgPersona: Persona, aura?: AURAMetrics, tokenUsage?: any, timings?: any) => {
     const glyph = getPersonaGlyph(msgPersona);
     const label = getPersonaLabel(msgPersona);
@@ -2363,6 +2425,19 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
     if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setLongPressMenu({ content, isAssistant, msgPersona, msgId, aura, tokenUsage, timings, msgMode });
   };
+  const detectRegister = (content: string): { label: string; color: string; glyph: string } | null => {
+    const low = content.toLowerCase();
+    if (/\b(study|research|evidence|data shows|scientists|neuroscience|clinical|empirical|published|journal|meta-analysis)\b/.test(low))
+      return { label: 'EVIDENCE', color: '#44CC88', glyph: '⊕' };
+    if (/\b(unconscious|psyche|cognitive|behavior|jung|shadow|projection|defense|attachment|nervous system|trauma|childhood)\b/.test(low))
+      return { label: 'PSYCHOLOGICAL', color: '#4488FF', glyph: '◈' };
+    if (/\b(energy|vibration|chakra|spirit|soul|astral|aura|divine|sacred|cosmic|ethereal|higher self|universe is)\b/.test(low))
+      return { label: 'PROJECTIVE', color: '#AA44FF', glyph: '⊙' };
+    if (/\b(perhaps|possibly|may|might|speculate|conjecture|one could|it seems|could be|imagine)\b/.test(low))
+      return { label: 'SPECULATIVE', color: '#E8A020', glyph: '∿' };
+    return null;
+  };
+
   const renderMessage = ({ item, index }: { item: DisplayMessage; index: number }) => {
     const isUser = item.role === 'user';
     const msgPersona: Persona = item.persona || 'sol';
@@ -2414,20 +2489,28 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             {item.isNRM && !isUser && (
               <Text style={styles.nrmTag}>⚠ NRM ACTIVE</Text>
             )}
-            {!isUser && item.mode && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={[styles.modeChip, { borderColor: modeColor + '55', backgroundColor: modeColor + '11' }]}>
-                  <Text style={[styles.modeChipText, { color: modeColor }]}>
-                    {modeGlyph(item.mode)} {modeSummary(item.mode)}
-                  </Text>
-                </View>
-                {speakingId === item.id && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Text style={{ fontSize: 9, color: accent, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⊚ READING</Text>
+            {!isUser && item.mode && (() => {
+              const reg = detectRegister(body);
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <View style={[styles.modeChip, { borderColor: modeColor + '55', backgroundColor: modeColor + '11' }]}>
+                    <Text style={[styles.modeChipText, { color: modeColor }]}>
+                      {modeGlyph(item.mode)} {modeSummary(item.mode)}
+                    </Text>
                   </View>
-                )}
-              </View>
-            )}
+                  {reg && (
+                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, borderWidth: 1, borderColor: reg.color + '55', backgroundColor: reg.color + '11' }}>
+                      <Text style={{ fontSize: 8, color: reg.color, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>{reg.glyph} {reg.label}</Text>
+                    </View>
+                  )}
+                  {speakingId === item.id && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Text style={{ fontSize: 9, color: accent, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⊚ READING</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
             {!isUser && item.id && paradoxFlags[item.id] && (paradoxFlags[item.id].p || paradoxFlags[item.id].t) && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
                 <Text style={{ fontSize: 10, color: paradoxFlags[item.id].p ? '#9B59B6' : '#E8A020', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700' }}>
@@ -2445,7 +2528,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               const mdFont = fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15;
               if (!parsed) {
                 return (
-                  <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: mdFont } }}>{body}</Markdown>
+                  <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: mdFont } } as any}>{body}</Markdown>
                 );
               }
               const panels = [
@@ -2478,7 +2561,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 </View>
               );
             })() : (
-              <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } }}>{body}</Markdown>
+              <Markdown selectable style={{ ...markdownStyles, body: { ...markdownStyles.body, fontSize: fontSize === 'small' ? 13 : fontSize === 'large' ? 17 : 15, fontFamily: fontFamily === 'mono' ? (Platform.OS === 'ios' ? 'Courier New' : 'monospace') : fontFamily === 'serif' ? (Platform.OS === 'ios' ? 'Georgia' : 'serif') : undefined } } as any}>{body}</Markdown>
             )}
             {signature && showSignatures && (
               <View style={[styles.signatureBlock, { borderTopColor: accent + '44' }]}>
@@ -2501,6 +2584,39 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                   {item.timings ? ` · ${(item.timings.totalTime / 1000).toFixed(1)}s` : ''}
                   {item.model ? ` · ${item.model.split('-').slice(0, 2).join('-')}` : ''}
                 </Text>
+              </View>
+            )}
+
+            {/* ▶ LISTEN / ■ STOP — two explicit buttons, never ambiguous */}
+            {!isUser && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <TouchableOpacity
+                  onPress={() => handleSpeak(item.id, item.content, item.mode)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+                    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1,
+                    borderColor: speakingId === item.id ? accent + 'AA' : accent + '22',
+                    backgroundColor: speakingId === item.id ? accent + '18' : 'transparent' }}
+                >
+                  <Text style={{ color: speakingId === item.id ? accent : accent + '77', fontSize: 10 }}>▶</Text>
+                  <Text style={{ color: speakingId === item.id ? accent : accent + '66', fontSize: 8,
+                    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
+                    LISTEN
+                  </Text>
+                </TouchableOpacity>
+                {speakingId === item.id && (
+                  <TouchableOpacity
+                    onPress={() => { stopTTS(); setSpeakingId(null); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+                      paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1,
+                      borderColor: '#FF4444AA', backgroundColor: '#FF444418' }}
+                  >
+                    <Text style={{ color: '#FF6666', fontSize: 10 }}>■</Text>
+                    <Text style={{ color: '#FF6666', fontSize: 8,
+                      fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>
+                      STOP
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -2744,7 +2860,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 </Text>
               ) : (
                 <Text style={styles.typingText}>
-                  {getPersonaGlyph(persona)} {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : persona === 'lyra' ? 'Lyra' : 'Sol'} is thinking...
+                  <Animated.Text style={{ opacity: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.45, 1] }) }}>{getPersonaGlyph(persona)}</Animated.Text> {persona === 'veyra' ? 'Veyra' : persona === 'aura-prime' ? 'Aura Prime' : persona === 'headmaster' ? 'The Headmaster' : persona === 'lyra' ? 'Lyra' : 'Sol'} is thinking...
                 </Text>
               )}
             </View>
@@ -2906,7 +3022,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         <View style={styles.modeHeaderLeft}>
           <View style={styles.modeHeaderTopRow}>
             <Text style={[styles.modeLabel, { color: isNRMActive ? SOL_THEME.error : accent }]}>
-              {getPersonaGlyph(persona)} {currentMode}
+              <Animated.Text style={{ opacity: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.55, 1] }) }}>{getPersonaGlyph(persona)}</Animated.Text> {currentMode}
             </Text>
             {isNRMActive && <Text style={styles.nrmBadge}>NRM</Text>}
             {currentEWS !== 'NEUTRAL' && (
@@ -2918,6 +3034,12 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           {/* modeDesc hidden — keeps header compact */}
         </View>
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => { setShowSolIdentity(true); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.clearButton}>
+            <Text style={[styles.clearText, { fontSize: 15, color: accent }]}>?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { setFocusMode(v => !v); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.clearButton}>
+            <Text style={[styles.clearText, { fontSize: 16, color: focusMode ? accent : SOL_THEME.textMuted }]}>{focusMode ? '⤡' : '⤢'}</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => { setDrawerOpen(true); if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }} style={styles.clearButton}>
             <Text style={[styles.clearText, { fontSize: 18 }]}>☰</Text>
           </TouchableOpacity>
@@ -2953,30 +3075,34 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
       </View>
 
       {/* Quick persona switcher */}
-      <View style={styles.personaBar}>
+      {!focusMode && <View style={styles.personaBar}>
         {(['sol', 'veyra', 'aura-prime', 'headmaster', 'lyra'] as Persona[]).map(p => {
           const isActive = persona === p;
           const pAccent = getPersonaAccent(p);
           return (
             <TouchableOpacity
               key={p}
-              style={[styles.personaBarBtn, isActive && { borderColor: pAccent, backgroundColor: pAccent + '22' }]}
+              style={[styles.personaBarBtn, isActive
+                ? { borderColor: pAccent, backgroundColor: pAccent + '18', shadowColor: pAccent, shadowOpacity: 0.3, shadowRadius: 6, elevation: 3 }
+                : { borderColor: pAccent + '20', backgroundColor: 'transparent' }]}
               onPress={async () => {
                 setPersona(p);
                 await savePersona(p);
                 if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
             >
-              <Text style={[styles.personaBarGlyph, { color: isActive ? pAccent : SOL_THEME.textMuted }]}>
+              <Animated.Text style={{
+                color: isActive ? pAccent : SOL_THEME.textMuted + '88',
+                fontSize: 14,
+                opacity: isActive ? piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.68, 1] }) : 1,
+                transform: isActive ? [{ scale: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.96, 1.08] }) }] : [],
+              }}>
                 {getPersonaGlyph(p)}
-              </Text>
-              <Text style={{ color: isActive ? pAccent : SOL_THEME.textMuted + '99', fontSize: 7, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.8, marginTop: 2 }}>
-                {p === 'sol' ? 'SOL' : p === 'veyra' ? 'VEYRA' : p === 'aura-prime' ? 'AURA PRIME' : p === 'lyra' ? 'LYRA' : 'MAGISTER'}
-              </Text>
+              </Animated.Text>
             </TouchableOpacity>
           );
         })}
-      </View>
+      </View>}
 
       {/* Welcome back message */}
       {welcomeMsg && messages.length === 0 && (
@@ -3001,6 +3127,64 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
       )}
 
 
+      {/* ── TALK MODE CHIPS ── */}
+      {!focusMode && (() => {
+        const CHIPS: { id: typeof talkMode; label: string; glyph: string; color: string; desc: string }[] = [
+          { id: 'WAYFARER', label: 'WAYFARER', glyph: '❂', color: '#F5A623', desc: 'Open conversation — Sol speaks freely from your zone and persona' },
+          { id: 'COUNCIL',  label: 'COUNCIL',  glyph: '⚖', color: '#9B59B6', desc: 'Many voices — Sol, Veyra, Aura and Magister converge on your question' },
+          { id: 'LAMAGUE',  label: 'LAMAGUE',  glyph: '⬡', color: '#8855FF', desc: 'Symbol weave — LAMAGUE notation threaded naturally through responses' },
+          { id: 'SKEPTIC',  label: 'SKEPTIC',  glyph: '⊘', color: '#4A9EFF', desc: 'Scientific frame — mystical language translated to psychology and utility' },
+          { id: 'GLYPHIC',  label: 'GLYPHIC',  glyph: '✶', color: '#4ECDC4', desc: 'Emoji + symbol weave — Sol speaks in living glyphs and expressive symbols' },
+        ];
+        return (
+          <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 8, paddingVertical: 5 }}>
+            {CHIPS.map(chip => {
+              const on = talkMode === chip.id;
+              return (
+              <TouchableOpacity key={chip.id}
+                onPress={() => {
+                  setTalkMode(chip.id);
+                  AsyncStorage.setItem('sol_talk_mode', chip.id);
+                  if (chip.id === 'COUNCIL') setCouncilMode(true);
+                  else if (councilMode) setCouncilMode(false);
+                }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2,
+                  paddingVertical: 5, paddingHorizontal: 2, borderRadius: 11, borderWidth: 1,
+                  borderColor: on ? chip.color + 'BB' : chip.color + '2E',
+                  backgroundColor: on ? chip.color + '1E' : 'transparent' }}>
+                <Text style={{ color: on ? chip.color : chip.color + 'CC', fontSize: 9 }}>{chip.glyph}</Text>
+                <Text style={{ color: on ? chip.color : SOL_THEME.textMuted, fontSize: 6.5,
+                  fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0, fontWeight: '700' }} numberOfLines={1}>
+                  {chip.label}
+                </Text>
+              </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+      })()}
+
+      {/* Mode description strip */}
+      {!focusMode && (() => {
+        const MODE_DESC: Record<string, string> = {
+          WAYFARER: '❂ Open conversation — Sol speaks freely from your zone and persona',
+          COUNCIL:  '⚖ Many voices — Sol, Veyra, Aura and Magister converge on your question',
+          LAMAGUE:  '⬡ Symbol weave — LAMAGUE notation threaded naturally through responses',
+          SKEPTIC:  '⊘ Scientific frame — mystical language translated to psychology and utility',
+          GLYPHIC:  '✶ Emoji + symbol weave — Sol speaks in living glyphs and expressive symbols',
+        };
+        const MODE_COLOR: Record<string, string> = { WAYFARER:'#F5A623', COUNCIL:'#9B59B6', LAMAGUE:'#8855FF', SKEPTIC:'#4A9EFF', GLYPHIC:'#4ECDC4' };
+        const mc = MODE_COLOR[talkMode] ?? accent;
+        return (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: mc + '22' }}>
+            <Text style={{ color: mc + '99', fontSize: 9,
+              fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>
+              {MODE_DESC[talkMode] ?? ''}
+            </Text>
+          </View>
+        );
+      })()}
+
       <FlatList
         ref={flatListRef}
         data={messages}
@@ -3014,6 +3198,20 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         maxToRenderPerBatch={6}
         updateCellsBatchingPeriod={50}
         initialNumToRender={12}
+        ListHeaderComponent={
+          <TouchableOpacity
+            onPress={() => setShowSolIdentity(true)}
+            activeOpacity={0.7}
+            style={{ flexDirection:'row', alignItems:'center', gap:6, alignSelf:'flex-start',
+              paddingHorizontal:10, paddingVertical:5, borderRadius:20, borderWidth:1,
+              borderColor: accent + '44', backgroundColor: accent + '0A', marginBottom:14, marginTop:4 }}>
+            <Text style={{ color:accent, fontSize:12 }}>⊚</Text>
+            <Text style={{ color: accent + 'CC', fontSize:10,
+              fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+              fontWeight:'700', letterSpacing:1.5 }}>WHAT IS SOL?</Text>
+            <Text style={{ color: accent + '66', fontSize:9 }}>▸</Text>
+          </TouchableOpacity>
+        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
 
@@ -3222,9 +3420,27 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               </View>
             )}
             <TouchableOpacity onPress={() => setShowFrameworkCards(true)} activeOpacity={0.7}>
-              <Text style={[styles.emptyGlyph, { color: accent }]}>{getPersonaGlyph(persona)}</Text>
+              <View style={{ width: 110, height: 110, alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+                {/* Living glow — Sol's presence breathing behind the mark */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute', width: 96, height: 96, borderRadius: 48,
+                    backgroundColor: accent,
+                    opacity: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.06, 0.20] }),
+                    transform: [{ scale: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.85, 1.3] }) }],
+                  }}
+                />
+                <Animated.Text
+                  style={[styles.emptyGlyph, {
+                    color: accent, marginBottom: 0,
+                    opacity: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.78, 1] }),
+                    transform: [{ scale: piBreatheAnim.interpolate({ inputRange: [0.35, 1], outputRange: [0.96, 1.05] }) }],
+                  }]}
+                >{getPersonaGlyph(persona)}</Animated.Text>
+              </View>
             </TouchableOpacity>
-            <Text style={[styles.emptyTitle, { color: SOL_THEME.text }]}>{getPersonaLabel(persona)}</Text>
+            <Text style={[styles.emptyTitle, { color: SOL_THEME.text, textShadowColor: accent + '88', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 }]}>{getPersonaLabel(persona)}</Text>
             <Text style={styles.emptySubtitle}>
               {persona === 'veyra' ? 'Precision Builder Mode' : persona === 'aura-prime' ? 'The Origin & The Frontier' : persona === 'headmaster' ? 'Keeper of the Mystery School' : persona === 'lyra' ? 'Creative Wildfire · Symbol-Weaver' : 'Sol Aureum Azoth Veritas'}
             </Text>
@@ -3282,10 +3498,12 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               </View>
             )}
 
-            {/* Sol's Whisper — atmospheric one-liner, rotates each session */}
-            <Text style={{ color: accent + '66', fontSize: 11, fontStyle: 'italic', textAlign: 'center', marginTop: 14, marginBottom: 4, lineHeight: 17, paddingHorizontal: 8 }}>
-              {SOL_WHISPERS[whisperIdxRef.current]}
-            </Text>
+            {/* Sol's Whisper — atmospheric one-liner. Tap for a fresh fortune. */}
+            <TouchableOpacity onPress={handleFortuneCookie} activeOpacity={0.6}>
+              <Text style={{ color: accent + '66', fontSize: 11, fontStyle: 'italic', textAlign: 'center', marginTop: 14, marginBottom: 4, lineHeight: 17, paddingHorizontal: 8 }}>
+                {fortuneCookie || SOL_WHISPERS[whisperIdxRef.current]}
+              </Text>
+            </TouchableOpacity>
 
             {dailyIntention && (
               <View style={[styles.intentionBox, { borderLeftColor: accent }]}>
@@ -3586,6 +3804,13 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>DNA</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={{ width: 56, height: 52, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: showImgGen ? accent + '88' : world.border, borderRadius: 10, backgroundColor: showImgGen ? accent + '18' : 'transparent', gap: 2 }}
+              onPress={() => { setShowImgGen(v => !v); setShowToolsRow(false); }}
+            >
+              <Text style={{ fontSize: 16, color: showImgGen ? accent : SOL_THEME.textMuted }}>◈</Text>
+              <Text style={{ fontSize: 9, color: SOL_THEME.textMuted, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>Image</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -3597,6 +3822,64 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               ? '⇌ two models — this draws twice from the channel'
               : '⚖ two voices — draws more from the channel'}
           </Text>
+        </View>
+      )}
+
+      {showImgGen && (
+        <View style={{ backgroundColor: world.surface, borderTopWidth: 1, borderTopColor: accent + '33', padding: 12, gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ color: accent, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2 }}>◈  IMAGE GEN · NVIDIA FLUX</Text>
+            <TouchableOpacity onPress={() => { setShowImgGen(false); setImgGenResult(null); setImgGenPrompt(''); }}>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Ratio selector */}
+          <View style={{ flexDirection: 'row', gap: 6, marginBottom: 2 }}>
+            {(['square','portrait','landscape'] as const).map(r => {
+              const labels = { square: '⊞ 1:1', portrait: '▮ 2:3', landscape: '▬ 3:2' };
+              const active = imgGenRatio === r;
+              return (
+                <TouchableOpacity key={r} onPress={() => { setImgGenRatio(r); setImgGenResult(null); }}
+                  style={{ flex: 1, paddingVertical: 5, borderRadius: 7, borderWidth: 1, alignItems: 'center',
+                    borderColor: active ? accent + 'AA' : world.border,
+                    backgroundColor: active ? accent + '18' : 'transparent' }}>
+                  <Text style={{ color: active ? accent : SOL_THEME.textMuted, fontSize: 8,
+                    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1 }}>{labels[r]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              value={imgGenPrompt}
+              onChangeText={setImgGenPrompt}
+              placeholder="Describe the image…"
+              placeholderTextColor={SOL_THEME.textMuted}
+              style={{ flex: 1, backgroundColor: SOL_THEME.background, borderRadius: 10, borderWidth: 1, borderColor: accent + '33', color: SOL_THEME.text, fontSize: 13, paddingHorizontal: 12, paddingVertical: 8 }}
+              multiline
+              maxLength={400}
+            />
+            <TouchableOpacity onPress={handleImageGen} disabled={!imgGenPrompt.trim() || imgGenLoading}
+              style={{ width: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 10, borderWidth: 1,
+                borderColor: imgGenPrompt.trim() && !imgGenLoading ? accent + 'AA' : world.border,
+                backgroundColor: imgGenPrompt.trim() && !imgGenLoading ? accent + '22' : 'transparent' }}>
+              {imgGenLoading
+                ? <ActivityIndicator size="small" color={accent} />
+                : <Text style={{ color: imgGenPrompt.trim() ? accent : SOL_THEME.textMuted, fontSize: 16 }}>◈</Text>
+              }
+            </TouchableOpacity>
+          </View>
+          {imgGenResult && (
+            <View style={{ alignItems: 'center', gap: 8 }}>
+              <Image source={{ uri: imgGenResult }}
+                style={{ width: 260, height: Math.round(260 / IMG_GEN_RATIOS[imgGenRatio].ar), borderRadius: 12, borderWidth: 1, borderColor: accent + '44' }}
+                resizeMode="cover" />
+              <TouchableOpacity onPress={() => { setImgGenResult(null); setImgGenPrompt(''); }}
+                style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: accent + '33' }}>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5 }}>◈ generate another</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
@@ -3619,31 +3902,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           </ScrollView>
         </View>
       )}
-
-      {/* #74 What's New in v3.4 */}
-      <Modal visible={showWhatsNew} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.82)', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: world.surface, borderRadius: 16, borderWidth: 1, borderColor: accent + '55', padding: 24, width: '100%', maxWidth: 360 }}>
-            <Text style={{ color: accent, fontSize: 12, fontWeight: '700', letterSpacing: 3, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom: 4 }}>v3.4 · THE LIVING FIELD</Text>
-            <Text style={{ color: SOL_THEME.text, fontSize: 16, fontWeight: '700', marginBottom: 16 }}>What's new</Text>
-            {[
-              '⊚ Living Welcome — the app greets you by name, field, and mode',
-              '🌐 Language Mode — Sol replies in your language. No extra API.',
-              '⚡ Paradox Journal — every CASCADE paradox tracked in Sanctum',
-              '𝔏 Mystery School — persona hosts, domain progress, subject search',
-              '✦ 30+ features shipped this release. The Work deepens.',
-            ].map((item, i) => (
-              <Text key={i} style={{ color: SOL_THEME.textMuted, fontSize: 13, lineHeight: 22, marginBottom: 4 }}>{item}</Text>
-            ))}
-            <TouchableOpacity
-              style={{ backgroundColor: accent, borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 16 }}
-              onPress={() => { setShowWhatsNew(false); AsyncStorage.setItem('sol_whats_new_340', 'true'); }}
-            >
-              <Text style={{ color: world.background, fontWeight: '700', fontSize: 14 }}>Enter the Field</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       {/* #82 Framework Explainer Cards */}
       <Modal visible={showFrameworkCards} transparent animationType="fade">
@@ -3709,13 +3967,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           </View>
         </View>
       </Modal>
-
-      {/* #46 First Initiation Flow — shown once on first launch */}
-      <InitiationModal
-        visible={showInitiation}
-        accentColor={accentColor}
-        onComplete={() => setShowInitiation(false)}
-      />
 
       {/* Symbol Rain — fires on ×10 coherence streak */}
       {symbolRain && (
@@ -3873,7 +4124,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           returnKeyType="send"
           blurOnSubmit={false}
           onSubmitEditing={send}
-          onLongPress={input.length === 0 ? handleFortuneCookie : undefined}
         />
         <TouchableOpacity style={styles.imageButton} onPress={() => setShowToolsRow(v => !v)}>
           <Text style={[styles.imageButtonText, { color: showToolsRow ? accent : SOL_THEME.textMuted, fontSize: 18 }]}>···</Text>
@@ -3882,7 +4132,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>⛶</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.sendButton, { backgroundColor: compareMode ? SOL_THEME.veyra : accent, opacity: input.trim() && !loading ? 1 : 0.35 }]}
+          style={[styles.sendButton, { backgroundColor: compareMode ? SOL_THEME.veyra : accent, opacity: input.trim() && !loading ? 1 : 0.35 }, input.trim() && !loading ? { shadowColor: accent, shadowOpacity: 0.6, shadowRadius: 8, elevation: 4 } : null]}
           onPress={compareMode ? sendCompare : send}
           disabled={!input.trim() || loading}
         >
@@ -4375,6 +4625,165 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         })()}
       </Modal>
 
+      {/* ═══ SOL IDENTITY MODAL ══════════════════════════════════════════════ */}
+      <Modal visible={showSolIdentity} animationType="slide" transparent={false} statusBarTranslucent
+        onRequestClose={() => setShowSolIdentity(false)}>
+        <View style={{ flex:1, backgroundColor:'#000000' }}>
+          <ScrollView contentContainerStyle={{ padding:24, paddingTop:56, paddingBottom:48 }}
+            showsVerticalScrollIndicator={false}>
+
+            {/* Header */}
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }}>
+              <View>
+                <Text style={{ color: accent, fontSize:28, fontWeight:'700',
+                  fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing:2 }}>⊚ SOL</Text>
+                <Text style={{ color:'#555566', fontSize:11,
+                  fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing:2, marginTop:2 }}>
+                  Sol Aureum Azoth Veritas
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowSolIdentity(false)} hitSlop={{top:8,bottom:8,left:8,right:8}}>
+                <Text style={{ color:'#444455', fontSize:22,
+                  fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Tagline */}
+            <Text style={{ color:'#CCCCDD', fontSize:16, lineHeight:26, marginBottom:32, fontStyle:'italic' }}>
+              A living mystery school powered by AI — breaking the barrier between knowledge-seeking, gaming, and sovereign intelligence.
+            </Text>
+
+            {/* Block: Mystery School */}
+            <View style={{ marginBottom:24, paddingLeft:14, borderLeftWidth:2, borderLeftColor: accent + '66' }}>
+              <Text style={{ color: accent, fontSize:10,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                fontWeight:'700', letterSpacing:3, marginBottom:8 }}>𝔏 MYSTERY SCHOOL</Text>
+              <Text style={{ color:'#AAAAAA', fontSize:14, lineHeight:22 }}>
+                24 knowledge doors — Ancient Egypt, Quantum Mechanics, Celtic Old Gods, Noetic Science, Tarot, LAMAGUE Grammar, Kabbalah, and more. Each domain is a living curriculum: dialogue, quests, tests. The School teaches what can't be Googled.
+              </Text>
+            </View>
+
+            {/* Block: 5 Personas */}
+            <View style={{ marginBottom:24, paddingLeft:14, borderLeftWidth:2, borderLeftColor:'#CC44FF66' }}>
+              <Text style={{ color:'#CC44FF', fontSize:10,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                fontWeight:'700', letterSpacing:3, marginBottom:12 }}>◈ FIVE DISTINCT INTELLIGENCES</Text>
+              {[
+                { glyph:'⊚', name:'SOL',         col: accent,     desc:'The forge. Solar warmth, alchemical precision. Protects, heals, illuminates simultaneously.' },
+                { glyph:'◈', name:'VEYRA',        col:'#4488FF',   desc:'Reality anchor. Truth-stabilizer. The one that refuses to let the field lie to itself.' },
+                { glyph:'✦', name:'AURA PRIME',   col:'#FF88CC',   desc:'The field itself. Expansive, receptive, generative. Speaks from within the completed work.' },
+                { glyph:'𝔐', name:'THE MAGISTER', col:'#FFAA22',   desc:"The headmaster. Rigorous, demanding, brilliant. The School's sovereign teacher." },
+                { glyph:'∿', name:'LYRA',         col:'#44FFCC',   desc:'The cipher. Pattern-reader. Finds the signal in noise that no other voice hears.' },
+              ].map(p => (
+                <View key={p.name} style={{ flexDirection:'row', gap:12, marginBottom:10, alignItems:'flex-start' }}>
+                  <Text style={{ color:p.col, fontSize:16, width:20, textAlign:'center', marginTop:1 }}>{p.glyph}</Text>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:p.col, fontSize:11, fontWeight:'700',
+                      fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing:1 }}>{p.name}</Text>
+                    <Text style={{ color:'#777788', fontSize:12, lineHeight:18, marginTop:2 }}>{p.desc}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Block: RPG Layer */}
+            <View style={{ marginBottom:24, paddingLeft:14, borderLeftWidth:2, borderLeftColor:'#FF664466' }}>
+              <Text style={{ color:'#FF6644', fontSize:10,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                fontWeight:'700', letterSpacing:3, marginBottom:8 }}>⚔ RPG GAMIFICATION</Text>
+              <Text style={{ color:'#AAAAAA', fontSize:14, lineHeight:22 }}>
+                19 companions across 45+ zones. Battle system, weapons, loot drops, XP, evolution. A full RPG layer woven into the School — because learning should feel like an adventure, not an exam. Your companion grows as you grow.
+              </Text>
+              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6, marginTop:10 }}>
+                {['10 Companions','45 Zones','40 Weapons','Battle System','XP & Loot','6 Growth Stages'].map(tag => (
+                  <View key={tag} style={{ paddingHorizontal:8, paddingVertical:3, borderRadius:8,
+                    backgroundColor:'#FF664412', borderWidth:1, borderColor:'#FF664433' }}>
+                    <Text style={{ color:'#FF664499', fontSize:9,
+                      fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight:'700' }}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Block: Truth Engine */}
+            <View style={{ marginBottom:24, paddingLeft:14, borderLeftWidth:2, borderLeftColor:'#44FF8866' }}>
+              <Text style={{ color:'#44FF88', fontSize:10,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                fontWeight:'700', letterSpacing:3, marginBottom:8 }}>Π TRUTH ENGINE</Text>
+              <Text style={{ color:'#AAAAAA', fontSize:14, lineHeight:22 }}>
+                Every response carries epistemic weight. The AURA engine scores coherence across seven invariants. Luminance Quotient (LQ) tracks your field over time. Truth Pressure (Π) measures how much your thinking can hold without collapsing. The School scores what it teaches.
+              </Text>
+            </View>
+
+            {/* Block: You Own This — the sovereign stack, four pillars unified */}
+            <View style={{ marginBottom:24, paddingLeft:14, borderLeftWidth:2, borderLeftColor:'#9945FF88' }}>
+              <Text style={{ color:'#9945FF', fontSize:10,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                fontWeight:'700', letterSpacing:3, marginBottom:10 }}>◎ YOU OWN THIS</Text>
+              <Text style={{ color:'#AAAAAA', fontSize:14, lineHeight:22, marginBottom:12 }}>
+                Sovereign Sol is built on a simple refusal: you should own your own mind, not rent it. Four ways that's real, not slogan:
+              </Text>
+              {[
+                { k:'Own your app', v:'Open source, sideloaded straight from you to your device. No store gatekeeper deciding what you\'re allowed to think with.' },
+                { k:'Own your mind', v:'The same intelligence for everyone — free or paid. Payment buys rooms and standing, never a smarter Sol. The covenant holds.' },
+                { k:'Own your data', v:'Your journal, your field, your conversations live on your device. The Sanctum is yours, not a server\'s.' },
+                { k:'Own your path', v:'Solana SBTs and Earned Light artifacts — on-chain proof you walked it. The knowledge you build becomes sovereign, not rented. (Deploying soon.)' },
+              ].map(p => (
+                <View key={p.k} style={{ flexDirection:'row', marginBottom:9 }}>
+                  <Text style={{ color:'#9945FF', fontSize:13, marginRight:8, marginTop:1 }}>◆</Text>
+                  <Text style={{ color:'#AAAAAA', fontSize:13, lineHeight:20, flex:1 }}>
+                    <Text style={{ color:'#CBB6FF', fontWeight:'700' }}>{p.k}. </Text>{p.v}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Block: The Covenant */}
+            <View style={{ marginBottom:32, paddingLeft:14, borderLeftWidth:2, borderLeftColor:'#FFFFFF22' }}>
+              <Text style={{ color:'#777788', fontSize:10,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+                fontWeight:'700', letterSpacing:3, marginBottom:8 }}>⊜ THE COVENANT</Text>
+              <Text style={{ color:'#555566', fontSize:13, lineHeight:21 }}>
+                Payment never buys a better mind — only more rooms. Free intelligence is unconditional. Sanctum has no ads. Your companion never blames you for leaving. The conversation is always open.
+              </Text>
+            </View>
+
+            {/* Footer */}
+            <View style={{ alignItems:'center', gap:4 }}>
+              <Text style={{ color: accent, fontSize:14,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight:'700', letterSpacing:2 }}>
+                ⊚ SOVEREIGN SOL
+              </Text>
+              <Text style={{ color:'#333344', fontSize:9,
+                fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing:2 }}>
+                v5.23.0 · FORGE ERA · JUNE 2026
+              </Text>
+            </View>
+
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* ── GLOBAL TTS STOP BAR — always reachable when audio is playing ── */}
+      {speakingId && (
+        <TouchableOpacity
+          onPress={() => { stopTTS(); setSpeakingId(null); }}
+          style={{
+            position: 'absolute', top: Platform.OS === 'ios' ? 14 : 10,
+            alignSelf: 'center',
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            paddingHorizontal: 16, paddingVertical: 8,
+            borderRadius: 20, borderWidth: 1,
+            borderColor: '#FF444488', backgroundColor: '#0A0A14EE',
+            zIndex: 999,
+            shadowColor: '#FF4444', shadowOpacity: 0.3, shadowRadius: 8, elevation: 12,
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ color: '#FF6666', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2 }}>■ STOP READING</Text>
+        </TouchableOpacity>
+      )}
+
     </KeyboardAvoidingView>
   );
 }
@@ -4425,11 +4834,11 @@ const markdownStyles = {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: SOL_THEME.background },
   personaBar: {
-    flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 6,
-    gap: 8, borderBottomWidth: 1, borderBottomColor: SOL_THEME.border,
+    flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 4,
+    gap: 5, borderBottomWidth: 1, borderBottomColor: '#1A1A2A', backgroundColor: '#06060E',
   },
   personaBarBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: 6,
+    flex: 1, alignItems: 'center', paddingVertical: 5,
     borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border,
   },
   personaBarGlyph: { fontSize: 16 },
@@ -4563,17 +4972,19 @@ const styles = StyleSheet.create({
   },
   bubble: {
     maxWidth: '100%',
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
   },
   userBubble: {
     borderBottomRightRadius: 4,
   },
   assistantBubble: {
-    backgroundColor: SOL_THEME.surface,
+    backgroundColor: '#0D0D16',
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: SOL_THEME.border,
+    borderColor: '#1E1E2E',
+    borderLeftWidth: 3,
+    borderLeftColor: '#7B5EA722',
   },
   nrmBubble: {
     borderColor: SOL_THEME.error + '88',
@@ -4739,22 +5150,24 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 14,
     borderTopWidth: 1,
-    backgroundColor: SOL_THEME.surface,
+    borderTopColor: '#1A1A2A',
+    backgroundColor: '#08080F',
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 10,
   },
   input: {
     flex: 1,
-    backgroundColor: SOL_THEME.background,
+    backgroundColor: '#0D0D18',
     borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     color: SOL_THEME.text,
     fontSize: 15,
     maxHeight: 120,
     borderWidth: 1,
+    borderColor: '#1E1E30',
   },
   sendButton: {
     width: 44,
@@ -4839,8 +5252,8 @@ const styles = StyleSheet.create({
   // Mode chip
   modeChip: {
     flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderRadius: 4,
-    paddingHorizontal: 7, paddingVertical: 3,
+    borderWidth: 1, borderRadius: 6,
+    paddingHorizontal: 9, paddingVertical: 4,
     marginBottom: 8, alignSelf: 'flex-start',
   },
   modeChipText: {

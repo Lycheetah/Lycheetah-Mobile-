@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const HC_KEY = 'sol_high_contrast';
+
+// High contrast makes ALL text render semibold app-wide (a robust, real readability boost on
+// our dark backgrounds — bold weight lifts legibility for low vision without a per-screen refactor).
+function applyHighContrastWeight(on: boolean) {
+  const base = (Text as any).defaultProps || {};
+  (Text as any).defaultProps = { ...base, style: on ? { fontWeight: '600' } : undefined };
+}
 
 type AccessibilityCtx = {
   highContrast: boolean;
@@ -17,11 +25,12 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
   const [highContrast, setHC] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(HC_KEY).then(v => { if (v === 'true') setHC(true); });
+    AsyncStorage.getItem(HC_KEY).then(v => { const on = v === 'true'; if (on) setHC(true); applyHighContrastWeight(on); });
   }, []);
 
   const setHighContrast = async (v: boolean) => {
     setHC(v);
+    applyHighContrastWeight(v);
     await AsyncStorage.setItem(HC_KEY, v ? 'true' : 'false');
   };
 

@@ -12,8 +12,8 @@ export const SOL_THEME = {
   auraPrimeGlyph: '✦',
   headmasterGlyph: '𝔏',
   lyraGlyph: '✧',
-  text: '#F0EDE8',
-  textMuted: '#888888',
+  text: '#F2EFEA',
+  textMuted: '#A2A6AE',   // raised from #888888 — that grey failed contrast on near-black; this passes WCAG AA for body text and helps everyone read
   border: '#2A2A2A',
   success: '#4CAF50',
   error: '#CF6679',

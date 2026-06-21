@@ -6,9 +6,10 @@ import {
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../../constants/theme';
-import { getActiveKey, getModel } from '../../lib/storage';
+import { getActiveKey, getModel, getStudiedSubjects } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
 import { LAMAGUE_CONTEXT } from '../../lib/lamague-context';
+import { MYSTERY_SCHOOL_DOMAINS, SubjectDomain, SubjectLayer } from '../../lib/mystery-school/subjects';
 
 type Framework = {
   id: string;
@@ -186,17 +187,44 @@ Be direct. Max 3 sentences unless the question genuinely requires more.
 
 ${LAMAGUE_CONTEXT}`;
 
+const LAYER_META: Record<SubjectLayer, { color: string; label: string }> = {
+  FOUNDATION: { color: '#4A9EFF', label: 'FOUNDATION' },
+  MIDDLE:     { color: '#4CAF50', label: 'MIDDLE' },
+  EDGE:       { color: '#FF9800', label: 'EDGE' },
+  OPEN:       { color: '#BB86FC', label: 'OPEN' },
+  VOID:       { color: '#FF5555', label: 'VOID' },
+};
+
+const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  contemplative: { label: 'CONTEMPLATIVE', color: '#4A9EFF' },
+  secular:       { label: 'SECULAR',       color: '#4CAF50' },
+  lycheetah:     { label: 'LYCHEETAH',     color: '#C8A96E' },
+  void:          { label: 'VOID',          color: '#FF5555' },
+};
+
 export default function CodexScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [tab, setTab] = useState<'frameworks' | 'lamague' | 'help'>('frameworks');
+  const [tab, setTab] = useState<'frameworks' | 'lamague' | 'help' | 'domains'>('frameworks');
+  // Domains tab state
+  const [domainSearch, setDomainSearch] = useState('');
+  const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
+  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+  const [studiedNames, setStudiedNames] = useState<Set<string>>(new Set());
+  const [layerFilter, setLayerFilter] = useState<SubjectLayer | 'ALL'>('ALL');
 
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('codex_open_help').then(val => {
-      if (val === 'true') {
-        setTab('help');
-        AsyncStorage.removeItem('codex_open_help');
-      }
+    Promise.all([
+      AsyncStorage.getItem('codex_open_help'),
+      AsyncStorage.getItem('codex_open_domains'),
+      AsyncStorage.getItem('codex_open_frameworks'),
+      AsyncStorage.getItem('codex_open_lamague'),
+    ]).then(([help, domains, frameworks, lamague]) => {
+      if (help      === 'true') { setTab('help');       AsyncStorage.removeItem('codex_open_help'); }
+      if (domains   === 'true') { setTab('domains');    AsyncStorage.removeItem('codex_open_domains'); }
+      if (frameworks=== 'true') { setTab('frameworks'); AsyncStorage.removeItem('codex_open_frameworks'); }
+      if (lamague   === 'true') { setTab('lamague');    AsyncStorage.removeItem('codex_open_lamague'); }
     });
+    getStudiedSubjects().then(arr => setStudiedNames(new Set(arr)));
   }, []));
   const [lamagueSym, setLamagueSym] = useState<string | null>(null);
   const [helpInput, setHelpInput] = useState('');
@@ -238,8 +266,9 @@ export default function CodexScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={{ flexDirection: 'row' }}>
         {([
           ['frameworks', 'FRAMEWORKS'],
-          ['lamague', 'LAMAGUE'],
-          ['help', 'HELP ME'],
+          ['domains',    '𝔏 DOMAINS'],
+          ['lamague',    'LAMAGUE'],
+          ['help',       'HELP ME'],
         ] as const).map(([t, label]) => (
           <TouchableOpacity
             key={t}
@@ -250,6 +279,206 @@ export default function CodexScreen() {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* ── DOMAINS — mystery school lore codex ── */}
+      {tab === 'domains' && (() => {
+        const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+        const query = domainSearch.toLowerCase().trim();
+        const totalStudied = MYSTERY_SCHOOL_DOMAINS.reduce((acc, d) =>
+          acc + d.subjects.filter(s => studiedNames.has(s.name)).length, 0);
+        const totalSubjects = MYSTERY_SCHOOL_DOMAINS.reduce((acc, d) => acc + d.subjects.length, 0);
+
+        const filtered = MYSTERY_SCHOOL_DOMAINS
+          .map(d => ({
+            ...d,
+            subjects: d.subjects.filter(s =>
+              (layerFilter === 'ALL' || s.layer === layerFilter) &&
+              (!query || s.name.toLowerCase().includes(query) || s.description.toLowerCase().includes(query) || d.label.toLowerCase().includes(query))
+            ),
+          }))
+          .filter(d => d.subjects.length > 0 || (!query && layerFilter === 'ALL'));
+
+        return (
+          <View style={{ padding: 16 }}>
+            {/* Header stats */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <View>
+                <Text style={{ color: SOL_THEME.text, fontSize: 16, fontWeight: '700' }}>Mystery School</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 2 }}>{MYSTERY_SCHOOL_DOMAINS.length} domains · {totalSubjects} subjects</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: '#C8A96E', fontSize: 18, fontWeight: '700' }}>{totalStudied}</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>EXPLORED</Text>
+              </View>
+            </View>
+
+            {/* Progress bar */}
+            <View style={{ height: 3, backgroundColor: SOL_THEME.border, borderRadius: 2, marginBottom: 16 }}>
+              <View style={{ height: 3, borderRadius: 2, backgroundColor: '#C8A96E',
+                width: `${Math.round((totalStudied / totalSubjects) * 100)}%` }} />
+            </View>
+
+            {/* Search */}
+            <TextInput
+              value={domainSearch}
+              onChangeText={setDomainSearch}
+              placeholder="Search subjects, domains, descriptions…"
+              placeholderTextColor={SOL_THEME.textMuted + '88'}
+              style={{ backgroundColor: SOL_THEME.surface, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border,
+                paddingHorizontal: 12, paddingVertical: 9, color: SOL_THEME.text, fontSize: 13, marginBottom: 12 }}
+            />
+
+            {/* Layer filter chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}
+              contentContainerStyle={{ gap: 6, flexDirection: 'row' }}>
+              {(['ALL', 'FOUNDATION', 'MIDDLE', 'EDGE', 'OPEN', 'VOID'] as const).map(l => {
+                const meta = l === 'ALL' ? { color: '#AAAACC', label: 'ALL' } : LAYER_META[l];
+                const active = layerFilter === l;
+                return (
+                  <TouchableOpacity key={l} onPress={() => setLayerFilter(l)}
+                    style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
+                      borderColor: active ? meta.color : meta.color + '44',
+                      backgroundColor: active ? meta.color + '22' : 'transparent' }}>
+                    <Text style={{ color: active ? meta.color : meta.color + '99', fontSize: 9, fontWeight: '700', fontFamily: mono, letterSpacing: 1 }}>{meta.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Domain cards */}
+            {filtered.map(domain => {
+              const isOpen = expandedDomain === domain.id;
+              const studiedInDomain = domain.subjects.filter(s => studiedNames.has(s.name)).length;
+              const layers = ['FOUNDATION','MIDDLE','EDGE','OPEN','VOID'] as SubjectLayer[];
+              const catMeta = domain.category ? CATEGORY_META[domain.category] : null;
+
+              return (
+                <View key={domain.id} style={{ marginBottom: 10, borderRadius: 14, borderWidth: 1,
+                  borderColor: domain.color + (isOpen ? '88' : '33'),
+                  backgroundColor: domain.color + (isOpen ? '08' : '05'), overflow: 'hidden' }}>
+
+                  {/* Domain header row */}
+                  <TouchableOpacity
+                    onPress={() => { setExpandedDomain(isOpen ? null : domain.id); setExpandedSubject(null); }}
+                    activeOpacity={0.8}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 }}>
+                    <Text style={{ fontSize: 30, color: domain.color }}>{domain.glyph}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <Text style={{ color: domain.color, fontSize: 11, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>{domain.label.toUpperCase()}</Text>
+                        {catMeta && (
+                          <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, backgroundColor: catMeta.color + '1A' }}>
+                            <Text style={{ color: catMeta.color, fontSize: 7, fontWeight: '700', fontFamily: mono, letterSpacing: 0.5 }}>{catMeta.label}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, lineHeight: 14, marginTop: 2 }}>{domain.description}</Text>
+                    </View>
+                    <View style={{ alignItems: 'center', gap: 2, minWidth: 34 }}>
+                      <Text style={{ color: studiedInDomain > 0 ? domain.color : SOL_THEME.textMuted, fontSize: 13, fontWeight: '700' }}>{studiedInDomain}/{domain.subjects.length}</Text>
+                      <Text style={{ color: domain.color + '88', fontSize: 7, fontFamily: mono }}>done</Text>
+                      <Text style={{ color: domain.color + '99', fontSize: 14, marginTop: 2 }}>{isOpen ? '▲' : '▼'}</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Layer mini-bars — always visible */}
+                  <View style={{ flexDirection: 'row', height: 2, marginHorizontal: 14, marginBottom: isOpen ? 0 : 12, borderRadius: 1, overflow: 'hidden' }}>
+                    {layers.map(l => {
+                      const count = domain.subjects.filter(s => s.layer === l).length;
+                      const pct = (count / domain.subjects.length) * 100;
+                      return pct > 0 ? (
+                        <View key={l} style={{ flex: pct, backgroundColor: LAYER_META[l].color + 'AA' }} />
+                      ) : null;
+                    })}
+                  </View>
+
+                  {/* Expanded domain content */}
+                  {isOpen && (
+                    <View style={{ padding: 14, paddingTop: 10 }}>
+                      {/* Layer legend */}
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                        {layers.map(l => {
+                          const count = domain.subjects.filter(s => s.layer === l).length;
+                          if (!count) return null;
+                          return (
+                            <View key={l} style={{ flexDirection: 'row', alignItems: 'center', gap: 3,
+                              paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
+                              backgroundColor: LAYER_META[l].color + '14', borderWidth: 1, borderColor: LAYER_META[l].color + '33' }}>
+                              <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: LAYER_META[l].color }} />
+                              <Text style={{ color: LAYER_META[l].color, fontSize: 8, fontWeight: '700', fontFamily: mono }}>{l}</Text>
+                              <Text style={{ color: LAYER_META[l].color + '88', fontSize: 8, fontFamily: mono }}>{count}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+
+                      {/* Subject list grouped by layer */}
+                      {layers.map(layer => {
+                        const inLayer = domain.subjects.filter(s => s.layer === layer);
+                        if (!inLayer.length) return null;
+                        return (
+                          <View key={layer} style={{ marginBottom: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                              <View style={{ width: 3, height: 12, borderRadius: 1.5, backgroundColor: LAYER_META[layer].color }} />
+                              <Text style={{ color: LAYER_META[layer].color, fontSize: 8, fontWeight: '700', fontFamily: mono, letterSpacing: 1.5 }}>{layer}</Text>
+                            </View>
+                            {inLayer.map(subject => {
+                              const subKey = `${domain.id}__${subject.name}`;
+                              const isSubOpen = expandedSubject === subKey;
+                              const studied = studiedNames.has(subject.name);
+                              return (
+                                <TouchableOpacity key={subject.name}
+                                  onPress={() => setExpandedSubject(isSubOpen ? null : subKey)}
+                                  activeOpacity={0.8}
+                                  style={{ marginBottom: 6, padding: 10, borderRadius: 10, borderWidth: 1,
+                                    borderColor: studied ? LAYER_META[layer].color + '55' : LAYER_META[layer].color + '22',
+                                    backgroundColor: studied ? LAYER_META[layer].color + '0C' : 'transparent' }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                    <Text style={{ color: studied ? LAYER_META[layer].color : SOL_THEME.textMuted, fontSize: 11 }}>{studied ? '✦' : '◌'}</Text>
+                                    <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: studied ? '700' : '400', flex: 1 }}>{subject.name}</Text>
+                                    {subject.intensity != null && subject.intensity >= 5 && (
+                                      <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, backgroundColor: subject.intensity >= 8 ? '#FF555522' : '#FF980022', borderWidth: 1, borderColor: subject.intensity >= 8 ? '#FF555566' : '#FF980066' }}>
+                                        <Text style={{ color: subject.intensity >= 8 ? '#FF5555' : '#FF9800', fontSize: 8, fontWeight: '700', fontFamily: mono }}>{subject.intensity >= 8 ? '⚠' : '◈'} {subject.intensity}</Text>
+                                      </View>
+                                    )}
+                                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{isSubOpen ? '▴' : '▾'}</Text>
+                                  </View>
+                                  {isSubOpen && (
+                                    <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: LAYER_META[layer].color + '22' }}>
+                                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 17 }}>{subject.description}</Text>
+                                      {subject.credit && (
+                                        <Text style={{ color: '#C8A96E99', fontSize: 9, marginTop: 6, fontStyle: 'italic', lineHeight: 13 }}>✦ {subject.credit}</Text>
+                                      )}
+                                      {subject.care && subject.care !== 'standard' && (
+                                        <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 5,
+                                          padding: 6, borderRadius: 6, backgroundColor: '#FF980012', borderWidth: 1, borderColor: '#FF980033' }}>
+                                          <Text style={{ color: '#FF9800', fontSize: 9, fontFamily: mono }}>
+                                            {subject.care === 'crisis-adjacent' ? '⚠ CRISIS-ADJACENT' : '◈ ELEVATED CARE'}
+                                          </Text>
+                                        </View>
+                                      )}
+                                    </View>
+                                  )}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+            {filtered.length === 0 && (
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 24, fontStyle: 'italic' }}>
+                No subjects match — try a different search or layer.
+              </Text>
+            )}
+          </View>
+        );
+      })()}
 
       {/* FRAMEWORKS */}
       {tab === 'frameworks' && (

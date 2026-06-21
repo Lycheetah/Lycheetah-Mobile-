@@ -1,7 +1,7 @@
 // TASK 2 — GEAR VISUAL OVERLAYS (18 pieces)
 // Paste into companion.tsx or import as a module
 
-import { ArchetypeId } from './task1_companion_specs';
+import { ArchetypeId } from './companion-types';
 
 export type GearSlot = 'crown' | 'sigil' | 'mantle';
 

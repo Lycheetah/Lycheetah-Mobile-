@@ -2,7 +2,7 @@
 // Paste into app/(tabs)/index.tsx or import as a module
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ArchetypeId } from './task1_companion_specs';
+import { ArchetypeId } from './companion-types';
 import { MAGISTER_CARE_TAG_INSTRUCTION } from '../../lib/personas/headmaster';
 import { MYSTERY_SCHOOL_DOMAINS } from '../../lib/mystery-school/subjects';
 

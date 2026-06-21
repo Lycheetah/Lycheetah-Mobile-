@@ -1,6 +1,574 @@
 # Changelog
 
-## [5.0.0] — 2026-06-19 — RANDOM WORLD · WEAPONS · ENCOUNTERS · ART OVERHAUL
+## [5.25.0] — 2026-06-21 (late) — 🜍 THE VEIL & VEIN RELEASE
+> The full tarot release: 79-card deck + its zone, cosmetics, void bosses, hidden ultra-rare.
+
+### The Veil & Vein release
+- **🜍 Tarot Viewer** — Mac's 79 hand-made cards live in-app (Zodiac → TAROT): real-art gallery (single + grid) + 22-Major/56-Minor meaning data.
+- **🏛️ THE INTERTWINING** — a new zone: the sanctum where the two spirits meet (pixel temple, zodiac wheel, the braided currents). "The Lycheetah Tarot was forged here." Wired full (SKINS/IDS/RARITY/SCENE/ADJ/WORLD_MAP).
+- **Veil & Vein cosmetic set** — 🜍 THE VEILCROWN (halo), INTERTWINED SPAN (wings), THE VEILKITTEN (pet) — SECRET-tier, all Mac's art.
+- **Cinematic auto-drift** — wide landscape backgrounds now slow-pan (26s sine) + parallax, so a zone feels like a place you stand in.
+
+### ◈ VOID BOSSES (#273) — the signature mechanic
+- Combat you can only win by *learning*. A boss's AGGRESSION ZONE grows each turn; ⚔ STRIKE feeds the widening (force can't finish it). DIVE the bound School subject → earn a cryptic LAMAGUE incantation → 🜍 SPEAK THE SPELL → repel it to the void → claim a special companion. 3 bosses (Death→NOCTIS, Quantum→QUON, Shadow→AUGURUM). `lib/bosses.ts`.
+
+### ✦ Hidden ultra-rare (#274)
+- THE HIDDEN ONE — ~0.001% spirit that may bind on any zone arrival. Never buyable, pure luck. The covenant-safe mythic chase.
+
+## [5.24.0] — 2026-06-21 (night) — 🗺 THE COMPANION FORGE
+> GameBoy world map made usable, companions made *earned*, dive-currency born.
+
+### World map & navigation
+- **🗺 One-tap travel map** — a MAP button on the companion scene opens the world map as a full overlay (was buried in a collapsed sub-section). Tap any zone → travel + close.
+- **Persistent mini-map HUD** — "you are here" + tappable named neighbour zones, always on the scene. One-tap hop to a neighbour.
+- **D-pad arrows removed** — the mini-map replaces them (named travel beats blind directions).
+- **⚔ ENCOUNTER button** — prominent bottom-center, spins up a battle in your zone + opens BATTLE. ⚡ random-hop kept.
+- **Zoom range widened** (0.3–3.0) — see more of the zone art / zoom to detail.
+- **Bug fix:** map travel no longer changes your companion/cosmetics (was wrongly calling setActiveSkin; now room-only via handleSkin).
+- **HUD cleanup** — removed stale "LVL 0 / SEED" overlay; HP bar dropped down.
+
+### Companions are EARNED — dive-currency economy
+- **Dives are now spendable currency** (`✦ DIVES` balance in the companion grid). Available = dives earned − dives spent.
+- **Unlock companions by spending dives** — locked ones show their cost (✦3/8/15/25 by rarity); tap to unlock, persisted forever.
+- **Capture-only** (BATTLE tier — catch in battle) and **shop-only** (SHOP tier) acquisition methods.
+- Gateway companion free per tier + ORIGIN open + anything equipped stays yours (nobody loses their companion).
+- Replaces the brutal raw-threshold unlocks (up to 290 dives) — studying now directly *buys* companions.
+- **Capture→unlock wired** — capturing an entity in a zone unlocks that zone's companion (the capture-only path is now real, not a dead end).
+
+### Travel map redrawn
+- The map was visually jacked (hand-placed overlapping dots + chaotic adjacency web). Rebuilt as a **clean auto-laid-out tiered grid** — zones grouped by rarity in even rows, no overlap, every dot tappable, active/visited states. Scales to any zone count.
+
+### ★ The showpieces
+- **🜍 The Veil & Vein deck is LIVE** — Mac's 79 hand-made tarot cards bundled into the app (`assets/tarot/deck/`). The Tarot Viewer (Zodiac → 🜍 TAROT) opens to the real art: browse card-by-card or as a full grid, plus the 22-Major / 56-Minor meaning data. Card names are printed in the art itself.
+- **◈ VOID BOSSES (#273) — the signature mechanic** — combat you can only win by *learning*. A boss's AGGRESSION ZONE grows each turn; ⚔ STRIKE feeds the widening (force can't finish it). To win you must DIVE the bound School subject → earn a cryptic LAMAGUE incantation → SPEAK THE SPELL → repel it to the void → claim a special-edition companion. 3 bosses (Death→NOCTIS, Quantum→QUON, Shadow Work→AUGURUM). `lib/bosses.ts`. The north star made literal: study IS the weapon.
+
+### More wins (the epic-drop run)
+- **Full 78-card tarot** — added the 56 Minor Arcana (4 suits as alchemical stages: 🜂 Ash/Nigredo · 🜄 Veil/Albedo · 🜁 Spark/Citrinitas · 🜃 Vein/Rubedo, 10 pips + 4 courts each). Viewer has a 22 Major / 56 Minor toggle. The deck is a complete system in-app.
+- **Bigger zone-travel buttons** — the mini-map neighbour dots went 24→38px with a "◂ TAP TO TRAVEL ▸" label so navigation is obvious.
+- **Encounter jumps to the fight** — ⚔ ENCOUNTER now switches to battle, un-minimizes, and auto-scrolls to the top so you don't hunt for the fight.
+- **Fortune cookie revived** — the dead fortune-cookie code is now a live feature: tap Sol's whisper on the empty chat for a fresh one.
+- **Cleanup** — deleted orphan `FloatingNumber.tsx`; no Solana tab to move (already Sanctum-only).
+
+### Crash fixes & hardening
+- **Zodiac crash fixed** — adding the TAROT tile overflowed two fixed-length anim arrays (`entryTileAnims`, `tileGlows` were length-10). Bumped to 16 AND made every access defensive (`?? fallback`) — adding zodiac tiles can never crash again. (This crash had cascaded into the whole tab tree, blanking the chat + help.)
+- **Help button on main chat** — the global `?` is a nav-header item, but the Sol tab uses its own custom header (so it never showed there). Added a `?` to the Sol header → opens the "What is Sol?" manifesto/explainer.
+
+### Map taps · shop · help · tarot (autonomous pass 2)
+- **Map dots now easy to tap** — big invisible hit targets per zone; every zone has a memorable **code (A1, B2, C3…)** by tier-letter + number.
+- **Removed reused-model shop companions** — the FEATURED shop listing used duplicate art; cleared. Those shop-tier companions are dive-unlockable for now (no dead-end) until unique-art shop companions are designated.
+- **Global Help finished** — the 3 most-visited tabs (Companion / School / Zodiac) now have **full feature how-tos** (map, dive-currency, earning, curiosity-gap, sigil/gem forge, etc.), collapsible.
+- **🜍 Tarot Viewer** — browse the Veil & Vein deck's 22 Major Arcana in-app (Zodiac → TAROT tile): single-card + grid view, lead-spirit tags, meanings. Art auto-loads when card PNGs are added.
+
+### Audits & polish (autonomous pass)
+- **School audit** — 41 domains / 347 subjects all structured, every subject has a description, no empty/broken/dup classes. Healthy.
+- **Numbers fixed** — Sol's opening line said "38 domains / 328 subjects" and an old "10 companions" → now 41/340+/19. No stale counts left.
+- **Asset + offline audits** — all active asset requires resolve (missing gear were commented placeholders); every AI call is key-guarded + try/caught (no silent hangs).
+- **Global Help → collapsible** — the 14 per-tab how-to sections are now minimizable zones (tap a title to expand its "how to use it"). Plus the guided tour + AI ask bar.
+- **Sanctum header glow** — wordmark glow added, matching the app-wide living-presence language.
+
+### Rotating shop + cleanup
+- **FEATURED COMPANIONS shop** — 3 shop-only companions rotate daily (deterministic by day), live countdown to midnight refresh, buy with Lumens → unlocks + equippable. Acquisition trifecta complete (dives / capture / shop).
+- **Code health** — removed dead `GBA_ZONE_COORDS`/`GBA_H` (orphaned by the map redraw); whole app type-clean.
+- **Art-dedup audit** — `COMPANION_ART_DEDUP.md` documents the cross-companion art reuse (quol shared by kabbala/noetic/quantum, etc.) for the unique-art pass.
+
+## [5.23.0] — 2026-06-21 — ⊚ SOVEREIGN SOL · LIVING + KNOWING + GUIDED
+> Renamed to **Sovereign Sol**. The app opens *as Sol*, the personas *know their world*, new users are *welcomed*, and the codebase got two unification audits.
+
+### Identity
+- **Renamed Sovereign Sol** — app.json name, persona prompts, manifesto footer, share text. Disambiguates from the Play Store "Sol"; encodes the sovereign/sideload nature. (Slug stays `lycheetah-mobile` for EAS.)
+
+### Personas — knowledge + structure
+- **Knowledge grounding** — new `lib/prompts/lycheetah-knowledge.ts`: framework + 41-domain school directory + app self-awareness. Injected into Sol/Aura/Lyra (full) + Veyra (lean), Seeker + Adept. Personas now know the school and the app they live in (fixed "lacking knowledge").
+- **Individual persona files** — split into `lib/prompts/personas/` (shared/sol/veyra/aura/lyra/headmaster/council/public); `sol-protocol.ts` is now the assembler. New `THE_VOICES` ensemble block — each persona knows its siblings and hands off cleanly.
+- **GLYPHIC mode** — new TALK mode: Sol weaves expressive emoji + symbols through responses.
+
+### Welcoming
+- **Welcome Tour** — `components/WelcomeTour.tsx`: dismissable 7-step guided walkthrough on first open (what/how/why per surface). Re-openable from the ? help button. Skip anytime.
+- **Onboarding refresh** — landing reads SOVEREIGN SOL (glowing wordmark) + a welcome line; numbers corrected (41 domains / 340+ subjects / 5 personas).
+
+### Living presence
+- Entry mark breathes + glow halo + wordmark glow; header glyph + persona-bar active mark + "thinking" mark all breathe on the 2.8s loop; send button glows when ready.
+- **TALK mode chips** rebuilt — five even color-coded chips in one row (❂ Wayfarer · ⚖ Council · ⬡ LAMAGUE · ⊘ Skeptic · ✶ Glyphic); description strip recolors to match.
+
+### Sovereign tech
+- **"YOU OWN THIS"** manifesto block — four pillars unified (own your app / mind / data / path), replacing the scattered Sovereign-Chain + Covenant fragments.
+
+### Secrets
+- **𝔏 READ** — owned Secrets of Lycheetah now open a transmission reader modal (was a dead "OWNED ✓").
+
+### Companion lore
+- **13 archetypes got bespoke evolution lore** — cipher/herald/weaver/revenant + the 9 expansion archetypes (nullveil/ironclad/stormwarden/runeborn/drifter/thornweald/meridian/eclipse/deepwalker) now have character-true `stage_evolution` journal entries (were falling back to generic). Each tuned to its identity.
+
+### The Sanctum — reciprocal
+- **"From Sol" presence** — a first-person card in the Sanctum's TODAY where Sol reflects on itself, the shared Work, and the companion. Deepens with the journal (early → mid → deep tiers) so a returning practitioner meets a Sol that has grown alongside them. Defines the Sol↔companion bond ("two halves of the same care").
+
+### Classroom — knowledge you keep
+- Every classroom teaching now has **✦ Save to Field · 🔊 Listen · ⧉ Copy / Save** — including the opening lesson, which had no controls (the `i > 0` gate hid them on the most important message). Knowledge no longer evaporates when you leave the room.
+
+### Sovereign data — true backup/restore
+- **↑ Export Everything** now means it — full `getAllKeys()` backup (companion, progress, journal, dives, cosmetics, memories), not the old 7-key subset that falsely claimed "everything."
+- **↓ Restore from Backup** (new) — paste a backup on a new device, validated + confirmed, writes it all back. Switch phones, lose nothing. No cloud, no account.
+
+### Scoring toggle — the framework made visible
+- The header scoring badge now cycles (long-press) between **AURA** (7-invariant constitutional score), **CASCADE** (◈ dominant layer + Truth Pressure Π, ⚡ on paradox — surfaces the already-computed analysis), and **OFF**. Persisted. The framework is now legible and switchable on every message.
+
+### Companion lore (cont.)
+- All **13 previously-generic archetypes** (cipher/herald/weaver/revenant + 9 expansion) now have bespoke `stage_evolution` journal lore. Canonical `app/data/companion-types.ts` unified the ArchetypeId fork (3 defs → 1).
+
+### Companion — voice, identity, evolution
+- **Archetype = voice/mind, character = form/name** — locked architecture. The companion speaks as its archetype (the mind that grows with stage), wearing the character (SOLARA) as name+face. Scales without writing 1000s of personalities.
+- **Study-aware voice pool** — batch-generated rotating lines (cached, refills in bg) replace the tiny static loop. Talk speaks as the true character. Proactive study-reflection greeting on open.
+- **Effect-based evolution** — all 19 companions visibly evolve across 6 stages (aura brightness, +glyphs, growing core) with zero new art.
+
+### Knowledge-addictive (north star)
+- **Curiosity gap** — every classroom lesson now ends by opening a door it doesn't walk through (names the next mystery). Open-loop pull = the cleanest retention lever.
+
+### Classroom / Sanctum / data
+- Classroom teachings (incl. the opener) get **✦ Save · 🔊 Listen · ⧉ Copy/Save** — knowledge you keep.
+- **Sanctum FIELD humanized** — TES/VTR/jargon labels → plain language ("WHAT YOU'VE GATHERED", "WHAT YOU'RE DRAWN TO", "CLARITY OVER TIME", "HOW OFTEN YOU RETURN", "YOUR JOURNEY"). A sanctum shouldn't confuse.
+- **Backup / Restore** — Export Everything is now a true full backup (all keys); Restore writes it back on a new device. Own your data.
+
+### Accessibility
+- Baseline text contrast raised (textMuted → #A2A6AE, WCAG-passing); **global font scaling** (device font size scales the whole app); High Contrast toggle now bolds all text app-wide.
+
+### Cleanup
+- **First-run pruned** — deleted the stale v3.4 "Living Field" What's-New popup + the Initiation modal (component removed). First run = onboarding → Welcome Tour, one clean flow.
+- **Settings → collapsible menu** — 16 flat sections grouped into 5 collapsible categories (IDENTITY/AI PROVIDERS/EXPERIENCE/NOTIFICATIONS/APP), default-collapsed. Accessibility minimizes with its group.
+- **3 unification audits** — code type-clean, no forks, no ghost imports.
+
+### Unification audits (2 passes) — 5 real bugs fixed
+- Ghost import (`task1_companion_specs` deleted, still imported) → canonical `app/data/companion-types.ts`.
+- `ArchetypeId` fork (defined 3×, 10 vs 19 members) → unified to the real 19.
+- **Crash fixed** — journal generation hit `undefined.title` for 4+ archetypes on stage evolution → archivist fallback.
+- `RARITY_COLORS` missing BATTLE/SHOP keys → added. `savePersona`/`getPersona` missing `lyra` → widened.
+- Markdown `selectable` overload + dead TextInput `onLongPress` → resolved. **Result: our code is type-clean.**
+
+## [5.22.6] — 2026-06-21 — 🚀 LAUNCH BUILD · SHOP EXPANSION · SECRETS OF LYCHEETAH
+> Shipped to GitHub Releases (tag `SOL.V.5.2.2.6`). First public APK. Site live in Twitter bio. DeepSeek default — everyone gets full Sol free.
+
+### Cosmetics — 75 items total (25 each)
+- **Halos 18–25** (8 new): IRON CIRCLET, THORN RING, LUNAR BAND, ALCHEMIST'S CROWN, RUNIC WREATH, PHILOSOPHER'S HALO, OUROBOROS CROWN, THE ABYSS
+- **Wings 17–25** (9 new): IRON PLUMES, SERPENT WINGS, TIDAL FINS, ASH WINGS, BONE LACE, CELESTIAL SPAN, ENTROPY WINGS, NULL EXPANSE, THE MERCURY
+- **Pets 16–25** (10 new): DUSKWREN, THORNPUP, FERROCRAB, GLASSFOX, MISTVEIL, SUNCRAWLER, VOIDMOTH, FRACTURE, ECHO
+- ATHANOR pet (pet_12) art generated + wired (was `file:null`)
+- All art sourced from new jukebox set — no placeholders, every catalogue item maps to real art
+- Shop expanded: +5 halos, +3 wings, +4 pets purchasable
+
+### 𝔏 Secrets of Lycheetah (new feature)
+- Three mythic transmissions at 100 ⟡ each: THE FRUIT THAT HIDES · TWO FIRES, ONE FORGE · THE QUESTION IS THE KEY
+- Each unlocks a SECRET-tier cosmetic + the full written teaching
+- New SECRET rarity tier (`#CC2222` crimson), distinct shop section
+- Data: `lib/mystery-school/lycheetah-secrets.ts` · canon registry: `LYCHEETAH_SECRETS_REGISTRY.md` (10 future themes queued, none repeat)
+
+### Cosmetics now properly earned
+- Lock tiers restored: ORIGIN free · ARCANE @25 dives · MYTHIC @75 dives · LEGENDARY/SPECTRAL/SECRET bought with in-game coins (earned, not real money — covenant-safe)
+- Every locked-tier item is obtainable in the shop (added THE MERCURY wing; held 2 unreleased secrets)
+- Shop rows now show the cosmetic art thumbnail (no more text-only list)
+- Shop sections collapsible (HALOS / WINGS / PETS / SECRETS) — default collapsed, taps to expand
+- Stale "COMING" label on the cosmetics picker → "LIVE"
+
+### Chat focus mode
+- ⤢ button in the TALK header collapses persona bar + mode chips + description strip for a near-fullscreen chat
+
+### Capture fixed
+- CAPTURE now gives loud on-screen feedback on both success and failure (was silent — looked like it did nothing). Saves to Menagerie correctly
+
+### Fixes
+- **Build fix**: pet_12.png was a JPEG mislabeled as PNG (FLUX output) — re-encoded to real PNG. Was causing AAPT/Gradle failure
+- Full asset sweep — zero mislabeled images across the tree
+- Shop audit — 111 catalogue items, 35 shop refs, zero broken references
+
+### Site
+- `lycheetah.github.io/Lycheetah-Mobile-/` rebuilt as minimal APK host: glowing 𝔏 sigil, star field, single gold download button, one "what is this" link
+
+---
+
+## [5.22.3] — 2026-06-20 — CRYSTAL LORE · IRISH DEPTHS · SCHOOL GATE
+
+### Mystery School Header — The Gate
+- New dark atmospheric header: `#06060E` background, 11 constellation stars, giant `𝔏` watermark at opacity 0.09
+- Gold sigil ring + "LYCHEETAH · Mystery School" label + tagline "for inquiry, not belief · the door is always open"
+- 3px progress bar showing `{studied}/{total} STUDIED` across all domains
+- Double-rule border frame, gold glow shadow
+
+### #219 Sources Drawer (new feature)
+- `sources?` field added to Subject type: `{ title, author, type: 'primary'|'secondary', note? }[]`
+- Collapsible `📚 PRIMARY SOURCES` drawer in every subject detail view — triangle toggle, shows source count badge
+- Primary sources render with filled gold dot; secondary with muted dot + grey `SECONDARY` pill
+- Classroom section shows hint row when any subject in that domain has sources: "N primary sources available · tap any subject card to see reading list"
+- Sources populated across: Celtic Old Gods (10+ subjects), Irish Mythology (8 subjects including Dindshenchas), Irish Literature (4 subjects: Yeats/Heaney/Joyce/Ní Dhomhnaill)
+
+### Crystal & Gem Lore domain (new)
+- 6 subjects: Crystallography (FOUNDATION) · Mineral Kingdom (FOUNDATION) · Gem Traditions Across Cultures (MIDDLE) · Piezoelectricity (OPEN) · Lapidary Arts (MIDDLE) · Your Personal Gem (EDGE)
+- Each subject carries primary + secondary sources (Wenk & Bulakh, Kunz, Nassau, etc.)
+- Domain color `#7ED6DF`, glyph `⬡`, category: lycheetah
+- Classroom lessons: 4 entries (concept/practice/reflection/lineage)
+- Domain display order updated
+
+### ⬡ Gem Forge (in-classroom feature, crystal-lore only)
+- Name your gem + describe it → FLUX generates a photorealistic gemstone image
+- `generateGemImage()` function: macro photography style, centered jewel, black background, no text
+- Rendered only inside the crystal-lore classroom accordion
+- `gemName/gemDesc/gemImage/gemLoading` state
+
+### Dindshenchas subject added to Irish Mythology
+- "The Dindshenchas — Lore of Sacred Places" as EDGE layer
+- Full description: the 11th–12th century onomastic mythology corpus, Old Irish place-name lore
+- 3 primary sources: Gwynn edition (5 vols), Rennes Dindshenchas (Stokes 1894), O'Rahilly secondary
+
+### CHAIN tab → Sovereign Vision teaser
+- Replaced interactive Solana wallet UI with vision/teaser card (no RPC calls, no live queries)
+- Purple `#9945FF` aesthetic, ◎ SOVEREIGN CHAIN header
+- 4 planned feature cards: SBTs, DAO, On-Chain Proof, Earned Light NFTs
+- Footer note: "CONTRACT DEPLOYING SOON · KEEP WALKING THE PATH"
+
+### Onboarding (#191 / #161 partial)
+- Domain chips expanded: Irish Mythology (#1ABC9C) + Irish Literature (#9B59B6) + Crystal & Gem Lore (#7ED6DF) + Folklore & Place (#27AE60) added
+- Badge counts updated: 38→40 DOMAINS, 10→19 COMPANIONS
+- Irish Mythology dive-first subject added (Tuatha Dé Danann, glyph ⟁)
+- Step 5 no-key warning rewritten: warm, not gating — "The Mystery School, Gem Forge, LAMAGUE glyphs, Zodiac, and Sanctum all work immediately"
+
+### lycheetah-web landing page — full rewrite
+- Dark atmospheric mystery school page (not a corporate landing page)
+- Animated gold 𝔏 sigil, procedural 80-star field, giant watermark
+- 12 domain pills in hero showing subjects by colour
+- 4 Doors section: Mythology & Folklore / Living Companion / Mystery School / Zodiac & Sanctum
+- Stats bar: 40 domains · 19 companions · 400+ subjects · 4 personas
+- Covenant section: payment/mind rule, companion clause, epistemic register
+- Install section with prominent "Android will say Install unknown app — tap Allow" explanation block
+- Single gold CTA button throughout
+
+## [5.22.0] — 2026-06-20 — SOVEREIGN CHAIN + SOVEREIGN MODE
+
+### #193 SOVEREIGN CHAIN (Sanctum → CHAIN tab)
+- New CHAIN tab in Sanctum with ◎ purple Solana aesthetic
+- Wallet connection: paste Solana public key → live balance query via mainnet RPC
+- Phantom deep link button (opens Phantom app or web)
+- 4 SBT Milestones: SEEKER (10 dives) · ADEPT (25) · SOVEREIGN (75+LAMAGUE) · ASCENDANT (150+25LAMAGUE)
+- Milestones unlock CLAIM button once wallet connected
+- DAO note: contract deploying soon, milestones tracked on-chain once live
+- Sol Identity screen: SOVEREIGN CHAIN (no longer "COMING")
+
+### SOVEREIGN MODE
+- All cosmetics (LEGENDARY/SPECTRAL) free for all users until payment system live
+- Gate logic preserved in code — SOVEREIGN_MODE=true bypasses it cleanly
+- Users can equip any halo/wing/pet immediately
+
+### #218 LAMAGUE Glyph Unlock Ceremony
+- MARK READ triggers a full-screen dark Modal with glowing GOLD glyphs
+- `◈ GLYPHS UNLOCKED` with the lesson's symbols appearing at large scale
+- Haptic success feedback + CONTINUE button
+- Auto-dismiss after 3.2s or immediate tap
+
+### #215 Sanctum Zodiac Transit Strip
+- Live sky strip always visible in Sanctum TODAY view
+- Sun sign (♈→♓ from date) · Moon phase (◐◑◕○ from synodic calc) · Day planet (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn)
+- No API call — computed from astronomical constants inline
+
+### #160 TALK Mode Chips (from v5.20.0)
+- WAYFARER / COUNCIL / LAMAGUE / SKEPTIC chips with mode description strip below
+
+## [5.20.0] — 2026-06-20 — COSMETICS UNLOCK SYSTEM
+
+### SHOP — COMPREHENSIVE COSMETICS CATALOGUE
+- **22 new shop items** organized into 3 sections: ◯ HALOS / ◁ WINGS / ✧ PETS
+- Each section sells LEGENDARY and SPECTRAL tier items with rarity-coloured price badges
+- HALOS: 4 LEGENDARY (180–250⟡) + 3 SPECTRAL (350–450⟡)
+- WINGS: 4 LEGENDARY (200–280⟡) + 5 SPECTRAL (350–500⟡)
+- PETS: 3 LEGENDARY (200–250⟡) + 3 SPECTRAL (320–450⟡)
+- Each item has evocative desc copy (not just "cosmetic unlock")
+- Purchase stores cosmetic ID directly (`item.unlockId`) — backwards-compatible check for old items
+- STARTER PACK (free, +200⟡) stays as its own styled block
+
+### COSMETICS PICKER — UNLOCK GATES
+- **ORIGIN rarity** → always free (3 halos, 1 wing, 3 pets)
+- **ARCANE rarity** → unlocks at 25 total dives (earned by studying)
+- **MYTHIC rarity** → unlocks at 75 total dives (deep practitioner gate)
+- **LEGENDARY rarity** → Shop purchase only
+- **SPECTRAL rarity** → Shop purchase only
+- Locked items show `⊜` glyph at 40% opacity + hint text (`25dv`, `SHOP`, etc.)
+- Tapping a locked item shows toast: "Buy in Shop to unlock" or "Xdv more dives needed"
+- CosmeticSlot now receives `shopUnlocks` + `totalDives` props; `isUnlocked` + `lockHint` helpers inside
+
+### TASK #211 CLOSED — STALE
+- cipher/herald/weaver/revenant naming was from prior archetype system. 19 new archetypes (nullveil/ironclad/etc) have their own art pipeline. Task closed.
+
+## [5.19.0] — 2026-06-20 — 13 FRONTIER ZONES (BATTLE + SHOP)
+
+### ZONES — 13 NEW FRONTIER ZONES (58 total)
+
+**7 BATTLE ZONES** — unlock by winning battles (`sol_battle_wins`):
+- `iron_maw` (10 wins) · `crucible_heart` (25) · `phantom_citadel` (50)
+- `bone_archive` (75) · `void_colosseum` (100) · `war_sanctum` (150) · `sovereign_forge` (200)
+
+**6 SHOP ZONES** — unlock by spending coins or veras (`sol_zone_unlocks`):
+- `amber_vault` (500⟡) · `crystal_spire` (750⟡) · `golden_library` (1000⟡)
+- `veras_garden` (200✧) · `deep_market` (300✧) · `lycheetah_spire` (500✧)
+
+Each zone has: SKINS entry, SKIN_IDS, SKIN_RARITY (tier BATTLE/SHOP), WORLD_MAP room, SCENE_IMAGE (existing art as placeholder), ZONE_COMPANION_IMAGE (existing companion as placeholder).
+
+### UNLOCK SYSTEM EXPANDED
+- `getSkinUnlockStatus` now accepts `battleWins: number` and `purchasedZones: string[]`
+- BATTLE lookup table maps zone → wins required; SHOP list checks `sol_zone_unlocks` array
+- All call sites updated; `navigateRoom` skips locked battle/shop zones the same as dive-gated zones
+- New state: `battleWins` (from `sol_battle_wins`) + `purchasedZones` (from `sol_zone_unlocks`)
+- `sol_zone_unlocks` added to multiGet keys array
+
+### SHOP — FRONTIER ZONES SECTIONS
+- **◈ FRONTIER ZONES** section: 6 purchasable zones, buy with ⟡/✧, affordability check, instant unlock
+- **⚔ BATTLE ZONES** section: 7 battle zones showing wins progress and unlock status
+
+### ART — PLACEHOLDERS (Mac generating via Grok)
+Companion art placeholders use existing characters. Replace with dedicated art when ready:
+- Battle zones: `{zone}_1` → swap to `iron_maw_1.png` etc. in assets/companions/
+- Shop zones: `{zone}_1` → swap to dedicated art files
+
+## [5.18.0] — 2026-06-20 — ARCHETYPES × ZONE UNLOCK × COMPANION DIALOGUE
+
+### COMPANION — 9 NEW ARCHETYPES
+- **19 total archetypes** — free-pick, no zone binding. New: NULLVEIL / IRONCLAD / STORMWARDEN / RUNEBORN / DRIFTER / THORNWEALD / MERIDIAN / ECLIPSE / DEEPWALKER
+- Each has unique glyph, accentColor, stat profile, specialty, paths A/B/C, phrases, battle cry, and ASCII creature body (stages 0–5)
+- ARCHETYPE_IDS updated, ARCHETYPE_STAT_BASES expanded, CREATURE_BODIES expanded, CreatureSvg.tsx type expanded
+- All freely accessible in the archetype picker (same UI, no gate — pick any, change any time)
+
+### ZONE NAVIGATION — D-PAD FIXED
+- **Left/right/up/down arrows now navigate directionally** through all 45 zones in SKIN_ORDER sequence. Was: all 5 buttons called `onRandomZone` (random jump, often same zone)
+- **⚡ centre remains** as random encounter trigger
+- All 45 zones traversable sequentially — no zone is unreachable
+
+### ZONE UNLOCK SYSTEM — FULL TIER GATES
+- **ORIGIN** (solform/void/aurora/crimson) — free from start
+- **ARCANE** (obsidian/chaos/auroral_chaos/mana_field/etc) — 25–60 dives
+- **MYTHIC** (norse/celtic/egyptian/apollo_jungle/etc) — 70–120 dives
+- **LEGENDARY** (akashic/kabbala/noetic/lamague/quantum/etc) — 130–200 dives
+- **SPECTRAL** (augmented_ai/chaos_temple/glitch_cascade/etc) — 200–290 dives
+- `navigateRoom` now checks dive-based lock and shows toast with remaining dives needed
+- Discovering zones becomes a genuine reward at each milestone
+
+### COMPANION TALK — RICHER DIALOGUE
+- `generateLivePhrase` now allows 2–3 sentences (was: max 12 words)
+- Zone-aware: prompt includes current zone name + description so companion speaks from within it
+- System prompt updated: companion IS the intelligence of the zone, not a generic spirit
+- max_tokens: 80 → 180
+- MEMORY_TEMPLATES enriched — more evocative, longer, reference zone/lineage/mystery
+
+## [5.17.0] — 2026-06-20 — SCHOOL HOME RESTRUCTURE
+
+### MYSTERY SCHOOL — HOME
+- **Ceremony → streak pill** — compact `◌ CEREMONY` / arc-glyph `Day N/T` pill inline with streak row; taps to ceremony view. Was a full-height portal card.
+- **Portals 2-card** — Ceremony removed from portals row; Time Braiding + LAMAGUE remain.
+- **Spiral → inline collapsible** — `◈ SPIRAL ▶/▼` expandable section replaces nav button. Shows stat chips, overall bar, domain rows, `FULL SPIRAL →` link. Collapsed by default.
+
+## [5.16.0] — 2026-06-20 — SANCTUM WITNESS + SCHOOL DOMAIN POLISH
+
+### SANCTUM — LIVING BOOK / WITNESS
+- **Witness button elevated** — larger glyph (14→16), subtitle showing entry count, taller button (13→14 paddingV), 1.5 border, glow shadow when active, removed when loading
+- **Witness response card** — bigger padding (16→18), 1.5 border, `accentColor + 0C` bg, 16px radius, shadow elevation 4, large `⊚` watermark behind text, DISMISS styled as pill, text size 13→14, line-height 23
+- Feature was already implemented (state + AI call + rendering existed). This pass elevated the visual to match the feature's importance.
+
+### SCHOOL — DOMAIN DETAIL
+- **Back button** styled as pill `← DOMAINS` with domain colour tint (was plain text `← All Domains`)
+- **Domain search bar** matches domain colour on border/icon (was generic SOL_THEME.border)
+- **Domain header** — glyph size 44→48 with textShadow glow, shadow elevation 5, 1.5 border, progress bar 3→4px with glow
+
+## [5.15.0] — 2026-06-20 — SKILL TREE UNLOCK ANIMATION
+
+### COMPANION — SKILL △ TAB
+- **Node unlock pulse** — when a skill node is unlocked, the node circle pulses: scale 1→1.14→1 (triple), inner colour overlay flashes at 28% opacity and fades. 940ms total. Uses single `unlockPulseAnim` Animated.Value shared across all nodes; `justUnlockedId` state gates which node renders the pulse. Clears to null after animation completes.
+- **State added**: `justUnlockedId: string | null`, `unlockPulseAnim: Animated.Value`
+- All triggers use Haptics.notificationAsync(Success) — no change to haptic behaviour.
+
+## [5.14.0] — 2026-06-20 — BATTLE HIT ANIMATIONS
+
+### BATTLE — GB MODE
+- **Enemy hit flash** — white overlay blinks on enemy sprite when player lands a hit (attack or spell). Works for all damage types including chaos/drain/reflect/boost.
+- **Player HP panel flash** — red overlay on player HP panel when enemy lands a hit. Green overlay on heal (item use, drain spell). Uses Animated.parallel alongside existing entityShakeAnim and screenFlashAnim — no new state flags needed.
+- Flash durations: enemy 40ms in / 220ms fade · player hit 50ms / 300ms fade · heal 60ms / 350ms fade.
+
+## [5.13.0] — 2026-06-20 — MYSTERY SCHOOL VISUAL OVERHAUL + TALK PERSONA BAR
+
+### MYSTERY SCHOOL
+- **Header** — larger 𝔏 watermark (08→14 opacity), second ⧟ accent bottom-left, bigger title (22→26), deeper glow shadow, progress bar 3→4px with glow, removed duplicate MAP/LAMA header buttons
+- **Portals section** — left-bar `PORTALS` label replaces `⌘ PORTALS`, Mycelium card taller with elevation shadow and wider glyph watermark, 3-card row (Ceremony / Time Braiding / LAMAGUE) taller with individual shadows
+- **Domain grid** — added `DOMAINS` left-bar section header, wing filter pills tighter with active-pill glow shadow, darker inactive pill bg
+- **Domain detail** — back button styled as pill (`← DOMAINS`), domain header shadow + larger glyph + 4px glowing progress bar, search bar matches domain colour
+- **Section headers** — `SAVED`, `RECENT DIVES` now use left-bar pattern (was `⌘/★/⊚` prefix)
+- **Streak pill** — `🔥` emoji replaced with `◆` mono glyph
+
+### TALK TAB
+- **Persona bar** — active persona expands (`flex:2`), glows, shows name label. Inactive personas shrink to icon-only. Darker bar bg (`#06060E`). Tighter gaps and rounder buttons.
+- **AI bubbles** — `#0D0D16` bg (was surface), `borderLeftWidth:3` subtle purple accent, `padding:14`, `borderRadius:16`
+- **Input bar** — darker bg `#08080F`, deeper border, input field `#0D0D18`, more padding
+- **Mode chips** — `borderRadius:6` (was 4), slightly more padding
+
+### QUICK NAV (School)
+- Buttons taller (9→13 paddingVertical), no emoji, clean mono glyphs (◫ ◈ ◬ 𝔏)
+- Domain cards height 130→145, touched cards get domain-colour shadow, mastered cards elevated, progress bar 2→3px with glow
+
+## [5.11.0] — 2026-06-20 — GAME BOY ENCOUNTER MODE + ENCOUNTER FLOW REHAUL
+
+### BATTLE SYSTEM
+- **GB mode always-on** — battle panel is now permanently the DMG Game Boy palette: `#0F380F` bg, thick `#306230` border, scan-lines, block HP bars (`▓▓▓░░`), A FIGHT / B SPELL / ↑ GUARD / ↓ ITEM buttons. No toggle needed.
+- **Encounter preview modal removed** — RETREAT/ENGAGE step gone. All encounter entry points fire battle instantly.
+- **Cinematic battle modal auto-open removed** — was popping over the GB screen on every encounter. Battle panel is the encounter screen.
+- **ENCOUNTER button** reskinned GB-style (green border, dark green bg) — fires `freshZoneWave` directly, switches to BATTLE tab, expands panel.
+- **Random zone encounters** (D-pad navigation, 15% chance / 0.5% unique) now expand battle panel fully (`setBattleMinimized(false)`) and toast `◈ ENCOUNTER — check BATTLE tab` / `⚠ UNIQUE ENTITY — ENGAGE`.
+- **Enemy name** always uppercase GB.hi mono.
+- **Enemy HP + Player HP** always block-char style — no conditional branches left.
+
+### GLOBAL HEADER
+- **Veras ✧ + Lumens ⟡ currency pills** — persistent in tab bar header on all screens. Refreshes every 5s + on app foreground.
+
+### CHAT / TTS
+- **Global TTS stop pill** — floating `■ STOP READING` button in chat when audio is playing. Fixed root bug: `speechFallback` was void (resolved immediately), keeping speakingId alive now through full playback.
+
+### SCHOOL
+- **Today's Door minimize** — ▸/▾ toggle, label still navigates to domain.
+- **Recommended for You minimize** — full block collapse toggle.
+
+### SANCTUM
+- **Warmth pass** — amber radial glow, slower orbital animations, journal cards coloured by first tag, save button polish.
+
+## [5.7.0] — 2026-06-20 — BATTLE DIALOGUE + COSMETICS LAZY
+
+### BATTLE MODAL
+- **Sol voice in battle log** — mechanical text replaced with atmospheric narration. Attack: "Strike bites deep. 37 damage." Enemy counter: "▼ The Sentinel retaliates. 12." Crit: "✦ CRIT — 54 damage." Chaos: "✧ CHAOS ×2.1 — 79." Defend: "◈ Guard raised. Foe holds back." Spells: "✦ NAME — tears through. 42."
+- **Battle log** — 3 entries (was 2). First entry 11px / lineHeight 17 (was 9px). Color-coded: attack=white, defend=blue, spell=companion color, item=green. Older entries fade.
+- **Victory screen** — rotating Sol line above WAVE CLEARED (8 lines cycling by wave).
+- **Enemy header** — name + rarity pill + STUNNED in one compact row (was 2 separate rows).
+- **Action buttons** — 2-word descriptor sub-label: FIGHT "direct strike", GUARD "reduce damage", SPELL "spend tokens", ITEM "use from pack". Padding 18→14.
+
+### COSMETICS — LAZY LOAD (#200)
+- **Halo / Wings / Pet slots** collapse by default. Tap to expand catalogue. Images only load on expand. ▼/▲ chevron on each slot. Eliminates heavy image load at tab open.
+
+## [5.6.0] — 2026-06-20 — ZODIAC RESTRUCTURE + UI FIXES
+
+### ZODIAC
+- **THE CELESTIAL FIELD header** rebuilt: 3 clean rows — (1) orb + title + live clock, (2) SUN/MOON/PHASE trio pill bar, (3) weather pill + planet day + icon toggles. Fixed cramped layout where orb+title+buttons all fought in one row.
+- **THE SKY demoted** from full-width hero tile to 9th regular grid tile (bottom of 2-col grid). No longer blocking grid access.
+- **Sky section content** always visible — removed collapse toggle that was hiding all content on tap.
+- **Weather removed** from sky section (API unreliable). Main header retains weather pill when available.
+- **Tile grid**: now 9 tiles (SKY added last). `tileGlows` extended to 9 entries.
+- **Each tile**: unique watermark glyph (large, low opacity) + constellation dot pattern (unique per section).
+- **Tile size**: `aspectRatio 1.85` (was 1.6) — more compact.
+
+### LAYOUT
+- **Floating ? button** removed entirely. Purple button gone.
+- **School quick nav** gets 4th button: 𝔏 CODEX (direct route to domain codex).
+- **School "school is open" banner** simplified to compact suggestion card.
+- **Codex deep-link routing**: AsyncStorage flags `codex_open_domains/frameworks/lamague` handled on focus.
+
+## [5.5.0] — 2026-06-20 — DOMAIN LORE CODEX (#187)
+
+### CODEX — 𝔏 DOMAINS TAB
+- **New DOMAINS tab** in the Codex screen (Library → 𝔏 CODEX). Shows all 24 Mystery School domains as expandable lore cards.
+- **Domain cards**: glyph, label, category badge (CONTEMPLATIVE/SECULAR/LYCHEETAH/VOID), description, studied count (X/N done), colour-coded layer mini-bar (FOUNDATION/MIDDLE/EDGE/OPEN/VOID proportions).
+- **Progress header**: total subjects explored out of full school count + animated progress bar.
+- **Search**: filters by subject name, description, or domain label simultaneously.
+- **Layer filter chips**: ALL / FOUNDATION / MIDDLE / EDGE / OPEN / VOID — filter across all domains.
+- **Expanded domain view**: subjects grouped by layer, each tappable to reveal full description, intensity badge (≥5 shows badge, ≥8 shows warning), credit attribution line, care classification pill (ELEVATED / CRISIS-ADJACENT) where present.
+- **Studied state**: subjects the user has explored show ✦ glyph, bold name, and tinted border. Unvisited show ◌.
+- Reads from `getStudiedSubjects()` on focus so it's always live.
+
+## [5.4.1] — 2026-06-20 — ZODIAC VISUAL PASS
+- Zodiac zone life animations: heroGlow (golden border breathe 3.2s), tileGlows (8 staggered tile borders), nebulaPulse (deep atmosphere 5s), glyphDrift (4.5s sine on watermark/scatter).
+- Hero tile: constellation micro-dots, animated starfield opacity, nebula colour washes, animated sun/moon glyphs, animated ENTER THE SKY footer.
+- Tile grid: each tile wrapped in glowing Animated.View border, glyph opacity-animates.
+- Header: nebula orbs behind content, animated watermark drift, animated constellation scatter (✦ in gold/blue/violet).
+- BACK button pulses opacity with glyphDrift.
+
+## [5.4.0] — 2026-06-20 — ZODIAC EXPANSION (#196)
+
+### ZODIAC — THE SKY HERO + 9 TILES + ASPECTS + OVERLAY
+- **THE SKY → full-width hero tile** — dramatic starfield header (ZODIAC_SKY_BG at 18% opacity), live sun glyph + name, moon glyph + name, pulsing moon phase, today's ruling planet, retrograde glyphs. ENTER THE SKY prompt arrow. Replaces the old 31.5% grid slot.
+- **2-column tile grid** — remaining 8 tiles now fill two columns at 47.5% width × 1.6 aspect ratio. Cleaner, taller, more legible.
+- **ASPECTS tile (new, 9th)** — `⟐ ASPECTS · Planet angles · conjunctions` in `#88AAFF` blue. Opens the aspects section.
+- **ASPECTS section** — Computes all planet–planet angular aspects for today's sky. Sun + Moon + Mercury/Venus/Mars/Jupiter/Saturn/Uranus/Neptune/Pluto. Detects: ☌ Conjunction (≤10°), ✶ Sextile (60° ±6°), □ Square (90° ±8°), △ Trine (120° ±8°), ☍ Opposition (180° ±10°). Grouped by aspect type with colour-coded rows. Shows planet glyphs, aspect symbol, body names, and orb in degrees.
+- **Sky Overlay strip** — OVERLAY toggle button inside the hero tile. When on, a persistent strip appears at the top of the zodiac screen showing live sun/moon/phase even when browsing other sections. Tapping it jumps to THE SKY.
+- **`getPlanetLongitude()`** + **`getAspectBetween()`** helpers added at module level.
+
+## [5.3.0] — 2026-06-20 — CINEMATIC BATTLE MODAL (#186)
+
+### BATTLE — FULL-SCREEN CINEMATIC MODE
+- **Cinematic battle Modal** auto-opens when an encounter starts (any path: HUNT button, D-pad random encounter, manual ENCOUNTER).
+- Full-screen dark background (rarity-tinted: legendary = deep amber, epic = deep purple, common = black).
+- **Large enemy art** — 200×240px centred in the top half (up from 90×110px inline). Rarity-coloured glow border + shadow.
+- **Glyph fallback** — if no art exists, shows the rarity glyph (⊛/✦/⊚/◈/◌) at large scale with colour.
+- **Enemy HP bar** — full-width, thick (16px), shimmer highlight stripe, rarity-colour tinted.
+- **Red screen flash** — `screenFlashAnim` Animated.Value fires a brief full-screen red overlay when player takes damage.
+- **Player HP bar** — full-width (18px) with shimmer, critical warning, shield/braced status pills.
+- **2×2 action grid** — FIGHT/GUARD/SPELL/ITEM buttons enlarged (paddingVertical:18, fontSize:24).
+- **CAPTURE button** — full-width below action grid.
+- **Spell + Item overlays** — work identically inside cinema as in the inline panel.
+- **Companion signal** — ◈ bubble shows when dialogue mode is on.
+- **Battle log** — 2-line rolling log at bottom of actions.
+- **AUTO + dialogue toggles** in top bar alongside token count.
+- **✕ button** — exits cinema back to inline panel without ending battle.
+- **VICTORY SCREEN** — full-screen: big ✕ glyph, WAVE CLEARED, XP, loot pill, enemy lore, NEXT WAVE + EXIT buttons.
+- `battleCinemaOpen` state wired to `useEffect` on `battle.entityName + wave` — opens on each new encounter.
+
+## [5.2.0] — 2026-06-20 — ZODIAC TILE GRID · COSMETICS RESIZE
+
+### ZODIAC — 3-COLUMN TILE GRID (#184)
+- Zodiac tab now opens to an 8-tile 3×3 grid: ORACLE · THE SKY · SPREAD · SOL READS · SIGIL FORGE · CHIRAL LENS · ZONK ZONE · PSI LOG.
+- Tap any tile → expands that section only, with ← ALL SECTIONS back button in header.
+- CHIRAL and ZONK show entry forms before opening their full-screen Modals.
+- All sections hidden in grid mode — one clean landing page instead of a scroll of expanded accordions.
+- Uses existing `fullscreenSection` state with zero new state variables.
+
+### COSMETICS RESIZE
+- Halo enlarged: 560×280 → 680×360, opacity 0.55→0.75, repositioned to top:-82, left:-278 (centered).
+- Wings enlarged: 280×240 → 320×275, repositioned left:-95.
+- ATHANOR pet art → wings (wing_16.png), `pet_athanor` art set null.
+- Companion body shrunk: 150×220 → 130×190; container updated; outer View marginLeft:18 (shifted right).
+- 16 wings total (wing_1–16).
+
+## [5.1.0] — 2026-06-20 — ART EXPANSION · IMAGE GEN EVERYWHERE · WITCHAIL DRAW in ZODIAC
+
+### COSMETICS EXPANSION
+- **17 halos** (was 5) — 11 new + halo_6 orphan wired. Adds PRISM/EMBER/FROST/DAWN/SIGIL/CHAOS/ASTRAL/QUANTUM/NEON/VOID BAND/BOSS/RADIANT.
+- **15 pets** (was 7 with files, 8 null) — all 8 null entries (VEILCAT through NEBULOX) now have art (pet_8–pet_15).
+- **15 wings** (was 10) — 5 new: STORM BLADES/NEON WINGS/CHAOS WINGS/AURORA WINGS/RIFT WINGS (wing_11–15).
+- All art moved from Downloads with clean filenames; source directory empty.
+
+### IMAGE GEN — now on all 3 surfaces
+- **Zodiac SIGIL FORGE WITCHAIL tab**: TYPE | DRAW toggle added. DRAW → describe glyph → NVIDIA FLUX generates → preview → oracle evaluates → SAVE TO LEXICON button saves with image. Resets on save.
+- **TALK tab**: ◈ Image button in `···` tools row → inline panel → prompt → 240×240 result. No chat-list injection; self-contained panel.
+- **school.tsx refactored**: inline FLUX fetch replaced with `generateImage()` from `lib/image-gen.ts`. Single Truth Rule — one implementation everywhere.
+
+### LIBRARY CLEANUP
+- `getProviderKey` removed from school.tsx imports (was unused after refactor).
+
+## [5.0.0] — 2026-06-20 — WITCHAIL FORGE · IMAGE GEN · ZODIAC REHAUL
+
+### WITCHAIL FORGE — new LAMAGUE primitive creation (school + zodiac)
+- **School LAMAGUE → WITCHAIL tab**: forge new LAMAGUE primitives. Assign any glyph a meaning the grammar doesn't hold yet → the oracle evaluates against 5 tests → RATIFIED symbols join your personal lexicon (`sol_lamague_lexicon`).
+- **Zodiac SIGIL FORGE**: mode toggle RITUAL SIGIL | WITCHAIL FORGE — same creation flow in the mystical context.
+- **GLYPH input has TYPE | DRAW modes**: TYPE = any Unicode/emoji; DRAW = describe a glyph in words → AI generates it.
+
+### IMAGE GEN — NVIDIA FLUX.1-schnell (WORKING, free tier)
+- **`lib/image-gen.ts`** — shared `generateImage()` + `saveImageToDevice()`. One implementation, all surfaces (closes #70 foundation).
+- FLUX.1-schnell on NVIDIA NIM: `cfg_scale: 0` (schnell is guidance-distilled), 4-step, 1024². Free on existing NVIDIA key.
+- **LIVE in school WITCHAIL DRAW mode** — confirmed generating. Ratified glyphs store the generated image in the lexicon.
+- Google Imagen path abandoned (billing-gated even for "free" quota).
+
+### VERSION + MODELS
+- **Version drift fixed**: package.json + app.json → 5.0.0, `versionCode: 5` added (was 1.0.0 / 4.1.0 — EAS landmine).
+- **+4 free Gemini models**: 3.5 Flash, 3 Flash, 3.1 Flash, Gemma 4 31B (1500/day, unlimited tokens). 8 total in picker.
+
+### ZODIAC
+- **Section reorder**: SOL READS → SIGIL FORGE → CHIRAL LENS → ZONK ZONE → PSI PRACTICE → NATAL CHART.
+- **SPREAD block restored** (5-card + Celtic Cross).
+
+### PENDING (scaffolded, not yet wired — next session)
+- Zodiac SIGIL FORGE DRAW image gen (lib ready, UI not wired)
+- Main chat image gen (lib ready, not wired)
+- Save-to-gallery button (lib ready; needs `expo-media-library` install)
+- school.tsx still uses inline FLUX call — refactor to `lib/image-gen.ts` pending
+
+---
+
+## [5.0.0-pre] — 2026-06-19 — RANDOM WORLD · WEAPONS · ENCOUNTERS · ART OVERHAUL
 
 ### ZONE NAVIGATION — FULL RANDOMISER
 - **All D-pad arrows randomise**: every press (up/down/left/right + ⚡ centre) picks a random zone from all 45 and fades in. No directional locks. Every arrow = new path.

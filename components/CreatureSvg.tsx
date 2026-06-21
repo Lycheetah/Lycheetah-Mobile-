@@ -1,7 +1,6 @@
 import React from 'react';
 import Svg, { Path, Circle, Ellipse, Rect, Polygon, G, Line } from 'react-native-svg';
-
-type ArchetypeId    = 'archivist' | 'alchemist' | 'oracle' | 'sentinel' | 'wanderer' | 'lycheetah' | 'cipher' | 'herald' | 'weaver' | 'revenant';
+import type { ArchetypeId } from '../app/data/companion-types'; // canonical 19-archetype roster (Single Truth)
 type EvolutionStage = 0 | 1 | 2 | 3 | 4 | 5;
 type EvoPath        = 'A' | 'B' | 'C';
 

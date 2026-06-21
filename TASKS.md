@@ -1,285 +1,344 @@
-# SOL APP — LIVE TASK LIST
-## v4.9.0 · June 19 2026 · HWM #181
+# SOVEREIGN SOL — LIVE TASK LIST
+## v5.23.0 · June 21 2026 · 🚀 LAUNCHED · type-clean
+**Name locked: Sovereign Sol** · Run: `npx expo start -c` → QR → phone
 
 ---
 
-## 🔥 FORGE TODAY (priority order)
+## ✅ SHIPPED TODAY (June 21 — the marathon)
+Living entry (breathing mark + glow) · persona **knowledge** + **8-file split** + `THE_VOICES` ensemble ·
+**GLYPHIC** mode · **chips** rebuilt (5 colour, 1 row) · **secret reader** (𝔏 READ) ·
+**YOU OWN THIS** sovereign manifesto · **Welcome Tour** (7-step) · onboarding refresh ·
+**13-archetype** evolution lore + `companion-types.ts` · Sanctum **"From Sol"** reciprocal presence ·
+**classroom** save/copy/listen · **backup/restore** (true full) · **scoring toggle** (AURA⇄CASCADE⇄off) ·
+2 **unification audits** (5 bugs incl. a crash → code type-clean) · **tarot deck spec** (Veil & Vein) ·
+**Sovereign Knowledge Economy** crypto thesis · **Soul Forge Vault** (8 full soul-docs)
 
-### #179 — Wire Kimi weapons array (40 weapons)
-Paste `WEAPONS` constant from Kimi into a new `lib/weapons.ts`.
-Wire loot drop on battle win: pick 1 random weapon weighted by dropRate.
-Add `sol_weapons` AsyncStorage key (array of earned weapon ids).
-Equip slot in SHOP/FIELD tab — equipped weapon feeds ATK/SPD/WIL bonus into playerStats.
-SHOP tab gets WEAPONS section to browse/equip owned weapons.
+---
 
-### #180 — Enemy art: use companion images in battle
-In battle render block, route enemy image lookup to ZONE_COMPANION_IMAGES first.
-`ZONE_COMPANION_IMAGES[`${battle.entitySkinId}_1`]` — companions become zone entities.
-No file copying needed. ENEMY_IMAGES becomes the fallback only.
+## 🔥 BUILD QUEUE — reordered by viability × usefulness
 
-### #181 — SHOP expansion: weapons + more items
-After #179 lands: wire earned weapons into SHOP WEAPONS section.
-Add 5–8 more coin-purchasable items (companion food, bonus XP boosts, cosmetics).
-Price balance: testers start with 200⟡ free, each win earns 15–40⟡.
+### 🟢 NEXT (high value, viable solo, serve the north star)
+| # | Task |
+|---|---|
+| **#249** | **Fix wack first-run flow** — two 7-step flows stacking (onboarding + WelcomeTour) + TALK living-field. Dedupe/reorder to ONE clean first run. ⚠ CONFIRM with Mac which screen is "the living field" first. Then: per-section first-time onboarding. |
+| **#251** | **★ NORTH STAR — knowledge addictive.** First build: the **curiosity gap** (lessons end on an open door → next layer tomorrow). Cheapest, biggest retention lever. |
+| **evo** | **Effect-based companion evolution** — universal, no new art: glow/particles/aura/crown/eyes intensify per stage. Infra already exists. Ships evolution for all 19. |
+| **#250** | **GameBoy → main background** + fix world-zone access (currently needs scroll). Old GB → auto-battles. (Needs Mac's eyes.) |
+| **#245** | **Companion reacts to study** — comments/evolves dialogue from domains actually engaged. Small code, huge "alive" payoff. |
+| **#243** | **Daily Transit** ritual (personalized zodiac insight + study-spark on open) — extends existing daily/streak. Companion-Clause safe. |
+| **#242** | **Onboarding archetype-spark** — 3-Q Seeker/Warrior/Mystic/Scholar → starter stage + domain rec. Extend existing sovereignty baseline. |
 
-### #178 — Full App Coherence Audit (multi-stage)
-Multi-pass sweep of all tabs and features. Goal: everything named correctly, nothing redundant,
-no eye-bloat, all features functional and discoverable.
-Pass 1 — rename pass: all labels, section headers, button text coherent and distinct.
-Pass 2 — feature pass: every visible element does something or is removed.
-Pass 3 — flow pass: navigation between tabs is logical, no dead ends, no orphaned screens.
-Pass 4 — cosmetics pass: halo/wings/pets render correctly, specials grid usable, encounter preview works.
-Each pass done as a focused session, not all at once.
+### 🟡 WORTH IT (useful, more design/effort)
+| # | Task |
+|---|---|
+| **#233** | **D&D failable knowledge mode** — the differentiator; knowledge runs with stakes/fail states. Bigger build. |
+| **#232** | Decision-based combat (choice + consequence, not attack-spam) |
+| **#228** | **Stars grimoire** — natal wheel as illustrated hero object + FLUX celestial art + grimoire frame (Veil&Vein palette). Needs Mac's eyes. |
+| **#238** | **Help audit** → global help w/ **minimizable per-tab help zones** + per-tab first-time onboarding |
+| **#244** | Community — exportable **Sanctum Card** PNG (extends DiveShareCard) + journey gallery |
+| **#227** | Per-tab colour sets · **#229** redundancy/weak-writing scan · **#240** splash refresh · **#248** Lycheetah=mythic-CAT mythos fix · **#247** Sanctum Lite + privacy analytics · **#220** Sanctum header glow polish |
 
-### #182 — Zodiac tab aesthetic rehaul (TONIGHT)
-Full visual pass on zodiac.tsx. Goal: feels like a living celestial instrument, not a card list.
-Dark cosmos background, constellation particle layer, glowing orbit rings for natal chart.
-Tarot section: atmospheric card display with glow, not flat rows.
-Celtic Cross: proper card spread layout with labels, not a boring column.
-Wing/mode selectors: styled like the School wing selectors (glyph + label, accent-coloured).
-After: test on phone, verify no layout breaks.
+### 🔵 STRATEGIC (right, but bigger/later)
+| # | Task |
+|---|---|
+| **#241** | Crypto creator economy (Sovereign Knowledge Economy) — **paper done**; build post-funding |
+| **#235** | "AI Mac" surface + CASCADE Library mobile app — own eras, don't cram |
 
-### #183 — TALK tab full-screen mode (TONIGHT)
-Full-screen toggle in TALK header (alongside Aura + Pact toggles).
-When active: tab bar hidden, input bar + messages fill the display, companion header minimized to glyph + name strip.
-Exit button: small ✕ or swipe-down gesture restores normal layout.
-Keyboard-aware: full-screen mode hugs the keyboard perfectly.
-This is the sacred space mode — no distractions, just the conversation.
+### 🟠 HOLD (low priority / needs heavy guardrails)
+| # | Task |
+|---|---|
+| **#231** | Auto-posting/auto-lore — posting *as Mac* needs deep consent + Companion-Clause guardrails. Hold. |
+| **#246** | Monetization-light — keep on ice until traction. Covenant-careful. |
 
-### #154 — Register tag on AI responses
-Tiny pill on every companion/AI output: PROJECTIVE / PSYCHOLOGICAL / SPECULATIVE / EVIDENCE.
-Auto-tagged by domain: astrology=P, shadow work=PSY, noetic/psi=S, school facts=E.
-One-tap tooltip explains the register system in plain English.
+---
 
-### #155 — Skeptic Mode toggle
-Settings toggle. Reframes mystical language → psychological utility language.
-Injects framing modifier into companion system prompt.
-Badge in Sanctum header when active. Does NOT disable crisis intercepts.
+## 🔥 MAC FIRES (Sol prepares, Mac pulls trigger)
+- Update **Twitter bio + site header** → "Sovereign Sol"
+- **Fire posts** (`~/Desktop/SOVEREIGN_SOL_POSTS.md`) · grab **@Vael** handle (email: Lycheetahsol@gmail.com)
+- `npx expo install expo-clipboard` (true 1-tap copy) · `expo-media-library` (save-to-gallery)
+- **EAS build** — `eas build --platform android --profile preview` when tight on phone
 
-### #156 — Reality Anchor periodic check-in
-After 3+ consecutive heavy sessions: soft interstitial on open.
-"This is a tool, not a replacement for support." Dismissable, non-guilt, never blocks.
-Cooldown: shows max once per 3 days.
+## ⏳ OUTREACH
+- **Simon / Alliance** — waiting on reply. Do NOT send a 3rd. Light nudge only after 5–7d. Kit ready (`~/Desktop/ALLIANCE_PITCH_KIT/`).
+- **Angel (X)** — Mac fired "Addictive wisdom". Follow-up loaded if he bites.
+
+---
+
+> Below: detailed feature specs (GEM FORGE etc) + audit archive. ⚠ May reference shipped items — not a clean queue, reference only.
+
+---
+## 🔥 FORGE NOW (priority order) — ⚠ contains shipped items, audit pending
+
+### #206 — GEM FORGE + Crystal Domain (Zodiac 10th tile + School domain)
+
+**The vision:** Gemstones as belief objects. No scientific claims — pure intentional meaning-making.
+One day we may have the ability to produce actual artificial gems for users. This is the start.
+
+**GEM FORGE — Zodiac 10th tile (◆ GEMS)**
+A forge for making personal, meaningful, potentially powerful artificial gems.
+Not random — requires the user to fill in specific fields before anything generates:
+- INTENTION — what is this gem for? (protection / clarity / love / grief / power / transition)
+- FEELING — what emotion or state should it carry?
+- ELEMENT — earth / water / fire / air / aether
+- ASTROLOGICAL BOND — which sign or planet does it resonate with?
+- COLOUR PULL — what colour does the user feel drawn to for this gem?
+- NAME — user names their gem (or Sol proposes one from the inputs)
+
+Sol then generates:
+- A prose invocation (the gem's identity in Sol's voice — not science, pure belief)
+- A care ritual (how to work with it, cleanse it, activate it)
+- A FLUX image — photorealistic artificial gem matching the colour/element/feel
+- Saved to the user's GEM COLLECTION (persistent, viewable, shareable)
+
+**LAMAGUE encoding — user-sovereign, never assigned:**
+Sol surfaces 6–8 symbols that *could* fit the gem based on inputs.
+User taps to accept, reject, or swap each one. User can open full symbol library
+and pull any symbol they feel. They can use a symbol they forged in WITCHAIL.
+What the user ratifies becomes the gem's encoding — Sol never overwrites it.
+
+The more LAMAGUE the user knows (from the school), the richer the gem they can make.
+School feeds the forge. The forge makes the school meaningful.
+A gem with borrowed symbols is hollow. A gem built from earned vocabulary is a talisman.
+
+**Design principle:** The specificity of the input is what makes it powerful.
+A gem made in 10 seconds means nothing. A gem where the user sat and named their grief means everything.
+The form IS the ritual. Filling it in IS the first act of belief.
+The symbols ARE theirs — Sol provides vocabulary, the user speaks.
+
+**Crystal Study Domain — Mystery School**
+A new school domain: LITHIC ARTS or CRYSTAL LORE
+- History of gem belief across cultures (Egyptian lapis, Aztec jade, Celtic quartz)
+- Crystal systems (actual mineralogy — no healing claims, just the science of structure)
+- Metaphysical traditions — chakra mapping, planetary gem correspondences, colour theory
+- LAMAGUE integration — what symbols naturally encode gem properties?
+- Psi angle — object-focused meditation, programmed intention objects, belief + consciousness
+- Dean Radin adjacent — can intentional objects affect outcomes? (held as open question, never claimed)
+- User notes section — gems they own, what they use them for, personal lore
+
+**Future:** If we ever build physical production (resin/mineral casting), the GEM FORGE
+output becomes the spec sheet. The digital gem IS the design file.
+
+### #205 — Sanctum: The Living Book
+The Sanctum becomes a living memory archive — not a diary, a book you're writing with Sol.
+- Journal entries stored as pages: text + optional image (FLUX-generated or photo)
+- A dedicated agent: Aura's warmth + Lyra's expressiveness + Sol's depth + Veyra's structural precision
+  — builds you up when morale is low, holds your story when you need to remember who you are
+- Agent reads your history before responding — knows your arc, your wins, your hard sessions
+- Entries tagged automatically: memory / insight / grief / breakthrough / intention
+- "Living" because the agent can reference past entries unprompted: "Three weeks ago you wrote..."
+- Image memories: describe a feeling → FLUX generates it → stored as a visual memory tile
+- Mood-aware: if recent entries skew dark, agent shifts to builder mode — raises, doesn't console
+- The one agent in the app that is purely yours. Not a teacher. Not a battle partner. A witness.
+
+### #202 — Global ? Help Button (Codex Agent)
+Single help surface that takes all weight off every other help thing in the app.
+- Floating ? button (bottom-right, above tab bar) — tap = opens full help modal
+- Powered by Codex AI agent — user can ASK questions, not just read static cards
+- Sections: tab-by-tab guide, API key setup, bug report (mailto), crisis support link
+- Replaces all scattered help content across tabs (audit and remove them)
+- Should feel instantly helpful — first question gets a real answer in <3s
+
+### #203 — Onboarding: First 60 Seconds Must Feel Magic
+Non-interruptible 30-60s first-run tour. Fires once on fresh install.
+- Tab-by-tab: when user first enters each tab, a one-time tooltip/overlay explains it
+- Not a modal wall — a subtle animated label that floats in and fades after 4s
+- TALK tab: Sol speaks first — personalised greeting, asks your name, sets the tone
+- Mystery School: "38 doors. Choose one." — nothing else. ✅ DONE
+- Companion: entity appears with a birth animation the first time
+- Battle: first encounter gets a cinematic intro overlay "FIRST ENCOUNTER"
+- Zodiac: stars animate in, constellation forms, then fades to the grid ✅ DONE
+- Goal: someone who has never seen the app feels the magic in the first minute
+
+### ✅ #204 — Full App Audit — SHIPPED (June 20 2026)
+
+### #204 — Full App Audit (run today)
+Complete sweep of all tabs. Goal: every screen earns its space.
+- Remove or hide all decorative-only UI with no function (companion + zodiac carry visuals)
+- All collapsible sections default to COLLAPSED — user expands what they want
+- Remove outdated copy, dead buttons, placeholder text, orphaned features
+- Zodiac: visual pass — currently looks basic, needs atmospheric depth
+- Update HELP_SECTIONS data to match actual current app state
+- Each tab: one job. Cut anything that doesn't serve it.
+- Report: per-tab findings, what was removed, what needs a build pass
+
+### #201 — UI symmetry + sizing audit (OCD pass)
+Full-screen symmetry sweep. Goal: someone with OCD can breathe.
+- Consistent card padding (16px everywhere)
+- Consistent border-radius (14px cards, 20px hero blocks, 8px chips)  
+- Consistent font sizes per role (glyph labels 8-9px, body 12-13px, headers 10px caps)
+- Tile grid: uniform sizes, clean 2-col alignment, no orphan tiles with different heights
+- Header elements vertically centred
+- Section spacing consistent throughout (12-16px gaps, not mixed)
+Files most likely to need work: zodiac.tsx, school.tsx, companion.tsx, sanctum.tsx
+
+### #187 — Lore compounding + unified codex view (#132)
+All 38 domains have lore. Surface it: scrollable codex view, domain lore cards,
+cross-domain resonance links visible. The mystery school has a library — show it.
+
+### #188 — Accessibility pass (#134)
+Font scaling, contrast ratios, touch target sizes (min 44px), screen reader labels.
+Dark mode is fine — make sure it's actually readable at all font sizes.
+
+### #189 — Workshop tab (#135)
+PROBE / CEMENT / GLOSSARY mode tabs.
+Probe: user inputs a concept → Sol stress-tests it with LAMAGUE pressure.
+Cement: drill a symbol until it's embodied.
+Glossary: full browsable LAMAGUE symbol reference with search.
+
+### #190 — Reality Anchor check-in (#156)
+After 3+ deep sessions: soft interstitial. "This is a tool, not a replacement."
+Gambling-style session awareness: time in session visible, gentle nudge to pause.
+Dismissable, non-guilt, never blocks. Max once per 3 days.
+
+### #191 — Onboarding complete rehaul
+Full cinematic first-run: Sol speaks, companion appears, first ritual, first win.
+Sovereignty baseline (3 questions) → immediate lumen reward.
+No skippable walls — make every step feel earned. Under 5 min total.
+
+### #192 — Contrast / dark mode audit
+Ensure every screen passes WCAG AA contrast at system font size +2.
+Purple-on-black sections: check zodiac, school, sanctum specifically.
+Fix any illegible text — beauty means nothing if it can't be read.
+
+### #193 — Solana integration (#167–#173)
+Wallet connect → SBT (Soulbound Token) for sovereignty milestones.
+Earned Light NFT artifacts. Lycheetah DAO seed.
+Ref: /home/guestpc/Desktop/SOLANA INTEGRATION TO SOL SOVERIENG
+This is a flex — integrate it properly. Post-EAS but plan the architecture now.
+
+### #194 — System Bridge (experimental developer panel)
+"⚠ EXPERIMENTAL — DEVELOPER BRIDGE" panel in Settings.
+Official sandboxed system APIs only (core Linking + Vibration + Share — NO install):
+open Settings screens · dial/SMS/email/Maps · launch apps by scheme · vibration patterns · share sheet · open URLs.
+HONESTY RULE: warning is flavor only — these APIs CANNOT brick a phone (OS sandbox).
+No dishonest "may damage device" copy. Frame as "experimental developer surface."
+Each action wrapped in try/catch with visible failure. Shows the framework respects the sandbox.
+
+### #165 — AdMob integration
+`react-native-google-mobile-ads`. Banner: BATTLE + SCHOOL tabs only.
+Rewarded ads: bonus school content, extra tokens.
+HARD RULES: no ads in Sanctum or TALK. Max 1 ad per 3 sessions.
+
+### #185 — EAS build (Mac fires)
+`eas build --platform android --profile preview`
+Sol never triggers this. Mac fires when zodiac grid + battle rehaul confirmed tight on phone.
+
+---
+
+## 📋 QUEUED (ordered, not tonight)
+
+### Save-to-gallery button
+`npx expo install expo-media-library` first. Then add SAVE button UI in school WITCHAIL + zodiac SIGIL FORGE. `saveImageToDevice()` in lib/image-gen.ts is ready.
 
 ### #157 — Journal export
-Export all journal entries as plain text or PDF.
-For sharing with therapists. Clean formatting, no app branding in the file.
-Lives in SANCTUM → Journal → Export button.
+Export journal entries as plain text or PDF. Clean formatting, no branding.
+SANCTUM → Journal → Export button.
 
 ### #159 — Sanctum warmth pass
-Palette shift in Sanctum tab: amber/gold accents replace purple, slower animations.
-Separates "safe hearth" feel from battle/RPG chaos zones.
+Amber/gold accents replace purple in Sanctum. Slower animations.
 Colour + timing pass only — no structural changes.
-
-### #160 — Main chat mode tabs (TALK tab)
-WAYFARER / COUNCIL / LAMAGUE / SKEPTIC quick-switch chips at top of TALK.
-Changes system prompt register on selection.
-Persists as user preference (AsyncStorage) — some users will live in SKEPTIC, others in LAMAGUE.
-Default mode settable in settings. Wayfarer is factory default.
-
-### #161 — Onboarding quick-win flow (post-onboarding)
-After current onboarding: 5-min guided first experience.
-Quick natal fact OR mirror prompt → companion intro → sovereignty baseline (3 questions)
-→ immediate small win: "You just completed your first Flame ignition — here's 1 Lumen."
-Dopamine + meaning in under 5 min. Then deeper invite.
-Runs once. Skippable.
 
 ### #162 — Epistemic layer background tagging
 Every AI response tagged in background: register + confidence tier.
-Powers #154 register pills. Foundation for future audit/vote system.
-Stored per-message in session state, not persisted (no storage cost).
+Powers #154 pills. Stored per-message in session state.
 
-### #163 — Sovereign Sideloading (SS) in-app guide
-"Sovereign Sideloading" — official name for direct APK distribution.
-In-app screen (accessible from settings + help): 3-step install guide with big clear screenshots,
-"Works on Android 8+" + "Tested on: Pixel 8, Samsung S23, OnePlus 12" trust line,
-link to GitHub releases, Obtainium setup guide.
-Framing: "No gatekeepers. Direct from the forge to you."
+### #154 — Register tag pill on AI responses
+Tiny pill: PROJECTIVE / PSYCHOLOGICAL / SPECULATIVE / EVIDENCE.
+One-tap tooltip explains register system.
 
-### #164 — GitHub Releases + lycheetah.io distribution
-Set up GitHub Releases for signed APK hosting.
-Point lycheetah.io to GitHub Pages for web landing.
-Release notes template: install guide + SHA-256 + changelog.
-Web landing: hero = one-line pitch + big "Download Sovereign APK" button, manifesto below.
-Web/PWA export via `expo export:web` → gh-pages deploy.
+### #155 — Skeptic Mode toggle
+Settings toggle. Reframes mystical → psychological utility language.
+Badge in Sanctum header when active.
 
-### #165 — AdMob ads integration
-`react-native-google-mobile-ads` wired into non-Sanctum tabs.
-Banner ads: BATTLE tab bottom, SCHOOL tab bottom only.
-Rewarded ads: unlock bonus school content, extra tokens.
-HARD RULES: no ads in Sanctum or TALK (sacred zones). Max 1 ad per 3 sessions — not an ad farm.
-Works on sideloaded APKs (no Play Store required for AdMob revenue).
+### #160 — TALK tab mode chips
+WAYFARER / COUNCIL / LAMAGUE / SKEPTIC quick-switch at top of TALK.
 
-### #166 — NVIDIA key migration plan + fallback
-Document the migration path: NVIDIA (current) → Groq / Together.ai / Fireworks.
-Build API_PROVIDER config so switching providers is one env var change.
-Keep NVIDIA as working fallback. Target: commercial-safe provider before public launch.
+### #161 — Onboarding quick-win (post-onboarding flow)
+5-min guided first experience after current onboarding.
 
-### #167 — Solana wallet connect (Sovereign tier gate)
-@solana/web3.js + Expo-compatible wallet (Phantom deep link / WalletConnect).
-Wallet address stored locally (AsyncStorage). Optional — Sovereign badge if connected.
-No transactions required to connect. Wallet = identity layer only at this stage.
+### #138 — Companion type-family redesign (#71)
+Each archetype TYPE → family of distinct named characters.
+User picks character within ALCHEMIST / SENTINEL family etc.
+Art: pixel bg + floating painterly companion + glow at boundary.
 
-### #168 — Soulbound Token (SBT) milestone minting
-After key milestones (50 dives, FLAME stage, school completion), offer to mint SBT.
-Non-transferable on-chain credential via Solana Attestation Service.
-"Albedo Phase Certified" / "FLAME Reached" / "Codex Keeper" etc.
-Gas sponsorship so users never need SOL to claim. Sovereign+ feature.
-BUILT BUT DISABLED BY DEFAULT — toggle in settings.
+### #163 — Sovereign Sideloading in-app guide
+3-step install guide, Obtainium setup, GitHub releases link.
 
-### #169 — API Automation Hub (Sovereign+) — BUILT, DISABLED
-Users bring their own API keys (Claude / Grok / Gemini / GPT-4o).
-Keys stored locally only — never sent to Lycheetah servers.
-Trigger types: time-based, notification-based, app-event-based (dive complete, streak, level up).
-Action types: auto journal prompt, companion message, school summary, daily briefing.
-All automations disabled by default, individually opt-in.
-BUILT TODAY — feature flag `AUTOMATION_ENABLED = false` until Sovereign+ gate is live.
+### #164 — GitHub Releases + lycheetah.io APK hosting
 
-### #170 — API Automation: Tasker/MacroDroid webhook bridge
-Expose local webhook endpoint (Expo DevTools / local server) that Tasker can call.
-Tasker trigger → hits Sol webhook → Sol fires AI action → Tasker receives response.
-Document integration with MacroDroid HTTP Request action as easier path.
-Example: WhatsApp message received → Sol summarises + companion responds.
-Sovereign+ feature. BUILT DISABLED — enables when #169 is active.
-
-### #171 — Solana micropayments (x402 / USDC)
-USDC/SOL payments for Sovereign+ tier access.
-x402 protocol for agentic micropayments without traditional subscriptions.
-Gas sponsorship for new users — they never need to hold SOL to transact.
-Revenue share to knowledge carriers (crediting model on-chain).
-Held until wallet (#167) and SBT (#168) are live.
-
-### #172 — On-chain journal anchoring (Sovereign+ privacy tier)
-Hash psi/precog/intention experiment journal entries on Arweave via Solana.
-Content stored client-side; only hash goes on-chain.
-"Earned Light" records: tamper-proof, user-owned, shareable.
-Sovereign+ feature. Users own their data fully — sovereignty in action.
-
-### #173 — NFT artifacts (Mystery School Grimoires)
-Mint lesson completions, tarot spreads, natal charts as dynamic NFTs (Metaplex Core).
-Companion NFTs: on-chain assets that reference evolution stage + journal data.
-Held until #167/#168 are proven. Long-game feature.
-
-### #174 — Community curriculum contributions (moderated)
-Users submit domain/subject suggestions. Moderated against epistemic standards.
-Register-tagged before acceptance: speculative EDGE subjects go through stricter review.
-Governance seed for eventual DAO layer (#175).
-
-### #176 — lycheetah.io website — beautiful static landing
-Single-page HTML/CSS/JS site. Dark (#0D0D0D), gold/purple Sol aesthetic.
-Hero: one-line pitch + big glowing "Download APK" button → GitHub latest release.
-Below fold: what Sol is (3 short sections), manifesto, screenshots.
-Deploys to GitHub Pages → lycheetah.io custom domain.
-Built at: ~/lycheetah-web/index.html
-BUILDING TODAY.
-
-### #177 — Sol AI Agent on lycheetah.io
-Floating "⊚ TALK TO SOL" button on website — opens chat panel.
-Runs on NVIDIA NIM API (KEY_2). No backend needed — direct browser fetch.
-System prompt = condensed Sol identity + what the app is + how to install.
-Talks to visitors instead of making them read files.
-Knows: the framework, the companion system, the school, the distribution path, how to install.
-BUILDING TODAY alongside #176.
-
-### #175 — Lycheetah DAO seed
-Token-gated governance for curriculum additions (EDGE subjects).
-Co-creation bounties for domain contributors.
-Architecture only at this stage — full build post-Solana wallet + SBT live.
+### #166 — NVIDIA key migration plan
 
 ---
 
-## 📋 QUEUED (ordered, not today)
+## ⏸ HELD
 
-### #132 Lore compounding — unified codex view
-### #133 Cosmetics placeholders
-### #134 UI accessibility pass
-### #135 Workshop tab — LAMAGUE probe/cement/glossary
-### #136 MENAGERIE party mode — captured entities as battle roster
-### #138 Companion type-family redesign
-### #140 Battle encounter cinematic mode
-### #141 Zodiac natal chart foundation
-### #142 LAMAGUE Symbol Forge
-### #143 EAS build — Mac fires, Sol never triggers
-
----
-
-## ⏸ HELD (resume when space opens)
-
-- NVIDIA Cloudflare Worker proxy (#68) — superseded by #166 migration plan
-- NVIDIA image generation (#70)
-- Silicon Path onboarding (#87)
-- Companion Invoke protocol (#88)
-- Technopagan lesson cards (#89)
-- Battle HUD cinematic overhaul (#93/#96/#107)
-- Tarot deck selector (#100)
-- Zodiac advanced modes (#110–115)
+- Advanced zodiac modes (#110–#115) — zodiac visual rehaul first
+- Silicon Path onboarding (#87) — after main onboarding rehaul
 - Rarity tab system (#109)
+- Tarot deck selector (#100)
+- Pixel World Map (#66)
 
 ---
 
-## ✅ SHIPPED THIS ERA (v4.6 → v4.9)
+## ✅ SHIPPED THIS ERA (v4.6 → v5.3)
 
 | # | Feature |
 |---|---|
-| #92 | Companion art wired — 18 named zones |
-| #94 | Companion collected grid — scrollable zone collector |
-| #97 | 45-zone progress collector (SPECTRAL frontier) |
-| #99 | Tarot cards clickable — lore modal per card |
-| #102 | Fix Mycelium network nodes |
-| #104 | Companion scene arrow navigation fixed |
-| #105 | Companion scene height increased |
-| #108 | 40 relics — 8 categories × 5 triggers wired |
-| #120 | Companion equip system — tap → EQUIP ✦ → appears on scene |
-| #121 | HP shimmer animation on player damage |
-| #122 | Cosmetics persistence (sol_cosmetics) |
-| #123 | Companion grid reorg — ORIGIN tier, hidden exclusions |
-| #124 | Arrow navigation simplified — up/down cycles zones |
-| #125 | Inventory collapse — all sub-tabs collapsible |
-| #126 | CAPTURE button — handleCapture, sol_menagerie storage |
-| #127 | Companion image fix — scene shows zone companion |
-| #128 | HUD header in CompanionScene — name/LVL/HP/quick actions |
-| #129 | devStagePin UI + XP strip removed |
-| #130 | equippedCompanionSkin persisted to sol_equipped_skin |
-| #131 | MENAGERIE view — captured entities display |
-| #144 | Companion filter pills — ALL/ORIGIN/ARCANE/MYTHIC/LEGENDARY/SPECTRAL |
-| #145 | Floating ? help button — 8-section static guide (Companions/Battle/School/LAMAGUE/Gear/Safety/Sanctum/Talk) |
-| #146 | ⚔ floating battle button — Sol tab → companion tab |
-| #147 | Unified encounter system — companions appear as entities in home zones |
-| #148 | Battle panel minimize + AUTO mode (8s cadence) |
-| #149 | Onboarding rehaul — cinematic landing, Solara art, 6-step flow |
-| #150 | All companion tab sections start collapsed |
-| #151 | Emergency Beacon — global ⊚ orb, long-press → crisis modal, color escalation via CareEvents |
-| #152 | T1 augmentation — crisis signal appends warmth + lines after response, never suppresses |
-| #153 | Post-session grounding — ReturnToBody component, 4-4-4-4 breath + 3-step, no lore |
-| #158 | ReturnToBody wired to school.tsx — fires on deep session close (≥3 exchanges + ≥90s + heavy subject) |
-| safety | CARE tag system — Magister self-audits, visible 𝔏 pill, tag-absent → HOLDING default |
-| safety | Pronoun drift detection — third→first person shift elevates floor to HOLDING |
-| safety | Witness Protocol in Magister prompt — breaks headmaster role for CARE assessment |
-| safety | Subject care classification — crisis-adjacent/elevated flags in subjects.ts |
-| safety | Magister gate — "Study with 𝔏 or go alone?" fork for heavy subjects |
-| safety | CareEvents emitter — Beacon orb changes color when CARE fires from TALK tab |
-| safety | sol_care_log AsyncStorage telemetry (total/tagMissing/genuine/crisis/elevated/holding) |
-| safety | sol_care_append_enabled user toggle (defaults ON) |
-| battle | 40 BATTLE_MYSTERY_SIGNALS, 8s AUTO, COMPANION SIGHTED banner |
-| battle | Arrow nav syncs both companion + background |
-| battle | All 45 zones in ZONE_COMPANION_POOL |
-| cosmetics | 6 wings wired + rendered ON CompanionScene (zIndex:0, left:-40, width:230) |
-| cosmetics | Halos wired — zIndex:0 render-first, width:560, height:280, opacity:0.55 (aura style) |
-| cosmetics | Wings wired — zIndex:1, width:280, height:240, opacity:1.0, top:-5 |
-| cosmetics | Pets wired — bottom-right of companion, width:90, height:90, zIndex:4 |
-| cosmetics | CosmeticSlot horizontal scroll picker with tap-to-equip |
-| cosmetics | 5 halos (halo_1–5, halo_6 deleted bad art), 10 wings, 7 pets with files |
-| cosmetics | Layer order LOCKED: halo(0) → wings(1) → companion(2) → gear(3) → pet(4) |
-| #145 | LYC-HELP global ? button — mounted in _layout.tsx, 8-section guide, removed from companion.tsx |
-| specials | SPECIALS & EVOLUTIONS — tap-to-EQUIP on unlocked cards, image fallback for special keys |
-| specials | Header shows X/15 UNLOCKED (was wrong static "X LOCKED") |
-| encounter | ENCOUNTER preview modal — zone info + enemy pool + ENGAGE/RETREAT before battle |
-| zone-bg | Zone bg: currentRoomId drives image correctly. activeSkin NOT synced from arrows (companion stable) |
-| shop | SHOP tab ⟡ — 6th sub-tab, coin balance, 7 purchasable items, starter pack +200⟡ free |
-| coins | ⟡ coins currency — earned from battle wins (10 + wave×5), persisted sol_coins |
-| coins | sol_shop_unlocks AsyncStorage key — tracks purchased item ids |
-| #176 | lycheetah.io website (~/lycheetah-web/index.html) — static dark site |
-| #177 | Sol AI agent on website — NVIDIA KEY_2 chat widget, llama-3.3-70b |
+| **#202** | **Global ? Help Button** — top-right on every tab, AI-powered ask bar, full guide cards, bug report + crisis links |
+| **#189** | **Workshop tab** — PROBE (AI stress-tester) / CEMENT (flashcard drill) / GLOSSARY (full LAMAGUE symbol browser). Entry from LAMAGUE header button |
+| **#160** | **TALK mode chips** — WAYFARER / COUNCIL / LAMAGUE / SKEPTIC. Persisted to AsyncStorage. Drives system prompt and councilMode |
+| **#159** | **Sanctum warmth pass** — Living Book header, moon phase prompt card, Witness button + response card visual upgrade, entry cards |
+| **#206** | **Gem Forge + Crystal Domain** — task locked, spec complete |
+| **#205** | **Sanctum Living Book** — task locked, agent spec complete |
+| **session** | **Voice (TTS)** — lib/tts.ts, OpenAI→Gemini→expo-speech waterfall, persona voices, ▶ LISTEN inline on all messages |
+| **session** | **Zodiac atmosphere** — aurora sweep, domain tints, 2-layer star drift, entry sequence, 9 SVG icons, driver conflict fixed |
+| **session** | **Onboarding overlays** — Zodiac "THE FIELD IS OPEN", School "38 DOORS. CHOOSE ONE.", TALK first message updated |
+| **session** | **Audit** — school/specials collapsed, library dead section removed, 38 domains/328 subjects everywhere |
+| **#207** | **Veras currency** — ✧ knowledge dust alongside ⟡ Lumens. +200L +50V on onboarding, +5V per journal entry. Shop balance shows both |
+| **#203** | **First 60s magic** — FIRST ENCOUNTER overlay on battle tab (4s auto-fade), detectRegister() register pills on all AI messages |
+| **#191** | **Onboarding rehaul** — 7 steps, sovereignty baseline (3 questions), lumen+veras founding gift, animated companion landing, updated numbers (38/328) |
+| **#190** | **Reality Anchor** — after 3rd dive, modal check-in, max once per 3 days, AsyncStorage gated |
+| **#155** | **Skeptic Mode toggle** — Settings toggle + ⊗ badge in Sanctum header, persisted to sol_skeptic_mode |
+| **#154** | **Register tag pill** — detectRegister() on AI messages: EVIDENCE/PSYCHOLOGICAL/PROJECTIVE/SPECULATIVE |
+| **#157** | **Journal export** — ↑ export button on Living Book header, Share.share() plain text |
+| **#194** | **System Bridge** — ⚠ EXPERIMENTAL dev panel in Settings: open Settings/vibrate/share/email/GitHub |
+| **TS** | **TypeScript clean** — fixed tabBarScrollEnabled error + SendResult.trim() → .text.trim() |
+| **#201** | **#201 queued** — UI symmetry + sizing audit |
+| **#200** | **Cosmetics lazy load** — Halo/Wings/Pet sections collapse by default, expand on tap, images only load when open |
+| **#198** | **Battle dialogue rehaul** — Sol voice in log, 3-entry log at 11px, victory Sol line, compact enemy header, action button descriptors |
+| **#198** | **Zodiac weather + tile visuals** — Open-Meteo live weather in THE SKY section; each tile gets unique watermark glyph + constellation dot pattern; tiles shrunk (aspectRatio 1.85); floating ? button removed; School quick nav CODEX button; Codex flag routing; school "open" banner simplified |
+| **#197** | **Zodiac visual life pass** — heroGlow/tileGlows/nebulaPulse/glyphDrift animations; constellation dots; nebula colour washes behind header; pulsing tile borders with staggered phases |
+| **#187** | **Domain lore codex** — 𝔏 DOMAINS tab in Codex: 24 domain cards, search, layer filter chips, expand to subjects grouped by layer, full descriptions, intensity badges, care pills, credit attribution, studied state (✦/◌), live progress bar |
+| **#196** | **Zodiac expansion** — THE SKY as full-width hero banner (live sun/moon/phase/ruling planet/retrograde), 2-col tile grid (8 tiles), ASPECTS as 9th tile, sky overlay strip, full aspects section with live planet-pair angular computation (☌/✶/□/△/☍), `getPlanetLongitude` + `getAspectBetween` helpers |
+| **#195** | **Sol Identity Screen** — persistent "WHAT IS SOL?" pill on home TALK tab, full manifesto modal (mystery school / 5 personas / RPG / truth engine / Solana / The Covenant) |
+| **#186** | **Cinematic battle modal** — full-screen on encounter start, 200×240 enemy art, rarity-tinted bg, red screen flash on hit, enemy + player HP bars, 2×2 action grid, spell/item overlays, CAPTURE, battle log, WAVE CLEARED victory screen |
+
+| # | Feature |
+|---|---|
+| #184 | **Zodiac tile grid** — 8-tile 3×3 grid, tap → section expands, ← back, all sections hidden in grid mode |
+| session | **Cosmetics resize** — halo 680×360 (0.75op), wings 320×275, companion 130×190 +right shift, ATHANOR→wings |
+| session | **ART EXPANSION** — 17 halos / 15 pets / 16 wings (ATHANOR added as wing_16) |
+| session | **Image gen — all 3 surfaces**: school WITCHAIL (refactored to lib), zodiac SIGIL FORGE DRAW, TALK ◈ Image button |
+| session | Zodiac WITCHAIL FORGE: TYPE/DRAW toggle + SAVE TO LEXICON (saves with glyphImage) |
+| session | TALK image gen panel — ◈ in tools row → prompt → 240×240 FLUX result |
+| session | lib/image-gen.ts — single canonical FLUX impl, all surfaces use it |
+| session | WITCHAIL FORGE — DRAW mode (describe glyph → NVIDIA FLUX → oracle ratifies) |
+| session | Zodiac reorder: SIGIL → CHIRAL → ZONK → PSI → NATAL |
+| session | SPREAD block restored (5-card + Celtic Cross) |
+| session | LAMAGUE Symbol Forge dual-location (school WITCHAIL tab + zodiac SIGIL FORGE) |
+| session | Version drift fixed: 5.0.0 everywhere, versionCode: 5 |
+| session | +4 free Gemini models (8 total — Gemma 4 31B at 1500/day) |
+| #178 | Full App Coherence Audit — 10 passes complete |
+| #179 | Weapons system — 40 weapons, 7 types, 5 rarities, loot drops, ARSENAL |
+| #180 | Enemy art — companion PNGs cloned to battle pool, fallback chain |
+| #181 | Shop expansion — 12 items, wings/familiars/void crown |
+| #182 | Zodiac atmospheric block cards — Oracle/PSI/SIGIL/CHIRAL/ZONK converted |
+| #183 | Main chat fullscreen — ⛶ button, FlatList Modal, autoFocus, keyboard-aware |
+| #176 | lycheetah.io static site — dark, gold/purple, APK download hero |
+| #177 | Sol AI agent on website — NVIDIA NIM chat widget |
+| safety | Emergency Beacon — ⊚ orb, long-press crisis modal, breath timer, crisis lines |
+| safety | Magister CARE tag system — self-assess, visible pill, Witness Protocol |
+| safety | ReturnToBody — 4-4-4-4 breath after deep school sessions |
 
 ---
 
@@ -287,16 +346,15 @@ Architecture only at this stage — full build post-Solana wallet + SBT live.
 
 | Thing | Value |
 |---|---|
-| Version | 4.9.0 |
+| Version | 5.23.0 (launched; versionCode 8 not yet rebuilt) |
 | Git branch | master |
 | Run command | `npx expo start -c` |
-| Distribution | Sovereign Sideloading (SS) — GitHub Releases + lycheetah.io |
-| Play Store | NOT targeting — sovereign distribution only |
-| Monetization | AdMob (#165) + Solana Sovereign tier (#167–172) + ads-in-crypto |
-| AI provider | NVIDIA (current, scaffolding) → migrate to commercial provider (#166) |
+| Distribution | Sovereign Sideloading → GitHub Releases + lycheetah.io |
+| Halos | 17 (halo_1–17, enlarged: 680×360, opacity:0.75) |
+| Pets | 15 (pet_1–15; pet_athanor→file:null, art moved to wings) |
+| Wings | 16 (wing_1–16; wing_16 = ATHANOR WINGS) |
 | Companion art | 102 PNGs in `assets/companions/` |
-| Enemy art | 52 PNGs in `assets/enemies/` |
-| Zones | 45 total — all wired in ZONE_COMPANION_POOL |
-| Archetypes | 10 |
-| EAS | account: solveyra · project: 55350e14-5cdc-4a5f-8a0e-735bca572dd3 |
-| Solana spec | `/home/guestpc/Desktop/SOLANA INTEGRATION TO SOL SOVERIENG` |
+| Enemy art | 100+ PNGs in `assets/enemies/` |
+| Zones | 45 total · Archetypes | 10 |
+| EAS account | solveyra · project: 55350e14-5cdc-4a5f-8a0e-735bca572dd3 |
+| Solana spec | /home/guestpc/Desktop/SOLANA INTEGRATION TO SOL SOVERIENG |

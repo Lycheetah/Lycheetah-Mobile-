@@ -490,6 +490,75 @@ export const CLASSROOM_LESSONS: Record<string, ClassroomLesson[]> = {
     },
   ],
 
+  'irish-mythology': [
+    {
+      type: 'concept',
+      title: 'The Salmon of Knowledge',
+      body: 'Fionn mac Cumhaill gained wisdom by accidentally tasting the Salmon of Knowledge — a fish that had absorbed all the world\'s wisdom by eating nine hazelnuts that fell into the Well of Wisdom at the source of the world. One touch of thumb to lip and all knowledge entered him. The text does not say knowledge is learned — it says knowledge is eaten. Absorbed. Embodied. The implication: true learning is not information transfer. It transforms the body that receives it.',
+    },
+    {
+      type: 'practice',
+      title: 'Standing at the Threshold',
+      body: 'Stand at the edge of any water — river, lake, coast. In Irish mythology, water is the threshold to the Otherworld. Do not try to cross. Stand at the boundary and observe both directions: the mortal world behind you, the threshold before you. This is where Manannán mac Lir operates. Most wisdom arrives at thresholds, not in the center of things. Attend to what moves between.',
+    },
+    {
+      type: 'reflection',
+      title: 'The Geasa — Sacred Prohibitions',
+      body: 'The great Irish heroes each had geasa: sacred prohibitions that defined them and ultimately destroyed them. Cú Chulainn could not refuse hospitality — so was forced to eat dog meat, violating his other geis of never eating dog. The geasa were not arbitrary — they encoded the hero\'s deepest contradictions. What are your own prohibitions? Which ones define you so completely that violating them would undo you?',
+    },
+    {
+      type: 'lineage',
+      title: 'The Bardic Schools',
+      body: 'Until the 17th century, Irish bardic schools trained filid for 12 years, memorizing up to 350 complex poetic meters and 250 primary stories. The poets held the law, the genealogy, the praise, and the satire. A poet\'s satire was believed to raise blemishes on a king\'s face — social shame made physical. The entire social order depended on poetic memory. When the bardic schools were destroyed by Cromwellian conquest, an entire epistemological system died with them. We still cannot fully recover what was lost.',
+    },
+  ],
+
+  'irish-literature': [
+    {
+      type: 'concept',
+      title: 'The Lyric as Excavation',
+      body: 'Seamus Heaney\'s central metaphor: the poem is a dig. Each line pushes deeper into the ground — of history, of language, of self. What comes up is not what you planned to find. The bog bodies of "The Tollund Man" and "Punishment" are literally exhumed corpses from 2,000 years ago — and Heaney makes them speak to the violence of present-day Northern Ireland. The poem is not about the past. The past is a tool to excavate the present.',
+    },
+    {
+      type: 'practice',
+      title: 'The Yeatsian Gyre',
+      body: 'Yeats proposed that history moves in 2,000-year gyres — interpenetrating spirals. We are currently in the gyre that began at the birth of Christ, which Yeats believed was ending when he wrote "The Second Coming" in 1919. Do not take it literally. Take it as a practice: where in your own life are you at the end of a gyre? What is being born that you cannot yet name? Write it in under 10 words.',
+    },
+    {
+      type: 'reflection',
+      title: 'The Parish and the Universe',
+      body: 'Patrick Kavanagh wrote: "Parochialism is universal; it deals with the fundamentals." The small and specific is the only real doorway to the large and universal. Joyce spent his life writing about Dublin while living in Paris. Yeats found Ireland\'s mythology in the landscape of Sligo. The universal does not exist in the abstract — it hides in the particular. Where is your parish? What specific local world holds everything that matters to you?',
+    },
+    {
+      type: 'lineage',
+      title: 'Writing in a Colonized Language',
+      body: 'Nuala Ní Dhomhnaill writes in Irish at a time when fewer than 80,000 people speak it daily. She refuses to translate herself — she gives that work to other poets (Heaney, Muldoon, Durcan) because the Irish original is the truth and the English is a different poem. She calls the Irish language "the secret room in the house." To choose a minority language for your most important work is a political act, an aesthetic act, and a spiritual act simultaneously. The language is not nostalgia. It is a different way of knowing.',
+    },
+  ],
+
+  'crystal-lore': [
+    {
+      type: 'concept',
+      title: 'The Lattice Mind',
+      body: 'A crystal is not a solid. It is a pattern — a repeating atomic lattice that extends, in principle, to infinity. Every gem you hold is a stopped wave: matter that chose to express a mathematical relationship and then held that choice at geological speed. Seven crystal systems. Thirty-two symmetry groups. One underlying principle: coherence across all scales.',
+    },
+    {
+      type: 'practice',
+      title: 'The Gem Forge',
+      body: 'Name your personal gem. Not the one tradition assigns you — the one you choose. Give it a name, a quality, a colour, a shape. Use the Gem Forge below to render it as an image. Then go find it in the physical world, or let the image be the anchor. The stone does not need to be sentient. It needs to be yours.',
+    },
+    {
+      type: 'reflection',
+      title: 'What Is It Made Of?',
+      body: 'Hold any stone and ask: how old is this? What did it live through? A piece of obsidian formed in minutes. A piece of granite formed over 400 million years. A meteoritic olivine fragment is older than the Earth. The stone in your hand is not decoration. It is deep time made portable. What changes when you hold it with that knowledge?',
+    },
+    {
+      type: 'lineage',
+      title: 'Three Gem Systems',
+      body: 'The Vedic system assigns gems to planets. The medieval European lapidary assigns gems to months, moods, and ailments. The shamanic tradition asks you to wait until a stone "calls." None of these systems agree. This is the data: meaning projected onto stone is real meaning, regardless of the stone\'s consciousness. The practitioner is the active principle. The gem is the mirror.',
+    },
+  ],
+
   'tianxia': [
     {
       type: 'concept',

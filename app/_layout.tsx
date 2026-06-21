@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,13 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { EmergencyBeacon } from '../components/EmergencyBeacon';
 
 const ONBOARDING_KEY = 'lycheetah_onboarded';
+
+// ── GLOBAL READABILITY (accessibility) ──────────────────────────────────────
+// Let the device's font-size accessibility setting scale ALL text in the app, so
+// users with glasses / low vision can size everything to their own eyes. Capped at
+// 1.6× so layouts bend without breaking. Applies app-wide, no per-component changes.
+;(Text as any).defaultProps = { ...(Text as any).defaultProps, allowFontScaling: true, maxFontSizeMultiplier: 1.6 };
+;(TextInput as any).defaultProps = { ...(TextInput as any).defaultProps, allowFontScaling: true, maxFontSizeMultiplier: 1.6 };
 
 export default function RootLayout() {
   const [onboarded, setOnboarded] = useState<boolean | null>(null);

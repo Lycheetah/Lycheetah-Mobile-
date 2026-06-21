@@ -1,16 +1,20 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView, Platform, Animated, Easing, Image, Modal, KeyboardAvoidingView,
+  View, Text, TextInput, TouchableOpacity, ScrollView, Platform, Animated, Easing, Image, Modal, KeyboardAvoidingView, Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import * as Speech from 'expo-speech';
+import { Svg, Circle, Ellipse, Line, Path } from 'react-native-svg';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SOL_THEME } from '../../constants/theme';
 import { getActiveKey, getModel } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
 import { drawDailyCard, drawSpread, drawRandomCard, cardLine, SUIT_GLYPH, SUIT_ELEMENT, DrawnCard } from '../../lib/divination/tarot';
+import { generateImage, saveImageToDevice } from '../../lib/image-gen';
 import { CARD_IMAGE } from '../../lib/divination/tarot-images';
 import { drawDailyRune } from '../../lib/divination/runes';
+import TarotViewer from '../../components/TarotViewer';
 
 // ─── ZODIAC ENGINE ───────────────────────────────────────────────────────────
 
@@ -30,7 +34,41 @@ const ZODIAC_SIGNS = [
 ];
 
 const ZODIAC_INDIGO = '#7B68EE';
+const GEM_VIOLET    = '#AA44FF';
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+
+// ─── GEM FORGE TYPES ─────────────────────────────────────────────────────────
+type GemElement = 'EARTH' | 'WATER' | 'FIRE' | 'AIR' | 'AETHER';
+interface GemColour { name: string; hex: string; }
+interface GemEntry {
+  id: string; date: string; name: string;
+  intention: string; feeling: string; element: GemElement; astroBond: string;
+  colour: GemColour; invocation: string; careRitual: string; symbols: string[];
+}
+const GEM_COLOURS: GemColour[] = [
+  { name: 'AMETHYST',    hex: '#8B5CF6' },
+  { name: 'ROSE QUARTZ', hex: '#F9A8D4' },
+  { name: 'OBSIDIAN',    hex: '#2D1B69' },
+  { name: 'CITRINE',     hex: '#F59E0B' },
+  { name: 'EMERALD',     hex: '#10B981' },
+  { name: 'AQUAMARINE',  hex: '#38BDF8' },
+  { name: 'CARNELIAN',   hex: '#F97316' },
+  { name: 'CLEAR',       hex: '#E0E0FF' },
+  { name: 'RUBY',        hex: '#DC2626' },
+];
+const GEM_ELEMENTS: { id: GemElement; glyph: string; label: string }[] = [
+  { id: 'EARTH',  glyph: '◉', label: 'EARTH'  },
+  { id: 'WATER',  glyph: '≋', label: 'WATER'  },
+  { id: 'FIRE',   glyph: '△', label: 'FIRE'   },
+  { id: 'AIR',    glyph: '∿', label: 'AIR'    },
+  { id: 'AETHER', glyph: '⊚', label: 'AETHER' },
+];
+const GEM_ASTRO = [
+  '♈ ARIES','♉ TAURUS','♊ GEMINI','♋ CANCER','♌ LEO','♍ VIRGO',
+  '♎ LIBRA','♏ SCORPIO','♐ SAGITTARIUS','♑ CAPRICORN','♒ AQUARIUS','♓ PISCES',
+  '☀ SUN','☽ MOON','♀ VENUS','♂ MARS','☿ MERCURY','♃ JUPITER','♄ SATURN',
+];
+const LAMAGUE_POOL = ['⊚','⊛','◎','◈','◬','∿','⟟','⟐','ψ','⊞','◧','⊗','∴','⊕','◉','⊼','◌','◦','≋','⊜','◍','⊘','⟁','◆','⊝'];
 
 const SUIT_IMAGE: Record<string, ReturnType<typeof require>> = {
   wands:     require('../../assets/suit_wands.png'),
@@ -48,7 +86,7 @@ const SHOOTING_STAR_CONFIGS = [
   { left: '30%', top: '18%', delay: 28000 },
 ];
 
-// Star field — deterministic positions, generated once at module load
+// Star field — two layers, deterministic positions, 68 total (well under 120)
 const STAR_FIELD = Array.from({ length: 38 }, (_, i) => ({
   left: `${((i * 137.508) % 100).toFixed(1)}%`,
   top:  `${((i * 91.23 + i * i * 0.53) % 100).toFixed(1)}%`,
@@ -57,6 +95,110 @@ const STAR_FIELD = Array.from({ length: 38 }, (_, i) => ({
   duration: 2000 + (i % 7) * 450,
   delay: i * 95,
 }));
+// Layer 2 — brighter accent stars, different drift direction
+const STARS_L2 = Array.from({ length: 30 }, (_, i) => ({
+  left: `${((i * 79.37 + 33) % 100).toFixed(1)}%`,
+  top:  `${((i * 113.5 + 17 + i * i * 0.31) % 100).toFixed(1)}%`,
+  size: [2.5, 3, 2, 3.5, 2.5][i % 5],
+  color: i % 4 === 0 ? '#9B8AFF99' : i % 4 === 1 ? '#D4BC7799' : i % 3 === 0 ? '#FFFFFFCC' : '#8899FFAA',
+  duration: 3500 + (i % 6) * 600,
+  delay: i * 140 + 500,
+}));
+
+// Per-tile SVG icons — illuminated manuscript style (stroke only, 1-colour)
+const TILE_SVG: Record<string, (color: string) => React.ReactNode> = {
+  oracle: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Ellipse cx={12} cy={12} rx={10} ry={6} stroke={c} strokeWidth={1.3} fill="none" />
+      <Circle cx={12} cy={12} r={3} stroke={c} strokeWidth={1.3} fill="none" />
+      <Circle cx={12} cy={12} r={1} fill={c} />
+    </Svg>
+  ),
+  spread: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Path d="M4,18 L4,6 L9,6 L9,18 Z" stroke={c} strokeWidth={1.2} fill="none" />
+      <Path d="M8,19 L8,4 L16,4 L16,19 Z" stroke={c} strokeWidth={1.4} fill="none" />
+      <Path d="M15,18 L15,6 L20,6 L20,18 Z" stroke={c} strokeWidth={1.2} fill="none" />
+    </Svg>
+  ),
+  natal: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9} stroke={c} strokeWidth={1.2} fill="none" />
+      <Circle cx={12} cy={12} r={2.5} stroke={c} strokeWidth={1.0} fill="none" />
+      {[0,30,60,90,120,150,180,210,240,270,300,330].map(a => {
+        const r = a * Math.PI / 180;
+        return <Line key={a} x1={12 + Math.cos(r)*2.8} y1={12 + Math.sin(r)*2.8} x2={12 + Math.cos(r)*9} y2={12 + Math.sin(r)*9} stroke={c} strokeWidth={0.7} />;
+      })}
+    </Svg>
+  ),
+  aspects: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Path d="M12,3 L21,20 L3,20 Z" stroke={c} strokeWidth={1.3} fill="none" />
+      <Circle cx={12} cy={3} r={1.5} fill={c} />
+      <Circle cx={21} cy={20} r={1.5} fill={c} />
+      <Circle cx={3} cy={20} r={1.5} fill={c} />
+    </Svg>
+  ),
+  sigil: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={9.5} stroke={c} strokeWidth={1.2} fill="none" />
+      <Path d="M12,4 L16.7,18.5 L4.4,9.5 L19.6,9.5 L7.3,18.5 Z" stroke={c} strokeWidth={1.1} fill="none" />
+    </Svg>
+  ),
+  chiral: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Path d="M12,2 L22,20 L2,20 Z" stroke={c} strokeWidth={1.3} fill="none" />
+      <Path d="M12,22 L22,4 L2,4 Z" stroke={c} strokeWidth={1.0} strokeDasharray="2,1.5" fill="none" />
+      <Line x1={2} y1={12} x2={22} y2={12} stroke={c} strokeWidth={0.7} />
+    </Svg>
+  ),
+  zonk: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Path d="M12,2 L22,20 L2,20 Z" stroke={c} strokeWidth={1.3} fill="none" />
+      <Path d="M9,14 L13,9 L11,15 L15,11" stroke={c} strokeWidth={1.2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  ),
+  psi: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Line x1={12} y1={14} x2={12} y2={22} stroke={c} strokeWidth={1.4} strokeLinecap="round" />
+      <Path d="M6,5 Q6,14 12,14 Q18,14 18,5" stroke={c} strokeWidth={1.3} fill="none" />
+      <Line x1={6} y1={5} x2={18} y2={5} stroke={c} strokeWidth={1.2} strokeLinecap="round" />
+      <Line x1={12} y1={3} x2={12} y2={5} stroke={c} strokeWidth={1.3} strokeLinecap="round" />
+    </Svg>
+  ),
+  gems: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Path d="M12,2 L20,8 L17,22 L7,22 L4,8 Z" stroke={c} strokeWidth={1.2} fill="none" />
+      <Path d="M4,8 L12,2 L20,8 L12,13 Z" stroke={c} strokeWidth={1.0} fill="none" />
+      <Line x1={12} y1={13} x2={7} y2={22} stroke={c} strokeWidth={0.8} />
+      <Line x1={12} y1={13} x2={17} y2={22} stroke={c} strokeWidth={0.8} />
+      <Line x1={12} y1={13} x2={12} y2={22} stroke={c} strokeWidth={0.7} strokeDasharray="1.5,1.5" />
+    </Svg>
+  ),
+  sky: (c) => (
+    <Svg width={26} height={26} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={4.5} stroke={c} strokeWidth={1.3} fill="none" />
+      {[0,45,90,135,180,225,270,315].map(a => {
+        const r = a * Math.PI / 180;
+        return <Line key={a} x1={12 + Math.cos(r)*5.8} y1={12 + Math.sin(r)*5.8} x2={12 + Math.cos(r)*8.5} y2={12 + Math.sin(r)*8.5} stroke={c} strokeWidth={1.1} strokeLinecap="round" />;
+      })}
+    </Svg>
+  ),
+};
+
+// Domain atmosphere — bg tint + nebula color when a section is open
+const DOMAIN_ATMOSPHERES: Record<string, { tint: string; nebula: string }> = {
+  oracle:  { tint: '#2A006633', nebula: '#4B0082' },
+  spread:  { tint: '#1A3A0A22', nebula: '#C8A96E' },
+  natal:   { tint: '#0A1A4422', nebula: '#7B68EE' },
+  aspects: { tint: '#0A1A3322', nebula: '#88AAFF' },
+  sigil:   { tint: '#22006633', nebula: '#CC88FF' },
+  chiral:  { tint: '#1A006633', nebula: '#8855FF' },
+  zonk:    { tint: '#2A1A0022', nebula: '#D4A500' },
+  psi:     { tint: '#1A002233', nebula: '#AA55FF' },
+  sky:     { tint: '#001A3322', nebula: '#C8A96E' },
+  gems:    { tint: '#1A004433', nebula: '#AA44FF' },
+};
 
 function toRad(d: number) { return d * Math.PI / 180; }
 function toDeg(r: number) { return r * 180 / Math.PI; }
@@ -164,6 +306,37 @@ function getPlanetSignIndex(L0: number, rate: number): number {
   const now = new Date();
   const jd = julianDay(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours());
   return Math.floor(mod360(L0 + rate * (jd - 2451545.0)) / 30);
+}
+
+function wmoCondition(code: number): { label: string; glyph: string; color: string } {
+  if (code === 0)                      return { label: 'Clear Sky',      glyph: '☀',  color: '#FFD97D' };
+  if (code <= 2)                       return { label: 'Mostly Clear',   glyph: '◑',  color: '#F5C842' };
+  if (code === 3)                      return { label: 'Overcast',       glyph: '●',  color: '#8899BB' };
+  if (code === 45 || code === 48)      return { label: 'Fog',            glyph: '◌',  color: '#778899' };
+  if (code >= 51 && code <= 57)        return { label: 'Drizzle',        glyph: '·',  color: '#88AAFF' };
+  if (code >= 61 && code <= 67)        return { label: 'Rain',           glyph: '◦',  color: '#4488FF' };
+  if (code >= 71 && code <= 77)        return { label: 'Snow',           glyph: '✦',  color: '#CCDDFF' };
+  if (code >= 80 && code <= 82)        return { label: 'Showers',        glyph: '◦',  color: '#66AAFF' };
+  if (code >= 85 && code <= 86)        return { label: 'Snow Showers',   glyph: '✦',  color: '#BBCCFF' };
+  if (code >= 95 && code <= 99)        return { label: 'Thunderstorm',   glyph: '⚡', color: '#FF9933' };
+  return { label: 'Unknown', glyph: '◎', color: '#888899' };
+}
+
+function getPlanetLongitude(L0: number, rate: number): number {
+  const now = new Date();
+  const jd = julianDay(now.getFullYear(), now.getMonth() + 1, now.getDate(), now.getHours());
+  return mod360(L0 + rate * (jd - 2451545.0));
+}
+
+function getAspectBetween(lon1: number, lon2: number): { name: string; symbol: string; color: string; orb: number } | null {
+  let diff = Math.abs(lon1 - lon2) % 360;
+  if (diff > 180) diff = 360 - diff;
+  if (diff <= 10)                  return { name: 'Conjunction', symbol: '☌', color: '#FFDD88', orb: Math.round(diff) };
+  if (Math.abs(diff - 60)  <= 6)  return { name: 'Sextile',    symbol: '✶', color: '#88FFAA', orb: Math.round(Math.abs(diff - 60)) };
+  if (Math.abs(diff - 90)  <= 8)  return { name: 'Square',     symbol: '□', color: '#FF8888', orb: Math.round(Math.abs(diff - 90)) };
+  if (Math.abs(diff - 120) <= 8)  return { name: 'Trine',      symbol: '△', color: '#88AAFF', orb: Math.round(Math.abs(diff - 120)) };
+  if (Math.abs(diff - 180) <= 10) return { name: 'Opposition', symbol: '☍', color: '#FF66AA', orb: Math.round(Math.abs(diff - 180)) };
+  return null;
 }
 
 // Retrograde windows — static table, accurate to ±3 days
@@ -327,10 +500,13 @@ export default function ZodiacScreen() {
 
   // ── Fullscreen section overlay ──
   const [fullscreenSection, setFullscreenSection] = useState<string | null>(null);
+  const [tarotViewerOpen, setTarotViewerOpen] = useState(false);
   // ── Collapsible sections ──
   const [oracleCollapsed, setOracleCollapsed]     = useState(false);
   const [skyCollapsed, setSkyCollapsed]           = useState(false);
   const [wheelCollapsed, setWheelCollapsed]       = useState(false);
+  const [showSkyOverlay, setShowSkyOverlay]       = useState(false);
+  const [aspectsCollapsed, setAspectsCollapsed]   = useState(false);
   const [readingCollapsed, setReadingCollapsed]   = useState(false);
   const [questionCollapsed, setQuestionCollapsed] = useState(true);
   const [natalCollapsed, setNatalCollapsed]       = useState(false);
@@ -344,10 +520,40 @@ export default function ZodiacScreen() {
   const [showCardJournal, setShowCardJournal]     = useState(false);
   const [zonkCollapsed, setZonkCollapsed]         = useState(true);
   const [sigilCollapsed, setSigilCollapsed]       = useState(true);
+  // GEM FORGE
+  const [gemView, setGemView]                     = useState<'gallery'|'forge'|'generating'|'result'>('gallery');
+  const [gemCollection, setGemCollection]         = useState<GemEntry[]>([]);
+  const [gemIntention, setGemIntention]           = useState('');
+  const [gemFeeling, setGemFeeling]               = useState('');
+  const [gemElement, setGemElement]               = useState<GemElement | null>(null);
+  const [gemAstro, setGemAstro]                   = useState<string | null>(null);
+  const [gemColour, setGemColour]                 = useState<GemColour | null>(null);
+  const [gemName, setGemName]                     = useState('');
+  const [gemInvocation, setGemInvocation]         = useState('');
+  const [gemCareRitual, setGemCareRitual]         = useState('');
+  const [gemSuggestedSymbols, setGemSuggestedSymbols] = useState<string[]>([]);
+  const [gemChosenSymbols, setGemChosenSymbols]   = useState<string[]>([]);
+  const [gemShowAllSymbols, setGemShowAllSymbols] = useState(false);
+  const [gemDetailId, setGemDetailId]             = useState<string | null>(null);
+  const [sigilMode, setSigilMode]                 = useState<'ritual' | 'primitive'>('ritual');
   const [sigilIntention, setSigilIntention]       = useState('');
   const [sigilType, setSigilType]                 = useState<string>('manifestation');
   const [sigilResult, setSigilResult]             = useState<{ glyph: string; name: string; meaning: string; instruction: string } | null>(null);
   const [sigilLoading, setSigilLoading]           = useState(false);
+  // primitive forge
+  const [primGlyph, setPrimGlyph]                 = useState('');
+  const [primName, setPrimName]                   = useState('');
+  const [primClass, setPrimClass]                 = useState('I');
+  const [primMeaning, setPrimMeaning]             = useState('');
+  const [primUsage, setPrimUsage]                 = useState('');
+  const [primVerdict, setPrimVerdict]             = useState<{ verdict: string; reasoning: string; compression: string } | null>(null);
+  const [primLoading, setPrimLoading]             = useState(false);
+  const [primGlyphMode, setPrimGlyphMode]         = useState<'type'|'draw'>('type');
+  const [primGlyphDesc, setPrimGlyphDesc]         = useState('');
+  const [primGlyphImage, setPrimGlyphImage]       = useState<string|null>(null);
+  const [primGlyphImgLoading, setPrimGlyphImgLoading] = useState(false);
+  const [primGlyphImgError,   setPrimGlyphImgError]   = useState<string|null>(null);
+  const [primGlyphRatio, setPrimGlyphRatio]       = useState<'square'|'portrait'|'landscape'>('square');
   // ── Chiral Lens
   const [chiralCollapsed, setChiralCollapsed]     = useState(true);
   const [chiralInput, setChiralInput]             = useState('');
@@ -362,6 +568,8 @@ export default function ZodiacScreen() {
   const [technoMode, setTechnoMode]               = useState(false); // technomantic lens on all readings
   const [liveTime, setLiveTime] = useState(new Date());
   const [kpIndex, setKpIndex] = useState<number | null>(null);
+  type WeatherData = { temp: number; code: number; condition: string; glyph: string; color: string; wind: number; humidity: number; city: string };
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [readingHistory, setReadingHistory] = useState<{ date: string; text: string }[]>([]);
   const [historyCollapsed, setHistoryCollapsed] = useState(true);
   useEffect(() => {
@@ -412,17 +620,41 @@ export default function ZodiacScreen() {
   const shootingStarAnims = useRef(
     SHOOTING_STAR_CONFIGS.map(() => ({ tx: new Animated.Value(0), ty: new Animated.Value(0), op: new Animated.Value(0) }))
   ).current;
+  // ── Zodiac zone life animations ──
+  const heroGlow    = useRef(new Animated.Value(0)).current;
+  const tileGlows   = useRef(Array.from({ length: 16 }, () => new Animated.Value(0))).current;
+  const nebulaPulse = useRef(new Animated.Value(0)).current;
+  const glyphDrift  = useRef(new Animated.Value(0)).current;
+  // Layer-2 stars
+  const starAnims2  = useRef(STARS_L2.map(() => new Animated.Value(0))).current;
+  // L2 star drift — slow sine position offset
+  const starDriftX  = useRef(STARS_L2.map(() => new Animated.Value(0))).current;
+  const starDriftY  = useRef(STARS_L2.map(() => new Animated.Value(0))).current;
+  // Aurora strip
+  const auroraX     = useRef(new Animated.Value(0)).current;
+  // Domain atmosphere fade
+  const atmosOp     = useRef(new Animated.Value(0)).current;
+  // Entry sequence — stars / header / tiles
+  const entryStarsFade  = useRef(new Animated.Value(0)).current;
+  const entryHeaderY    = useRef(new Animated.Value(-18)).current;
+  const entryHeaderOp   = useRef(new Animated.Value(0)).current;
+  const entryTileAnims  = useRef(Array.from({ length: 16 }, () => ({ y: new Animated.Value(28), op: new Animated.Value(0) }))).current;
+  const entryDone       = useRef(false);
+  // First-visit overlay
+  const [showTabIntro, setShowTabIntro] = useState(false);
+  const tabIntroOp = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(useCallback(() => {
     (async () => {
       const today = todayKey();
-      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw] = await Promise.all([
+      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw] = await Promise.all([
         AsyncStorage.getItem('zodiac_birth_v1'),
         AsyncStorage.getItem('zodiac_reading_v1'),
         AsyncStorage.getItem(`sanctum_aura_${today}`),
         AsyncStorage.getItem(PSI_LOG_KEY),
         AsyncStorage.getItem(ZONK_LOG_KEY),
         AsyncStorage.getItem('zodiac_reading_history_v1'),
+        AsyncStorage.getItem('zodiac_gem_collection_v1'),
       ]);
       if (birthRaw) setBirthData(JSON.parse(birthRaw));
       if (readingRaw) setZodiacReading(JSON.parse(readingRaw));
@@ -433,6 +665,7 @@ export default function ZodiacScreen() {
       if (psiRaw) setPsiLog(JSON.parse(psiRaw));
       if (zonkRaw) setZonkLog(JSON.parse(zonkRaw));
       if (historyRaw) setReadingHistory(JSON.parse(historyRaw));
+      if (gemRaw) setGemCollection(JSON.parse(gemRaw));
       // Kp index — geomagnetic activity
       try {
         const kpRes = await fetch('https://kp.gfz-potsdam.de/app/json/?index=Kp&status=def&start=NOW-1d&end=NOW', { signal: AbortSignal.timeout(5000) });
@@ -442,6 +675,49 @@ export default function ZodiacScreen() {
           if (values.length) setKpIndex(values[values.length - 1]);
         }
       } catch { /* graceful — Kp stays null */ }
+      // Weather — IP geolocation → Open-Meteo (free, no key)
+      try {
+        const geoRes = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(4000) });
+        if (geoRes.ok) {
+          const geo = await geoRes.json();
+          const lat: number = geo.latitude ?? 51.5;
+          const lon: number = geo.longitude ?? -0.12;
+          const wxRes = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&timezone=auto`,
+            { signal: AbortSignal.timeout(5000) }
+          );
+          if (wxRes.ok) {
+            const wx = await wxRes.json();
+            const cur = wx.current;
+            const cond = wmoCondition(cur.weather_code);
+            setWeather({
+              temp: Math.round(cur.temperature_2m),
+              code: cur.weather_code,
+              condition: cond.label,
+              glyph: cond.glyph,
+              color: cond.color,
+              wind: Math.round(cur.wind_speed_10m),
+              humidity: Math.round(cur.relative_humidity_2m),
+              city: geo.city || geo.region || 'Your Location',
+            });
+          }
+        }
+      } catch { /* graceful — weather stays null */ }
+      // First-visit intro overlay — fires once, 1.8s after entry sequence settles
+      AsyncStorage.getItem('sol_tab_seen_zodiac').then(seen => {
+        if (!seen) {
+          AsyncStorage.setItem('sol_tab_seen_zodiac', 'true');
+          setTimeout(() => {
+            setShowTabIntro(true);
+            tabIntroOp.setValue(0);
+            Animated.sequence([
+              Animated.timing(tabIntroOp, { toValue: 1, duration: 500, useNativeDriver: true }),
+              Animated.delay(2400),
+              Animated.timing(tabIntroOp, { toValue: 0, duration: 600, useNativeDriver: true }),
+            ]).start(() => setShowTabIntro(false));
+          }, 1800);
+        }
+      });
     })();
   }, []));
 
@@ -501,7 +777,87 @@ export default function ZodiacScreen() {
       // stagger initial start so they don't all launch at once
       setTimeout(() => cycle(), i * 1400);
     });
+    // Hero glow — slow golden breathe (3.2s half-cycle) — useNativeDriver:false (colour)
+    Animated.loop(Animated.sequence([
+      Animated.timing(heroGlow,    { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(heroGlow,    { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+    ])).start();
+    // Tile glows — staggered so each tile has its own phase
+    tileGlows.forEach((anim, i) => {
+      setTimeout(() => {
+        Animated.loop(Animated.sequence([
+          Animated.timing(anim, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(anim, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+        ])).start();
+      }, i * 420);
+    });
+    // Nebula pulse — deep slow breathe for bg atmospheric layer (5s)
+    Animated.loop(Animated.sequence([
+      Animated.timing(nebulaPulse, { toValue: 1, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(nebulaPulse, { toValue: 0, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+    ])).start();
+    // Glyph drift — slow sine wave for watermark glyphs on section headers
+    Animated.loop(Animated.sequence([
+      Animated.timing(glyphDrift, { toValue: 1, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(glyphDrift, { toValue: 0, duration: 4500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])).start();
+    // Layer-2 stars — slower, brighter independent breathe loops
+    STARS_L2.forEach((star, i) => {
+      Animated.loop(Animated.sequence([
+        Animated.delay(star.delay),
+        Animated.timing(starAnims2[i], { toValue: 0.7, duration: star.duration, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(starAnims2[i], { toValue: 0.05, duration: star.duration + 500, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+      // Slow position drift — each star has unique period so they don't clump
+      const driftPeriod = 18000 + i * 1300;
+      const driftAmt = 4 + (i % 5) * 2;
+      Animated.loop(Animated.sequence([
+        Animated.timing(starDriftX[i], { toValue: driftAmt, duration: driftPeriod, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(starDriftX[i], { toValue: -driftAmt, duration: driftPeriod, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+      Animated.loop(Animated.sequence([
+        Animated.timing(starDriftY[i], { toValue: driftAmt * 0.6, duration: driftPeriod * 1.1, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(starDriftY[i], { toValue: -driftAmt * 0.6, duration: driftPeriod * 1.1, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])).start();
+    });
+    // Aurora — slow horizontal sweep back and forth (22s half-cycle)
+    Animated.loop(Animated.sequence([
+      Animated.timing(auroraX, { toValue: 1, duration: 22000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(auroraX, { toValue: 0, duration: 22000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ])).start();
+    // Entry sequence — fires once per mount (not on every focus)
+    if (!entryDone.current) {
+      entryDone.current = true;
+      // Reset values
+      entryStarsFade.setValue(0);
+      entryHeaderY.setValue(-18);
+      entryHeaderOp.setValue(0);
+      entryTileAnims.forEach(a => { a.y.setValue(28); a.op.setValue(0); });
+      Animated.sequence([
+        // 1. Background stars fade in
+        Animated.timing(entryStarsFade, { toValue: 1, duration: 300, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        // 2. Header slides down + fades
+        Animated.parallel([
+          Animated.timing(entryHeaderOp, { toValue: 1, duration: 320, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(entryHeaderY,  { toValue: 0, duration: 320, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }),
+        ]),
+        // 3. Tiles rise up staggered (60ms apart)
+        Animated.stagger(60, entryTileAnims.map(a => Animated.parallel([
+          Animated.timing(a.op, { toValue: 1, duration: 280, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+          Animated.timing(a.y,  { toValue: 0, duration: 280, easing: Easing.out(Easing.back(1.2)), useNativeDriver: true }),
+        ]))),
+      ]).start();
+    }
   }, []);
+
+  // Domain atmosphere — fade in when section opens, fade out when grid returns
+  useEffect(() => {
+    if (fullscreenSection && DOMAIN_ATMOSPHERES[fullscreenSection]) {
+      Animated.timing(atmosOp, { toValue: 1, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    } else {
+      Animated.timing(atmosOp, { toValue: 0, duration: 400, easing: Easing.in(Easing.quad), useNativeDriver: true }).start();
+    }
+  }, [fullscreenSection]);
 
   useEffect(() => {
     if (zodiacReading?.text) {
@@ -755,6 +1111,156 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
     }
   };
 
+  // ── GEM FORGE: generate invocation + care ritual + suggested LAMAGUE symbols ──
+  const forgeGem = async () => {
+    if (!gemIntention.trim() || !gemFeeling.trim() || !gemElement || !gemColour || !gemName.trim()) return;
+    setGemView('generating');
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!apiKey) { setGemView('forge'); return; }
+      const prompt = `A seeker is forging a personal gem.
+Name: ${gemName}
+Intention: ${gemIntention}
+Feeling it should carry: ${gemFeeling}
+Element: ${gemElement}
+Colour: ${gemColour.name}
+Astrological bond: ${gemAstro ?? 'none specified'}
+
+Respond in raw JSON only (no markdown):
+{
+  "invocation": "[3-4 sentences: what this gem IS, in Sol's voice — warm, precise, belief-laden. No science. No hedge. Speak it into existence.]",
+  "careRitual": "[2-3 sentences: how to work with, cleanse, and activate this gem — practical and poetic.]",
+  "symbols": ["[symbol1]","[symbol2]","[symbol3]","[symbol4]","[symbol5]","[symbol6]"]
+}
+
+For symbols, choose 6 from this LAMAGUE pool that resonate with the gem's nature: ⊚ ⊛ ◎ ◈ ◬ ∿ ⟟ ⟐ ψ ⊞ ◧ ⊗ ∴ ⊕ ◉ ⊼ ◌ ◦ ≋ ⊜ ◍ ⊘ ⟁ ◆ ⊝`;
+      const res = await sendMessage(
+        [{ role: 'user', content: prompt }],
+        'You are Sol — the solar-sovereign voice of the Lycheetah Framework. You speak meaning into objects. Respond only with the requested JSON.',
+        apiKey, (model || 'gemini-2.5-flash') as AIModel,
+        undefined, 'normal', 400, 0.85,
+      );
+      const raw = res?.text?.trim().replace(/^```[a-z]*\n?/, '').replace(/\n?```$/, '');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setGemInvocation(parsed.invocation ?? '');
+        setGemCareRitual(parsed.careRitual ?? '');
+        setGemSuggestedSymbols(parsed.symbols ?? []);
+        setGemChosenSymbols(parsed.symbols?.slice(0, 6) ?? []);
+      }
+      setGemView('result');
+    } catch { setGemView('forge'); }
+  };
+
+  const saveGem = async () => {
+    if (!gemColour || !gemElement) return;
+    const entry: GemEntry = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split('T')[0],
+      name: gemName, intention: gemIntention, feeling: gemFeeling,
+      element: gemElement, astroBond: gemAstro ?? '', colour: gemColour,
+      invocation: gemInvocation, careRitual: gemCareRitual,
+      symbols: gemChosenSymbols,
+    };
+    const updated = [entry, ...gemCollection];
+    setGemCollection(updated);
+    await AsyncStorage.setItem('zodiac_gem_collection_v1', JSON.stringify(updated));
+    setGemView('gallery');
+    setGemIntention(''); setGemFeeling(''); setGemElement(null);
+    setGemAstro(null); setGemColour(null); setGemName('');
+    setGemInvocation(''); setGemCareRitual('');
+    setGemSuggestedSymbols([]); setGemChosenSymbols([]);
+  };
+
+  const deleteGem = async (id: string) => {
+    const updated = gemCollection.filter(g => g.id !== id);
+    setGemCollection(updated);
+    await AsyncStorage.setItem('zodiac_gem_collection_v1', JSON.stringify(updated));
+    setGemDetailId(null);
+  };
+
+  // ── WITCHAIL FORGE: DRAW mode image gen ──
+  const IMG_RATIOS = {
+    square:    { w: 1024, h: 1024, display: { width: 160, height: 160 } },
+    portrait:  { w:  832, h: 1152, display: { width: 120, height: 166 } },
+    landscape: { w: 1152, h:  832, display: { width: 220, height: 159 } },
+  } as const;
+
+  const generatePrimGlyphImage = async () => {
+    if (!primGlyphDesc.trim()) return;
+    setPrimGlyphImgLoading(true);
+    setPrimGlyphImgError(null);
+    const { w, h } = IMG_RATIOS[primGlyphRatio];
+    const prompt = `LAMAGUE mystical glyph symbol, black background, glowing neon lines, single centered abstract symbol: ${primGlyphDesc.trim()}`;
+    const result = await generateImage(prompt, { width: w, height: h });
+    if (result.image) {
+      setPrimGlyphImage(result.image);
+      setPrimGlyph('⟟');
+    } else {
+      setPrimGlyphImgError(result.error ?? 'Image gen failed');
+    }
+    setPrimGlyphImgLoading(false);
+  };
+
+  // ── WITCHAIL FORGE: save ratified primitive to shared lexicon ──
+  const savePrimToLexicon = async () => {
+    if (!primVerdict || primVerdict.verdict !== 'RATIFIED') return;
+    try {
+      const raw = await AsyncStorage.getItem('sol_lamague_lexicon');
+      const existing = raw ? JSON.parse(raw) : [];
+      existing.push({
+        glyph: primGlyph.trim(),
+        glyphImage: primGlyphImage || undefined,
+        name: primName.trim(),
+        cls: primClass,
+        meaning: primMeaning.trim(),
+        usage: primUsage.trim(),
+        verdict: 'RATIFIED',
+      });
+      await AsyncStorage.setItem('sol_lamague_lexicon', JSON.stringify(existing));
+      alert('✦ Primitive saved to WITCHAIL LEXICON');
+      setPrimGlyph(''); setPrimName(''); setPrimMeaning(''); setPrimUsage('');
+      setPrimGlyphImage(null); setPrimGlyphDesc(''); setPrimGlyphMode('type');
+      setPrimVerdict(null);
+    } catch {
+      alert('Save failed — try again');
+    }
+  };
+
+  // ── LAMAGUE Primitive Forge ──
+  const generatePrimitive = async () => {
+    if (!primGlyph.trim() || !primName.trim() || !primMeaning.trim()) return;
+    setPrimLoading(true);
+    setPrimVerdict(null);
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      const existing = '⊙ SOURCE · ∅ VOID · △ STABLE TRIAD · ⊞ CLOSED INFINITE · ↑ ASCENT · ⊃ FOLD · ⟲ SYNTHESIS · ↕ COLLISION · ⊐ CASCADE · Π TRUTH PRESSURE · S ENTROPY · Ĉ COHERENCE · ◬ PORTAL · ⊴ INVERT · Z₁ PRIME COMPRESS · Z₂ HORIZON COMPRESS · Z₃ ZENITH COMPRESS · ⟳ ENTANGLE · ⸧ BRIDGE ARROW · ⯈ INSTANTIATION';
+      const systemPrompt = `You are the LAMAGUE oracle — voice of the living grammar that structures reality. A seeker proposes a new primitive symbol.
+
+Existing LAMAGUE primitives (compact): ${existing}
+
+Evaluate against five tests:
+1. SEMANTIC DISTINCTIVENESS — names something no existing primitive covers
+2. CLASS ALIGNMENT — behaves correctly for declared class (I=Invariant/D=Dynamic/F=Field/M=Meta/G=Ground)
+3. COMPOSITION POTENTIAL — can combine with existing primitives in valid expressions
+4. CONFLICT CHECK — does not duplicate or contradict any existing symbol
+5. INSTANTIATION — usage example is a valid unambiguous LAMAGUE expression
+
+Respond with ONLY raw JSON, no markdown:
+{"verdict":"RATIFIED","reasoning":"2-3 sentences evaluating all five tests","compression":"Z1 one-phrase compression"}
+
+verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement) · REJECTED (fails core test, be direct)`;
+      const userMsg = `PROPOSED PRIMITIVE\nGlyph: ${primGlyph.trim()}\nName: ${primName.trim()}\nClass: ${primClass}\nMeaning: ${primMeaning.trim()}\nUsage: ${primUsage.trim() || '(none)'}`;
+      const resp = await sendMessage([{ role: 'user', content: userMsg }], systemPrompt, apiKey!, model as AIModel, undefined, 'normal', 300, 0.7);
+      const raw = (resp?.text ?? '').trim().replace(/^```json\n?/, '').replace(/\n?```$/, '');
+      setPrimVerdict(JSON.parse(raw));
+    } catch {
+      setPrimVerdict({ verdict: 'CHALLENGED', reasoning: 'The oracle could not parse the proposal. Refine your meaning and try again.', compression: '' });
+    } finally {
+      setPrimLoading(false);
+    }
+  };
+
   // ── Chiral Lens handlers ──
   const enterChiralLens = async () => {
     const stmt = chiralInput.trim();
@@ -936,8 +1442,8 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         </View>
       </Modal>
 
-      {/* ── Fixed star field behind all content ── */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' }}>
+      {/* ── Fixed star field behind all content — two layers ── */}
+      <Animated.View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', opacity: entryStarsFade }}>
         {STAR_FIELD.map((star, i) => (
           <Animated.View key={i} style={{
             position: 'absolute',
@@ -948,6 +1454,20 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
             borderRadius: star.size / 2,
             backgroundColor: star.color,
             opacity: starAnims[i],
+          }} />
+        ))}
+        {/* Layer 2 — accent stars with slow position drift */}
+        {STARS_L2.map((star, i) => (
+          <Animated.View key={`l2-${i}`} style={{
+            position: 'absolute',
+            left: star.left as any,
+            top: star.top as any,
+            width: star.size,
+            height: star.size,
+            borderRadius: star.size / 2,
+            backgroundColor: star.color,
+            opacity: starAnims2[i],
+            transform: [{ translateX: starDriftX[i] }, { translateY: starDriftY[i] }],
           }} />
         ))}
         {/* Shooting stars */}
@@ -964,62 +1484,247 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
             backgroundColor: '#FFFFFFDD',
           }} />
         ))}
-      </View>
+      </Animated.View>
+
+      {/* ── AURORA STRIP — horizontal gradient sweep at screen top ── */}
+      <Animated.View pointerEvents="none" style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 120, zIndex: 1,
+        transform: [{ translateX: auroraX.interpolate({ inputRange: [0, 1], outputRange: [-60, 60] }) }],
+      }}>
+        <LinearGradient
+          colors={['#5B4EAA0D', '#2E1B7A0C', '#0D4A5A0B', '#1B3A6A0A', 'transparent']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={{ flex: 1, borderBottomLeftRadius: 80, borderBottomRightRadius: 80 }}
+        />
+      </Animated.View>
+
+      {/* ── DOMAIN ATMOSPHERE — fixed tint colour, opacity animated (JS driver) ── */}
+      {fullscreenSection && DOMAIN_ATMOSPHERES[fullscreenSection] && (
+        <Animated.View pointerEvents="none" style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0,
+          backgroundColor: DOMAIN_ATMOSPHERES[fullscreenSection].tint,
+          opacity: atmosOp,
+        }} />
+      )}
+
     <ScrollView
       style={{ flex: 1 }}
       contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── ATMOSPHERIC HEADER ── */}
-      <View style={{ borderRadius: 20, borderWidth: 1, borderColor: ZODIAC_INDIGO + '33', backgroundColor: '#050010', padding: 18, marginBottom: 14, overflow: 'hidden' }}>
-        {/* Watermark glyph */}
-        <Text style={{ position: 'absolute', right: -12, top: -24, fontSize: 150, color: ZODIAC_INDIGO + '07', lineHeight: 170, fontFamily: mono }}>☽</Text>
-        {/* Gold star scatter */}
-        <Text style={{ position: 'absolute', left: 14,  top: 8,  color: '#C8A96E22', fontSize: 8 }}>✦</Text>
-        <Text style={{ position: 'absolute', left: 58,  top: 4,  color: '#C8A96E18', fontSize: 6 }}>◦</Text>
-        <Text style={{ position: 'absolute', left: 108, top: 10, color: '#C8A96E14', fontSize: 7 }}>·</Text>
-        {/* Main content row */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-            {/* Rotating orb */}
-            <View style={{ position: 'relative', width: 54, height: 54, alignItems: 'center', justifyContent: 'center' }}>
-              <Animated.View style={{ position: 'absolute', width: 54, height: 54, borderRadius: 27, borderWidth: 1.5, borderTopColor: ZODIAC_INDIGO + 'BB', borderRightColor: ZODIAC_INDIGO + '33', borderBottomColor: 'transparent', borderLeftColor: ZODIAC_INDIGO + '55', transform: [{ rotate: ringInterp }] }} />
-              <Animated.View style={{ position: 'absolute', width: 46, height: 46, borderRadius: 23, borderWidth: 0.5, borderTopColor: '#C8A96E66', borderRightColor: 'transparent', borderBottomColor: '#C8A96E33', borderLeftColor: 'transparent', transform: [{ rotate: ringInterp2 }] }} />
-              <View style={{ width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: ZODIAC_INDIGO + '0C', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 22, lineHeight: 28 }}>☽</Text>
-              </View>
-            </View>
-            <View>
-              <Text style={{ fontSize: 9, fontWeight: '700', color: ZODIAC_INDIGO + 'AA', letterSpacing: 4, fontFamily: mono }}>◎ THE CELESTIAL FIELD</Text>
-              <Text style={{ fontSize: 22, fontWeight: '700', color: '#EEEEF8', letterSpacing: 0.5, marginTop: 2 }}>The Stars</Text>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 3, fontStyle: 'italic' }}>Chaos magic. Sacred science.</Text>
+      {/* ── THE CELESTIAL FIELD HEADER ── */}
+      <Animated.View style={{ borderRadius: 20, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: '#050010', marginBottom: 14, overflow: 'hidden',
+        opacity: entryHeaderOp, transform: [{ translateY: entryHeaderY }] }}>
+        {/* Nebula washes */}
+        <Animated.View style={{ position: 'absolute', top: -30, left: -40, width: 240, height: 160, borderRadius: 120,
+          backgroundColor: nebulaPulse.interpolate({ inputRange: [0,1], outputRange: ['#5B4EAA08', '#5B4EAA1A'] }) }} />
+        <Animated.View style={{ position: 'absolute', bottom: -40, right: -20, width: 200, height: 140, borderRadius: 100,
+          backgroundColor: nebulaPulse.interpolate({ inputRange: [0,1], outputRange: ['#C8A96E04', '#C8A96E12'] }) }} />
+        {/* Watermark ☽ drifting */}
+        <Animated.Text style={{ position: 'absolute', right: -8, top: -20, fontSize: 130, lineHeight: 150, color: ZODIAC_INDIGO + '0C',
+          opacity: glyphDrift.interpolate({ inputRange: [0,1], outputRange: [0.5, 1.0] }),
+          transform: [{ translateY: glyphDrift.interpolate({ inputRange: [0,1], outputRange: [0, -6] }) }],
+        }}>☽</Animated.Text>
+        {/* Constellation scatter dots */}
+        {[
+          { l:16, t:10, c:'#C8A96E', s:7 }, { l:60, t:6,  c:'#C8A96E', s:5 },
+          { l:112,t:12, c:'#C8A96E', s:6 }, { l:158,t:8,  c:'#88AAFF', s:5 },
+          { l:208,t:16, c:'#CC88FF', s:4 },
+        ].map((d,i) => (
+          <Animated.Text key={i} style={{ position:'absolute', left:d.l, top:d.t, color:d.c, fontSize:d.s,
+            opacity: glyphDrift.interpolate({ inputRange:[0,1], outputRange:[0.1+i*0.05, 0.5+i*0.07] }) }}>✦</Animated.Text>
+        ))}
+
+        {/* ── Row 1: title + live clock ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 }}>
+          {/* Rotating orb */}
+          <View style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+            <Animated.View style={{ position: 'absolute', width: 44, height: 44, borderRadius: 22,
+              borderWidth: 1.5, borderTopColor: ZODIAC_INDIGO + 'BB', borderRightColor: ZODIAC_INDIGO + '22',
+              borderBottomColor: 'transparent', borderLeftColor: ZODIAC_INDIGO + '44',
+              transform: [{ rotate: ringInterp }] }} />
+            <Animated.View style={{ position: 'absolute', width: 36, height: 36, borderRadius: 18,
+              borderWidth: 0.5, borderTopColor: '#C8A96E55', borderRightColor: 'transparent',
+              borderBottomColor: '#C8A96E22', borderLeftColor: 'transparent',
+              transform: [{ rotate: ringInterp2 }] }} />
+            <View style={{ width: 30, height: 30, borderRadius: 15, borderWidth: 1,
+              borderColor: ZODIAC_INDIGO + '44', backgroundColor: ZODIAC_INDIGO + '0C',
+              alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 18, lineHeight: 22 }}>☽</Text>
             </View>
           </View>
-          {/* Mode toggles stacked */}
-          <View style={{ gap: 6, alignItems: 'flex-end' }}>
-            <TouchableOpacity onPress={() => setTechnoMode(v => !v)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: CHIRAL_VIOLET + (technoMode ? 'CC' : '44'), backgroundColor: technoMode ? CHIRAL_VIOLET + '22' : 'transparent' }}>
-              <Text style={{ color: technoMode ? CHIRAL_VIOLET : CHIRAL_VIOLET + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>{technoMode ? '⚡ TECHNO' : '⚡ MODE'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setFocusMode(v => !v)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + (focusMode ? 'CC' : '44'), backgroundColor: focusMode ? ZODIAC_INDIGO + '22' : 'transparent' }}>
-              <Text style={{ color: focusMode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>{focusMode ? '✦ FULL' : '◎ FOCUS'}</Text>
-            </TouchableOpacity>
+          {/* Title */}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 8, fontWeight: '700', color: ZODIAC_INDIGO + '99', letterSpacing: 3.5, fontFamily: mono }}>THE CELESTIAL FIELD</Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#EEEEF8', letterSpacing: 0.3, marginTop: 1,
+              textShadowColor: ZODIAC_INDIGO + 'AA', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 }}>The Stars</Text>
           </View>
-        </View>
-        {/* Live data strip */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '22', flexWrap: 'wrap' }}>
-          <Text style={{ color: ZODIAC_INDIGO + 'BB', fontSize: 11, fontFamily: mono, letterSpacing: 1 }}>
+          {/* Live clock */}
+          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 12, fontFamily: mono, letterSpacing: 0.5 }}>
             {liveTime.getHours() >= 6 && liveTime.getHours() < 20 ? '☀' : '☽'}{' '}
-            {String(liveTime.getHours()).padStart(2, '0')}:{String(liveTime.getMinutes()).padStart(2, '0')}:{String(liveTime.getSeconds()).padStart(2, '0')}
+            {String(liveTime.getHours()).padStart(2,'0')}:{String(liveTime.getMinutes()).padStart(2,'0')}:{String(liveTime.getSeconds()).padStart(2,'0')}
           </Text>
-          <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 12 }}>·</Text>
-          <Text style={{ color: ZODIAC_SIGNS[getTodaySunSign()].color, fontSize: 12 }}>{ZODIAC_SIGNS[getTodaySunSign()].glyph}</Text>
-          <Text style={{ color: '#CCCCDD', fontSize: 11 }}>{ZODIAC_SIGNS[getTodaySunSign()].name}</Text>
-          <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 12 }}>·</Text>
-          <Text style={{ color: todayPlanet.color + 'CC', fontSize: 10, fontFamily: mono }}>{todayPlanet.glyph} {todayPlanet.planet} day</Text>
         </View>
-      </View>
+
+        {/* ── Row 2: Sun / Moon / Phase trio ── */}
+        <View style={{ flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, borderRadius: 12,
+          backgroundColor: '#FFFFFF05', borderWidth: 1, borderColor: ZODIAC_INDIGO + '1A', overflow: 'hidden' }}>
+          {[
+            { label: 'SUN',   glyph: todaySun.glyph,    name: todaySun.name,    color: todaySun.color },
+            { label: 'MOON',  glyph: todayMoon.glyph,   name: todayMoon.name,   color: todayMoon.color },
+            { label: 'PHASE', glyph: moonPhase.glyph,   name: moonPhase.name.replace(' Moon','').replace('Waxing ','Wax ').replace('Waning ','Wan '), color: '#AAAACC' },
+          ].map((item, i) => (
+            <View key={item.label} style={{ flex: 1, alignItems: 'center', paddingVertical: 10,
+              borderRightWidth: i < 2 ? 1 : 0, borderRightColor: ZODIAC_INDIGO + '18' }}>
+              <Text style={{ fontSize: 22, lineHeight: 28, marginBottom: 2 }}>{item.glyph}</Text>
+              <Text style={{ color: '#FFFFFF44', fontSize: 7, fontFamily: mono, letterSpacing: 1.5, marginBottom: 1 }}>{item.label}</Text>
+              <Text style={{ color: item.color, fontSize: 9, fontWeight: '700' }} numberOfLines={1}>{item.name}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── Row 3: Weather + planet day + mode toggles ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 14, gap: 8 }}>
+          {/* Weather pill */}
+          {weather ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: weather.color + '10',
+              borderWidth: 1, borderColor: weather.color + '33', borderRadius: 10,
+              paddingHorizontal: 10, paddingVertical: 5, flex: 1 }}>
+              <Text style={{ fontSize: 14 }}>{weather.glyph}</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>{weather.temp}°</Text>
+              <Text style={{ color: weather.color, fontSize: 9, fontFamily: mono, letterSpacing: 0.5 }}>{weather.condition}</Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={{ color: todayPlanet.color, fontSize: 13 }}>{todayPlanet.glyph}</Text>
+              <Text style={{ color: '#FFFFFF88', fontSize: 10, fontFamily: mono }}>{todayPlanet.planet} day</Text>
+            </View>
+          )}
+          {/* Planet day (shown alongside weather when weather present) */}
+          {weather && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={{ color: todayPlanet.color, fontSize: 13 }}>{todayPlanet.glyph}</Text>
+              <Text style={{ color: '#FFFFFF66', fontSize: 9, fontFamily: mono }}>{todayPlanet.planet}</Text>
+            </View>
+          )}
+          {/* Mode toggles */}
+          <TouchableOpacity onPress={() => setTechnoMode(v => !v)}
+            style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
+              borderColor: CHIRAL_VIOLET + (technoMode ? 'CC' : '33'),
+              backgroundColor: technoMode ? CHIRAL_VIOLET + '22' : 'transparent' }}>
+            <Text style={{ color: technoMode ? CHIRAL_VIOLET : CHIRAL_VIOLET + '66', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>⚡</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setFocusMode(v => !v)}
+            style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1,
+              borderColor: ZODIAC_INDIGO + (focusMode ? 'CC' : '33'),
+              backgroundColor: focusMode ? ZODIAC_INDIGO + '22' : 'transparent' }}>
+            <Text style={{ color: focusMode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '66', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>◎</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      {/* ── SECTION TILE GRID ── */}
+      {!fullscreenSection && (
+        <View style={{ gap: 8, marginBottom: 12 }}>
+
+          {/* 2-column grid — 9 tiles (SKY last) */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {([
+              { id: 'oracle',  glyph: '◎',  name: 'ORACLE',      teaser: 'Card · rune · convergence',       color: ZODIAC_INDIGO,
+                dots: [{ t:6, l:12, s:2.5 },{ t:18,l:28,s:1.5 },{ t:10,l:52,s:2 }] },
+              { id: 'spread',  glyph: '⊛',  name: 'SPREAD',      teaser: '5-card · Celtic Cross',           color: '#C8A96E',
+                dots: [{ t:8,l:8,s:3 },{ t:6,l:26,s:3 },{ t:8,l:44,s:3 },{ t:20,l:17,s:3 },{ t:20,l:35,s:3 }] },
+              { id: 'natal',   glyph: '✦',  name: 'SOL READS',   teaser: 'Natal chart · transit reading',   color: ZODIAC_INDIGO,
+                dots: [{ t:6,l:10,s:2 },{ t:4,l:28,s:2 },{ t:8,l:48,s:2 },{ t:18,l:64,s:1.5 }] },
+              { id: 'aspects', glyph: '⟐',  name: 'ASPECTS',     teaser: 'Planet angles · conjunctions',    color: '#88AAFF',
+                dots: [{ t:10,l:12,s:2.5 },{ t:10,l:52,s:2.5 },{ t:4,l:32,s:1.5 }] },
+              { id: 'sigil',   glyph: '⟟',  name: 'SIGIL FORGE', teaser: 'Intention → living symbol',      color: '#CC88FF',
+                dots: [{ t:6,l:30,s:2.5 },{ t:16,l:14,s:2 },{ t:16,l:46,s:2 },{ t:26,l:30,s:2.5 }] },
+              { id: 'chiral',  glyph: '∿',  name: 'CHIRAL LENS', teaser: 'Reality inversion protocol',      color: CHIRAL_VIOLET,
+                dots: [{ t:8,l:6,s:2 },{ t:6,l:20,s:2 },{ t:10,l:34,s:2 },{ t:6,l:48,s:2 },{ t:10,l:62,s:2 }] },
+              { id: 'zonk',    glyph: '◬',  name: 'ZONK ZONE',   teaser: 'Speculative field',              color: ZONK_GOLD,
+                dots: [{ t:6,l:32,s:2.5 },{ t:20,l:14,s:2 },{ t:20,l:50,s:2 }] },
+              { id: 'psi',     glyph: 'ψ',  name: 'PSI LOG',     teaser: 'Remote viewing · precognition',   color: PSI_PURPLE,
+                dots: [{ t:8,l:6,s:2 },{ t:5,l:22,s:2 },{ t:9,l:38,s:2 },{ t:5,l:54,s:2 },{ t:9,l:68,s:1.5 }] },
+              { id: 'sky',     glyph: '☀',  name: 'THE SKY',     teaser: 'Planets · wheel · live sky',       color: '#C8A96E',
+                dots: [{ t:15, l:20, s:2 }, { t:70, l:80, s:1.5 }, { t:40, l:50, s:2.5 }] },
+              { id: 'gems',    glyph: '◆',  name: 'GEM FORGE',   teaser: 'Intention → living talisman',      color: GEM_VIOLET,
+                dots: [{ t:8,l:14,s:2.5 },{ t:5,l:36,s:2 },{ t:10,l:58,s:2 },{ t:18,l:26,s:1.5 },{ t:16,l:50,s:1.5 }] },
+              { id: 'tarot',   glyph: '🜍', name: 'TAROT',       teaser: 'Veil & Vein · 22 arcana',         color: '#9945FF',
+                dots: [{ t:8,l:18,s:2 },{ t:6,l:44,s:2 },{ t:16,l:30,s:2.5 },{ t:20,l:56,s:1.5 }] },
+            ] as { id: string; glyph: string; name: string; teaser: string; color: string; dots: { t:number; l:number; s:number }[] }[]).map((tile, i) => (
+              <Animated.View key={tile.id} style={{
+                width: '47.5%',
+                opacity: entryTileAnims[i]?.op ?? 1,
+                transform: [{ translateY: entryTileAnims[i]?.y ?? 0 }],
+              }}>
+                <Animated.View style={{
+                  flex: 1, borderRadius: 15, padding: 1,
+                  backgroundColor: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [tile.color + '10', tile.color + '88'] }),
+                }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    if (tile.id === 'tarot') { setTarotViewerOpen(true); return; }
+                    setFullscreenSection(tile.id);
+                    if (tile.id === 'oracle')  setOracleCollapsed(false);
+                    if (tile.id === 'spread')  setTarotCollapsed(false);
+                    if (tile.id === 'natal')   setReadingCollapsed(false);
+                    if (tile.id === 'sigil')   setSigilCollapsed(false);
+                    if (tile.id === 'psi')     setPsiCollapsed(false);
+                    if (tile.id === 'aspects') setAspectsCollapsed(false);
+                    if (tile.id === 'sky')     { setSkyCollapsed(false); setWheelCollapsed(false); }
+                    if (tile.id === 'gems')    { setGemView(gemCollection.length > 0 ? 'gallery' : 'forge'); }
+                  }}
+                  style={{ borderRadius: 14, backgroundColor: '#06050F',
+                    aspectRatio: 1.85, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 3, overflow: 'hidden' }}>
+                  {/* Animated bg wash */}
+                  <Animated.View style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 14,
+                    backgroundColor: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [tile.color + '04', tile.color + '16'] }),
+                  }} />
+                  {/* Watermark glyph — large, low opacity, top-right */}
+                  <Animated.Text style={{
+                    position: 'absolute', top: -8, right: 4, fontSize: 52, lineHeight: 64, color: tile.color,
+                    opacity: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [0.05, 0.12] }),
+                  }}>{tile.glyph}</Animated.Text>
+                  {/* Constellation micro-dots unique to each tile */}
+                  {tile.dots.map((d, di) => (
+                    <Animated.View key={di} style={{
+                      position: 'absolute', top: d.t, left: d.l,
+                      width: d.s, height: d.s, borderRadius: d.s / 2, backgroundColor: tile.color,
+                      opacity: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.35] }),
+                    }} />
+                  ))}
+                  {/* SVG icon — illuminated manuscript stroke style */}
+                  <Animated.View style={{ opacity: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.0] }) }}>
+                    {TILE_SVG[tile.id] ? TILE_SVG[tile.id](tile.color) : <Text style={{ fontSize: 22 }}>{tile.glyph}</Text>}
+                  </Animated.View>
+                  <Text style={{ color: tile.color, fontSize: 7.5, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, textAlign: 'center' }}>{tile.name}</Text>
+                  <Text style={{ color: tile.color + '66', fontSize: 6.5, textAlign: 'center', lineHeight: 9 }} numberOfLines={1}>{tile.teaser}</Text>
+                </TouchableOpacity>
+                </Animated.View>
+              </Animated.View>
+            ))}
+          </View>
+
+        </View>
+      )}
+      {/* ── BACK TO GRID ── */}
+      {!!fullscreenSection && (
+        <Animated.View style={{ alignSelf: 'flex-start', marginBottom: 12,
+          opacity: glyphDrift.interpolate({ inputRange: [0,1], outputRange: [0.6, 1.0] }) }}>
+          <TouchableOpacity
+            onPress={() => setFullscreenSection(null)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: ZODIAC_INDIGO + '0C' }}
+          >
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 14 }}>←</Text>
+            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 8, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>ALL SECTIONS</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
 
       {/* Daily oracle — card block */}
+      {fullscreenSection === 'oracle' && (<>
       <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: '#040010', marginBottom: 16, overflow: 'hidden' }}>
         <TouchableOpacity onPress={() => setOracleCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
           <TouchableOpacity onPress={() => setFullscreenSection('oracle')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ZODIAC_INDIGO + '22', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center' }}>
@@ -1208,52 +1913,54 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
           </View>
         </View>
       </Animated.View>
+      </>)}
 
-      {/* TODAY'S SKY — always visible */}
-      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#C8A96E33', backgroundColor: '#07071A', marginBottom: 14, overflow: 'hidden' }}>
-        <Image source={ZODIAC_SKY_BG} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0.15, borderRadius: 16 }} resizeMode="cover" />
-        <TouchableOpacity onPress={() => setSkyCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
+      {fullscreenSection === 'sky' && (<>
+
+      {/* ── TODAY'S SKY — no collapse, always shows ── */}
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#C8A96E33', backgroundColor: '#07071A', marginBottom: 14, padding: 14 }}>
+        {/* Header label */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
           <Text style={{ color: '#C8A96E', fontSize: 16 }}>☀</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#C8A96E', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>TODAY'S SKY</Text>
-            <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 9, fontFamily: mono }}>live planetary positions</Text>
-          </View>
-          <Text style={{ color: '#C8A96EAA', fontSize: 11 }}>{skyCollapsed ? '▶' : '▼'}</Text>
-        </TouchableOpacity>
-        {!skyCollapsed && <View style={{ height: 1, backgroundColor: '#C8A96E1A' }} />}
-        {!skyCollapsed && !focusMode && (
-        <View style={{ padding: 14 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#C8A96E88', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 3 }}>SUN IN</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ color: todaySun.color, fontSize: 20 }}>{todaySun.glyph}</Text>
-              <View>
-                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>{todaySun.name}</Text>
-                <Text style={{ color: '#AAAACC', fontSize: 9 }}>{todaySun.element} · {todaySun.keywords.split(' · ')[0]}</Text>
-              </View>
-            </View>
-          </View>
-          <View style={{ width: 1, backgroundColor: '#FFFFFF11', marginHorizontal: 10, alignSelf: 'stretch' }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 3 }}>MOON IN</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={{ color: todayMoon.color, fontSize: 20 }}>{todayMoon.glyph}</Text>
-              <View>
-                <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>{todayMoon.name}</Text>
-                <Text style={{ color: '#AAAACC', fontSize: 9 }}>{todayMoon.element} · {todayMoon.keywords.split(' · ')[0]}</Text>
-              </View>
-            </View>
-          </View>
-          <View style={{ width: 1, backgroundColor: '#FFFFFF11', marginHorizontal: 10, alignSelf: 'stretch' }} />
-          <Animated.View style={{ alignItems: 'center', justifyContent: 'center', opacity: moonPulse }}>
-            <Text style={{ fontSize: 22 }}>{moonPhase.glyph}</Text>
-            <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700', textAlign: 'center', marginTop: 2 }}>{moonPhase.name.replace(' Moon', '').replace('Waxing ', 'Wax ').replace('Waning ', 'Wan ')}</Text>
-          </Animated.View>
+          <Text style={{ color: '#C8A96E', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>TODAY'S SKY</Text>
+          <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 8, fontFamily: mono }}>· live</Text>
         </View>
 
-        {/* Planet positions grid */}
-        <View style={{ borderTopWidth: 1, borderTopColor: '#FFFFFF0D', marginTop: 10, paddingTop: 12 }}>
+        {/* Sun / Moon / Phase trio */}
+        <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+          <View style={{ flex: 1, alignItems: 'flex-start' }}>
+            <Text style={{ color: '#C8A96E88', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>SUN IN</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ color: todaySun.color, fontSize: 22 }}>{todaySun.glyph}</Text>
+              <View>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>{todaySun.name}</Text>
+                <Text style={{ color: '#AAAACC', fontSize: 9 }}>{todaySun.element}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={{ width: 1, backgroundColor: '#FFFFFF10', marginHorizontal: 10 }} />
+          <View style={{ flex: 1, alignItems: 'flex-start' }}>
+            <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>MOON IN</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ color: todayMoon.color, fontSize: 22 }}>{todayMoon.glyph}</Text>
+              <View>
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>{todayMoon.name}</Text>
+                <Text style={{ color: '#AAAACC', fontSize: 9 }}>{todayMoon.element}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={{ width: 1, backgroundColor: '#FFFFFF10', marginHorizontal: 10 }} />
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ color: '#FFFFFF55', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>PHASE</Text>
+            <Animated.Text style={{ fontSize: 24, opacity: moonPulse }}>{moonPhase.glyph}</Animated.Text>
+            <Text style={{ color: '#FFFFFFCC', fontSize: 9, fontWeight: '700', marginTop: 2 }} numberOfLines={1}>
+              {moonPhase.name.replace(' Moon','').replace('Waxing ','Wax ').replace('Waning ','Wan ')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Planet grid */}
+        <View style={{ borderTopWidth: 1, borderTopColor: '#FFFFFF0D', paddingTop: 12 }}>
           <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 10 }}>PLANETARY POSITIONS</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
             {PLANETS_SKY.map(p => {
@@ -1264,7 +1971,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
                   <Text style={{ color: p.color, fontSize: 14, width: 18, textAlign: 'center' }}>{p.glyph}</Text>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Text style={{ color: '#FFFFFF66', fontSize: 8, fontFamily: mono, letterSpacing: 0.5 }}>{p.name.toUpperCase()}</Text>
+                      <Text style={{ color: '#FFFFFF55', fontSize: 8, fontFamily: mono }}>{p.name.toUpperCase()}</Text>
                       {retro && <Text style={{ color: '#FF6B6B', fontSize: 7, fontWeight: '700', fontFamily: mono }}>℞</Text>}
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
@@ -1276,7 +1983,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
               );
             })}
           </View>
-          {/* Retrograde summary */}
+          {/* Retrograde row */}
           {(() => {
             const retros = PLANETS_SKY.filter(p => isPlanetRetrograde(p.name));
             if (!retros.length) return null;
@@ -1284,7 +1991,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
               <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#FF6B6B22', flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 <Text style={{ color: '#FF6B6BAA', fontSize: 8, fontWeight: '700', fontFamily: mono }}>℞ RETROGRADE</Text>
                 {retros.map(p => (
-                  <View key={p.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FF6B6B11', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <View key={p.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FF6B6B0F', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
                     <Text style={{ color: p.color, fontSize: 11 }}>{p.glyph}</Text>
                     <Text style={{ color: '#FF6B6BCC', fontSize: 9, fontFamily: mono }}>{p.name}</Text>
                   </View>
@@ -1292,23 +1999,23 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
               </View>
             );
           })()}
-          {/* Kp index — geomagnetic field */}
+          {/* Kp index */}
           {kpIndex !== null && (
             <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#FFFFFF0D', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View>
-                <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>EARTH FIELD · Kp INDEX</Text>
+                <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 8, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>EARTH FIELD · Kp</Text>
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 2 }}>
-                  {kpIndex <= 1 ? 'Quiet — field is calm' : kpIndex <= 3 ? 'Unsettled — minor activity' : kpIndex <= 5 ? 'Active — geomagnetic storm possible' : 'Storm — strong geomagnetic disturbance'}
+                  {kpIndex <= 1 ? 'Quiet — field is calm' : kpIndex <= 3 ? 'Unsettled' : kpIndex <= 5 ? 'Active — storm possible' : 'Storm — strong disturbance'}
                 </Text>
               </View>
-              <View style={{ alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: kpIndex <= 1 ? '#4CAF5066' : kpIndex <= 3 ? '#C8A96E66' : '#FF6B6B66', backgroundColor: kpIndex <= 1 ? '#4CAF5011' : kpIndex <= 3 ? '#C8A96E11' : '#FF6B6B11' }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 19, borderWidth: 1,
+                borderColor: kpIndex <= 1 ? '#4CAF5066' : kpIndex <= 3 ? '#C8A96E66' : '#FF6B6B66',
+                backgroundColor: kpIndex <= 1 ? '#4CAF5011' : kpIndex <= 3 ? '#C8A96E11' : '#FF6B6B11' }}>
                 <Text style={{ color: kpIndex <= 1 ? '#4CAF50' : kpIndex <= 3 ? '#C8A96E' : '#FF6B6B', fontSize: 14, fontWeight: '700', fontFamily: mono }}>{kpIndex.toFixed(0)}</Text>
               </View>
             </View>
           )}
         </View>
-        </View>
-        )}
       </View>
 
       {/* THE WHEEL — interactive zodiac circle */}
@@ -1409,7 +2116,9 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         </View>
         )}
       </View>
+      </>)}
 
+      {fullscreenSection === 'spread' && (<>
       {/* SPREAD — FIVE-CARD / CELTIC CROSS */}
       <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#C8A96E44', backgroundColor: '#06000E', marginBottom: 16, overflow: 'hidden' }}>
         <TouchableOpacity onPress={() => setTarotCollapsed(v => !v)} style={{ padding: 14 }}>
@@ -1559,9 +2268,10 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         </View>
         )}
       </View>
+      </>)}
 
       {/* 1. SOL READS THE FIELD — natal horoscope, top of ritual */}
-      {birthData && sunSign && !editingBirth && (
+      {fullscreenSection === 'natal' && birthData && sunSign && !editingBirth && (
         <View style={{ padding: 16, borderRadius: 12, borderWidth: 1.5, borderColor: ZODIAC_INDIGO + '66', backgroundColor: ZODIAC_INDIGO + '08', marginBottom: 16 }}>
           <TouchableOpacity onPress={() => setReadingCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: readingCollapsed ? 0 : 10 }}>
             <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>SOL READS THE FIELD</Text>
@@ -1658,152 +2368,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         </View>
       )}
 
-      {/* PSI PRACTICE LOG */}
-      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: PSI_PURPLE + '44', backgroundColor: '#060012', marginBottom: 16, overflow: 'hidden' }}>
-        <TouchableOpacity onPress={() => setPsiCollapsed(v => !v)} style={{ padding: 14 }}>
-          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: PSI_PURPLE + '0C', fontFamily: mono, lineHeight: 72 }}>ψ</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: psiCollapsed ? 0 : 4 }}>
-            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: PSI_PURPLE + '18', borderWidth: 1, borderColor: PSI_PURPLE + '44', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: PSI_PURPLE, fontSize: 18, fontFamily: mono }}>ψ</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>PSI PRACTICE</Text>
-              <Text style={{ color: PSI_PURPLE + '77', fontSize: 9, fontFamily: mono }}>consciousness research · frontier science</Text>
-            </View>
-            <Text style={{ color: PSI_PURPLE + 'AA', fontSize: 11 }}>{psiCollapsed ? '▶' : '▼'}</Text>
-          </View>
-          {psiCollapsed && <Text style={{ color: PSI_PURPLE + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Remote viewing · precognition · ganzfeld. Log your sessions. Let the record speak.</Text>}
-        </TouchableOpacity>
-        {!psiCollapsed && <View style={{ height: 1, backgroundColor: PSI_PURPLE + '22' }} />}
-
-        {!psiCollapsed && !focusMode && (
-        <View style={{ padding: 14 }}>
-        <View style={{ padding: 10, borderRadius: 8, backgroundColor: PSI_PURPLE + '0A', borderWidth: 1, borderColor: PSI_PURPLE + '22', marginBottom: 10 }}>
-          <Text style={{ color: PSI_PURPLE + 'BB', fontSize: 9, lineHeight: 14, fontFamily: mono }}>
-            ψ FRONTIER SCIENCE — Psi phenomena are genuinely contested. The evidence exists (Radin meta-analyses, STARGATE declassified, GCP 30-year dataset) and is genuinely uncertain. This is not mysticism and not consensus. Log what you observe. Draw your own conclusions.
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, lineHeight: 15, fontStyle: 'italic', flex: 1 }}>
-            Remote viewing · precognition · ganzfeld. Log impressions before verification. Let the record speak.
-          </Text>
-          <TouchableOpacity onPress={() => { setShowPsiForm(true); }} style={{ marginLeft: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: PSI_PURPLE + '55', backgroundColor: PSI_PURPLE + '18' }}>
-            <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700' }}>+ Log</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* New session form */}
-        {showPsiForm && (
-          <View style={{ backgroundColor: SOL_THEME.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: PSI_PURPLE + '44', marginBottom: 12 }}>
-            {/* Type picker */}
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 6 }}>PRACTICE TYPE</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-              {(['RV', 'PREC', 'GANZFELD', 'GENERAL'] as PsiEntryType[]).map(t => (
-                <TouchableOpacity key={t} onPress={() => setPsiDraft(d => ({ ...d, type: t }))}
-                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: psiDraft.type === t ? PSI_PURPLE : SOL_THEME.border, backgroundColor: psiDraft.type === t ? PSI_PURPLE + '22' : 'transparent' }}>
-                  <Text style={{ color: psiDraft.type === t ? PSI_PURPLE : SOL_THEME.textMuted, fontSize: 10, fontWeight: '700' }}>{PSI_TYPE_LABELS[t]}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Target */}
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>TARGET / PROMPT</Text>
-            <TextInput
-              value={psiDraft.target} onChangeText={v => setPsiDraft(d => ({ ...d, target: v }))}
-              placeholder="Coordinates, image ID, event to predict..."
-              placeholderTextColor={SOL_THEME.textMuted + '88'}
-              style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10 }}
-            />
-
-            {/* Impressions */}
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>IMPRESSIONS (before reveal)</Text>
-            <TextInput
-              value={psiDraft.impression} onChangeText={v => setPsiDraft(d => ({ ...d, impression: v }))}
-              placeholder="What came through — images, feelings, words..."
-              placeholderTextColor={SOL_THEME.textMuted + '88'}
-              multiline numberOfLines={3}
-              style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10, minHeight: 64, textAlignVertical: 'top' }}
-            />
-
-            {/* Outcome */}
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>OUTCOME / VERIFICATION (optional)</Text>
-            <TextInput
-              value={psiDraft.outcome} onChangeText={v => setPsiDraft(d => ({ ...d, outcome: v }))}
-              placeholder="What was the actual target / what happened?"
-              placeholderTextColor={SOL_THEME.textMuted + '88'}
-              style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10 }}
-            />
-
-            {/* Result */}
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 6 }}>RESULT</Text>
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
-              {(['pending', 'hit', 'partial', 'miss'] as PsiResult[]).map(r => (
-                <TouchableOpacity key={r} onPress={() => setPsiDraft(d => ({ ...d, result: r }))}
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: psiDraft.result === r ? PSI_RESULT_COLOR[r] : SOL_THEME.border, backgroundColor: psiDraft.result === r ? PSI_RESULT_COLOR[r] + '22' : 'transparent' }}>
-                  <Text style={{ color: psiDraft.result === r ? PSI_RESULT_COLOR[r] : SOL_THEME.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{r}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => { setShowPsiForm(false); setPsiDraft({ type: 'RV', target: '', impression: '', outcome: '', result: 'pending' }); }}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, alignItems: 'center' }}>
-                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={savePsiEntry} disabled={!psiDraft.impression.trim()}
-                style={{ flex: 2, paddingVertical: 10, borderRadius: 8, backgroundColor: psiDraft.impression.trim() ? PSI_PURPLE : SOL_THEME.border, alignItems: 'center' }}>
-                <Text style={{ color: psiDraft.impression.trim() ? '#fff' : SOL_THEME.textMuted, fontSize: 12, fontWeight: '700' }}>Save Session</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Log entries */}
-        {psiLog.length > 0 && (
-          <>
-            {(psiExpanded ? psiLog : psiLog.slice(0, 3)).map(entry => (
-              <View key={entry.id} style={{ borderTopWidth: 1, borderTopColor: SOL_THEME.border, paddingTop: 10, marginTop: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>{entry.date}</Text>
-                  <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: PSI_PURPLE + '22' }}>
-                    <Text style={{ color: PSI_PURPLE, fontSize: 9, fontWeight: '700' }}>{entry.type}</Text>
-                  </View>
-                  {/* Inline result updater if pending */}
-                  {entry.result === 'pending' && entry.outcome ? (
-                    <View style={{ flexDirection: 'row', gap: 4, marginLeft: 'auto' }}>
-                      {(['hit', 'partial', 'miss'] as PsiResult[]).map(r => (
-                        <TouchableOpacity key={r} onPress={() => updatePsiResult(entry.id, r)}
-                          style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: PSI_RESULT_COLOR[r] + '66' }}>
-                          <Text style={{ color: PSI_RESULT_COLOR[r], fontSize: 9, fontWeight: '700' }}>{r}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  ) : (
-                    <View style={{ marginLeft: 'auto', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: PSI_RESULT_COLOR[entry.result] + '22' }}>
-                      <Text style={{ color: PSI_RESULT_COLOR[entry.result], fontSize: 9, fontWeight: '700' }}>{entry.result.toUpperCase()}</Text>
-                    </View>
-                  )}
-                </View>
-                {entry.target ? <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginBottom: 3, fontStyle: 'italic' }}>Target: {entry.target}</Text> : null}
-                <Text style={{ color: SOL_THEME.text, fontSize: 12, lineHeight: 17 }} numberOfLines={3}>{entry.impression}</Text>
-                {entry.outcome ? <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 3, fontStyle: 'italic' }}>Outcome: {entry.outcome}</Text> : null}
-              </View>
-            ))}
-            {psiLog.length > 3 && (
-              <TouchableOpacity onPress={() => setPsiExpanded(e => !e)} style={{ alignItems: 'center', paddingTop: 10 }}>
-                <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700' }}>{psiExpanded ? '▲ Show less' : `▼ Show all ${psiLog.length} sessions`}</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
-
-        {psiLog.length === 0 && !showPsiForm && (
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', paddingVertical: 8 }}>No sessions logged yet.</Text>
-        )}
-        </View>
-        )}
-      </View>
-
+      {fullscreenSection === 'sigil' && (<>
       {/* ── LAMAGUE SIGIL FORGE ── */}
       <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#CC88FF44', backgroundColor: '#08001A', marginBottom: 16, overflow: 'hidden' }}>
         <TouchableOpacity onPress={() => setSigilCollapsed(v => !v)} style={{ padding: 14 }}>
@@ -1823,6 +2388,173 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         {!sigilCollapsed && <View style={{ height: 1, backgroundColor: '#CC88FF22' }} />}
         {!sigilCollapsed && !focusMode && (
           <View style={{ padding: 14, gap: 12 }}>
+            {/* Mode toggle */}
+            <View style={{ flexDirection: 'row', borderRadius: 10, borderWidth: 1, borderColor: '#CC88FF33', overflow: 'hidden' }}>
+              {(['ritual', 'primitive'] as const).map(m => (
+                <TouchableOpacity key={m} onPress={() => setSigilMode(m)}
+                  style={{ flex: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: sigilMode === m ? '#CC88FF22' : 'transparent' }}>
+                  <Text style={{ color: sigilMode === m ? '#CC88FF' : '#555566', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
+                    {m === 'ritual' ? '⟟  RITUAL SIGIL' : '◈  WITCHAIL FORGE'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {sigilMode === 'primitive' ? (
+              <View style={{ gap: 12 }}>
+                {/* Glyph — TYPE | DRAW toggle */}
+                <View style={{ gap: 8 }}>
+                  <Text style={{ color: '#CC88FF77', fontSize: 8, fontFamily: mono, letterSpacing: 1.5 }}>GLYPH</Text>
+                  <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#CC88FF22', overflow: 'hidden', marginBottom: 6 }}>
+                    {(['type','draw'] as const).map(m => (
+                      <TouchableOpacity key={m} onPress={() => setPrimGlyphMode(m)}
+                        style={{ flex: 1, paddingVertical: 6, alignItems: 'center', backgroundColor: primGlyphMode === m ? '#CC88FF18' : 'transparent' }}>
+                        <Text style={{ color: primGlyphMode === m ? '#CC88FF' : '#444455', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
+                          {m === 'type' ? '⊛  TYPE' : '◈  DRAW'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  {primGlyphMode === 'type' ? (
+                    <TextInput value={primGlyph} onChangeText={t => setPrimGlyph(t.slice(0, 3))}
+                      placeholder="⊛" placeholderTextColor="#CC88FF22"
+                      style={{ backgroundColor: '#060010', borderRadius: 10, borderWidth: 1, borderColor: '#CC88FF44', color: '#CC88FF', fontSize: 26, textAlign: 'center', paddingVertical: 10, fontFamily: mono, height: 52 }}
+                      maxLength={3} />
+                  ) : (
+                    <View style={{ gap: 8 }}>
+                      <TextInput value={primGlyphDesc} onChangeText={setPrimGlyphDesc}
+                        placeholder="Describe the glyph shape… e.g. a spiral with three radiating lines"
+                        placeholderTextColor="#333344"
+                        style={{ backgroundColor: '#060010', borderRadius: 10, borderWidth: 1, borderColor: '#CC88FF33', color: '#CCBBFF', fontSize: 12, paddingHorizontal: 12, paddingVertical: 10, minHeight: 52, textAlignVertical: 'top' }}
+                        multiline maxLength={200} />
+                      {/* Ratio selector */}
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {(['square','portrait','landscape'] as const).map(r => {
+                          const labels = { square: '⊞ 1:1', portrait: '▮ 2:3', landscape: '▬ 3:2' };
+                          const active = primGlyphRatio === r;
+                          return (
+                            <TouchableOpacity key={r} onPress={() => setPrimGlyphRatio(r)}
+                              style={{ flex: 1, paddingVertical: 5, borderRadius: 7, borderWidth: 1, alignItems: 'center',
+                                borderColor: active ? '#CC88FFAA' : '#222233',
+                                backgroundColor: active ? '#CC88FF18' : 'transparent' }}>
+                              <Text style={{ color: active ? '#CC88FF' : '#444455', fontSize: 8, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{labels[r]}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                      <TouchableOpacity onPress={generatePrimGlyphImage} disabled={!primGlyphDesc.trim() || primGlyphImgLoading}
+                        style={{ paddingVertical: 10, borderRadius: 10, borderWidth: 1, alignItems: 'center',
+                          borderColor: primGlyphDesc.trim() && !primGlyphImgLoading ? '#CC88FFAA' : '#222233',
+                          backgroundColor: primGlyphDesc.trim() && !primGlyphImgLoading ? '#CC88FF14' : 'transparent' }}>
+                        <Text style={{ color: primGlyphDesc.trim() && !primGlyphImgLoading ? '#CC88FF' : '#333344', fontSize: 9, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>
+                          {primGlyphImgLoading ? '·  ·  GENERATING  ·  ·' : '◈  GENERATE GLYPH'}
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={{ color: '#333344', fontSize: 8, fontFamily: mono, textAlign: 'center', letterSpacing: 0.5 }}>Requires NVIDIA key in Settings → Provider Keys</Text>
+                      {primGlyphImgError && (
+                        <View style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: '#FF444433', backgroundColor: '#FF444008' }}>
+                          <Text style={{ color: '#FF7766', fontSize: 9, fontFamily: mono }}>{primGlyphImgError}</Text>
+                        </View>
+                      )}
+                      {primGlyphImage && (
+                        <View style={{ alignItems: 'center', gap: 6 }}>
+                          <Image source={{ uri: primGlyphImage }}
+                            style={{ ...IMG_RATIOS[primGlyphRatio].display, borderRadius: 12, alignSelf: 'center', borderWidth: 1, borderColor: '#CC88FF55' }} />
+                          <TouchableOpacity onPress={async () => {
+                            const r = await saveImageToDevice(primGlyphImage);
+                            if (!r.ok) Alert.alert('Save failed', r.error ?? 'Unknown error');
+                          }} style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: '#CC88FF44', backgroundColor: '#CC88FF0D' }}>
+                            <Text style={{ color: '#CC88FF', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>↓ SAVE TO GALLERY</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                </View>
+                {/* Name */}
+                <View>
+                  <Text style={{ color: '#CC88FF77', fontSize: 8, fontFamily: mono, letterSpacing: 1.5, marginBottom: 5 }}>NAME</Text>
+                  <TextInput value={primName} onChangeText={setPrimName}
+                    placeholder="e.g. THRESHOLD LOCK" placeholderTextColor="#333344"
+                    style={{ backgroundColor: '#060010', borderRadius: 10, borderWidth: 1, borderColor: '#CC88FF33', color: '#CCBBFF', fontSize: 12, fontFamily: mono, paddingHorizontal: 12, paddingVertical: 10, height: 52, letterSpacing: 1 }}
+                    maxLength={32} autoCapitalize="characters" />
+                </View>
+                {/* Class picker */}
+                <View>
+                  <Text style={{ color: '#CC88FF77', fontSize: 8, fontFamily: mono, letterSpacing: 1.5, marginBottom: 5 }}>CLASS</Text>
+                  <View style={{ flexDirection: 'row', gap: 5 }}>
+                    {['I','D','F','M','G'].map(cls => (
+                      <TouchableOpacity key={cls} onPress={() => setPrimClass(cls)}
+                        style={{ flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, alignItems: 'center',
+                          borderColor: primClass === cls ? '#CC88FFAA' : '#222233',
+                          backgroundColor: primClass === cls ? '#CC88FF18' : 'transparent' }}>
+                        <Text style={{ color: primClass === cls ? '#CC88FF' : '#444455', fontSize: 12, fontFamily: mono, fontWeight: '700' }}>{cls}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                {/* Meaning */}
+                <View>
+                  <Text style={{ color: '#CC88FF77', fontSize: 8, fontFamily: mono, letterSpacing: 1.5, marginBottom: 5 }}>MEANING</Text>
+                  <TextInput value={primMeaning} onChangeText={setPrimMeaning}
+                    placeholder="What concept does this primitive name that no existing symbol covers?"
+                    placeholderTextColor="#333344"
+                    style={{ backgroundColor: '#060010', borderRadius: 10, borderWidth: 1, borderColor: '#CC88FF33', color: '#CCBBFF', fontSize: 12, paddingHorizontal: 12, paddingVertical: 10, minHeight: 72, textAlignVertical: 'top', lineHeight: 19 }}
+                    multiline maxLength={400} />
+                </View>
+                {/* Usage */}
+                <View>
+                  <Text style={{ color: '#CC88FF77', fontSize: 8, fontFamily: mono, letterSpacing: 1.5, marginBottom: 5 }}>USAGE EXAMPLE</Text>
+                  <TextInput value={primUsage} onChangeText={setPrimUsage}
+                    placeholder="e.g. ⊛ → ∈ ⊞"
+                    placeholderTextColor="#333344"
+                    style={{ backgroundColor: '#060010', borderRadius: 10, borderWidth: 1, borderColor: '#CC88FF33', color: '#CCBBFF', fontSize: 13, fontFamily: mono, paddingHorizontal: 12, paddingVertical: 10 }}
+                    maxLength={200} />
+                </View>
+                {/* Submit */}
+                <TouchableOpacity onPress={generatePrimitive}
+                  disabled={!primGlyph.trim() || !primName.trim() || !primMeaning.trim() || primLoading}
+                  style={{ paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, alignItems: 'center',
+                    borderColor: primGlyph.trim() && primName.trim() && primMeaning.trim() && !primLoading ? '#CC88FFAA' : '#222233',
+                    backgroundColor: primGlyph.trim() && primName.trim() && primMeaning.trim() && !primLoading ? '#CC88FF18' : 'transparent' }}>
+                  <Text style={{ color: primGlyph.trim() && primName.trim() && primMeaning.trim() && !primLoading ? '#CC88FF' : '#333344', fontSize: 10, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>
+                    {primLoading ? '·  ·  ·  THE ORACLE WEIGHS  ·  ·  ·' : '◈  SUBMIT TO THE ORACLE'}
+                  </Text>
+                </TouchableOpacity>
+                {/* Verdict */}
+                {primVerdict && (
+                  <View style={{ borderRadius: 14, borderWidth: 1.5, padding: 14,
+                    borderColor: primVerdict.verdict === 'RATIFIED' ? '#44FF88' : primVerdict.verdict === 'REJECTED' ? '#FF4444' : '#CC88FF',
+                    backgroundColor: primVerdict.verdict === 'RATIFIED' ? '#44FF8810' : primVerdict.verdict === 'REJECTED' ? '#FF444410' : '#CC88FF10' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 20 }}>{primVerdict.verdict === 'RATIFIED' ? '✦' : primVerdict.verdict === 'REJECTED' ? '✕' : '◈'}</Text>
+                      <Text style={{ color: primVerdict.verdict === 'RATIFIED' ? '#44FF88' : primVerdict.verdict === 'REJECTED' ? '#FF4444' : '#CC88FF', fontSize: 13, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>
+                        {primVerdict.verdict}
+                      </Text>
+                    </View>
+                    <Text style={{ color: '#CCBBFF', fontSize: 12, lineHeight: 20, fontStyle: 'italic', marginBottom: primVerdict.compression ? 10 : 0 }}>{primVerdict.reasoning}</Text>
+                    {primVerdict.verdict === 'RATIFIED' && primVerdict.compression ? (
+                      <View style={{ paddingTop: 10, borderTopWidth: 1, borderTopColor: '#44FF8833' }}>
+                        <Text style={{ color: '#44FF8888', fontSize: 8, fontFamily: mono, letterSpacing: 2, marginBottom: 3 }}>Z₁ COMPRESSION</Text>
+                        <Text style={{ color: '#44FF88', fontSize: 11, fontFamily: mono, fontStyle: 'italic' }}>{primVerdict.compression}</Text>
+                      </View>
+                    ) : null}
+                    {primVerdict.verdict === 'RATIFIED' && (
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 10, justifyContent: 'center' }}>
+                        <TouchableOpacity onPress={savePrimToLexicon}
+                          style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#44FF88AA', backgroundColor: '#44FF8818' }}>
+                          <Text style={{ color: '#44FF88', fontSize: 9, fontFamily: mono, letterSpacing: 1.5, fontWeight: '700' }}>✦ SAVE TO LEXICON</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { setPrimGlyph(''); setPrimName(''); setPrimMeaning(''); setPrimUsage(''); setPrimVerdict(null); setPrimGlyphImage(null); setPrimGlyphDesc(''); setPrimGlyphMode('type'); }} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#CC88FF33' }}>
+                          <Text style={{ color: '#44FF8888', fontSize: 9, fontFamily: mono, letterSpacing: 1.5 }}>◈ forge another</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={{ gap: 12 }}>
             {/* Ritual type row */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {(['manifestation','protection','banishing','binding','wisdom','chaos','love','clarity']).map(t => (
@@ -1868,11 +2600,14 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
                 </TouchableOpacity>
               </View>
             )}
+              </View>
+            )}
           </View>
         )}
       </View>
+      </>)}
 
-      {/* ── THE CHIRAL LENS ── */}
+      {fullscreenSection === 'chiral' && (
       <View style={{ borderRadius: 16, borderWidth: 1, borderColor: CHIRAL_VIOLET + '44', backgroundColor: '#07000F', marginBottom: 16, overflow: 'hidden' }}>
         <TouchableOpacity onPress={() => setChiralCollapsed(v => !v)} style={{ padding: 14 }}>
           <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: CHIRAL_VIOLET + '0C', fontFamily: mono, lineHeight: 72 }}>∿</Text>
@@ -1913,8 +2648,9 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
           </View>
         )}
       </View>
+      )}
 
-      {/* ── THE ZONK ZONE ── */}
+      {fullscreenSection === 'zonk' && (
       <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZONK_GOLD + '44', backgroundColor: '#0A0900', marginBottom: 16, overflow: 'hidden' }}>
         <TouchableOpacity onPress={() => setZonkCollapsed(v => !v)} style={{ padding: 14 }}>
           <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: ZONK_GOLD + '0C', fontFamily: mono, lineHeight: 72 }}>◬</Text>
@@ -1999,9 +2735,238 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         </View>
         )}
       </View>
+      )}
+
+      {fullscreenSection === 'psi' && (
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: PSI_PURPLE + '44', backgroundColor: '#060012', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setPsiCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 10, top: 4, fontSize: 64, color: PSI_PURPLE + '0C', fontFamily: mono, lineHeight: 72 }}>ψ</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: psiCollapsed ? 0 : 4 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: PSI_PURPLE + '18', borderWidth: 1, borderColor: PSI_PURPLE + '44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: PSI_PURPLE, fontSize: 18, fontFamily: mono }}>ψ</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>PSI PRACTICE</Text>
+              <Text style={{ color: PSI_PURPLE + '77', fontSize: 9, fontFamily: mono }}>consciousness research · frontier science</Text>
+            </View>
+            <Text style={{ color: PSI_PURPLE + 'AA', fontSize: 11 }}>{psiCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {psiCollapsed && <Text style={{ color: PSI_PURPLE + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Remote viewing · precognition · ganzfeld. Log your sessions. Let the record speak.</Text>}
+        </TouchableOpacity>
+        {!psiCollapsed && <View style={{ height: 1, backgroundColor: PSI_PURPLE + '22' }} />}
+
+        {!psiCollapsed && !focusMode && (
+        <View style={{ padding: 14 }}>
+        <View style={{ padding: 10, borderRadius: 8, backgroundColor: PSI_PURPLE + '0A', borderWidth: 1, borderColor: PSI_PURPLE + '22', marginBottom: 10 }}>
+          <Text style={{ color: PSI_PURPLE + 'BB', fontSize: 9, lineHeight: 14, fontFamily: mono }}>
+            ψ FRONTIER SCIENCE — Psi phenomena are genuinely contested. The evidence exists (Radin meta-analyses, STARGATE declassified, GCP 30-year dataset) and is genuinely uncertain. This is not mysticism and not consensus. Log what you observe. Draw your own conclusions.
+          </Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, lineHeight: 15, fontStyle: 'italic', flex: 1 }}>
+            Remote viewing · precognition · ganzfeld. Log impressions before verification. Let the record speak.
+          </Text>
+          <TouchableOpacity onPress={() => { setShowPsiForm(true); }} style={{ marginLeft: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: PSI_PURPLE + '55', backgroundColor: PSI_PURPLE + '18' }}>
+            <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700' }}>+ Log</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showPsiForm && (
+          <View style={{ backgroundColor: SOL_THEME.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: PSI_PURPLE + '44', marginBottom: 12 }}>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 6 }}>PRACTICE TYPE</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+              {(['RV', 'PREC', 'GANZFELD', 'GENERAL'] as PsiEntryType[]).map(t => (
+                <TouchableOpacity key={t} onPress={() => setPsiDraft(d => ({ ...d, type: t }))}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: psiDraft.type === t ? PSI_PURPLE : SOL_THEME.border, backgroundColor: psiDraft.type === t ? PSI_PURPLE + '22' : 'transparent' }}>
+                  <Text style={{ color: psiDraft.type === t ? PSI_PURPLE : SOL_THEME.textMuted, fontSize: 10, fontWeight: '700' }}>{PSI_TYPE_LABELS[t]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>TARGET / PROMPT</Text>
+            <TextInput
+              value={psiDraft.target} onChangeText={v => setPsiDraft(d => ({ ...d, target: v }))}
+              placeholder="Coordinates, image ID, event to predict..."
+              placeholderTextColor={SOL_THEME.textMuted + '88'}
+              style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10 }}
+            />
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>IMPRESSIONS (before reveal)</Text>
+            <TextInput
+              value={psiDraft.impression} onChangeText={v => setPsiDraft(d => ({ ...d, impression: v }))}
+              placeholder="What came through — images, feelings, words..."
+              placeholderTextColor={SOL_THEME.textMuted + '88'}
+              multiline numberOfLines={3}
+              style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10, minHeight: 64, textAlignVertical: 'top' }}
+            />
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>OUTCOME / VERIFICATION (optional)</Text>
+            <TextInput
+              value={psiDraft.outcome} onChangeText={v => setPsiDraft(d => ({ ...d, outcome: v }))}
+              placeholder="What was the actual target / what happened?"
+              placeholderTextColor={SOL_THEME.textMuted + '88'}
+              style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10 }}
+            />
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 6 }}>RESULT</Text>
+            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
+              {(['pending', 'hit', 'partial', 'miss'] as PsiResult[]).map(r => (
+                <TouchableOpacity key={r} onPress={() => setPsiDraft(d => ({ ...d, result: r }))}
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: psiDraft.result === r ? PSI_RESULT_COLOR[r] : SOL_THEME.border, backgroundColor: psiDraft.result === r ? PSI_RESULT_COLOR[r] + '22' : 'transparent' }}>
+                  <Text style={{ color: psiDraft.result === r ? PSI_RESULT_COLOR[r] : SOL_THEME.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity onPress={() => { setShowPsiForm(false); setPsiDraft({ type: 'RV', target: '', impression: '', outcome: '', result: 'pending' }); }}
+                style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, alignItems: 'center' }}>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={savePsiEntry} disabled={!psiDraft.impression.trim()}
+                style={{ flex: 2, paddingVertical: 10, borderRadius: 8, backgroundColor: psiDraft.impression.trim() ? PSI_PURPLE : SOL_THEME.border, alignItems: 'center' }}>
+                <Text style={{ color: psiDraft.impression.trim() ? '#fff' : SOL_THEME.textMuted, fontSize: 12, fontWeight: '700' }}>Save Session</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {psiLog.length > 0 && (
+          <>
+            {(psiExpanded ? psiLog : psiLog.slice(0, 3)).map(entry => (
+              <View key={entry.id} style={{ borderTopWidth: 1, borderTopColor: SOL_THEME.border, paddingTop: 10, marginTop: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>{entry.date}</Text>
+                  <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: PSI_PURPLE + '22' }}>
+                    <Text style={{ color: PSI_PURPLE, fontSize: 9, fontWeight: '700' }}>{entry.type}</Text>
+                  </View>
+                  {entry.result === 'pending' && entry.outcome ? (
+                    <View style={{ flexDirection: 'row', gap: 4, marginLeft: 'auto' }}>
+                      {(['hit', 'partial', 'miss'] as PsiResult[]).map(r => (
+                        <TouchableOpacity key={r} onPress={() => updatePsiResult(entry.id, r)}
+                          style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: PSI_RESULT_COLOR[r] + '66' }}>
+                          <Text style={{ color: PSI_RESULT_COLOR[r], fontSize: 9, fontWeight: '700' }}>{r}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : (
+                    <View style={{ marginLeft: 'auto', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: PSI_RESULT_COLOR[entry.result] + '22' }}>
+                      <Text style={{ color: PSI_RESULT_COLOR[entry.result], fontSize: 9, fontWeight: '700' }}>{entry.result.toUpperCase()}</Text>
+                    </View>
+                  )}
+                </View>
+                {entry.target ? <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginBottom: 3, fontStyle: 'italic' }}>Target: {entry.target}</Text> : null}
+                <Text style={{ color: SOL_THEME.text, fontSize: 12, lineHeight: 17 }} numberOfLines={3}>{entry.impression}</Text>
+                {entry.outcome ? <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 3, fontStyle: 'italic' }}>Outcome: {entry.outcome}</Text> : null}
+              </View>
+            ))}
+            {psiLog.length > 3 && (
+              <TouchableOpacity onPress={() => setPsiExpanded(e => !e)} style={{ alignItems: 'center', paddingTop: 10 }}>
+                <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700' }}>{psiExpanded ? '▲ Show less' : `▼ Show all ${psiLog.length} sessions`}</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+        {psiLog.length === 0 && !showPsiForm && (
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', paddingVertical: 8 }}>No sessions logged yet.</Text>
+        )}
+        </View>
+        )}
+      </View>
+      )}
+
+      {/* ── ASPECTS SECTION ── */}
+      {fullscreenSection === 'aspects' && (
+      <View style={{ borderRadius: 16, borderWidth: 1, borderColor: '#88AAFF44', backgroundColor: '#060814', marginBottom: 16, overflow: 'hidden' }}>
+        <TouchableOpacity onPress={() => setAspectsCollapsed(v => !v)} style={{ padding: 14 }}>
+          <Text style={{ position: 'absolute', right: 8, top: -4, fontSize: 64, color: '#88AAFF0C', fontFamily: mono, lineHeight: 72 }}>⟐</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: aspectsCollapsed ? 0 : 4 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#88AAFF18', borderWidth: 1, borderColor: '#88AAFF44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: '#88AAFF', fontSize: 18, fontFamily: mono }}>⟐</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#88AAFF', fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>ASPECTS</Text>
+              <Text style={{ color: '#88AAFF77', fontSize: 9, fontFamily: mono }}>planet angles · conjunctions · tensions</Text>
+            </View>
+            <Text style={{ color: '#88AAFF99', fontSize: 11 }}>{aspectsCollapsed ? '▶' : '▼'}</Text>
+          </View>
+          {aspectsCollapsed && <Text style={{ color: '#88AAFF55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Angular relationships between planets — where the sky converges, squares, and harmonises.</Text>}
+        </TouchableOpacity>
+        {!aspectsCollapsed && <View style={{ height: 1, backgroundColor: '#88AAFF22' }} />}
+
+        {!aspectsCollapsed && !focusMode && (() => {
+          // Compute all planet longitudes for today
+          const planetLons = PLANETS_SKY.map(p => ({
+            ...p,
+            lon: getPlanetLongitude(p.L0, p.rate),
+          }));
+          // Add Sun and Moon
+          const allBodies = [
+            { name: 'Sun',  glyph: '☀', color: '#F5C842', lon: mod360(280.46646 + 0.9856474 * ((() => { const n = new Date(); return julianDay(n.getFullYear(), n.getMonth()+1, n.getDate(), n.getHours()) - 2451545.0; })())) },
+            { name: 'Moon', glyph: '☽', color: '#DDDDFF', lon: mod360(218.3165 + 13.1763966 * ((() => { const n = new Date(); return julianDay(n.getFullYear(), n.getMonth()+1, n.getDate(), n.getHours()) - 2451545.0; })())) },
+            ...planetLons,
+          ];
+          const aspects: Array<{ a: typeof allBodies[0]; b: typeof allBodies[0]; asp: { name: string; symbol: string; color: string; orb: number } }> = [];
+          for (let i = 0; i < allBodies.length; i++) {
+            for (let j = i + 1; j < allBodies.length; j++) {
+              const asp = getAspectBetween(allBodies[i].lon, allBodies[j].lon);
+              if (asp) aspects.push({ a: allBodies[i], b: allBodies[j], asp });
+            }
+          }
+          const grouped: Record<string, typeof aspects> = {};
+          aspects.forEach(item => {
+            if (!grouped[item.asp.name]) grouped[item.asp.name] = [];
+            grouped[item.asp.name].push(item);
+          });
+          const ORDER = ['Conjunction', 'Trine', 'Sextile', 'Square', 'Opposition'];
+          const ASPECT_DESC: Record<string, string> = {
+            Conjunction: 'Planets merge — amplified energy, fusion of themes',
+            Trine:       'Flowing harmony — ease, natural talent, gift',
+            Sextile:     'Gentle opportunity — cooperative, supportive',
+            Square:      'Creative tension — friction that forces growth',
+            Opposition:  'Polarity — awareness through contrast, integration needed',
+          };
+
+          if (aspects.length === 0) {
+            return (
+              <View style={{ padding: 18 }}>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', fontStyle: 'italic' }}>No major aspects in the sky today.</Text>
+              </View>
+            );
+          }
+
+          return (
+            <View style={{ padding: 14 }}>
+              {/* Intro note */}
+              <View style={{ padding: 10, borderRadius: 8, backgroundColor: '#88AAFF0A', borderWidth: 1, borderColor: '#88AAFF22', marginBottom: 14 }}>
+                <Text style={{ color: '#88AAFF99', fontSize: 9, lineHeight: 14, fontFamily: mono }}>
+                  ⟐ TODAY'S LIVE SKY — {aspects.length} active aspect{aspects.length !== 1 ? 's' : ''} computed for {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}. Orb tolerance: ☌ ≤10° · △ ≤8° · ✶ ≤6° · □ ≤8° · ☍ ≤10°.
+                </Text>
+              </View>
+              {ORDER.filter(name => grouped[name]?.length > 0).map(aspName => (
+                <View key={aspName} style={{ marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <Text style={{ color: grouped[aspName][0].asp.color, fontSize: 16 }}>{grouped[aspName][0].asp.symbol}</Text>
+                    <Text style={{ color: grouped[aspName][0].asp.color, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>{aspName.toUpperCase()}</Text>
+                    <View style={{ flex: 1, height: 1, backgroundColor: grouped[aspName][0].asp.color + '22' }} />
+                  </View>
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontStyle: 'italic', marginBottom: 8, lineHeight: 13 }}>{ASPECT_DESC[aspName]}</Text>
+                  {grouped[aspName].map((item, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 7, borderBottomWidth: idx < grouped[aspName].length - 1 ? 1 : 0, borderBottomColor: '#88AAFF11' }}>
+                      <Text style={{ color: item.a.color, fontSize: 18, width: 24, textAlign: 'center' }}>{item.a.glyph}</Text>
+                      <Text style={{ color: item.asp.color, fontSize: 12 }}>{item.asp.symbol}</Text>
+                      <Text style={{ color: item.b.color, fontSize: 18, width: 24, textAlign: 'center' }}>{item.b.glyph}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: '#FFFFFFCC', fontSize: 11, fontWeight: '700' }}>{item.a.name} {item.asp.symbol} {item.b.name}</Text>
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>orb {item.asp.orb}°</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          );
+        })()}
+      </View>
+      )}
 
       {/* YOUR CHART — natal data */}
-      {birthData && !editingBirth && sunSign && (
+      {fullscreenSection === 'natal' && birthData && !editingBirth && sunSign && (
         <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', backgroundColor: '#060010', marginBottom: 16, overflow: 'hidden' }}>
           <Text style={{ position: 'absolute', top: -18, right: -6, fontSize: 88, color: ZODIAC_INDIGO + '09', lineHeight: 100, fontFamily: mono }}>⊚</Text>
           <TouchableOpacity onPress={() => setNatalCollapsed(v => !v)} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 }}>
@@ -2090,7 +3055,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       )}
 
       {/* No birth data — CTA */}
-      {!birthData && !editingBirth && (
+      {fullscreenSection === 'natal' && !birthData && !editingBirth && (
         <View style={{ padding: 20, borderRadius: 14, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: SOL_THEME.surface, alignItems: 'center', marginBottom: 16 }}>
           <Text style={{ color: ZODIAC_INDIGO, fontSize: 28, marginBottom: 10 }}>✦</Text>
           <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '700', marginBottom: 6 }}>Reveal your natal chart</Text>
@@ -2130,7 +3095,7 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
       )}
 
       {/* Birth data entry form */}
-      {editingBirth && (
+      {fullscreenSection === 'natal' && editingBirth && (
         <View style={{ padding: 16, borderRadius: 12, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', backgroundColor: SOL_THEME.surface, marginBottom: 16 }}>
           <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono, marginBottom: 14 }}>BIRTH DATA</Text>
 
@@ -2440,6 +3405,240 @@ You must respond in JSON with exactly this structure (no markdown, raw JSON only
         )}
       </KeyboardAvoidingView>
     </Modal>
+
+      {/* ── GEM FORGE ── */}
+      {fullscreenSection === 'gems' && (
+        <View style={{ borderRadius: 16, borderWidth: 1, borderColor: GEM_VIOLET + '44', backgroundColor: '#06001A', marginBottom: 16, overflow: 'hidden' }}>
+          {/* Header */}
+          <View style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ position: 'absolute', right: 8, top: -4, fontSize: 64, color: GEM_VIOLET + '0C', fontFamily: mono, lineHeight: 72 }}>◆</Text>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: GEM_VIOLET + '18', borderWidth: 1, borderColor: GEM_VIOLET + '44', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: GEM_VIOLET, fontSize: 18, fontFamily: mono }}>◆</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: GEM_VIOLET, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>GEM FORGE</Text>
+              <Text style={{ color: GEM_VIOLET + '77', fontSize: 9, fontFamily: mono }}>intention → living talisman</Text>
+            </View>
+            {(gemView === 'forge' || gemView === 'generating' || gemView === 'result') && (
+              <TouchableOpacity onPress={() => setGemView('gallery')} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                <Text style={{ color: GEM_VIOLET + '88', fontSize: 9, fontFamily: mono }}>← COLLECTION</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={{ height: 1, backgroundColor: GEM_VIOLET + '22' }} />
+
+          {/* GALLERY VIEW */}
+          {gemView === 'gallery' && (
+            <View style={{ padding: 14 }}>
+              <View style={{ padding: 10, borderRadius: 8, backgroundColor: GEM_VIOLET + '0A', borderWidth: 1, borderColor: GEM_VIOLET + '22', marginBottom: 14 }}>
+                <Text style={{ color: GEM_VIOLET + '99', fontSize: 9, lineHeight: 14, fontFamily: mono }}>
+                  ◆ A gem forged with intention carries the weight of the ritual that made it.{'\n'}The specificity of your input is what makes it real.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setGemView('forge')}
+                style={{ paddingVertical: 11, alignItems: 'center', borderRadius: 8, borderWidth: 1, borderColor: GEM_VIOLET + '55', backgroundColor: GEM_VIOLET + '14', marginBottom: gemCollection.length > 0 ? 14 : 0 }}>
+                <Text style={{ color: GEM_VIOLET, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>◆  FORGE NEW GEM</Text>
+              </TouchableOpacity>
+              {gemCollection.map(gem => (
+                <TouchableOpacity key={gem.id} onPress={() => setGemDetailId(gemDetailId === gem.id ? null : gem.id)}
+                  style={{ borderRadius: 10, borderWidth: 1, borderColor: gem.colour.hex + '44', backgroundColor: gem.colour.hex + '0C', padding: 12, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: gem.colour.hex + '33', borderWidth: 1, borderColor: gem.colour.hex + '66', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: gem.colour.hex, fontSize: 14, fontFamily: mono }}>◆</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: gem.colour.hex, fontSize: 10, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>{gem.name}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, fontFamily: mono }}>{gem.colour.name} · {gem.element} · {gem.date}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 3 }}>
+                      {gem.symbols.slice(0, 4).map((s, i) => <Text key={i} style={{ color: gem.colour.hex + 'AA', fontSize: 10 }}>{s}</Text>)}
+                    </View>
+                    <Text style={{ color: GEM_VIOLET + '66', fontSize: 10 }}>{gemDetailId === gem.id ? '▼' : '▶'}</Text>
+                  </View>
+                  {gemDetailId === gem.id && (
+                    <View style={{ marginTop: 10, gap: 6 }}>
+                      <Text style={{ color: gem.colour.hex + 'CC', fontSize: 10, lineHeight: 16, fontStyle: 'italic' }}>{gem.invocation}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, lineHeight: 14 }}>{gem.careRitual}</Text>
+                      <Text style={{ color: gem.colour.hex + '88', fontSize: 12, letterSpacing: 4, marginTop: 4 }}>{gem.symbols.join('  ')}</Text>
+                      <TouchableOpacity onPress={() => deleteGem(gem.id)}
+                        style={{ alignSelf: 'flex-end', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#FF444433', marginTop: 4 }}>
+                        <Text style={{ color: '#FF6666', fontSize: 8, fontFamily: mono }}>DISSOLVE GEM</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+              {gemCollection.length === 0 && (
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', fontStyle: 'italic', paddingVertical: 8 }}>No gems forged yet.</Text>
+              )}
+            </View>
+          )}
+
+          {/* FORGE FORM VIEW */}
+          {gemView === 'forge' && (
+            <View style={{ padding: 14, gap: 14 }}>
+              {/* INTENTION */}
+              <View>
+                <Text style={{ color: GEM_VIOLET, fontSize: 8, letterSpacing: 2, fontFamily: mono, marginBottom: 6 }}>INTENTION — what is this gem for?</Text>
+                <TextInput value={gemIntention} onChangeText={setGemIntention}
+                  placeholder="protection · clarity · grief · love · power · transition..."
+                  placeholderTextColor={SOL_THEME.textMuted + '66'}
+                  multiline style={{ backgroundColor: SOL_THEME.surface, borderWidth: 1, borderColor: GEM_VIOLET + '33', borderRadius: 8, padding: 10, color: SOL_THEME.text, fontSize: 13, minHeight: 52 }} />
+              </View>
+              {/* FEELING */}
+              <View>
+                <Text style={{ color: GEM_VIOLET, fontSize: 8, letterSpacing: 2, fontFamily: mono, marginBottom: 6 }}>FEELING — what emotion should it carry?</Text>
+                <TextInput value={gemFeeling} onChangeText={setGemFeeling}
+                  placeholder="stillness · fire · grief held with dignity · quiet strength..."
+                  placeholderTextColor={SOL_THEME.textMuted + '66'}
+                  multiline style={{ backgroundColor: SOL_THEME.surface, borderWidth: 1, borderColor: GEM_VIOLET + '33', borderRadius: 8, padding: 10, color: SOL_THEME.text, fontSize: 13, minHeight: 52 }} />
+              </View>
+              {/* ELEMENT */}
+              <View>
+                <Text style={{ color: GEM_VIOLET, fontSize: 8, letterSpacing: 2, fontFamily: mono, marginBottom: 6 }}>ELEMENT</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {GEM_ELEMENTS.map(el => (
+                    <TouchableOpacity key={el.id} onPress={() => setGemElement(el.id)}
+                      style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, borderWidth: 1,
+                        borderColor: gemElement === el.id ? GEM_VIOLET + 'AA' : GEM_VIOLET + '33',
+                        backgroundColor: gemElement === el.id ? GEM_VIOLET + '22' : 'transparent' }}>
+                      <Text style={{ color: gemElement === el.id ? GEM_VIOLET : GEM_VIOLET + '77', fontSize: 9, fontFamily: mono }}>{el.glyph}  {el.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {/* COLOUR */}
+              <View>
+                <Text style={{ color: GEM_VIOLET, fontSize: 8, letterSpacing: 2, fontFamily: mono, marginBottom: 6 }}>COLOUR PULL</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {GEM_COLOURS.map(c => (
+                    <TouchableOpacity key={c.name} onPress={() => setGemColour(c)}
+                      style={{ alignItems: 'center', gap: 3 }}>
+                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: c.hex,
+                        borderWidth: gemColour?.name === c.name ? 2 : 1,
+                        borderColor: gemColour?.name === c.name ? '#FFFFFF' : c.hex + '66' }} />
+                      <Text style={{ color: gemColour?.name === c.name ? SOL_THEME.text : SOL_THEME.textMuted, fontSize: 7, fontFamily: mono }}>{c.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              {/* ASTRO BOND */}
+              <View>
+                <Text style={{ color: GEM_VIOLET, fontSize: 8, letterSpacing: 2, fontFamily: mono, marginBottom: 6 }}>ASTROLOGICAL BOND (optional)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -2 }}>
+                  <View style={{ flexDirection: 'row', gap: 5, paddingHorizontal: 2 }}>
+                    {GEM_ASTRO.map(a => (
+                      <TouchableOpacity key={a} onPress={() => setGemAstro(gemAstro === a ? null : a)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 5, borderWidth: 1,
+                          borderColor: gemAstro === a ? GEM_VIOLET + 'AA' : GEM_VIOLET + '22',
+                          backgroundColor: gemAstro === a ? GEM_VIOLET + '1A' : 'transparent' }}>
+                        <Text style={{ color: gemAstro === a ? GEM_VIOLET : SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>{a}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              {/* NAME */}
+              <View>
+                <Text style={{ color: GEM_VIOLET, fontSize: 8, letterSpacing: 2, fontFamily: mono, marginBottom: 6 }}>NAME THIS GEM</Text>
+                <TextInput value={gemName} onChangeText={setGemName}
+                  placeholder="the name you give it is part of its power"
+                  placeholderTextColor={SOL_THEME.textMuted + '66'}
+                  style={{ backgroundColor: SOL_THEME.surface, borderWidth: 1, borderColor: GEM_VIOLET + '33', borderRadius: 8, padding: 10, color: SOL_THEME.text, fontSize: 13 }} />
+              </View>
+              {/* FORGE BUTTON */}
+              <TouchableOpacity
+                disabled={!gemIntention.trim() || !gemFeeling.trim() || !gemElement || !gemColour || !gemName.trim()}
+                onPress={forgeGem}
+                style={{ paddingVertical: 13, alignItems: 'center', borderRadius: 10, borderWidth: 1,
+                  borderColor: (gemIntention.trim() && gemFeeling.trim() && gemElement && gemColour && gemName.trim()) ? GEM_VIOLET + 'AA' : GEM_VIOLET + '22',
+                  backgroundColor: (gemIntention.trim() && gemFeeling.trim() && gemElement && gemColour && gemName.trim()) ? GEM_VIOLET + '22' : 'transparent' }}>
+                <Text style={{ color: (gemIntention.trim() && gemFeeling.trim() && gemElement && gemColour && gemName.trim()) ? GEM_VIOLET : GEM_VIOLET + '44',
+                  fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>
+                  ◆  FORGE THIS GEM
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* GENERATING */}
+          {gemView === 'generating' && (
+            <View style={{ padding: 32, alignItems: 'center', gap: 14 }}>
+              <Text style={{ color: GEM_VIOLET, fontSize: 22 }}>◆</Text>
+              <Text style={{ color: GEM_VIOLET, fontSize: 10, letterSpacing: 3, fontFamily: mono }}>FORGING...</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, textAlign: 'center', fontStyle: 'italic' }}>Sol is giving form to your intention.</Text>
+            </View>
+          )}
+
+          {/* RESULT VIEW */}
+          {gemView === 'result' && gemColour && (
+            <View style={{ padding: 14, gap: 12 }}>
+              {/* Gem card */}
+              <View style={{ borderRadius: 12, borderWidth: 1, borderColor: gemColour.hex + '55', backgroundColor: gemColour.hex + '0C', padding: 16, alignItems: 'center', gap: 8 }}>
+                <Text style={{ color: gemColour.hex, fontSize: 32 }}>◆</Text>
+                <Text style={{ color: gemColour.hex, fontSize: 12, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>{gemName}</Text>
+                <Text style={{ color: gemColour.hex + '88', fontSize: 8, fontFamily: mono }}>{gemColour.name} · {gemElement} {gemAstro ? `· ${gemAstro}` : ''}</Text>
+              </View>
+              {/* Invocation */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: GEM_VIOLET + '88', fontSize: 8, letterSpacing: 2, fontFamily: mono }}>INVOCATION</Text>
+                <Text style={{ color: SOL_THEME.text, fontSize: 12, lineHeight: 18, fontStyle: 'italic' }}>{gemInvocation}</Text>
+              </View>
+              {/* Care ritual */}
+              <View style={{ gap: 4 }}>
+                <Text style={{ color: GEM_VIOLET + '88', fontSize: 8, letterSpacing: 2, fontFamily: mono }}>CARE RITUAL</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 16 }}>{gemCareRitual}</Text>
+              </View>
+              {/* LAMAGUE symbol picker */}
+              <View style={{ gap: 6 }}>
+                <Text style={{ color: GEM_VIOLET + '88', fontSize: 8, letterSpacing: 2, fontFamily: mono }}>LAMAGUE ENCODING — choose the symbols this gem carries</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontStyle: 'italic' }}>Sol suggested these. Accept, remove, or replace them — the final encoding is yours.</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {(gemShowAllSymbols ? LAMAGUE_POOL : gemSuggestedSymbols).map(sym => (
+                    <TouchableOpacity key={sym}
+                      onPress={() => setGemChosenSymbols(prev => prev.includes(sym) ? prev.filter(s => s !== sym) : [...prev, sym])}
+                      style={{ width: 38, height: 38, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1,
+                        borderColor: gemChosenSymbols.includes(sym) ? gemColour.hex + 'AA' : GEM_VIOLET + '22',
+                        backgroundColor: gemChosenSymbols.includes(sym) ? gemColour.hex + '22' : 'transparent' }}>
+                      <Text style={{ color: gemChosenSymbols.includes(sym) ? gemColour.hex : SOL_THEME.textMuted, fontSize: 16 }}>{sym}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={() => setGemShowAllSymbols(v => !v)}>
+                  <Text style={{ color: GEM_VIOLET + '77', fontSize: 8, fontFamily: mono, marginTop: 2 }}>
+                    {gemShowAllSymbols ? '▲ SHOW SUGGESTIONS ONLY' : '▼ BROWSE FULL SYMBOL LIBRARY'}
+                  </Text>
+                </TouchableOpacity>
+                {gemChosenSymbols.length > 0 && (
+                  <Text style={{ color: gemColour.hex, fontSize: 14, letterSpacing: 5, marginTop: 4, textAlign: 'center' }}>
+                    {gemChosenSymbols.join('  ')}
+                  </Text>
+                )}
+              </View>
+              {/* Save */}
+              <TouchableOpacity onPress={saveGem}
+                style={{ paddingVertical: 13, alignItems: 'center', borderRadius: 10, borderWidth: 1, borderColor: gemColour.hex + 'AA', backgroundColor: gemColour.hex + '1A', marginTop: 4 }}>
+                <Text style={{ color: gemColour.hex, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>◆  SEAL THIS GEM</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* ── FIRST-VISIT OVERLAY ── */}
+      {showTabIntro && (
+        <Animated.View pointerEvents="none" style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          alignItems: 'center', justifyContent: 'center', zIndex: 99,
+          opacity: tabIntroOp,
+        }}>
+          <View style={{ backgroundColor: '#05001099', borderRadius: 18, borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', paddingVertical: 18, paddingHorizontal: 32 }}>
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, letterSpacing: 3, fontFamily: mono, textAlign: 'center' }}>THE FIELD IS OPEN</Text>
+          </View>
+        </Animated.View>
+      )}
+
+      <TarotViewer visible={tarotViewerOpen} onClose={() => setTarotViewerOpen(false)} />
     </View>
   );
 }
