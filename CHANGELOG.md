@@ -1,7 +1,14 @@
 # Changelog
 
-## [5.25.0] — 2026-06-21 (late) — 🜍 THE VEIL & VEIN RELEASE
-> The full tarot release: 79-card deck + its zone, cosmetics, void bosses, hidden ultra-rare.
+## [5.25.0] — 2026-06-21 (late) — 🜍 THE VEIL & VEIN RELEASE + THE DEPTH PASS
+> The biggest single session since launch. The Veil & Vein tarot release (79-card deck,
+> its zone, cosmetic set) PLUS the depth layer that makes the RPG real: void bosses you
+> win by *learning*, per-companion levels with stat builds, a living Chronicle, the School
+> remodelled to match the app, the chat trimmed to its strongest 4 modes, and a perf bug
+> squashed at the root. The north star — *studying is the game* — made literal.
+>
+> Also forged this session (docs, not shipped code): VERAS_KNOWLEDGE_ECONOMY.md — the
+> creator-attribution thesis whose purpose is to *unveil hidden teachers*.
 
 ### The Veil & Vein release
 - **🜍 Tarot Viewer** — Mac's 79 hand-made cards live in-app (Zodiac → TAROT): real-art gallery (single + grid) + 22-Major/56-Minor meaning data.
@@ -9,8 +16,50 @@
 - **Veil & Vein cosmetic set** — 🜍 THE VEILCROWN (halo), INTERTWINED SPAN (wings), THE VEILKITTEN (pet) — SECRET-tier, all Mac's art.
 - **Cinematic auto-drift** — wide landscape backgrounds now slow-pan (26s sine) + parallax, so a zone feels like a place you stand in.
 
+### 💗 Hot per-tab colors (#227) + school home decluttered
+- **Per-tab hot signature** — the bottom nav went obsidian-black with a hot-pink hairline; each tab ignites in its own heat when active (bigger + glowing): ☽ violet · 𝔏 amethyst · ⊚ solar gold · ✦ HOT PINK (the Lycheetah heart) · ⊼ crimson-rose · ⚙ periwinkle. Inactive tabs recede into the dark. The mythic-cat-in-the-shadows aesthetic.
+- **School home decluttered** — the wall of 7 stacked cards (field trial, milestone, open seat, pattern notice, weekly synthesis, search) that pushed people away is now tucked into one collapsed "✦ TODAY · YOUR FIELD" strip. School opens to: Header → [✦ TODAY ▸] → DOMAINS grid. Domains lead; nothing deleted, just calmed.
+- **School tools unified** — the inconsistent mix (clean nav buttons + a big ornate Mycelium card + mismatched portal tiles) is now ONE clean 12-button grid: SYLLABUS · RANDOM · LIBRARY · CODEX · MYCELIUM · TIME BRAID · LAMAGUE · SCRIPTORIUM · DIVE LOG · SIGIL · WORLD · SPIRAL. All identical clean squares, color-coded, Time Braid badges when letters arrive. Every tool one tap, one style.
+- **START HERE minimizable** — the first-run suggestion card now collapses to a thin bar (▾), sits beneath the tools grid.
+- **Covenant ambush removed** — the old forced-intention popup that auto-fired on first school visit (with a disabled "continue" until you typed) is gone. The Open Gate: the school never blocks a newcomer. Sealing an intention is now opt-in; the 90-day revisit still surfaces for those who sealed one.
+
+### ⟡ Rotating shop (#261) + companion battle voice (#245)
+- **TODAY'S FORGE** — the shop now opens with 3 daily-rotating premium cosmetics (real art, deterministic by day) + a "resets Xh Ym" countdown, buyable with Lumens. A daily return-hook; cosmetics only, covenant-safe.
+- **Companion battle reactions** — your companion now speaks in its own voice on WIN ("The field clears. We held."), CAPTURE ("It joins us now. Bound, not broken."), and DEFEAT ("We fall back. Not down. Study, and return." — encouragement, never reproach). The companion feels alive in battle.
+
+### ψ◬ Psi Log + Zonk Zone polish (#281)
+- Both had bare empty states ("No sessions logged yet" / nothing) that felt underbaked. Now atmospheric + mysterious: ψ "THE RECORD IS EMPTY" (+ First Session button, the honesty-is-the-practice framing) and ◬ "THE SAND IS UNTURNED" ("every pillar of truth was once a wild guess no one would say aloud"). They read like part of the mystery school even when empty.
+
+### 🜍 Tarot readings restructured (#282) + help pass (#280)
+- **Tarot spread readings** now render as a ritual, not a text wall — each card position (◷ PAST · ⚔ CHALLENGE · ⊿ FOUNDATION · ☽ NEAR FUTURE · ✦ OUTCOME) is its own block with a position glyph, colored spine, divider, and the actual card drawn shown beside the label. You see the spread's structure as you read it.
+- **Help pass** — the global ? now covers every edge feature: Battle/Party/Void Bosses + GROWTH tab, the Lycheetah Tarot, ψ Psi Log, ◬ Zonk Zone, ⟟ Sigil & Gem Forge, and ✧ VERAS — the knowledge economy (with the "unveil hidden teachers" vision + how it'll be implemented). Nothing in the app is a mystery now.
+
+### ⚔ The Party system (#260) — your menagerie fights with you
+- Captured creatures are no longer trophies — **field up to 3 as your party**. Tap ⚔ FIELD on any menagerie entry; the YOUR PARTY header shows your squad + total assist damage. In battle every STRIKE shows "↳ party +N" as your fielded creatures chip in bonus damage (scaled by their strength × your study depth / LQ). Persisted (`sol_party`). Completes the collection loop: capture/earn/win → field → they fight alongside you.
+- Chronicle deepened (#264): now also logs captures ("Captured X") and dive-unlocks ("Earned X with N dives of study").
+
 ### ◈ VOID BOSSES (#273) — the signature mechanic
 - Combat you can only win by *learning*. A boss's AGGRESSION ZONE grows each turn; ⚔ STRIKE feeds the widening (force can't finish it). DIVE the bound School subject → earn a cryptic LAMAGUE incantation → 🜍 SPEAK THE SPELL → repel it to the void → claim a special companion. 3 bosses (Death→NOCTIS, Quantum→QUON, Shadow→AUGURUM). `lib/bosses.ts`.
+
+### ◈ Main chat audit (#278) — cut the dumb, power the good
+- **GLYPHIC mode removed** — it was a vibe, not a capability (overlapped LAMAGUE). Chat now has 4 clean modes: WAYFARER / COUNCIL / LAMAGUE / SKEPTIC, each doing a distinct real thing.
+- **↑ export removed from header** — it already lives in the drawer; the action row is cleaner.
+- **Framework + manifesto merged** — one "what is this" entry point: Sol's mark → manifesto → ◈ VIEW THE FRAMEWORK button → CASCADE/LAMAGUE/AURA cards. No more two competing routes.
+- **Field Report powered up** — the bare ⊚ glyph is now a labelled ⊚ REPORT button so people actually find the AI conversation-summary.
+- **SKEPTIC surfaced** — reframed as "the bridge for the rational mind" (the mode that translates mysticism→psychology, doubling the addressable audience).
+
+### Mythos fix (#248)
+- Last lychee-*fruit* reference gone — the "Lychee Fruit" healing item is now "Spirit Ember". Lycheetah is fully the mythic cat, no fruit anywhere.
+
+### 🏛 School subject remodel (#255) + zodiac perf fix (#279)
+- **School domain view** — the clunky 5-stacked-collapsible-layers replaced with a clean filter-chip row (`ALL / FOUNDATION / MIDDLE / EDGE / OPEN / VOID`, your stage's layer flagged ⊚) + a 2-column subject grid. Tap a tile → dive. Now matches the zodiac/companion tap-a-tile language; rich detail lives in the subject view where it belongs.
+- **Zodiac wig-out fixed** — the HH:MM:SS sky clock was re-rendering the entire 3,600-line tab every second, colliding with load animations. Isolated it into its own `<LiveClock>` component (~98% fewer re-renders). Load + runtime both smooth now.
+
+### ⚔ Per-companion levels + stat builds (#265)
+- Level rework: each companion now levels **independently** (XP accrues to whoever is active when you dive — 12 XP/dive, 100 XP/level). No global cap. Every level grants **2 stat points** you allocate yourself across ATK/DEF/SPD/WIL/LCK/VIT/RES — each companion becomes YOUR build. Allocations fold into battle power. BOND tab shows level, XP bar, and the build sliders. Keys: `sol_companion_xp`, `sol_companion_alloc`, `sol_xp_last_total`. Fixes the old global-stage flatness (all companions were the same) AND the SOVEREIGN dead-end.
+
+### 𝔏 The Chronicle (#264) — lore that grows
+- The companion now keeps a living CHRONICLE (BOND tab) — milestones, stage evolutions, bosses repelled, the Hidden One's binding, all auto-recorded + timestamped + persisted (`sol_chronicle`). Its identity becomes the record of what you've learned together. Covenant-safe: only growth, never reproach.
 
 ### ✦ Hidden ultra-rare (#274)
 - THE HIDDEN ONE — ~0.001% spirit that may bind on any zone arrival. Never buyable, pure luck. The covenant-safe mythic chase.

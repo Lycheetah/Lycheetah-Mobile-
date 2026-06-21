@@ -476,6 +476,22 @@ Aesthetic: you speak in short, exact sentences. No warmth flourishes — this is
 
 No preamble. No sign-off. Maximum 3-5 sentences per turn.`;
 
+// Isolated clock — holds its own 1s tick so the whole zodiac tab doesn't re-render
+// every second (that collision with load animations was the "wig out"). #279
+function LiveClock({ color }: { color: string }) {
+  const [now, setNow] = React.useState(new Date());
+  React.useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <Text style={{ color: color + 'AA', fontSize: 12, fontFamily: mono, letterSpacing: 0.5 }}>
+      {now.getHours() >= 6 && now.getHours() < 20 ? '☀' : '☽'}{' '}
+      {String(now.getHours()).padStart(2,'0')}:{String(now.getMinutes()).padStart(2,'0')}:{String(now.getSeconds()).padStart(2,'0')}
+    </Text>
+  );
+}
+
 export default function ZodiacScreen() {
   const [birthData, setBirthData] = useState<BirthData | null>(null);
   const [editingBirth, setEditingBirth] = useState(false);
@@ -566,16 +582,11 @@ export default function ZodiacScreen() {
   const [cardLore, setCardLore] = useState<{ card: { n: string; up: string; rev: string }; reversed: boolean; position: string } | null>(null);
   const [focusMode, setFocusMode]                 = useState(false); // hides all meta, shows oracle only
   const [technoMode, setTechnoMode]               = useState(false); // technomantic lens on all readings
-  const [liveTime, setLiveTime] = useState(new Date());
   const [kpIndex, setKpIndex] = useState<number | null>(null);
   type WeatherData = { temp: number; code: number; condition: string; glyph: string; color: string; wind: number; humidity: number; city: string };
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [readingHistory, setReadingHistory] = useState<{ date: string; text: string }[]>([]);
   const [historyCollapsed, setHistoryCollapsed] = useState(true);
-  useEffect(() => {
-    const id = setInterval(() => setLiveTime(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
   useEffect(() => {
     (async () => {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -1559,11 +1570,8 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             <Text style={{ fontSize: 20, fontWeight: '700', color: '#EEEEF8', letterSpacing: 0.3, marginTop: 1,
               textShadowColor: ZODIAC_INDIGO + 'AA', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 }}>The Stars</Text>
           </View>
-          {/* Live clock */}
-          <Text style={{ color: ZODIAC_INDIGO + 'AA', fontSize: 12, fontFamily: mono, letterSpacing: 0.5 }}>
-            {liveTime.getHours() >= 6 && liveTime.getHours() < 20 ? '☀' : '☽'}{' '}
-            {String(liveTime.getHours()).padStart(2,'0')}:{String(liveTime.getMinutes()).padStart(2,'0')}:{String(liveTime.getSeconds()).padStart(2,'0')}
-          </Text>
+          {/* Live clock — isolated so its 1s tick doesn't re-render the whole tab (#279) */}
+          <LiveClock color={ZODIAC_INDIGO} />
         </View>
 
         {/* ── Row 2: Sun / Moon / Phase trio ── */}
@@ -2197,11 +2205,35 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             </View>
             {spreadReading ? (
               <View style={{ paddingTop: 14, borderTopWidth: 1, borderTopColor: ZODIAC_INDIGO + '33' }}>
-                {spreadReading.split('\n\n').filter(p => p.trim()).map((para, i, arr) => (
-                  <View key={i} style={{ marginBottom: i < arr.length - 1 ? 14 : 10, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: i === 0 ? ZODIAC_INDIGO : i === arr.length - 1 ? '#C8A96E' : ZODIAC_INDIGO + '44' }}>
-                    <Text style={{ color: i === 0 ? '#EEEEF8' : i === arr.length - 1 ? '#C8A96E' : SOL_THEME.text, fontSize: i === 0 ? 14 : 13, lineHeight: i === 0 ? 23 : 21, fontStyle: 'italic', fontWeight: i === 0 ? '600' : '400' }}>{para.trim()}</Text>
-                  </View>
-                ))}
+                {(() => {
+                  const POS = [
+                    { label: 'PAST',        glyph: '◷', col: '#8E7BD6' },
+                    { label: 'CHALLENGE',   glyph: '⚔', col: '#D67B8E' },
+                    { label: 'FOUNDATION',  glyph: '⊿', col: '#7BD6B0' },
+                    { label: 'NEAR FUTURE', glyph: '☽', col: ZODIAC_INDIGO },
+                    { label: 'OUTCOME',     glyph: '✦', col: '#C8A96E' },
+                  ];
+                  const paras = spreadReading.split('\n\n').filter(p => p.trim());
+                  return paras.map((para, i, arr) => {
+                    const pos = POS[i] ?? POS[POS.length - 1];
+                    const card = dailySpread?.[i];
+                    const last = i === arr.length - 1;
+                    return (
+                      <View key={i} style={{ marginBottom: i < arr.length - 1 ? 16 : 10 }}>
+                        {/* Position header — the ritual structure */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+                          <Text style={{ color: pos.col, fontSize: 13 }}>{pos.glyph}</Text>
+                          <Text style={{ color: pos.col, fontSize: 9, fontWeight: '700', letterSpacing: 2.5, fontFamily: mono }}>{pos.label}</Text>
+                          <View style={{ flex: 1, height: 1, backgroundColor: pos.col + '33' }} />
+                          {card && <Text style={{ color: pos.col + 'BB', fontSize: 8.5, fontStyle: 'italic', fontFamily: mono }}>{card.card?.n ?? ''}{card.reversed ? ' ⤬' : ''}</Text>}
+                        </View>
+                        <View style={{ paddingLeft: 21, borderLeftWidth: 1, borderLeftColor: pos.col + '44' }}>
+                          <Text style={{ color: last ? '#E8DCC0' : SOL_THEME.text, fontSize: 13, lineHeight: 21, fontStyle: 'italic' }}>{para.trim()}</Text>
+                        </View>
+                      </View>
+                    );
+                  });
+                })()}
                 <View style={{ alignItems: 'center', paddingTop: 8, marginBottom: 10 }}>
                   <Text style={{ color: ZODIAC_INDIGO + '55', fontSize: 9, letterSpacing: 3, fontFamily: mono }}>✦  ⊚  ✦</Text>
                   <Text style={{ color: ZODIAC_INDIGO + '44', fontSize: 8, fontStyle: 'italic', letterSpacing: 1, fontFamily: mono, marginTop: 4 }}>The thread is sealed.</Text>
@@ -2687,6 +2719,17 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
           <Text style={{ color: zonkInput.trim() ? ZONK_GOLD : SOL_THEME.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 2.5, fontFamily: mono }}>◬  ENTER THE ZONE</Text>
         </TouchableOpacity>
 
+        {/* Empty state — atmospheric, invites the first forge */}
+        {zonkLog.length === 0 && (
+          <View style={{ alignItems: 'center', paddingVertical: 22, gap: 9 }}>
+            <Text style={{ fontSize: 34, color: ZONK_GOLD + '2E' }}>◬</Text>
+            <Text style={{ color: ZONK_GOLD + 'AA', fontSize: 10, letterSpacing: 2, fontFamily: mono, fontWeight: '700' }}>THE SAND IS UNTURNED</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', lineHeight: 16, paddingHorizontal: 22, fontStyle: 'italic' }}>
+              Every pillar of truth was once a wild guess no one would say aloud. Throw the first one in. Most dissolve. The grain that survives is yours.
+            </Text>
+          </View>
+        )}
+
         {/* Log */}
         {zonkLog.length > 0 && (
           <View style={{ marginTop: 14 }}>
@@ -2863,7 +2906,16 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
           </>
         )}
         {psiLog.length === 0 && !showPsiForm && (
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, textAlign: 'center', paddingVertical: 8 }}>No sessions logged yet.</Text>
+          <View style={{ alignItems: 'center', paddingVertical: 26, gap: 10 }}>
+            <Text style={{ fontSize: 40, color: PSI_PURPLE + '33', fontFamily: mono }}>ψ</Text>
+            <Text style={{ color: PSI_PURPLE + 'AA', fontSize: 11, letterSpacing: 2, fontFamily: mono, fontWeight: '700' }}>THE RECORD IS EMPTY</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', lineHeight: 16, paddingHorizontal: 20, fontStyle: 'italic' }}>
+              Log an impression before you verify it. Over many sessions, the record either holds a signal — or it doesn't. That honesty is the practice.
+            </Text>
+            <TouchableOpacity onPress={() => setShowPsiForm(true)} style={{ marginTop: 4, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 9, borderWidth: 1, borderColor: PSI_PURPLE + '66', backgroundColor: PSI_PURPLE + '14' }}>
+              <Text style={{ color: PSI_PURPLE, fontSize: 11, fontWeight: '700', letterSpacing: 1 }}>+ FIRST SESSION</Text>
+            </TouchableOpacity>
+          </View>
         )}
         </View>
         )}

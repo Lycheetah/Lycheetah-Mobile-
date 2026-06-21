@@ -13,11 +13,30 @@ import WelcomeTour from '../../components/WelcomeTour';
 
 type IconProps = { color: string; focused: boolean };
 
-const TabIcon = ({ glyph, color }: { glyph: string; color: string }) => (
-  <Text style={{ fontSize: 20, color, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+// Hot-mysterious Lycheetah tab glow — the active glyph burns in its own hot color
+// against obsidian black. Each tab a distinct heat; the cat in the dark.
+const TabIcon = ({ glyph, color, focused, hot }: { glyph: string; color: string; focused?: boolean; hot?: string }) => (
+  <Text style={{
+    fontSize: focused ? 22 : 20,
+    color: focused && hot ? hot : color,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    textShadowColor: focused && hot ? hot : 'transparent',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: focused ? 12 : 0,
+  }}>
     {glyph}
   </Text>
 );
+
+// Per-tab hot signature colors — all in the hot/mysterious family, each distinct.
+const HOT = {
+  zodiac:    '#A45CFF',  // electric violet — the celestial
+  school:    '#C44BFF',  // hot amethyst — the mystic
+  sol:       '#FFB000',  // hot solar gold — the warm anchor
+  companion: '#FF2D78',  // HOT PINK — the Lycheetah signature, the mythic cat
+  sanctum:   '#FF3D6E',  // crimson-rose — the intimate, the blood
+  settings:  '#8B7BFF',  // cool periwinkle — the quiet edge
+};
 
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 const ACCENT = '#8855FF';
@@ -50,6 +69,18 @@ const HELP_SECTIONS = [
     body: 'The School, Gem Forge, Zodiac, and companion work without any key. A key unlocks AI conversation. Gemini is free: aistudio.google.com/apikey → Create API Key → paste in Settings → Provider Keys. Also supports OpenAI, Anthropic, DeepSeek, Kimi.' },
   { glyph: '⚙', title: 'SETTINGS', color: '#778899',
     body: 'Persona (Sol/Aura/Veyra/Magister), provider keys, display name, app mode (Seeker/Adept). Seeker mode uses warmer language; Adept mode uses more precise epistemic register. All preferences stored locally — nothing sent to servers.' },
+  { glyph: '⚔', title: 'BATTLE, PARTY & VOID BOSSES', color: '#FF6644',
+    body: 'In the Companion tab: ⚔ ENCOUNTER spins up a battle in your zone. STRIKE / DEFEND / SPELL / ITEM; weaken a foe then CAPTURE (◈) to add it to your MENAGERIE.\n\nPARTY: field up to 3 captured creatures (⚔ FIELD in the menagerie) — they add bonus damage to every strike.\n\nVOID BOSSES (BATTLE tab → ◈ VOID ENTITIES): 3 special bosses you can ONLY beat by learning. Their aggression zone grows; force can\'t finish them. Dive the bound School subject → earn a cryptic incantation → SPEAK THE SPELL → repel it and claim a special companion.\n\nGROWTH tab (△): each companion levels independently and earns stat points you allocate yourself. The Chronicle there records your whole journey.' },
+  { glyph: '🜍', title: 'THE LYCHEETAH TAROT', color: '#9945FF',
+    body: 'The Veil & Vein deck — 79 hand-made cards. Zodiac → 🜍 TAROT: browse the real art card-by-card or as a grid, plus the 22 Major + 56 Minor Arcana meanings. The Lycheetah is a mythic cat-spirit, not a fruit — the deck is its mythology. Two intertwining spirits: Veil (curiosity, blue-green) and Vein (want, blood-red).' },
+  { glyph: 'ψ', title: 'PSI LOG', color: '#B06BE0',
+    body: 'Zodiac → ψ PSI LOG. A space to record psi experiences — precognition, remote viewing, synchronicities, intuitive hits. Log what you sensed and what actually happened; over time you build your own evidence record. Tied to the Noetic Science lineage (Institute of Noetic Sciences / Dean Radin). Edge science, taken seriously, never overclaimed.' },
+  { glyph: '◬', title: 'ZONK ZONE', color: '#E8C76A',
+    body: 'Zodiac → ◬ ZONK ZONE. The speculative field — wild ideas, fringe theories, "what if" territory held loosely. A play space for thoughts that don\'t fit anywhere else yet. Marked clearly as speculation, never presented as fact. Where curiosity gets to be reckless.' },
+  { glyph: '⟟', title: 'SIGIL & GEM FORGE', color: '#CC88FF',
+    body: 'Zodiac → ⟟ SIGIL FORGE turns an intention into a living symbol (type it or draw it; FLUX renders the glyph). ◆ GEM FORGE turns a feeling/element into a personal talisman — Sol writes its invocation + care ritual and generates a photoreal gem. Both are yours to keep in your lexicon.' },
+  { glyph: '✧', title: 'VERAS — THE KNOWLEDGE ECONOMY', color: '#C9A84A',
+    body: 'Veras (✧) is the smallest indivisible unit of knowledge — proof that knowledge is flowing and valuable. You earn it by learning (journaling, dives). Today it accumulates alongside ⟡ Lumens.\n\nThe vision (coming): when you ADD a new subject to the School, the system silently watches real engagement. If people genuinely study what you brought, Veras fills your subject\'s value bucket — and at a proven-benefit threshold, you\'re rewarded at full parity with established subjects. No hype payouts, no gatekeepers — just demonstrated value.\n\nIts purpose: unveil hidden teachers. The minds who carry real insight but stay silent out of "who am I to teach this?" If people study what you bring, the School itself notices and rewards you. A fair % of every cycle is ring-fenced for giveback, so even free contributors can earn. Payment never buys a better mind — only rooms and standing.' },
   { glyph: '💚', title: 'SAFETY', color: '#44FF88',
     body: 'Sol never blocks conversation. Heavy school subjects (intensity 8+) trigger a gentle check-in before diving. The crisis support link at the bottom of this panel connects to Beyond Blue. All care features are always on, for every user.' },
 ];
@@ -128,14 +159,15 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           tabBarStyle: {
-            backgroundColor: SOL_THEME.surface,
-            borderTopColor: SOL_THEME.border,
+            backgroundColor: '#070509',          // obsidian — so the hot colors glow against black
+            borderTopColor: '#FF2D7822',          // hot-pink hairline
+            borderTopWidth: 1,
             height: Platform.OS === 'ios' ? 82 : 60,
             paddingBottom: Platform.OS === 'ios' ? 24 : 8,
           },
 
-          tabBarActiveTintColor: SOL_THEME.primary,
-          tabBarInactiveTintColor: SOL_THEME.textMuted,
+          tabBarActiveTintColor: HOT.companion,   // default hot pink (per-screen overrides below)
+          tabBarInactiveTintColor: '#55505E',     // dim violet-grey — recedes into the dark
           headerStyle: { backgroundColor: SOL_THEME.background },
           headerTintColor: SOL_THEME.primary,
           headerTitleStyle: {
@@ -177,13 +209,13 @@ export default function TabLayout() {
           },
         }}
       >
-        <Tabs.Screen name="zodiac" options={{ title: 'THE STARS', tabBarLabel: 'Zodiac', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="☽" color={color} /> }} />
-        <Tabs.Screen name="school" options={{ title: t('MYSTERY SCHOOL'), tabBarLabel: t('School'), tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="𝔏" color={color} /> }} />
-        <Tabs.Screen name="index" options={{ title: 'SOL', tabBarLabel: 'Sol', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊚" color={color} /> }} />
+        <Tabs.Screen name="zodiac" options={{ title: 'THE STARS', tabBarLabel: 'Zodiac', tabBarActiveTintColor: HOT.zodiac, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="☽" color={color} focused={focused} hot={HOT.zodiac} /> }} />
+        <Tabs.Screen name="school" options={{ title: t('MYSTERY SCHOOL'), tabBarLabel: t('School'), tabBarActiveTintColor: HOT.school, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="𝔏" color={color} focused={focused} hot={HOT.school} /> }} />
+        <Tabs.Screen name="index" options={{ title: 'SOL', tabBarLabel: 'Sol', tabBarActiveTintColor: HOT.sol, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊚" color={color} focused={focused} hot={HOT.sol} /> }} />
         <Tabs.Screen name="library" options={{ href: null, title: 'LIBRARY' }} />
-        <Tabs.Screen name="companion" options={{ title: 'COMPANION', tabBarLabel: 'Companion', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="✦" color={color} /> }} />
-        <Tabs.Screen name="sanctum" options={{ title: t('THE SANCTUM'), tabBarLabel: t('Sanctum'), tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⊼" color={color} /> }} />
-        <Tabs.Screen name="settings" options={{ title: 'SETTINGS', tabBarLabel: 'Settings', tabBarIcon: ({ color }: IconProps) => <TabIcon glyph="⚙" color={color} /> }} />
+        <Tabs.Screen name="companion" options={{ title: 'COMPANION', tabBarLabel: 'Companion', tabBarActiveTintColor: HOT.companion, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="✦" color={color} focused={focused} hot={HOT.companion} /> }} />
+        <Tabs.Screen name="sanctum" options={{ title: t('THE SANCTUM'), tabBarLabel: t('Sanctum'), tabBarActiveTintColor: HOT.sanctum, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊼" color={color} focused={focused} hot={HOT.sanctum} /> }} />
+        <Tabs.Screen name="settings" options={{ title: 'SETTINGS', tabBarLabel: 'Settings', tabBarActiveTintColor: HOT.settings, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⚙" color={color} focused={focused} hot={HOT.settings} /> }} />
         <Tabs.Screen name="codex" options={{ href: null, title: 'CODEX' }} />
         <Tabs.Screen name="customize" options={{ href: null, title: 'CUSTOMIZE' }} />
         <Tabs.Screen name="modes" options={{ href: null, title: 'FIELD' }} />

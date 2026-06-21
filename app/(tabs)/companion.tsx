@@ -514,7 +514,7 @@ function getItemEffect(item: { name: string; rarity: string }): string {
   const effects: Record<string, string> = {
     'Ember Root': '+8 ATK for next battle',
     'Void Shard': '+15 DEF for 3 battles',
-    'Lychee Fruit': 'Restores 30 HP',
+    'Spirit Ember': 'Restores 30 HP',
     'Storm Dust': '+12 SPD, causes first strike',
     'Obsidian Rune': '+20 WIL, improves dialogue quality',
     'Chaos Seed': 'Random stat +25 (rolled on use)',
@@ -2784,6 +2784,30 @@ function getLevel(xp: number) {
 function rnd<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
 // ─── Companion greetings — one per tab open, mood-matched, no AI call ──────────
+// Companion battle reactions (#245) — your companion speaks at the moments that matter.
+const COMPANION_VICTORY_LINES = [
+  'The field clears. We held.',
+  'Entropy yields. As it must.',
+  'Another pattern, understood and undone.',
+  'You fought well. I felt it.',
+  'The weight lifts. Onward.',
+  'Clean. The way is open again.',
+  'It returns to silence. We remain.',
+];
+const COMPANION_CAPTURE_LINES = [
+  'It joins us now. Bound, not broken.',
+  'A new voice for the menagerie.',
+  'What you understood, you kept.',
+  'It will fight beside us now.',
+  'Captured — and changed by the capture.',
+];
+const COMPANION_DEFEAT_LINES = [
+  'We fall back. Not down. Study, and return.',
+  'The field was not ready for us. It will be.',
+  'No shame in retreat — only in not returning.',
+  'We rest. We learn. We come again.',
+];
+
 const COMPANION_GREETINGS: Record<CompanionMood, string[]> = {
   dormant: [
     'You returned.',
@@ -3457,6 +3481,42 @@ export default function CompanionScreen() {
   const [liveLore,   setLiveLore]   = useState<{ text: string; subject: string; date: string }[]>([]);
   const [companionSpec, setCompanionSpec] = useState<CompanionSpec>(DEFAULT_SPEC);
 
+  // ── Per-companion levels + stat points (#265) — each companion is YOUR build ──
+  // XP accrues to whichever companion is active when you dive. Level grants points to spend.
+  const [companionXP, setCompanionXP]       = useState<Record<string, number>>({});
+  const [companionAlloc, setCompanionAlloc] = useState<Record<string, Partial<PlayerStats>>>({});
+  const STAT_KEYS: (keyof PlayerStats)[] = ['atk','def','spd','wil','lck','vit','res'];
+  const STAT_LABELS: Record<keyof PlayerStats, string> = { atk:'ATK', def:'DEF', spd:'SPD', wil:'WIL', lck:'LCK', vit:'VIT', res:'RES' };
+  const POINTS_PER_LEVEL = 2;
+  const XP_PER_LEVEL = 100;
+  const levelFromXP = (xp: number) => Math.floor(Math.max(0, xp) / XP_PER_LEVEL);
+  const allocSpent  = (a?: Partial<PlayerStats>) => a ? STAT_KEYS.reduce((s,k)=>s+(a[k]??0),0) : 0;
+  const pointsFree   = (sid: string) => levelFromXP(companionXP[sid] ?? 0) * POINTS_PER_LEVEL - allocSpent(companionAlloc[sid]);
+
+  const spendPoint = useCallback(async (sid: string, stat: keyof PlayerStats) => {
+    if (pointsFree(sid) <= 0) return;
+    setCompanionAlloc(prev => {
+      const cur = { ...(prev[sid] ?? {}) };
+      cur[stat] = (cur[stat] ?? 0) + 1;
+      const next = { ...prev, [sid]: cur };
+      AsyncStorage.setItem('sol_companion_alloc', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+    if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [companionXP, companionAlloc]);
+
+  // ── Living Chronicle (#264) — lore that GROWS from the user's real journey ──
+  const [chronicle, setChronicle] = useState<{ ts: number; glyph: string; text: string }[]>([]);
+  const addChronicle = useCallback(async (glyph: string, text: string) => {
+    setChronicle(prev => {
+      // De-dupe identical consecutive entries; cap at 60 most-recent.
+      if (prev[0]?.text === text) return prev;
+      const next = [{ ts: Date.now(), glyph, text }, ...prev].slice(0, 60);
+      AsyncStorage.setItem('sol_chronicle', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
   // ── Tarot ──────────────────────────────────────────────────────────────────
   const [tarotDraw,    setTarotDraw]    = useState<{ name:string; glyph:string; reversed:boolean }[] | null>(null);
   const [tarotReading, setTarotReading] = useState<string | null>(null);
@@ -3498,6 +3558,27 @@ export default function CompanionScreen() {
   const [autoMode,          setAutoMode]          = useState(false);
   const [menagerie,         setMenagerie]         = useState<Array<{ name: string; date: string; zone: string }>>([]);
   const [menagerieCollapsed, setMenagerieCollapsed] = useState(false);
+  // ── PARTY (#260) — up to 3 captured creatures auto-assist your strikes ──
+  const [party, setParty] = useState<string[]>([]);  // creature names, max 3
+  const PARTY_MAX = 3;
+  // A creature's assist damage = its enemy ATK stat × a study-depth multiplier (LQ-scaled).
+  const partyAssistFor = useCallback((name: string) => {
+    const def = getEnemyDef(name);
+    const depthMult = 0.5 + avgLQ * 0.6;   // 0.5 → 1.1 as your study deepens
+    return Math.max(2, Math.round(def.atk * 0.45 * depthMult));
+  }, [avgLQ]);
+  const partyAssistTotal = useCallback(() => party.reduce((s, n) => s + partyAssistFor(n), 0), [party, partyAssistFor]);
+  const toggleParty = useCallback(async (name: string) => {
+    setParty(prev => {
+      let next: string[];
+      if (prev.includes(name)) next = prev.filter(n => n !== name);
+      else if (prev.length >= PARTY_MAX) { showToast(`Party is full (${PARTY_MAX})`); return prev; }
+      else next = [...prev, name];
+      AsyncStorage.setItem('sol_party', JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+    if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
   const pathCeremonyAnim = useRef(new Animated.Value(0)).current;
   const scrollRef  = useRef<any>(null);
   const feedY      = useRef(0);
@@ -3617,9 +3698,10 @@ export default function CompanionScreen() {
         'cascade_library_v3','sol_companion_skin','sol_companion_battle','sol_companion_fed',
         'sol_companion_archetype','sol_premium','sol_companion_named','sol_companion_path',
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
-        'sol_companion_spec','sol_battle_wins','sol_cosmetics','sol_equipped_skin','sol_menagerie',
+        'sol_companion_spec','sol_battle_wins','sol_cosmetics','sol_equipped_skin','sol_menagerie','sol_party',
         'sol_coins','sol_veras','sol_shop_unlocks','sol_weapons','sol_equipped_weapon',
-        'sol_zone_unlocks','sol_dive_spent','sol_unlocked_companions','sol_boss_defeated',
+        'sol_zone_unlocks','sol_dive_spent','sol_unlocked_companions','sol_boss_defeated','sol_chronicle',
+        'sol_companion_xp','sol_companion_alloc','sol_xp_last_total',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -3713,6 +3795,8 @@ export default function CompanionScreen() {
       if (equippedSkinRaw && SKIN_IDS.includes(equippedSkinRaw)) setEquippedCompanionSkin(equippedSkinRaw);
       const menagerieRaw = get('sol_menagerie');
       if (menagerieRaw) { try { setMenagerie(JSON.parse(menagerieRaw)); } catch {} }
+      const partyRaw = get('sol_party');
+      if (partyRaw) { try { const a = JSON.parse(partyRaw); if (Array.isArray(a)) setParty(a.slice(0, 3)); } catch {} }
       const coinsRaw = get('sol_coins');
       if (coinsRaw) setCoins(parseInt(coinsRaw));
       const verasRaw = get('sol_veras');
@@ -3725,6 +3809,23 @@ export default function CompanionScreen() {
       if (diveSpentRaw) { const n = parseInt(diveSpentRaw); if (!isNaN(n)) setDiveSpent(n); }
       const bossDefRaw = get('sol_boss_defeated');
       if (bossDefRaw) { try { const arr = JSON.parse(bossDefRaw); if (Array.isArray(arr)) setBossDefeated(arr); } catch {} }
+      const chronRaw = get('sol_chronicle');
+      if (chronRaw) { try { const arr = JSON.parse(chronRaw); if (Array.isArray(arr)) setChronicle(arr); } catch {} }
+      // Per-companion levels (#265): load XP + allocations
+      let xpMap: Record<string, number> = {};
+      const xpRaw = get('sol_companion_xp');
+      if (xpRaw) { try { const o = JSON.parse(xpRaw); if (o && typeof o === 'object') xpMap = o; } catch {} }
+      const allocRaw = get('sol_companion_alloc');
+      if (allocRaw) { try { const o = JSON.parse(allocRaw); if (o && typeof o === 'object') setCompanionAlloc(o); } catch {} }
+      // Grant XP for dives done since last check, to the currently active companion.
+      const lastTotal = parseInt(get('sol_xp_last_total') ?? '0') || 0;
+      if (total > lastTotal) {
+        const gained = (total - lastTotal) * 12;   // 12 XP per dive
+        const cur = (get('sol_companion_skin') as SkinId) || activeSkin || 'solform';
+        xpMap = { ...xpMap, [cur]: (xpMap[cur] ?? 0) + gained };
+        await AsyncStorage.multiSet([['sol_companion_xp', JSON.stringify(xpMap)], ['sol_xp_last_total', String(total)]]);
+      }
+      setCompanionXP(xpMap);
       const unlockedCompRaw = get('sol_unlocked_companions');
       if (unlockedCompRaw) { try { const arr = JSON.parse(unlockedCompRaw); if (Array.isArray(arr)) setUnlockedCompanions(new Set(arr)); } catch {} }
       const shopUnlocksRaw = get('sol_shop_unlocks');
@@ -3763,7 +3864,12 @@ export default function CompanionScreen() {
       const invRawEarly: string[] = get('sol_inventory') ? JSON.parse(get('sol_inventory')!) : [];
       const statsRelic = applyRelicBonuses(baseStats, earned, invRawEarly);
       const savedNodes: string[] = get('sol_skill_nodes') ? JSON.parse(get('sol_skill_nodes')!) : ['awakening'];
-      const { stats, tokenBonus: skillTkn } = applySkillBonuses(statsRelic, savedNodes);
+      const { stats: skillStats, tokenBonus: skillTkn } = applySkillBonuses(statsRelic, savedNodes);
+      // Per-companion allocated stat points (#265) — fold in this companion's build.
+      const curSkin = (get('sol_companion_skin') as SkinId) || activeSkin || 'solform';
+      const myAlloc: Partial<PlayerStats> = (() => { try { const o = JSON.parse(get('sol_companion_alloc') ?? '{}'); return o[curSkin] ?? {}; } catch { return {}; } })();
+      const stats = { ...skillStats } as PlayerStats;
+      for (const k of STAT_KEYS) stats[k] = (stats[k] ?? 0) + (myAlloc[k] ?? 0);
       setUnlockedNodes(savedNodes);
       setSkillTokenBonus(skillTkn);
 
@@ -3966,6 +4072,7 @@ export default function CompanionScreen() {
     const seen: string[] = raw ? JSON.parse(raw) : [];
     if (seen.includes(id)) return;
     await AsyncStorage.setItem('sol_companion_milestones', JSON.stringify([...seen, id]));
+    addChronicle(glyph, title);   // every milestone becomes a permanent chronicle entry (#264)
     setMilestone({ glyph, title, body });
     milestoneAnim.setValue(0);
     Animated.spring(milestoneAnim, { toValue:1, useNativeDriver:true, tension:60, friction:8 }).start();
@@ -4389,12 +4496,16 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       const critRoll = Math.random() * 100 < playerStats.lck / 4;
       const critMult = critRoll ? 1.5 : 1;
       dmg = Math.round((attackPower + variance) * chaosMult * critMult);
+      // Party auto-assist (#260) — each fielded creature chips in bonus damage.
+      const assist = partyAssistTotal();
+      dmg += assist;
       chaosNote = chaosRoll ? ` ✧CHAOS×${chaosMult.toFixed(1)}` : critRoll ? ' ✦CRIT' : '';
       newEnemyHP = Math.max(0, battle.entityHP - dmg);
       const _af = ['bites deep','connects','tears through','lands clean','strikes home'];
-      if (critRoll) logEntry = `⚔ ✦ CRIT — ${dmg} damage.`;
-      else if (chaosRoll) logEntry = `⚔ ✧ CHAOS ×${chaosMult.toFixed(1)} — ${dmg} damage.`;
-      else logEntry = `⚔ Strike ${_af[Math.floor(Math.random()*_af.length)]}. ${dmg} damage.`;
+      const assistNote = assist > 0 ? ` ↳ party +${assist}` : '';
+      if (critRoll) logEntry = `⚔ ✦ CRIT — ${dmg} damage.${assistNote}`;
+      else if (chaosRoll) logEntry = `⚔ ✧ CHAOS ×${chaosMult.toFixed(1)} — ${dmg} damage.${assistNote}`;
+      else logEntry = `⚔ Strike ${_af[Math.floor(Math.random()*_af.length)]}. ${dmg} damage.${assistNote}`;
     } else if (action === 'defend') {
       newDefending = true;
       newShielded = true;
@@ -4605,6 +4716,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     if (won) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 200);
+      // Companion reacts to the victory (#245)
+      setTimeout(() => setPhrase(rnd(COMPANION_VICTORY_LINES)), 600);
 
       // Track battle wins + award combat relics
       const winsRaw = await AsyncStorage.getItem('sol_battle_wins');
@@ -4684,7 +4797,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         setPhrase(archetype.phrases.lit[Math.floor(Math.random() * archetype.phrases.lit.length)]);
       }, 3500);
     } else if (newPlayerHP === 0) {
-      setPhrase('You fall. The field resets.');
+      setPhrase(rnd(COMPANION_DEFEAT_LINES));
       setTimeout(async () => {
         const reset = freshWave(1);
         setBattle(reset);
@@ -4758,6 +4871,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(next));
       setPhrase(already ? `◈ ${battle.entityName} already bound` : `◈ ${battle.entityName} is bound to you`);
       showToast(already ? `${battle.entityName} already in MENAGERIE` : `${battle.entityName} captured!`);
+      if (!already) { addChronicle('◈', `Captured ${battle.entityName} and bound it to the menagerie.`); setTimeout(() => setPhrase(rnd(COMPANION_CAPTURE_LINES)), 500); }
     } else {
       const failLine = CAPTURE_FAIL_LINES[Math.floor(Math.random() * CAPTURE_FAIL_LINES.length)];
       // Failed capture — enemy retaliates
@@ -4933,7 +5047,9 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     setUnlockedCompanions(nextSet);
     await AsyncStorage.multiSet([['sol_dive_spent', String(nextSpent)], ['sol_unlocked_companions', JSON.stringify([...nextSet])]]);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    showToast(`✦ ${COMPANION_LORE[sid]?.name ?? SKINS[sid].name} unlocked!`);
+    const cnm = COMPANION_LORE[sid]?.name ?? SKINS[sid].name;
+    showToast(`✦ ${cnm} unlocked!`);
+    addChronicle('✦', `Earned ${cnm} with ${cost} dives of study.`);
     return true;
   };
 
@@ -4983,6 +5099,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     const nd = [...bossDefeated, activeBoss.id];
     setBossDefeated(nd);
     await AsyncStorage.setItem('sol_boss_defeated', JSON.stringify(nd));
+    addChronicle(activeBoss.glyph, `Repelled ${activeBoss.name} by learning ${activeBoss.boundSubject}. ${activeBoss.rewardName} answered the call.`);
     showToast(`✦ ${activeBoss.rewardName} unlocked!`);
   };
 
@@ -5023,6 +5140,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           await AsyncStorage.setItem('sol_unlocked_companions', JSON.stringify([...ns]));
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 200);
+          addChronicle('✦', 'THE HIDDEN ONE appeared — a 0.001% spirit chose to bind. Against all odds.');
           showToast('✦✦✦ THE HIDDEN ONE APPEARS — a 0.001% spirit binds to you ✦✦✦');
         }, 900);
       }
@@ -5221,8 +5339,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         {([
           { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
           { id:'companion' as const, label:'⊛',  name:'COMPANION' },
-          { id:'bond'      as const, label:'△',  name:'SKILL'     },
-          { id:'field'     as const, label:'◉',  name:'FIELD'     },
+          { id:'bond'      as const, label:'△',  name:'GROWTH'    },
+          { id:'field'     as const, label:'◉',  name:'QUEST'     },
           { id:'talk'      as const, label:'✦',  name:'TALK'      },
           { id:'shop'      as const, label:'⟡',  name:'SHOP'      },
         ]).map(t => {
@@ -7144,6 +7262,30 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
               <Text style={{ color:'#333344', fontSize:11 }}>{menagerieCollapsed ? '▶' : '▼'}</Text>
             </TouchableOpacity>
 
+            {/* ── ACTIVE PARTY (#260) — your fielded squad assists every strike ── */}
+            {!menagerieCollapsed && menagerie.length > 0 && (
+              <View style={{ marginBottom:14, padding:12, borderRadius:12, borderWidth:1, borderColor:'#44CC8844', backgroundColor:'#44CC880A' }}>
+                <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: party.length > 0 ? 9 : 0 }}>
+                  <Text style={{ color:'#44CC88', fontSize:9, fontFamily:mono, letterSpacing:1.5, fontWeight:'700' }}>⚔ YOUR PARTY · {party.length}/{PARTY_MAX}</Text>
+                  {party.length > 0 && <Text style={{ color:'#44CC88', fontSize:10, fontFamily:mono, fontWeight:'700' }}>+{partyAssistTotal()} / strike</Text>}
+                </View>
+                {party.length === 0 ? (
+                  <Text style={{ color:'#556655', fontSize:9, fontFamily:mono, lineHeight:14 }}>Tap ⚔ FIELD on a captured creature below — your party adds bonus damage to every attack in battle.</Text>
+                ) : (
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                    {party.map(n => (
+                      <TouchableOpacity key={n} onPress={() => toggleParty(n)} activeOpacity={0.8}
+                        style={{ flexDirection:'row', alignItems:'center', gap:5, paddingHorizontal:8, paddingVertical:5, borderRadius:8, borderWidth:1, borderColor:'#44CC8855', backgroundColor:'#44CC8814' }}>
+                        <Text style={{ color:'#AADDBB', fontSize:9, fontFamily:mono, fontWeight:'700' }}>{n}</Text>
+                        <Text style={{ color:'#44CC88', fontSize:8, fontFamily:mono }}>+{partyAssistFor(n)}</Text>
+                        <Text style={{ color:'#44CC8888', fontSize:9 }}>✕</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
             {!menagerieCollapsed && (
               menagerie.length === 0 ? (
                 <View style={{ paddingVertical:28, alignItems:'center', gap:8 }}>
@@ -7195,8 +7337,19 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                           </View>
                           <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{entry.date}</Text>
                         </View>
-                        {/* Index */}
-                        <Text style={{ color:'#1A1A22', fontSize:10, fontFamily:mono }}>#{menagerie.length - idx}</Text>
+                        {/* Field-in-party toggle (#260) */}
+                        {(() => {
+                          const inParty = party.includes(entry.name);
+                          const assist = partyAssistFor(entry.name);
+                          return (
+                            <TouchableOpacity onPress={() => toggleParty(entry.name)} activeOpacity={0.8}
+                              style={{ paddingHorizontal:9, paddingVertical:7, borderRadius:9, borderWidth:1,
+                                borderColor: inParty ? '#44CC88' : '#FF664455', backgroundColor: inParty ? '#44CC8818' : '#FF664410', alignItems:'center', minWidth:54 }}>
+                              <Text style={{ color: inParty ? '#44CC88' : '#FF6644', fontSize:9, fontFamily:mono, fontWeight:'700' }}>{inParty ? '◈ FIELDED' : '⚔ FIELD'}</Text>
+                              <Text style={{ color: inParty ? '#44CC88' : '#88667A', fontSize:8, fontFamily:mono, marginTop:1 }}>+{assist}</Text>
+                            </TouchableOpacity>
+                          );
+                        })()}
                       </View>
                     );
                   })}
@@ -7213,6 +7366,79 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'bond' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:12 }}>
+
+          {/* ── COMPANION LEVEL + STAT BUILD (#265) ── */}
+          {(() => {
+            const sid = (equippedCompanionSkin ?? activeSkin) as string;
+            const xp = companionXP[sid] ?? 0;
+            const lvl = levelFromXP(xp);
+            const intoLevel = xp % XP_PER_LEVEL;
+            const free = pointsFree(sid);
+            const alloc = companionAlloc[sid] ?? {};
+            const nm = COMPANION_LORE[sid as SkinId]?.name ?? SKINS[sid as SkinId]?.name ?? 'COMPANION';
+            const col = SKINS[sid as SkinId]?.color ?? '#C49A3C';
+            return (
+              <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: col+'44', backgroundColor: col+'0A' }}>
+                <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                  <Text style={{ color: col, fontSize:10, fontFamily:mono, letterSpacing:1.5, fontWeight:'700' }}>{nm}</Text>
+                  <Text style={{ color: col, fontSize:11, fontFamily:mono, fontWeight:'700' }}>Lv.{lvl}</Text>
+                </View>
+                {/* XP bar */}
+                <View style={{ height:6, borderRadius:3, backgroundColor:'#1A1A2A', overflow:'hidden', marginBottom:4 }}>
+                  <View style={{ height:6, width:`${(intoLevel/XP_PER_LEVEL)*100}%` as any, backgroundColor: col, borderRadius:3 }} />
+                </View>
+                <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:10 }}>{intoLevel}/{XP_PER_LEVEL} XP to Lv.{lvl+1} · earns 12 XP per dive while active</Text>
+
+                {free > 0 && (
+                  <Text style={{ color: col, fontSize:9, fontFamily:mono, fontWeight:'700', marginBottom:8 }}>✦ {free} POINT{free>1?'S':''} TO SPEND — build your companion</Text>
+                )}
+                <View style={{ gap:6 }}>
+                  {STAT_KEYS.map(k => {
+                    const v = alloc[k] ?? 0;
+                    return (
+                      <View key={k} style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                        <Text style={{ color:'#9AA4BC', fontSize:9, fontFamily:mono, width:30 }}>{STAT_LABELS[k]}</Text>
+                        <View style={{ flex:1, flexDirection:'row', gap:2 }}>
+                          {Array.from({ length:10 }).map((_, i) => (
+                            <View key={i} style={{ flex:1, height:7, borderRadius:2, backgroundColor: i < v ? col : col+'1A' }} />
+                          ))}
+                        </View>
+                        <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, width:18, textAlign:'center' }}>+{v}</Text>
+                        <TouchableOpacity onPress={() => spendPoint(sid, k)} disabled={free<=0}
+                          style={{ width:24, height:24, borderRadius:7, alignItems:'center', justifyContent:'center', borderWidth:1,
+                            borderColor: free>0 ? col+'88' : '#33384A', backgroundColor: free>0 ? col+'1A' : 'transparent' }}>
+                          <Text style={{ color: free>0 ? col : '#444', fontSize:13, fontWeight:'700' }}>+</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+                <Text style={{ color:'#44404F', fontSize:7.5, fontFamily:mono, marginTop:9, textAlign:'center' }}>Each companion keeps its own level + build. Switch freely — they grow as you use them.</Text>
+              </View>
+            );
+          })()}
+
+          {/* ── THE CHRONICLE (#264) — lore that grows from your real journey ── */}
+          {chronicle.length > 0 && (
+            <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor: skin.color+'08' }}>
+              <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:2 }}>𝔏 THE CHRONICLE</Text>
+              <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:11 }}>Your companion remembers everything you've earned together.</Text>
+              <View style={{ gap:9 }}>
+                {chronicle.slice(0, 12).map((c, i) => (
+                  <View key={c.ts + '_' + i} style={{ flexDirection:'row', gap:9, alignItems:'flex-start' }}>
+                    <Text style={{ fontSize:13, color: skin.color, marginTop:1, width:18, textAlign:'center' }}>{c.glyph}</Text>
+                    <View style={{ flex:1 }}>
+                      <Text style={{ color:'#C8C4D8', fontSize:11.5, lineHeight:16 }}>{c.text}</Text>
+                      <Text style={{ color:'#44404F', fontSize:7.5, fontFamily:mono, marginTop:2 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric' })}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              {chronicle.length > 12 && (
+                <Text style={{ color: skin.color+'88', fontSize:8, fontFamily:mono, marginTop:10, textAlign:'center' }}>+ {chronicle.length - 12} more chapters</Text>
+              )}
+            </View>
+          )}
 
           {/* ── SKILL TREE ──────────────────────────────────────────────────── */}
           {(() => {
@@ -7575,6 +7801,38 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       {activeTab === 'field' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
 
+          {/* ── QUESTS (hero — the unique value of this tab) ─────── */}
+          <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <Text style={{ color:color, fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>◉ QUESTS</Text>
+              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono }}>{quests.filter(q=>q.check(questData)).length}/{quests.length} complete</Text>
+            </View>
+            {(() => {
+              const done = quests.filter(q=>q.check(questData)).length;
+              return (
+                <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden', marginBottom:10 }}>
+                  <View style={{ height:3, backgroundColor:done===quests.length?'#44CC88':color, width:`${quests.length>0?(done/quests.length)*100:0}%` as any, borderRadius:2 }} />
+                </View>
+              );
+            })()}
+            <View style={{ gap:5 }}>
+              {quests.map(q => {
+                const done = q.check(questData);
+                return (
+                  <View key={q.id} style={{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1,
+                    borderColor:done?color+'44':'#1A1A26', backgroundColor:done?color+'08':'transparent' }}>
+                    <Text style={{ color:done?color:'#333344', fontSize:13 }}>{done?'✓':'○'}</Text>
+                    <View style={{ flex:1 }}>
+                      <Text style={{ color:done?color:SOL_THEME.textMuted, fontSize:11, fontWeight:done?'700':'400' }}>{q.label}</Text>
+                      {!done && <Text style={{ color:'#333344', fontSize:9, marginTop:1 }}>{q.desc}</Text>}
+                    </View>
+                    <Text style={{ color:done?color:'#333344', fontSize:11, fontWeight:'700', fontFamily:mono }}>+{q.xp}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           {/* ── Stat grid ──────────────────────────────────────── */}
           <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
             <TouchableOpacity onPress={() => setStatsCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: statsCollapsed ? 0 : 8 }}>
@@ -7584,7 +7842,6 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             {!statsCollapsed && ([
               { glyph:'◈', label:'LQ SCORE',      value:`${(avgLQ*100).toFixed(0)}%` },
               { glyph:'⊹', label:'TOTAL DIVES',    value:`${totalDives}` },
-              { glyph:'✦', label:'CURRENT STAGE',  value:`${stageData?.name ?? '—'} (${stage})` },
               { glyph:'◦', label:'STREAK',         value:`${streak} day${streak!==1?'s':''}` },
             ] as const).map(({ glyph, label, value }) => (
               <View key={label} style={{ flexDirection:'row', alignItems:'center', paddingVertical:5, gap:10 }}>
@@ -7653,41 +7910,6 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           </View>
 
 
-          {/* Quests — chip format */}
-          <View style={{ marginBottom:14 }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>QUESTS</Text>
-              <Text style={{ color:'#333344', fontSize:9, fontFamily:mono }}>{quests.filter(q=>q.check(questData)).length}/{quests.length}</Text>
-            </View>
-            {/* overall progress bar */}
-            {(() => {
-              const done = quests.filter(q=>q.check(questData)).length;
-              return (
-                <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden', marginBottom:10 }}>
-                  <View style={{ height:3, backgroundColor:done===quests.length?'#44CC88':color, width:`${quests.length>0?(done/quests.length)*100:0}%` as any, borderRadius:2 }} />
-                </View>
-              );
-            })()}
-            {/* Quest chips */}
-            <View style={{ gap:5 }}>
-              {quests.map(q => {
-                const done = q.check(questData);
-                return (
-                  <View key={q.id} style={{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1,
-                    borderColor:done?color+'44':'#1A1A26', backgroundColor:done?color+'08':'transparent' }}>
-                    <Text style={{ color:done?color:'#333344', fontSize:13 }}>{done?'✓':'○'}</Text>
-                    <View style={{ flex:1 }}>
-                      <Text style={{ color:done?color:SOL_THEME.textMuted, fontSize:11, fontWeight:done?'700':'400' }}>{q.label}</Text>
-                      {!done && <Text style={{ color:'#333344', fontSize:9, marginTop:1 }}>{q.desc}</Text>}
-                    </View>
-                    <Text style={{ color:done?color:'#333344', fontSize:11, fontWeight:'700', fontFamily:mono }}>+{q.xp}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-
-
         </View>
       )}
 
@@ -7710,8 +7932,55 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             </View>
           </View>
 
-          {/* FEATURED COMPANIONS shop removed — those were reused-model placeholders.
-              Mac to specify which dive-locked companions move to shop (with unique art). #272 */}
+          {/* ── TODAY'S FORGE (#261) — rotating daily cosmetics, fresh every day ── */}
+          {(() => {
+            // Deterministic daily pick of 3 buyable (LEGENDARY/SPECTRAL/SECRET) cosmetics with art.
+            const pool = ALL_COSMETIC_ITEMS.filter(c => (c.rarity === 'LEGENDARY' || c.rarity === 'SPECTRAL' || c.rarity === 'SECRET') && c.file);
+            if (pool.length === 0) return null;
+            const featured = [...pool]
+              .sort((a, b) => ((DAY_SEED * 53 + a.id.length * 11) % 211) - ((DAY_SEED * 53 + b.id.length * 11) % 211))
+              .slice(0, 3);
+            const msToMidnight = 86400000 - (Date.now() % 86400000);
+            const hrs = Math.floor(msToMidnight / 3600000);
+            const mins = Math.floor((msToMidnight % 3600000) / 60000);
+            const PRICE: Record<string, number> = { LEGENDARY: 150, SPECTRAL: 250, SECRET: 400 };
+            return (
+              <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C49A3C44', backgroundColor:'#C49A3C08' }}>
+                <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <Text style={{ color:'#E8C76A', fontSize:10, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>⟡ TODAY'S FORGE</Text>
+                  <Text style={{ color:'#C49A3C99', fontSize:8, fontFamily:mono }}>⟳ resets {hrs}h {mins}m</Text>
+                </View>
+                <View style={{ flexDirection:'row', gap:8 }}>
+                  {featured.map(c => {
+                    const owned = shopUnlocks.includes(c.id);
+                    const price = PRICE[c.rarity] ?? 200;
+                    const rc = RARITY_COLOR[c.rarity];
+                    const canAfford = coins >= price;
+                    return (
+                      <TouchableOpacity key={c.id} activeOpacity={owned ? 1 : 0.8} disabled={owned}
+                        onPress={async () => {
+                          if (owned) return;
+                          if (!canAfford) { showToast(`Need ${price - coins} more ⟡`); return; }
+                          const nextCoins = coins - price; setCoins(nextCoins);
+                          const nu = [...shopUnlocks, c.id]; setShopUnlocks(nu);
+                          await AsyncStorage.multiSet([['sol_coins', String(nextCoins)], ['sol_shop_unlocks', JSON.stringify(nu)]]);
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          showToast(`${c.name} forged!`);
+                        }}
+                        style={{ flex:1, borderRadius:10, borderWidth:1, borderColor: rc+'55', backgroundColor: rc+'0C', overflow:'hidden', alignItems:'center', paddingBottom:8 }}>
+                        {c.file ? <Image source={c.file as any} style={{ width:'100%', height:62, opacity: owned ? 0.4 : 1 }} resizeMode="contain" />
+                                : <View style={{ width:'100%', height:62, alignItems:'center', justifyContent:'center' }}><Text style={{ color:rc, fontSize:24 }}>{c.glyph}</Text></View>}
+                        <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700', marginTop:4, textAlign:'center', paddingHorizontal:2 }} numberOfLines={1}>{c.name}</Text>
+                        <Text style={{ color: owned ? '#44CC88' : canAfford ? '#C49A3C' : '#666677', fontSize:8, fontFamily:mono, fontWeight:'700', marginTop:3 }}>
+                          {owned ? 'OWNED ✓' : `⟡ ${price}`}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            );
+          })()}
 
           {/* ── COSMETICS — HALOS ─────────────────────────────────────────── */}
           <TouchableOpacity onPress={() => toggleShopSection('halos')} activeOpacity={0.7} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: shopSections.halos ? 6 : 4 }}>

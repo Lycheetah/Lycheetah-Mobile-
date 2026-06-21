@@ -348,6 +348,7 @@ export default function MysterySchoolScreen() {
   const [covenantData, setCovenantData] = useState<{ text: string; sealedAt: number; revisitedAt?: number } | null>(null);
   const [covenantRevisit, setCovenantRevisit] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
+  const [layerFilter, setLayerFilter] = useState<SchoolLayer | 'ALL'>('ALL'); // #255 subject grid filter
   const [subjectNotes, setSubjectNotes] = useState<Record<string, string>>({});
   const [schoolEchoes, setSchoolEchoes] = useState<Record<string, { id: string; date: string; text: string; source?: string }[]>>({});
   const [subjectQuestions, setSubjectQuestions] = useState<Record<string, string[]>>({});
@@ -443,6 +444,8 @@ export default function MysterySchoolScreen() {
   const [savedCollapsed, setSavedCollapsed] = useState(true);
   const [spiralCollapsed, setSpiralCollapsed] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [schoolTodayOpen, setSchoolTodayOpen] = useState(false); // #255b — collapse the home contextual stack so DOMAINS lead
+  const [startHereMin, setStartHereMin] = useState(false);        // #255e — START HERE minimizable beneath the tools grid
   const [classroomClosedIds, setClassroomClosedIds] = useState<Set<string>>(new Set(MYSTERY_SCHOOL_DOMAINS.map(d => d.id)));
   const [closedLayers, setClosedLayers] = useState<Set<string>>(new Set());
   const [subjectRatings, setSubjectRatings] = useState<Record<string, number>>({});
@@ -673,11 +676,11 @@ export default function MysterySchoolScreen() {
         if (raw) { try { setForgeLexicon(JSON.parse(raw)); } catch {} }
       });
 
-      // Covenant check — seal on first visit, revisit after 90 days
+      // Covenant — NO LONGER auto-fires on first visit (#255d). The Open Gate: the school
+      // never ambushes a newcomer with a forced-intention modal before they can browse.
+      // The 90-day revisit still surfaces for those who DID seal one. Sealing is now opt-in.
       AsyncStorage.getItem('sol_covenant').then(covenantRaw => {
-        if (!covenantRaw) {
-          setTimeout(() => setCovenantModal('seal'), 1800);
-        } else {
+        if (covenantRaw) {
           try {
             const data = JSON.parse(covenantRaw);
             setCovenantData(data);
@@ -4629,41 +4632,60 @@ REJECTED = fails a core test — be direct about which one and why.`;
               </View>
             )}
 
-            {/* ── QUICK NAV ─────────────────────────────────────────────── */}
-            <View style={{ flexDirection: 'row', gap: 6, marginBottom: 14 }}>
-              <TouchableOpacity onPress={() => setSchoolView('curriculum')}
-                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.primary + '55', backgroundColor: SOL_THEME.primary + '0E', alignItems: 'center', gap: 4 }}>
-                <Text style={{ color: SOL_THEME.primary, fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>◫</Text>
-                <Text style={{ color: SOL_THEME.primary, fontSize: 8, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>SYLLABUS</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={async () => {
-                  const allSubjects = MYSTERY_SCHOOL_DOMAINS.flatMap(d => d.subjects.map(s => ({ subject: s, domain: d })));
-                  const unstudied = allSubjects.filter(({ subject }) => !studiedSubjects.has(subject.name));
-                  const pool = unstudied.length > 0 ? unstudied : allSubjects;
-                  const pick = pool[Math.floor(Math.random() * pool.length)];
-                  if (pick) { setSelectedDomain(pick.domain); await openSubjectDetail(pick.subject, pick.domain); }
-                }}
-                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.headmaster + '55', backgroundColor: SOL_THEME.headmaster + '0E', alignItems: 'center', gap: 4 }}>
-                <Text style={{ color: SOL_THEME.headmaster, fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>◈</Text>
-                <Text style={{ color: SOL_THEME.headmaster, fontSize: 8, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>RANDOM</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push('/library')}
-                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: '#4A9EFF44', backgroundColor: '#4A9EFF0A', alignItems: 'center', gap: 4 }}>
-                <Text style={{ color: '#4A9EFF', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>◬</Text>
-                <Text style={{ color: '#4A9EFF', fontSize: 8, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>LIBRARY</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={async () => { await AsyncStorage.setItem('codex_open_domains', 'true'); router.push('/(tabs)/codex'); }}
-                style={{ flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: '#C8A96E44', backgroundColor: '#C8A96E0A', alignItems: 'center', gap: 4 }}>
-                <Text style={{ color: '#C8A96E', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>𝔏</Text>
-                <Text style={{ color: '#C8A96E', fontSize: 8, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>CODEX</Text>
-              </TouchableOpacity>
-            </View>
+            {/* ── THE TOOLS — one clean uniform button grid (#255c) ── */}
+            {(() => {
+              const SMONO = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+              const randomDive = async () => {
+                const allSubjects = MYSTERY_SCHOOL_DOMAINS.flatMap(d => d.subjects.map(s => ({ subject: s, domain: d })));
+                const unstudied = allSubjects.filter(({ subject }) => !studiedSubjects.has(subject.name));
+                const pool = unstudied.length > 0 ? unstudied : allSubjects;
+                const pick = pool[Math.floor(Math.random() * pool.length)];
+                if (pick) { setSelectedDomain(pick.domain); await openSubjectDetail(pick.subject, pick.domain); }
+              };
+              const TOOLS: { glyph: string; label: string; color: string; onPress: () => void; badge?: string }[] = [
+                { glyph: '◫', label: 'SYLLABUS', color: SOL_THEME.primary,    onPress: () => setSchoolView('curriculum') },
+                { glyph: '◈', label: 'RANDOM',   color: SOL_THEME.headmaster, onPress: randomDive },
+                { glyph: '◬', label: 'LIBRARY',  color: '#4A9EFF',            onPress: () => router.push('/library') },
+                { glyph: '𝔏', label: 'CODEX',    color: '#C8A96E',            onPress: async () => { await AsyncStorage.setItem('codex_open_domains', 'true'); router.push('/(tabs)/codex'); } },
+                { glyph: '⌘', label: 'MYCELIUM', color: '#2ECC71',            onPress: () => setSchoolView('mycelium') },
+                { glyph: '◈', label: 'TIME BRAID', color: '#4ECDC4',          onPress: () => { setTimeBraidView('list'); setSchoolView('time-braiding'); }, badge: timeBraidDue.length > 0 ? String(timeBraidDue.length) : undefined },
+                { glyph: '⟟', label: 'LAMAGUE',  color: '#E8D4A0',            onPress: () => { setGlyphSearch(''); setGlyphExpandedId(null); setLamagueSection('glyphs'); setSchoolView('lamague'); } },
+                { glyph: '✦', label: 'SCRIPTORIUM', color: '#B06BE0',        onPress: () => setSchoolView('scriptorium') },
+                // Depth tools
+                { glyph: '◇', label: 'DIVE LOG', color: '#7ED6DF',            onPress: () => setSchoolView('dive-log') },
+                { glyph: '⟁', label: 'SIGIL',    color: '#CC88FF',            onPress: () => setSchoolView('sigil') },
+                { glyph: '☉', label: 'WORLD',    color: '#F5A623',            onPress: () => setSchoolView('world') },
+                { glyph: '◉', label: 'SPIRAL',   color: '#FF6B9D',            onPress: () => setSchoolView('spiral') },
+              ];
+              return (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {TOOLS.map(tool => (
+                    <TouchableOpacity key={tool.label} onPress={tool.onPress} activeOpacity={0.78}
+                      style={{ width: '23.5%', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: tool.color + '44', backgroundColor: tool.color + '0C', alignItems: 'center', gap: 5 }}>
+                      <View>
+                        <Text style={{ color: tool.color, fontSize: 15, fontFamily: SMONO }}>{tool.glyph}</Text>
+                        {tool.badge && (
+                          <View style={{ position: 'absolute', top: -4, right: -10, minWidth: 14, height: 14, borderRadius: 7, backgroundColor: tool.color, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
+                            <Text style={{ color: '#000', fontSize: 8, fontWeight: '800', fontFamily: SMONO }}>{tool.badge}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={{ color: tool.color, fontSize: 7.5, fontWeight: '700', fontFamily: SMONO, letterSpacing: 0.5 }} numberOfLines={1}>{tool.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
+            })()}
 
-            {/* ── TODAY'S SUGGESTION / EMPTY STATE ──────────────────────── */}
-            {dailySuggestion && totalStudied === 0 && (
+            {/* ── START HERE — minimizable, sits beneath the tools grid (#255e) ── */}
+            {dailySuggestion && totalStudied === 0 && startHereMin && (
+              <TouchableOpacity onPress={() => setStartHereMin(false)} activeOpacity={0.7}
+                style={{ marginBottom: 14, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: dailySuggestion.domain.color + '33', backgroundColor: dailySuggestion.domain.color + '0A', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text style={{ color: dailySuggestion.domain.color, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1.5, fontWeight: '700' }}>{dailySuggestion.domain.glyph} START HERE</Text>
+                <Text style={{ color: dailySuggestion.domain.color + 'AA', fontSize: 10 }}>▸ open</Text>
+              </TouchableOpacity>
+            )}
+            {dailySuggestion && totalStudied === 0 && !startHereMin && (
               <TouchableOpacity
                 onPress={async () => { setSelectedDomain(dailySuggestion.domain); await openSubjectDetail(dailySuggestion.subject, dailySuggestion.domain); }}
                 style={{ marginBottom: 14, padding: 12, borderRadius: 12, backgroundColor: dailySuggestion.domain.color + '12', borderWidth: 1, borderColor: dailySuggestion.domain.color + '33', flexDirection: 'row', alignItems: 'center', gap: 10 }}
@@ -4671,55 +4693,19 @@ REJECTED = fails a core test — be direct about which one and why.`;
               >
                 <Text style={{ color: dailySuggestion.domain.color, fontSize: 20 }}>{dailySuggestion.domain.glyph}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, fontWeight: '700', letterSpacing: 1.5, marginBottom: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>START HERE</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, fontWeight: '700', letterSpacing: 1.5, marginBottom: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>START HERE</Text>
+                    <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); setStartHereMin(true); }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>▾</Text>
+                    </TouchableOpacity>
+                  </View>
                   <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>{dailySuggestion.subject.name}</Text>
                 </View>
                 <Text style={{ color: dailySuggestion.domain.color, fontSize: 14 }}>→</Text>
               </TouchableOpacity>
             )}
 
-            {/* ── PORTALS ───────────────────────────────────────────────── */}
-            <TouchableOpacity onPress={() => setPortalsCollapsed(c => !c)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }} activeOpacity={0.7}>
-              <View style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: '#2ECC71' }} />
-              <Text style={{ color: '#2ECC7188', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', flex: 1 }}>PORTALS</Text>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{portalsCollapsed ? '▶' : '▼'}</Text>
-            </TouchableOpacity>
-            {!portalsCollapsed && (
-              <View style={{ marginBottom: 14, gap: 8 }}>
-                <TouchableOpacity onPress={() => setSchoolView('mycelium')}
-                  style={{ borderRadius: 16, borderWidth: 1.5, borderColor: '#2ECC7166', backgroundColor: '#000E05', overflow: 'hidden', padding: 16,
-                    shadowColor: '#2ECC71', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 }}
-                  activeOpacity={0.8}>
-                  <Text style={{ position: 'absolute', right: -8, top: -10, fontSize: 80, color: '#2ECC710D', lineHeight: 90, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⌘</Text>
-                  <Text style={{ color: '#2ECC71', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 6 }}>⌘ CONNECTIONS</Text>
-                  <Text style={{ color: '#A8EFC8', fontSize: 17, fontWeight: '700', letterSpacing: 0.3, marginBottom: 4 }}>Mycelium Network</Text>
-                  <Text style={{ color: '#2ECC7199', fontSize: 11, lineHeight: 16, marginBottom: 12 }}>{'Your subjects, threaded. Dive to reveal the web beneath.'}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ flex: 1, height: 1, backgroundColor: '#2ECC7122' }} />
-                    <Text style={{ color: '#2ECC71', fontSize: 10, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>EXPLORE →</Text>
-                  </View>
-                </TouchableOpacity>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity onPress={() => { setTimeBraidView('list'); setSchoolView('time-braiding'); }}
-                    style={{ flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: '#4ECDC444', backgroundColor: '#030A0A', padding: 14,
-                      shadowColor: '#4ECDC4', shadowOpacity: 0.1, shadowRadius: 6, elevation: 2 }} activeOpacity={0.8}>
-                    <Text style={{ color: '#4ECDC4', fontSize: 22, marginBottom: 8 }}>◈</Text>
-                    <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '700', marginBottom: 3 }}>Time Braiding</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, lineHeight: 14 }}>
-                      {timeBraidDue.length > 0 ? `${timeBraidDue.length} arrived` : 'Letters across time'}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setGlyphSearch(''); setGlyphExpandedId(null); setLamagueSection('glyphs'); setSchoolView('lamague'); }}
-                    style={{ flex: 1, borderRadius: 14, borderWidth: 1.5, borderColor: '#C8A96E55', backgroundColor: '#0E0A00', padding: 14,
-                      shadowColor: '#C8A96E', shadowOpacity: 0.12, shadowRadius: 6, elevation: 2 }} activeOpacity={0.8}>
-                    <Text style={{ color: '#C8A96E', fontSize: 22, marginBottom: 8 }}>⟟</Text>
-                    <Text style={{ color: '#E8D4A0', fontSize: 12, fontWeight: '700', marginBottom: 3 }}>LAMAGUE</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, lineHeight: 14 }}>Compression grammar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            {/* PORTALS removed — mycelium / time-braid / lamague now live in the clean TOOLS grid above (#255c) */}
 
             {/* ── SAVED SUBJECTS ────────────────────────────────────────── */}
             {subjectFavorites.size > 0 && (() => {
@@ -5058,6 +5044,17 @@ REJECTED = fails a core test — be direct about which one and why.`;
               </View>
             )}
 
+            {/* ── ✦ TODAY — contextual stack, collapsed by default so DOMAINS lead (#255b) ── */}
+            <TouchableOpacity onPress={() => setSchoolTodayOpen(v => !v)} activeOpacity={0.75}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9, paddingHorizontal: 12, marginBottom: 12, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.headmaster + '33', backgroundColor: SOL_THEME.headmaster + '0A' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ color: SOL_THEME.headmaster, fontSize: 12 }}>✦</Text>
+                <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700' }}>TODAY · YOUR FIELD</Text>
+              </View>
+              <Text style={{ color: SOL_THEME.headmaster + 'AA', fontSize: 11 }}>{schoolTodayOpen ? '▼' : '▸ open'}</Text>
+            </TouchableOpacity>
+            {schoolTodayOpen && (<>
+
             {/* Active field trial */}
             {activeFieldTrial && !activeFieldTrial.completed && (
               <TouchableOpacity
@@ -5309,6 +5306,9 @@ REJECTED = fails a core test — be direct about which one and why.`;
               );
             })()}
 
+
+            </>)}
+            {/* ── end ✦ TODAY collapsible — DOMAINS now lead the home view ── */}
 
             {/* Domain grid — wing selectors */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -5646,140 +5646,84 @@ REJECTED = fails a core test — be direct about which one and why.`;
               })()}
 
               {/* Layer sections */}
-              {layerOrder.map(layer => {
-                const q = subjectSearch.toLowerCase();
-                const layerSubjectsRaw = domain.subjects.filter(s => s.layer === layer && (q === '' || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)));
-                const layerSubjects = [...layerSubjectsRaw.filter(s => subjectFavorites.has(s.name)), ...layerSubjectsRaw.filter(s => !subjectFavorites.has(s.name))];
-                if (layerSubjects.length === 0) return null;
-                const isRecommended = fieldStage && layer === stageToLayer(fieldStage);
-                const totalInLayer = domain.subjects.filter(s => s.layer === layer).length;
-                const studiedInLayer = domain.subjects.filter(s => s.layer === layer && studiedSubjects.has(s.name)).length;
-                const layerKey = `${domain.id}:${layer}`;
-                const layerClosed = closedLayers.has(layerKey);
+              {/* ── LAYER FILTER CHIPS (#255 remodel) ── */}
+              {(() => {
+                const recLayer = fieldStage ? stageToLayer(fieldStage) : null;
+                const chips: (SchoolLayer | 'ALL')[] = ['ALL', ...layerOrder.filter(l => domain.subjects.some(s => s.layer === l))];
                 return (
-                  <View key={layer} style={{ marginBottom: 16 }}>
-                    <TouchableOpacity
-                      onPress={() => setClosedLayers(prev => {
-                        const next = new Set(prev);
-                        if (next.has(layerKey)) next.delete(layerKey); else next.add(layerKey);
-                        return next;
-                      })}
-                      style={[{
-                        alignSelf: 'stretch', borderWidth: isRecommended ? 1.5 : 1, borderRadius: 6,
-                        paddingHorizontal: 14, paddingVertical: isRecommended ? 10 : 7, marginBottom: layerClosed ? 0 : 8,
-                        backgroundColor: isRecommended ? LAYER_COLORS[layer] + '30' : LAYER_COLORS[layer] + '14',
-                        borderColor: isRecommended ? LAYER_COLORS[layer] + 'AA' : LAYER_COLORS[layer] + '44',
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                      }]}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontSize: isRecommended ? 13 : 11, fontWeight: '700', letterSpacing: 1.5, color: LAYER_COLORS[layer], fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
-                          {mode === 'adept' ? `CASCADE · ${LAYER_LABELS[layer].toUpperCase()}` : LAYER_LABELS[layer].toUpperCase()}
-                        </Text>
-                        {isRecommended && (
-                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: LAYER_COLORS[layer] + '33' }}>
-                            <Text style={{ color: LAYER_COLORS[layer], fontSize: 9, fontWeight: '700', letterSpacing: 1 }}>⊚ YOUR STAGE</Text>
-                          </View>
-                        )}
-                        {layer === 'EDGE' && !isSovereign && (
-                          <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, backgroundColor: '#F5A62322', borderWidth: 1, borderColor: '#F5A62355' }}>
-                            <Text style={{ color: '#F5A623', fontSize: 9, fontWeight: '700', letterSpacing: 1 }}>⊚ SOVEREIGN</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ color: studiedInLayer === totalInLayer ? LAYER_COLORS[layer] : SOL_THEME.textMuted, fontSize: 11, fontWeight: studiedInLayer === totalInLayer ? '700' : '400' }}>
-                          {studiedInLayer}/{totalInLayer}{studiedInLayer === totalInLayer ? ' ✦' : ''}
-                        </Text>
-                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{layerClosed ? '▶' : '▼'}</Text>
-                      </View>
-                    </TouchableOpacity>
-                    {!layerClosed && layerSubjects.map(subject => (
-                      <TouchableOpacity
-                        key={subject.name}
-                        style={[{ backgroundColor: domain.color + '09', borderRadius: 10, borderWidth: 1, borderColor: domain.color + '33', borderLeftWidth: 4, borderLeftColor: domain.color + 'BB', padding: 12, marginBottom: 8, gap: 4, minHeight: 72 }, studiedSubjects.has(subject.name) && { opacity: 0.7 }, subject.layer === 'EDGE' && !isSovereign && { opacity: 0.5 }]}
-                        onPress={() => openSubjectDetail(subject, domain)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 6 }}>
-                          <Text style={{ flex: 1, fontSize: 14, fontWeight: '700', color: SOL_THEME.text }}>{subject.name}</Text>
-                          {studyDates[subject.name] && (() => {
-                            const days = Math.floor((Date.now() - new Date(studyDates[subject.name]).getTime()) / 86400000);
-                            return days > 0 ? <Text style={{ fontSize: 9, color: days > 7 ? '#E07040' : SOL_THEME.textMuted, marginTop: 3, marginRight: 4 }}>{days}d ago</Text> : null;
-                          })()}
-                          {studiedSubjects.has(subject.name) && <Text style={{ fontSize: 10, color: '#4CAF50', marginTop: 3, marginRight: 2 }}>✓</Text>}
-                          {(() => { const r = subjectRatings[subject.name]; return (r === 1 || r === 2 || r === 3) ? <Text style={{ fontSize: 9, color: r === 1 ? '#FF5252' : r === 2 ? '#F5A623' : '#4CAF50', marginTop: 3, marginRight: 2 }}>{r === 1 ? '✗' : r === 2 ? '◦' : '★'}</Text> : null; })()}
-                          {subjectNotes[subject.name] && <Text style={{ fontSize: 10, color: SOL_THEME.textMuted, marginTop: 3, marginRight: 2 }}>✎</Text>}
-                          {(subject.intensity ?? 0) >= 5 && (() => {
-                            const lvl = subject.intensity!;
-                            const col = lvl >= 9 ? '#FF4444' : lvl >= 7 ? '#FF6622' : '#FFAA33';
-                            return (
-                              <View style={{ paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, backgroundColor: col + '18', borderWidth: 1, borderColor: col + '88' }}>
-                                <Text style={{ fontSize: 8, fontWeight: '700', color: col, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>⚠ {lvl}/10</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 7 }}>
+                    {chips.map(chip => {
+                      const on = layerFilter === chip;
+                      const ccol = chip === 'ALL' ? domain.color : LAYER_COLORS[chip];
+                      const isRec = chip !== 'ALL' && chip === recLayer;
+                      const cnt = chip === 'ALL' ? domain.subjects.length : domain.subjects.filter(s => s.layer === chip).length;
+                      return (
+                        <TouchableOpacity key={chip} onPress={() => setLayerFilter(chip)} activeOpacity={0.75}
+                          style={{ paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20, borderWidth: 1,
+                            borderColor: on ? ccol : ccol + '44', backgroundColor: on ? ccol + '22' : 'transparent', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                          <Text style={{ color: on ? ccol : ccol + 'AA', fontSize: 10, fontWeight: '700', letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                            {chip === 'ALL' ? 'ALL' : LAYER_LABELS[chip].toUpperCase()}
+                          </Text>
+                          <Text style={{ color: on ? ccol : SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{cnt}</Text>
+                          {isRec && <Text style={{ color: ccol, fontSize: 9 }}>⊚</Text>}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                );
+              })()}
+
+              {/* ── SUBJECT GRID — clean tiles, tap to dive (#255) ── */}
+              {(() => {
+                const q = subjectSearch.toLowerCase();
+                const filtered = domain.subjects.filter(s =>
+                  (layerFilter === 'ALL' || s.layer === layerFilter) &&
+                  (q === '' || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)));
+                const sorted = [...filtered.filter(s => subjectFavorites.has(s.name)), ...filtered.filter(s => !subjectFavorites.has(s.name))];
+                if (sorted.length === 0) return (
+                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', paddingVertical: 24, fontStyle: 'italic' }}>No subjects here yet.</Text>
+                );
+                return (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                    {sorted.map(subject => {
+                      const studied = studiedSubjects.has(subject.name);
+                      const locked = subject.layer === 'EDGE' && !isSovereign;
+                      const fav = subjectFavorites.has(subject.name);
+                      const mStage = subjectMastery[subject.name]?.stage || 0;
+                      const lcol = LAYER_COLORS[subject.layer];
+                      const intensity = subject.intensity ?? 0;
+                      return (
+                        <TouchableOpacity key={subject.name} onPress={() => openSubjectDetail(subject, domain)} activeOpacity={0.78}
+                          style={{ width: '48%', minHeight: 96, borderRadius: 12, borderWidth: 1, borderColor: studied ? domain.color + '77' : domain.color + '33',
+                            borderLeftWidth: 3, borderLeftColor: lcol + (studied ? 'DD' : '88'),
+                            backgroundColor: studied ? domain.color + '12' : '#0A0A12', padding: 11, justifyContent: 'space-between', opacity: locked ? 0.6 : 1 }}>
+                          <View>
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '700', color: SOL_THEME.text, lineHeight: 16 }} numberOfLines={2}>{subject.name}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 4 }}>
+                                {studied && <Text style={{ fontSize: 10, color: '#4CAF50' }}>✓</Text>}
+                                {fav && <Text style={{ fontSize: 10, color: '#F5A623' }}>★</Text>}
+                                {mStage > 0 && <Text style={{ fontSize: 10, color: MASTERY_STAGES[mStage]?.color }}>{MASTERY_STAGES[mStage]?.glyph}</Text>}
                               </View>
-                            );
-                          })()}
-                          <TouchableOpacity
-                            onPress={async (e) => {
-                              e.stopPropagation?.();
-                              const updated = new Set(subjectFavorites);
-                              if (updated.has(subject.name)) updated.delete(subject.name);
-                              else updated.add(subject.name);
-                              setSubjectFavorites(updated);
-                              await AsyncStorage.setItem('sol_subject_favorites', JSON.stringify(Array.from(updated)));
-                              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            }}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <Text style={{ fontSize: 12, color: subjectFavorites.has(subject.name) ? '#F5A623' : SOL_THEME.border, marginTop: 2 }}>
-                              {subjectFavorites.has(subject.name) ? '★' : '☆'}
+                            </View>
+                            <Text style={{ fontSize: 10, color: SOL_THEME.textMuted, lineHeight: 14 }} numberOfLines={2}>{subject.description}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                            <Text style={{ fontSize: 8, color: lcol, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
+                              {locked ? '⊚ SOVEREIGN' : LAYER_LABELS[subject.layer].toUpperCase()}
                             </Text>
-                          </TouchableOpacity>
-                          <Text style={{ fontSize: 10, color: LAYER_COLORS[subject.layer], marginTop: 3 }}>●</Text>
-                          {(() => {
-                            const stage = subjectMastery[subject.name]?.stage || 0;
-                            if (!stage) return null;
-                            const ms = MASTERY_STAGES[stage]!;
-                            return <Text style={{ fontSize: 10, color: ms.color, marginTop: 3 }}>{ms.glyph}</Text>;
-                          })()}
-                        </View>
-                        <Text style={{ fontSize: 12, color: SOL_THEME.textMuted, lineHeight: 18 }} numberOfLines={2}>{subject.description}</Text>
-                        {subject.traditions && (
-                          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                            {subject.traditions.map(t => (
-                              <View key={t} style={{ borderWidth: 1, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, borderColor: domain.color + '55' }}>
-                                <Text style={{ fontSize: 10, fontWeight: '600', color: domain.color }}>{t}</Text>
+                            {intensity >= 7 && (
+                              <View style={{ paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, backgroundColor: (intensity >= 9 ? '#FF4444' : '#FF6622') + '22' }}>
+                                <Text style={{ fontSize: 7, fontWeight: '700', color: intensity >= 9 ? '#FF4444' : '#FF6622', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⚠{intensity}</Text>
                               </View>
-                            ))}
+                            )}
                           </View>
-                        )}
-                        {subject.credit && (() => {
-                          const urlMatch = subject.credit.match(/https?:\/\/[^\s]+/);
-                          const url = urlMatch ? urlMatch[0] : null;
-                          return (
-                            <TouchableOpacity
-                              activeOpacity={url ? 0.65 : 1}
-                              onPress={url ? () => Linking.openURL(url) : undefined}
-                              style={{ marginTop: 8, paddingLeft: 8, borderLeftWidth: 2, borderLeftColor: domain.color + '44' }}
-                            >
-                              <Text style={{ fontSize: 10, color: SOL_THEME.textMuted, lineHeight: 15, fontStyle: 'italic' }}>{subject.credit}</Text>
-                            </TouchableOpacity>
-                          );
-                        })()}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
-                          <View style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, backgroundColor: subject.layer === 'EDGE' && !isSovereign ? '#F5A62318' : domain.color + '18', borderWidth: 1, borderColor: subject.layer === 'EDGE' && !isSovereign ? '#F5A62355' : domain.color + '55' }}>
-                            <Text style={{ color: subject.layer === 'EDGE' && !isSovereign ? '#F5A623' : domain.color, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>{subject.layer === 'EDGE' && !isSovereign ? '⊚ Sovereign Only' : 'Open Subject →'}</Text>
-                          </View>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, backgroundColor: domain.color + '15', borderWidth: 1, borderColor: domain.color + '44' }}>
-                            <Text style={{ fontSize: 10, color: domain.color }}>{HOST_GLYPHS[getDailyHost(subject.name)]}</Text>
-                            <Text style={{ fontSize: 9, color: domain.color, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700' }}>{HOST_NAMES[getDailyHost(subject.name)]} hosting</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 );
-              })}
+              })()}
 
               {/* Knowledge synthesis */}
               {(() => {

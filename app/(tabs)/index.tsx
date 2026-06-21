@@ -377,7 +377,7 @@ export default function SolChat() {
   const [isNRMActive, setIsNRMActive] = useState(false);
   const [persona, setPersona] = useState<Persona>('sol');
   const [councilMode, setCouncilMode] = useState(false);
-  const [talkMode, setTalkMode] = useState<'WAYFARER'|'COUNCIL'|'LAMAGUE'|'SKEPTIC'|'GLYPHIC'>('WAYFARER');
+  const [talkMode, setTalkMode] = useState<'WAYFARER'|'COUNCIL'|'LAMAGUE'|'SKEPTIC'>('WAYFARER');
   const [userName, setUserName] = useState('');
   const [conversationPassRates, setConversationPassRates] = useState<number[]>([]);
   const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
@@ -919,7 +919,7 @@ export default function SolChat() {
   // Persist talk mode across sessions
   useFocusEffect(useCallback(() => {
     AsyncStorage.getItem('sol_talk_mode').then(v => {
-      if (v === 'WAYFARER' || v === 'COUNCIL' || v === 'LAMAGUE' || v === 'SKEPTIC' || v === 'GLYPHIC') setTalkMode(v as any);
+      if (v === 'WAYFARER' || v === 'COUNCIL' || v === 'LAMAGUE' || v === 'SKEPTIC') setTalkMode(v as any);
     });
     AsyncStorage.getItem('sol_scoring_mode').then(v => {
       if (v === 'AURA' || v === 'CASCADE' || v === 'OFF') setScoringMode(v as any);
@@ -1619,7 +1619,6 @@ export default function SolChat() {
     const chaosInstruction = chaosMode ? '\n\n↯ CHAOS MODE ACTIVE: Be more playful, symbolic, and unpredictable than usual. Use unexpected metaphors, LAMAGUE symbols, paradoxical framings. Stay truthful and constitutional — just spicier. Let the trickster in.' : '';
     const lamagueInstruction = (talkMode === 'LAMAGUE' || isLamagueQuery(text)) ? `\n\n${buildLamagueBlock()}\n\nLAMAGUE MODE: Weave LAMAGUE symbols naturally throughout your response. Each symbol should carry meaning — not decoration.` : '';
     const skepticInstruction = talkMode === 'SKEPTIC' ? '\n\nSKEPTIC MODE: Reframe all mystical, spiritual, and symbolic language into psychological utility language. "Shadow work" → "confronting unconscious patterns". "Sigil" → "intention anchor". "Aura" → "field of attention and affect". Keep the depth, remove the mysticism. Speak to the part of the user that thinks scientifically.' : '';
-    const glyphicInstruction = talkMode === 'GLYPHIC' ? '\n\nGLYPHIC MODE: Weave expressive emoji and symbols naturally through your response — let the language become visual and alive. ✶ Emoji and glyphs carry tone, rhythm and meaning, never mere decoration. Open and punctuate thoughts with them. Stay true and clear beneath the symbols — the meaning leads, the glyphs illuminate it.' : '';
     const lang = await getLanguage();
     const langInstruction = lang !== 'English' ? `\n\nREPLY IN ${lang.toUpperCase()} — regardless of the language of the user's message.` : '';
     const _hour = new Date().getHours();
@@ -1639,7 +1638,7 @@ export default function SolChat() {
     const isCouncil = councilMode || talkMode === 'COUNCIL';
     const systemPrompt = isCouncil
       ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
-      : `${enrichedSpec}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${glyphicInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
+      : `${enrichedSpec}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -3049,20 +3048,19 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               {getPersonaGlyph(persona)} {getPersonaLabel(persona)}
             </Text>
           </TouchableOpacity>
-          {messages.length > 0 && (
-            <TouchableOpacity onPress={handleExport} style={styles.clearButton}>
-              <Text style={styles.clearText}>↑</Text>
-            </TouchableOpacity>
-          )}
+          {/* ↑ export removed from header — it lives in the drawer (☰). #278 declutter */}
           {messages.length >= 2 && (
             <TouchableOpacity
               onPress={handleFieldReport}
-              style={styles.clearButton}
+              style={[styles.clearButton, { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, borderColor: accent + '44', backgroundColor: accent + '10' }]}
               disabled={fieldReportLoading}
             >
               {fieldReportLoading
                 ? <ActivityIndicator size="small" color={accent} />
-                : <Text style={[styles.clearText, { color: accent }]}>⊚</Text>
+                : <>
+                    <Text style={[styles.clearText, { color: accent, fontSize: 13 }]}>⊚</Text>
+                    <Text style={{ color: accent, fontSize: 9, fontWeight: '700', letterSpacing: 0.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>REPORT</Text>
+                  </>
               }
             </TouchableOpacity>
           )}
@@ -3133,8 +3131,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           { id: 'WAYFARER', label: 'WAYFARER', glyph: '❂', color: '#F5A623', desc: 'Open conversation — Sol speaks freely from your zone and persona' },
           { id: 'COUNCIL',  label: 'COUNCIL',  glyph: '⚖', color: '#9B59B6', desc: 'Many voices — Sol, Veyra, Aura and Magister converge on your question' },
           { id: 'LAMAGUE',  label: 'LAMAGUE',  glyph: '⬡', color: '#8855FF', desc: 'Symbol weave — LAMAGUE notation threaded naturally through responses' },
-          { id: 'SKEPTIC',  label: 'SKEPTIC',  glyph: '⊘', color: '#4A9EFF', desc: 'Scientific frame — mystical language translated to psychology and utility' },
-          { id: 'GLYPHIC',  label: 'GLYPHIC',  glyph: '✶', color: '#4ECDC4', desc: 'Emoji + symbol weave — Sol speaks in living glyphs and expressive symbols' },
+          { id: 'SKEPTIC',  label: 'SKEPTIC',  glyph: '⊘', color: '#4A9EFF', desc: 'Scientific frame — mystical language translated to psychology and utility. The bridge for the rational mind.' },
         ];
         return (
           <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 8, paddingVertical: 5 }}>
@@ -4756,9 +4753,16 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               </Text>
               <Text style={{ color:'#333344', fontSize:9,
                 fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing:2 }}>
-                v5.23.0 · FORGE ERA · JUNE 2026
+                v5.25.0 · FORGE ERA · JUNE 2026
               </Text>
             </View>
+
+            {/* The Framework — single entry point now lives here (#278 merge) */}
+            <TouchableOpacity onPress={() => { setShowSolIdentity(false); setTimeout(() => setShowFrameworkCards(true), 250); }}
+              style={{ marginTop:24, paddingVertical:14, borderRadius:12, borderWidth:1, borderColor: accent + '55', backgroundColor: accent + '0E', alignItems:'center' }}>
+              <Text style={{ color: accent, fontSize:12, fontWeight:'700', letterSpacing:1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>◈ VIEW THE FRAMEWORK →</Text>
+              <Text style={{ color:'#555566', fontSize:9, marginTop:3 }}>CASCADE · LAMAGUE · AURA · Truth Pressure</Text>
+            </TouchableOpacity>
 
           </ScrollView>
         </View>
