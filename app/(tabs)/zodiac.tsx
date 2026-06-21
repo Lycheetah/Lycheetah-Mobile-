@@ -498,6 +498,7 @@ export default function ZodiacScreen() {
   const [birthDraft, setBirthDraft] = useState({ day: '', month: '', year: '', hour: '', minute: '', utcOffset: '-0', latitude: '51.5', fullName: '', motherName: '', cityName: '' });
   const [zodiacReading, setZodiacReading] = useState<{ date: string; text: string } | null>(null);
   const [zodiacLoading, setZodiacLoading] = useState(false);
+  const skyDataFetched = React.useRef(false); // network sky data (Kp+weather) fetched once per session, not every focus
   const [question, setQuestion] = useState('');
   const [questionReading, setQuestionReading] = useState<string | null>(null);
   const [questionLoading, setQuestionLoading] = useState(false);
@@ -677,6 +678,10 @@ export default function ZodiacScreen() {
       if (zonkRaw) setZonkLog(JSON.parse(zonkRaw));
       if (historyRaw) setReadingHistory(JSON.parse(historyRaw));
       if (gemRaw) setGemCollection(JSON.parse(gemRaw));
+      // Sky data (Kp + weather) — network calls; fetch ONCE per session, NOT on every tab focus.
+      // (Re-fetching each focus made them pop in late → the "loading weird" layout jank.)
+      if (!skyDataFetched.current) {
+        skyDataFetched.current = true;
       // Kp index — geomagnetic activity
       try {
         const kpRes = await fetch('https://kp.gfz-potsdam.de/app/json/?index=Kp&status=def&start=NOW-1d&end=NOW', { signal: AbortSignal.timeout(5000) });
@@ -714,6 +719,7 @@ export default function ZodiacScreen() {
           }
         }
       } catch { /* graceful — weather stays null */ }
+      } // end one-time sky fetch
       // First-visit intro overlay — fires once, 1.8s after entry sequence settles
       AsyncStorage.getItem('sol_tab_seen_zodiac').then(seen => {
         if (!seen) {

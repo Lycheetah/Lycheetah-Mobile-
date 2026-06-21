@@ -204,7 +204,7 @@ const CATEGORY_META: Record<string, { label: string; color: string }> = {
 
 export default function CodexScreen() {
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [tab, setTab] = useState<'frameworks' | 'lamague' | 'help' | 'domains'>('frameworks');
+  const [tab, setTab] = useState<'frameworks' | 'lamague' | 'domains'>('frameworks');
   // Domains tab state
   const [domainSearch, setDomainSearch] = useState('');
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
@@ -214,12 +214,10 @@ export default function CodexScreen() {
 
   useFocusEffect(useCallback(() => {
     Promise.all([
-      AsyncStorage.getItem('codex_open_help'),
       AsyncStorage.getItem('codex_open_domains'),
       AsyncStorage.getItem('codex_open_frameworks'),
       AsyncStorage.getItem('codex_open_lamague'),
-    ]).then(([help, domains, frameworks, lamague]) => {
-      if (help      === 'true') { setTab('help');       AsyncStorage.removeItem('codex_open_help'); }
+    ]).then(([domains, frameworks, lamague]) => {
       if (domains   === 'true') { setTab('domains');    AsyncStorage.removeItem('codex_open_domains'); }
       if (frameworks=== 'true') { setTab('frameworks'); AsyncStorage.removeItem('codex_open_frameworks'); }
       if (lamague   === 'true') { setTab('lamague');    AsyncStorage.removeItem('codex_open_lamague'); }
@@ -227,33 +225,6 @@ export default function CodexScreen() {
     getStudiedSubjects().then(arr => setStudiedNames(new Set(arr)));
   }, []));
   const [lamagueSym, setLamagueSym] = useState<string | null>(null);
-  const [helpInput, setHelpInput] = useState('');
-  const [helpAnswer, setHelpAnswer] = useState<string | null>(null);
-  const [helping, setHelping] = useState(false);
-  const [helpError, setHelpError] = useState<string | null>(null);
-
-  const handleHelp = async () => {
-    if (!helpInput.trim() || helping) return;
-    setHelping(true);
-    setHelpError(null);
-    setHelpAnswer(null);
-    try {
-      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
-      if (!apiKey) { setHelpError('No API key — add one in Settings first.'); return; }
-      const res = await sendMessage(
-        [{ role: 'user', content: helpInput.trim() }],
-        HELP_SYSTEM,
-        apiKey,
-        (model || 'gemini-2.5-flash') as AIModel,
-        undefined, 'fast', 256, 0.5,
-      );
-      setHelpAnswer(res.text.trim());
-    } catch (e: any) {
-      setHelpError(`Failed: ${e?.message || 'Unknown error'}`);
-    } finally {
-      setHelping(false);
-    }
-  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -268,7 +239,6 @@ export default function CodexScreen() {
           ['frameworks', 'FRAMEWORKS'],
           ['domains',    '𝔏 DOMAINS'],
           ['lamague',    'LAMAGUE'],
-          ['help',       'HELP ME'],
         ] as const).map(([t, label]) => (
           <TouchableOpacity
             key={t}
@@ -584,64 +554,6 @@ export default function CodexScreen() {
         </>
       )}
 
-      {/* HELP ME */}
-      {tab === 'help' && (
-        <>
-          <Text style={styles.intro}>
-            Ask anything — how to use the app, what a feature does, or deep questions about the nine frameworks. Sol answers directly.
-          </Text>
-          <TextInput
-            style={styles.helpInput}
-            value={helpInput}
-            onChangeText={v => { setHelpInput(v); setHelpAnswer(null); }}
-            placeholder="What is Truth Pressure? How does LQ work? What is CHRYSOPOEIA?"
-            placeholderTextColor={SOL_THEME.textMuted}
-            multiline
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <TouchableOpacity
-            style={[styles.helpBtn, { opacity: helpInput.trim() && !helping ? 1 : 0.4 }]}
-            onPress={handleHelp}
-            disabled={!helpInput.trim() || helping}
-          >
-            {helping
-              ? <ActivityIndicator size="small" color={SOL_THEME.background} />
-              : <Text style={styles.helpBtnText}>Ask the Codex</Text>
-            }
-          </TouchableOpacity>
-          {helpError && <Text style={styles.helpError}>{helpError}</Text>}
-          {helpAnswer && (
-            <View style={styles.helpAnswer}>
-              <Text style={styles.helpAnswerLabel}>⊚ CODEX</Text>
-              <Text style={styles.helpAnswerText}>{helpAnswer}</Text>
-              <TouchableOpacity onPress={() => { setHelpInput(''); setHelpAnswer(null); }} style={styles.helpClear}>
-                <Text style={styles.helpClearText}>Ask another</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          <View style={styles.helpStarters}>
-            {[
-              'How do I start a Study Dive?',
-              'What is the Mystery School?',
-              'How do I add an API key?',
-              'What is a Vigil?',
-              'What is Truth Pressure Π?',
-              'How does Light Quotient work?',
-              'What is CHRYSOPOEIA?',
-              'How does LAMAGUE compress language?',
-            ].map(q => (
-              <TouchableOpacity
-                key={q}
-                style={styles.helpChip}
-                onPress={() => setHelpInput(q)}
-              >
-                <Text style={styles.helpChipText}>{q}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </>
-      )}
     </ScrollView>
   );
 }
@@ -731,32 +643,6 @@ const styles = StyleSheet.create({
     fontSize: 13, color: SOL_THEME.textMuted, lineHeight: 22,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
-  // Help Me
-  helpInput: {
-    backgroundColor: SOL_THEME.surface, borderRadius: 10,
-    borderWidth: 1, borderColor: SOL_THEME.border,
-    padding: 12, color: SOL_THEME.text, fontSize: 14,
-    textAlignVertical: 'top', minHeight: 80, marginBottom: 10,
-  },
-  helpBtn: {
-    backgroundColor: SOL_THEME.primary, borderRadius: 8,
-    padding: 13, alignItems: 'center', marginBottom: 12,
-  },
-  helpBtnText: { color: SOL_THEME.background, fontWeight: '700', fontSize: 15 },
-  helpError: { fontSize: 13, color: SOL_THEME.error, textAlign: 'center', marginBottom: 8 },
-  helpAnswer: {
-    backgroundColor: SOL_THEME.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: SOL_THEME.primary + '44',
-    padding: 16, marginBottom: 16,
-  },
-  helpAnswerLabel: {
-    fontSize: 9, fontWeight: '700', color: SOL_THEME.primary,
-    letterSpacing: 2, marginBottom: 8,
-    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-  },
-  helpAnswerText: { fontSize: 14, color: SOL_THEME.text, lineHeight: 22 },
-  helpClear: { marginTop: 12, alignItems: 'flex-end' },
-  helpClearText: { fontSize: 12, color: SOL_THEME.textMuted, fontWeight: '600' },
   helpStarters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   helpChip: {
     borderWidth: 1, borderColor: SOL_THEME.border, borderRadius: 20,

@@ -1,5 +1,60 @@
 # Changelog
 
+## [5.27.3] — 2026-06-22 — 🃏 TAROT GRID VIRTUALIZED (no more 40+ glitch)
+> The deck grid rendered all 79 cards at once → glitch past ~40. Now windowed.
+- **TarotViewer grids → FlatList** (both the real-art `✦ DECK` grid and the MAJOR/MINOR data grid): numColumns 3, `initialNumToRender 9`, `maxToRenderPerBatch 9`, `windowSize 5`, `removeClippedSubviews`. Only visible cards mount → smooth scroll through all 79.
+- KNOWN (next task): card MEANINGS — the real-art view shows no meaning (art is index-decoupled from card data; art files are non-sequential with gaps, names printed on art, so safe pairing needs a real mapping pass); the 56 Minors only have template meanings, not real ones.
+
+## [5.27.2] — 2026-06-22 — ⚡ ZODIAC LOAD JANK FIXED
+> The "loading weird" was the tab re-fetching slow network data on every focus.
+- **Sky data fetched once per session** — Kp index + IP-geolocation + weather (3 network calls, up to ~14s combined) ran on EVERY tab focus, popping in late → layout shift/flicker each entry. Now guarded by a `skyDataFetched` ref so they fire once; AsyncStorage reads still refresh on focus. LiveClock was already isolated (#279).
+
+## [5.27.1] — 2026-06-22 — 🧹 ONE COHERENT SCHOOL GRID (symmetry)
+> Finished the declutter: the home now has exactly ONE tool grid, symmetrical 3×4.
+- **"◬ DEPTH TOOLS" bar deleted** — it duplicated the main grid (Grimoire=Scriptorium, Letters=Time Braid, Sigil) plus one unique tool (Shadow). Bar gone; no more two-places-for-tools.
+- **SIGIL removed from School** — Zodiac already has a full Sigil Forge (ritual/primitive `generateSigil`), so it's the single sigil home now. (School's 'sigil' view is now orphaned dead code — safe to prune later.)
+- **Shadow Parts → FIELD modal** — the one unique depth-bar tool relocated into the FIELD stack (personal inner work belongs with Open Seat / field trial), so it survives the bar's deletion without breaking grid symmetry.
+- **Result:** clean **12-tile (3×4)** grid: SYLLABUS · RANDOM · LIBRARY · CODEX · MYCELIUM · TIME BRAID · LAMAGUE · SCRIPTORIUM · DIVE LOG · WORLD · SPIRAL · FIELD. Type-clean.
+
+## [5.27.0] — 2026-06-22 — 🧹 CLEANER SCHOOL HOME (FIELD tile)
+> The big "✦ TODAY · YOUR FIELD" collapsible stack is out of the home scroll. It's now a **FIELD grid tile**
+> that opens the whole stack as its own full-screen modal — home reads as: header → open doors → streak →
+> one clean tool grid → DOMAINS. Spiral + Dive Log were already tiles; Today's Field now joins them.
+- **FIELD tile** added to the School tools grid (✦, 13th tile) → opens the field modal.
+- **Field modal** — the contextual stack (active field trial, milestone, **Open Seat**, pattern notice, weekly synthesis, search & resonance) moved into a slide-up modal with a ✕ CLOSE header. Reused the existing `schoolTodayOpen` boolean as visibility (no new/unused state, no JSX moved — wrapped in place via Modal).
+- Home no longer carries the inline collapsible. Type-clean.
+
+## [5.26.3] — 2026-06-22 — 🛟 WATERFALL EXTENDED TO STUDY DIVES
+> Resilience completed. The waterfall now covers the School too, via a shared helper (no copy-paste drift).
+- **`sendMessageResilient()`** — new shared helper in `lib/ai-client.ts`: primary key → free NVIDIA (Llama-3.3-70B) → free Gemini, retry only on auth/rate/network errors. One waterfall, reused (Single Truth Rule). index.tsx keeps its own copy (it also juggles native tool-calling).
+- **School wired** — the live study-dive conversation, the LAMAGUE Symbol Forge verdict, and the "What have I learned?" synthesis all use it now. A banned/rate-limited free key can no longer break a study session. Background generators (live lore, curiosity-gap text) left as-is (already fail silently).
+- Type-clean.
+
+## [5.26.2] — 2026-06-22 — 🛟 PROVIDER WATERFALL (free-Sol never breaks)
+> The resilience half of the key story. Even if a free key gets banned/rate-limited, the chat
+> must not break for users. Now it can't: the main send falls through free providers until one works.
+- **Provider waterfall** (index.tsx handleSend) — primary key → free **NVIDIA (Llama-3.3-70B)** → free **Gemini 2.5 Flash**. Retries only on auth/rate/network failures (401/403/429/quota/balance/timeout); shows an error ONLY if all candidates fail. `model` updates to whichever provider answered. Tool-calling stays on the primary; fallbacks use the streaming path. Type-clean.
+- Rationale: $8 isn't the risk — a *banned key silently breaking free-Sol for every user* is. This makes that impossible.
+- TODO: extend the same waterfall to school.tsx study dives (currently TALK-tab only).
+
+## [5.26.1] — 2026-06-22 — 🔒 KEY-LEAK CLOSED + CODEX DECLUTTERED
+> Security + bulk pass. Found live API keys committed to the public repo's fallback file; closed it.
+> Removed the redundant "Ask the Codex" help tab now that the global ? owns Q&A.
+- **🔒 dev-keys leak closed** — `lib/dev-keys.ts` (committed, public) held real NVIDIA + DeepSeek keys. Blanked it; real keys live only in gitignored `dev-keys.local.ts` (storage.ts loads .local first, so local builds unaffected). ⚠ Keys in git HISTORY are burned — Mac must rotate all 3 (nvidia/deepseek/gemini). Real fix = #22 Cloudflare proxy (key server-side, never ships).
+- **Codex help tab removed** — the in-app Codex dropped its duplicate "Ask the Codex" AI bar (global ? already answers questions). Codex keeps its 3 real library tabs: FRAMEWORKS / 𝔏 DOMAINS / LAMAGUE. Removed tab button, panel, state, handler, deep-link flag, and dead styles. Type-clean. Codex = the knowledge library; ? = how to use the app.
+
+## [5.26.0] — 2026-06-22 — ⟳ THE CURIOSITY GAP (addictive wisdom, #251)
+> The north star made mechanical. Every study session used to *close* — a pat on the back the
+> brain forgets. Now every dive ends on an **open door**: Sol names the one unexplored thread
+> from what you just studied, phrased as an irresistible cliffhanger. The loop stays open
+> (Zeigarnik) — and it's persisted, so the School greets you on return with "⟳ DOORS YOU LEFT
+> OPEN" and a one-tap **Walk through →** that drops you straight back into that subject.
+> Closed knowledge is forgettable; open knowledge is addictive. This is the engine under the slogan.
+- **Open door at session end** — `generateNextDoor()` (gemini-2.5-flash) builds a subject-specific unanswered-question hook on dive completion; shown in the SESSION RECORDED overlay as "⟳ THE DOOR YOU LEFT OPEN". Static fallback if no key (still an open loop).
+- **Persisted doors** — saved to `sol_open_doors` (max 8, deduped by subject).
+- **Home greeting** — school home surfaces up to 2 open doors at the top with Walk-through (resumes the exact subject via `openSubjectDetail`) + dismiss (×).
+- Type-clean (no new errors).
+
 ## [5.25.0] — 2026-06-21 (late) — 🜍 THE VEIL & VEIN RELEASE + THE DEPTH PASS
 > The biggest single session since launch. The Veil & Vein tarot release (79-card deck,
 > its zone, cosmetic set) PLUS the depth layer that makes the RPG real: void bosses you

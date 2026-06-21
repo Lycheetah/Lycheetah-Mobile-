@@ -1,7 +1,7 @@
 // TarotViewer — browse the Lycheetah Tarot (Veil & Vein) deck card by card.
 // Card art auto-loads from TAROT_ART when PNGs exist; until then shows the glyph.
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, Image, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, Image, Platform, FlatList } from 'react-native';
 import { MAJOR_ARCANA, MINOR_ARCANA, TAROT_ART, leadColor, VEIL_COLOR, VEIN_COLOR } from '../lib/tarot/veil-and-vein';
 import { DECK_ART } from '../lib/tarot/deck-art';
 
@@ -52,16 +52,24 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
         {view === 'art' ? (
           /* ── REAL DECK ART GALLERY (Mac's Veil & Vein art) ── */
           grid ? (
-            <ScrollView style={{ maxHeight: '86%' }} showsVerticalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
-                {DECK_ART.map((src, i) => (
-                  <TouchableOpacity key={i} onPress={() => { setArtIdx(i); setGrid(false); }} activeOpacity={0.85}
-                    style={{ width: '31%', aspectRatio: 0.62, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#9945FF44' }}>
-                    <Image source={src} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+            <FlatList
+              data={DECK_ART}
+              keyExtractor={(_, i) => 'art' + i}
+              numColumns={3}
+              style={{ maxHeight: '86%' }}
+              showsVerticalScrollIndicator={false}
+              columnWrapperStyle={{ gap: 6, marginBottom: 6, justifyContent: 'center' }}
+              initialNumToRender={9}
+              maxToRenderPerBatch={9}
+              windowSize={5}
+              removeClippedSubviews
+              renderItem={({ item: src, index: i }) => (
+                <TouchableOpacity onPress={() => { setArtIdx(i); setGrid(false); }} activeOpacity={0.85}
+                  style={{ width: '31%', aspectRatio: 0.62, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#9945FF44' }}>
+                  <Image source={src} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                </TouchableOpacity>
+              )}
+            />
           ) : (
             <View style={{ alignItems: 'center' }}>
               <View style={{ width: '80%', aspectRatio: 0.62, borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: '#9945FF88',
@@ -84,23 +92,31 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
           )
         ) : grid ? (
           /* ── GRID — all 22 ── */
-          <ScrollView style={{ maxHeight: '82%' }} showsVerticalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-              {DECK.map((c, i) => {
-                const cc = leadColor(c.lead);
-                return (
-                  <TouchableOpacity key={c.id} onPress={() => { setIdx(i); setGrid(false); }} activeOpacity={0.8}
-                    style={{ width: '30%', aspectRatio: 0.66, borderRadius: 10, borderWidth: 1, borderColor: cc + '55', backgroundColor: '#0A0610', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
-                    {TAROT_ART[c.id]
-                      ? <Image source={TAROT_ART[c.id]} style={{ width: '100%', height: '100%', borderRadius: 9 }} resizeMode="cover" />
-                      : <><Text style={{ color: cc, fontSize: 26 }}>{c.glyph}</Text>
-                          <Text style={{ color: cc + 'AA', fontSize: 7, fontFamily: mono, marginTop: 4 }}>{c.numeral}</Text>
-                          <Text style={{ color: '#9AA4BC', fontSize: 6.5, fontFamily: mono, textAlign: 'center', marginTop: 2 }} numberOfLines={2}>{c.name}</Text></>}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <FlatList
+            data={DECK}
+            keyExtractor={c => c.id}
+            numColumns={3}
+            style={{ maxHeight: '82%' }}
+            showsVerticalScrollIndicator={false}
+            columnWrapperStyle={{ gap: 8, marginBottom: 8, justifyContent: 'center' }}
+            initialNumToRender={9}
+            maxToRenderPerBatch={9}
+            windowSize={5}
+            removeClippedSubviews
+            renderItem={({ item: c, index: i }) => {
+              const cc = leadColor(c.lead);
+              return (
+                <TouchableOpacity onPress={() => { setIdx(i); setGrid(false); }} activeOpacity={0.8}
+                  style={{ width: '30%', aspectRatio: 0.66, borderRadius: 10, borderWidth: 1, borderColor: cc + '55', backgroundColor: '#0A0610', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+                  {TAROT_ART[c.id]
+                    ? <Image source={TAROT_ART[c.id]} style={{ width: '100%', height: '100%', borderRadius: 9 }} resizeMode="cover" />
+                    : <><Text style={{ color: cc, fontSize: 26 }}>{c.glyph}</Text>
+                        <Text style={{ color: cc + 'AA', fontSize: 7, fontFamily: mono, marginTop: 4 }}>{c.numeral}</Text>
+                        <Text style={{ color: '#9AA4BC', fontSize: 6.5, fontFamily: mono, textAlign: 'center', marginTop: 2 }} numberOfLines={2}>{c.name}</Text></>}
+                </TouchableOpacity>
+              );
+            }}
+          />
         ) : (
           /* ── SINGLE CARD ── */
           <View style={{ alignItems: 'center' }}>

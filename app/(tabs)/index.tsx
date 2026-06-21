@@ -1715,48 +1715,48 @@ export default function SolChat() {
     try {
       let fullResponse = '';
       let lastRender = 0;
-      let sendResult: { text: string; tokenUsage?: any; timings?: any };
+      let sendResult: { text: string; tokenUsage?: any; timings?: any } = { text: '' };
 
-      if (useNativeTools) {
-        // Native tool calling — Anthropic / OpenAI
-        const tools = getActiveTools({ hasBraveKey: !!braveKey });
-        const execCtx: ExecutorContext = {
-          braveKey: braveKey || undefined,
-          userName: userName || undefined,
-          appMode: appMode || undefined,
-          persona,
-          streak,
-          fieldStage: fieldStage || undefined,
-        };
-        setActiveToolEvents([]);
-        sendResult = await sendWithTools(
-          apiMessages, systemPrompt, apiKey, model, tools,
-          async (calls) => {
-            const results = await Promise.all(calls.map(c => executeTool(c, execCtx)));
-            setActiveToolEvents(prev => [...prev, ...results.map(r => r.displayText)]);
-            return results;
-          },
-          (toolName) => {
-            const label = TOOL_DISPLAY[toolName] || toolName;
-            setActiveToolEvents(prev => [...prev, label]);
-          },
-          tokenBudget, temperature,
-        );
-        fullResponse = sendResult.text;
-        setActiveToolEvents([]);
-        // Fake-stream the tool-call response word by word
-        {
-          const words = fullResponse.split(' ');
+      // One send attempt against a given model+key. Streaming for free providers,
+      // native tool-calling only on the primary (Anthropic/OpenAI) path.
+      const performSend = async (sendModel: AIModel, sendKey: string, allowTools: boolean) => {
+        if (allowTools) {
+          const tools = getActiveTools({ hasBraveKey: !!braveKey });
+          const execCtx: ExecutorContext = {
+            braveKey: braveKey || undefined,
+            userName: userName || undefined,
+            appMode: appMode || undefined,
+            persona,
+            streak,
+            fieldStage: fieldStage || undefined,
+          };
+          setActiveToolEvents([]);
+          const r = await sendWithTools(
+            apiMessages, systemPrompt, sendKey, sendModel, tools,
+            async (calls) => {
+              const results = await Promise.all(calls.map(c => executeTool(c, execCtx)));
+              setActiveToolEvents(prev => [...prev, ...results.map(rr => rr.displayText)]);
+              return results;
+            },
+            (toolName) => {
+              const label = TOOL_DISPLAY[toolName] || toolName;
+              setActiveToolEvents(prev => [...prev, label]);
+            },
+            tokenBudget, temperature,
+          );
+          setActiveToolEvents([]);
+          // Fake-stream the tool-call response word by word
+          const words = r.text.split(' ');
           let streamed = '';
           for (const word of words) {
             streamed += (streamed ? ' ' : '') + word;
             setStreamingText(streamed);
-            await new Promise(r => setTimeout(r, 16));
+            await new Promise(res => setTimeout(res, 16));
           }
+          return r;
         }
-      } else {
-        // Streaming path — Gemini, DeepSeek, Kimi
-        sendResult = await sendMessage(apiMessages, systemPrompt, apiKey, model, (chunk) => {
+        // Streaming path — Gemini, DeepSeek, Kimi, NVIDIA
+        return await sendMessage(apiMessages, systemPrompt, sendKey, sendModel, (chunk) => {
           fullResponse += chunk;
           const now = Date.now();
           if (now - lastRender > 16) { // batch renders to ~60fps
@@ -1764,7 +1764,35 @@ export default function SolChat() {
             setStreamingText(fullResponse);
           }
         }, currentStreamSpeed, tokenBudget, temperature);
+      };
+
+      // #14 — PROVIDER WATERFALL. If the primary key is banned/rate-limited (401/403/429)
+      // the send throws; slide to a free fallback so free-Sol NEVER shows a broken chat.
+      const candidates: { model: AIModel; key: string; tools: boolean }[] = [];
+      if (apiKey && apiKey.trim()) candidates.push({ model, key: apiKey.trim(), tools: useNativeTools });
+      const nvFallbackKey = await getProviderKey('nvidia');
+      if (nvFallbackKey && !candidates.some(c => c.key === nvFallbackKey)) candidates.push({ model: 'meta/llama-3.3-70b-instruct' as AIModel, key: nvFallbackKey, tools: false });
+      const gemFallbackKey = await getProviderKey('gemini');
+      if (gemFallbackKey && !candidates.some(c => c.key === gemFallbackKey)) candidates.push({ model: 'gemini-2.5-flash' as AIModel, key: gemFallbackKey, tools: false });
+
+      const isRetryable = (e: any) => /401|403|429|unauthor|forbidden|rate|quota|insufficient|balance|network|failed to fetch|timeout/.test(String(e?.message || e || '').toLowerCase());
+
+      let sent = false;
+      for (let i = 0; i < candidates.length; i++) {
+        const cand = candidates[i];
+        if (i > 0) { fullResponse = ''; setStreamingText(''); setActiveToolEvents([]); }
+        try {
+          sendResult = await performSend(cand.model, cand.key, cand.tools);
+          model = cand.model; // record which provider actually answered
+          sent = true;
+          break;
+        } catch (e) {
+          if (i < candidates.length - 1 && isRetryable(e)) continue;
+          throw e;
+        }
       }
+      if (!sent) throw new Error('All providers unavailable');
+      fullResponse = sendResult.text;
 
       // Strip framework context echo if model repeated the injected prefix
       fullResponse = stripFrameworkEcho(fullResponse);

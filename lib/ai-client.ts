@@ -114,6 +114,45 @@ export async function sendMessage(
   return { text, tokenUsage: capturedUsage, timings: capturedTimings };
 }
 
+// Resilient send — tries the primary key/model, then free NVIDIA, then free Gemini.
+// So a banned / rate-limited / out-of-balance free key NEVER breaks the experience.
+// Shared waterfall (Single Truth) for the simple streaming callers (study dives, etc.).
+// index.tsx handleSend keeps its own copy because it also juggles native tool-calling.
+const FALLBACK_RETRYABLE = (e: any) => /401|403|429|unauthor|forbidden|rate|quota|insufficient|balance|network|failed to fetch|timeout/.test(String(e?.message || e || '').toLowerCase());
+
+export async function sendMessageResilient(
+  messages: Message[],
+  systemPrompt: string,
+  apiKey: string,
+  model: AIModel,
+  onChunk?: (text: string) => void,
+  streamSpeed: 'fast' | 'normal' | 'slow' = 'normal',
+  tokenBudget: number = 4096,
+  temperature: number = 0.9,
+): Promise<SendResult & { providerUsed?: AIModel }> {
+  const { getProviderKey } = await import('./storage');
+  const candidates: { model: AIModel; key: string }[] = [];
+  if (apiKey && apiKey.trim()) candidates.push({ model, key: apiKey.trim() });
+  const nv = await getProviderKey('nvidia');
+  if (nv && !candidates.some(c => c.key === nv)) candidates.push({ model: 'meta/llama-3.3-70b-instruct' as AIModel, key: nv });
+  const gem = await getProviderKey('gemini');
+  if (gem && !candidates.some(c => c.key === gem)) candidates.push({ model: 'gemini-2.5-flash' as AIModel, key: gem });
+  if (candidates.length === 0) throw new Error('No API key provided');
+
+  let lastErr: any;
+  for (let i = 0; i < candidates.length; i++) {
+    try {
+      const r = await sendMessage(messages, systemPrompt, candidates[i].key, candidates[i].model, onChunk, streamSpeed, tokenBudget, temperature);
+      return { ...r, providerUsed: candidates[i].model };
+    } catch (e) {
+      lastErr = e;
+      if (i < candidates.length - 1 && FALLBACK_RETRYABLE(e)) continue;
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
 // Free tier proxy — routes through Cloudflare Worker when no API key is set
 const FREE_TIER_PROXY = 'https://sol-main-proxy.banduabusiness.workers.dev/';
 

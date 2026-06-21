@@ -31,7 +31,7 @@ import {
   savePendingSubject, savePersona, markSubjectStudied,
   getStudiedSubjects, getActiveKey, getModel, getFieldTrials, saveFieldTrials,
 } from '../../lib/storage';
-import { sendMessage, Message, AIModel, solSpeak } from '../../lib/ai-client';
+import { sendMessage, sendMessageResilient, Message, AIModel, solSpeak } from '../../lib/ai-client';
 import { getRelevantEchoes, findResonanceLinks } from '../../lib/intelligence/field-memory';
 import { updateFieldProfile } from '../../lib/intelligence/field-profile';
 import { generateLAMAGUEState, saveLAMAGUEState } from '../../utils/lamague';
@@ -399,6 +399,10 @@ export default function MysterySchoolScreen() {
   const sigilRotateAnim = useRef(new Animated.Value(0)).current;
   const sigilPulseAnim  = useRef(new Animated.Value(0)).current;
   const [sessionWhisper, setSessionWhisper] = useState<string | null>(null);
+  // #251 — the curiosity gap (addictive wisdom): every dive ends on an OPEN door, not a closed one
+  const [nextDoor, setNextDoor] = useState<string | null>(null);
+  const [nextDoorLoading, setNextDoorLoading] = useState(false);
+  const [openDoors, setOpenDoors] = useState<{ subject: string; domainLabel: string; domainColor: string; domainGlyph: string; door: string; date: string }[]>([]);
   const [sessionAtk,    setSessionAtk]    = useState<number>(0);
   const shareCardRef = useRef<View>(null);
   const [shareLoading, setShareLoading] = useState(false);
@@ -705,6 +709,10 @@ export default function MysterySchoolScreen() {
       });
       AsyncStorage.getItem('sol_dive_log').then(diveRaw => {
         if (diveRaw) { try { setDiveLog(JSON.parse(diveRaw)); } catch {} }
+      });
+      // #251 — load the doors left open (curiosity gap)
+      AsyncStorage.getItem('sol_open_doors').then(doorsRaw => {
+        if (doorsRaw) { try { setOpenDoors(JSON.parse(doorsRaw)); } catch {} } else { setOpenDoors([]); }
       });
       AsyncStorage.getItem('sol_vigil').then(vigilRaw => {
         if (!vigilRaw) { setVigil(null); return; }
@@ -1174,7 +1182,8 @@ export default function MysterySchoolScreen() {
       const systemPrompt = buildTeacherPrompt(activeStudySubject, studyHost, studyFieldContext, nextArc, nextDepth);
       const trimmed = updated.slice(-12);
       const apiMessages: Message[] = trimmed.map(m => ({ role: m.role, content: m.content }));
-      const result = await sendMessage(apiMessages, systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
+      // #16 — resilient: if the free key is banned/rate-limited, fall through to free NVIDIA → Gemini
+      const result = await sendMessageResilient(apiMessages, systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
       const reply = result.text?.replace(/\[CONF:[^\]]+\]/g, '').replace(/\[CHIPS:[^\]]+\]/g, '').trim() || '';
       setStudyMessages(prev => [...prev, { role: 'assistant', content: reply }]);
       updateFieldProfile({ userMessageLength: userMsgLen });
@@ -1234,9 +1243,41 @@ export default function MysterySchoolScreen() {
     return `${w.text} The ${targetLabel} hall is nearby.`;
   };
 
+  // #251 — generate the open door: the unexplored thread that pulls the student back
+  const generateNextDoor = () => {
+    const subj = activeStudySubject;
+    const dom = activeStudyDomain;
+    if (!subj) return;
+    setNextDoor(null);
+    setNextDoorLoading(true);
+    // static fallback — still an open loop even with no key
+    const fallback = `You touched ${subj.name} — but not what lies beneath it. One layer down, the question changes. Return and open it.`;
+    const persistDoor = (door: string) => {
+      const entry = { subject: subj.name, domainLabel: dom?.label || 'Open Seat', domainColor: dom?.color || SOL_THEME.headmaster, domainGlyph: dom?.glyph || '⊙', door, date: new Date().toISOString() };
+      AsyncStorage.getItem('sol_open_doors').then(raw => {
+        const doors: typeof entry[] = raw ? JSON.parse(raw) : [];
+        const deduped = doors.filter(d => d.subject !== subj.name);
+        AsyncStorage.setItem('sol_open_doors', JSON.stringify([entry, ...deduped].slice(0, 8))).catch(() => {});
+      }).catch(() => {});
+    };
+    getActiveKey().then(async (apiKey) => {
+      if (!apiKey) { setNextDoor(fallback); persistDoor(fallback); setNextDoorLoading(false); return; }
+      const tail = studyMessages.slice(-6).map(m => `${m.role === 'user' ? 'Student' : 'Teacher'}: ${m.content.slice(0, 140)}`).join('\n');
+      const prompt = `A student just finished a study session on "${subj.name}" (${dom?.label || 'open study'}). The end of the session:\n\n${tail}\n\nWrite ONE short "open door" — name a specific thread they did NOT explore yet, phrased as an irresistible unanswered question or cliffhanger that makes them want to return tomorrow. Max 28 words. Specific to this subject, mythic but precise, no hedging, no quotes. This is the hook that pulls them back — leave the loop OPEN.`;
+      try {
+        const result = await sendMessage([{ role: 'user', content: prompt }], 'You write single-sentence curiosity hooks that leave a learning loop open. One irresistible open thread. No quotes, no preamble.', apiKey, 'gemini-2.5-flash' as AIModel);
+        const door = result.text?.trim().replace(/^["']|["']$/g, '') || '';
+        const final = door.length > 12 ? door : fallback;
+        setNextDoor(final); persistDoor(final);
+      } catch { setNextDoor(fallback); persistDoor(fallback); }
+      setNextDoorLoading(false);
+    }).catch(() => { setNextDoor(fallback); persistDoor(fallback); setNextDoorLoading(false); });
+  };
+
   const triggerSessionComplete = () => {
     setShowSessionComplete(true);
     setSessionWhisper(activeStudyDomain ? getSessionWhisper(activeStudyDomain.id) : null);
+    generateNextDoor();
     Animated.timing(sessionCompleteAnim, { toValue: 1, duration: 320, useNativeDriver: false }).start();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -1354,6 +1395,8 @@ export default function MysterySchoolScreen() {
       setStudyMessages([]);
       setContemplating(false);
       setDiveFullscreen(false);
+      setNextDoor(null);
+      setNextDoorLoading(false);
       // Show grounding nudge after a beat — catches the exit window
       if (wasDeepSession) {
         setTimeout(() => setReturnToBodyVisible(true), 400);
@@ -1875,6 +1918,18 @@ export default function MysterySchoolScreen() {
                   <View style={{ width: '100%', borderTopWidth: 1, borderTopColor: domainColor + '22', paddingTop: 12, marginTop: 4, marginBottom: 8 }}>
                     <Text style={{ color: domainColor + 'AA', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1, marginBottom: 4 }}>◦ SOL WHISPERS</Text>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 18, textAlign: 'center', fontStyle: 'italic', paddingHorizontal: 4 }}>{sessionWhisper}</Text>
+                  </View>
+                )}
+
+                {/* #251 — THE OPEN DOOR (curiosity gap / addictive wisdom) */}
+                {(nextDoorLoading || nextDoor) && (
+                  <View style={{ width: '100%', borderRadius: 14, borderWidth: 1, borderColor: domainColor + '55', backgroundColor: domainColor + '12', paddingVertical: 14, paddingHorizontal: 14, marginTop: 8, marginBottom: 10 }}>
+                    <Text style={{ color: domainColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>⟳ THE DOOR YOU LEFT OPEN</Text>
+                    {nextDoorLoading && !nextDoor ? (
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', fontStyle: 'italic' }}>finding the unexplored thread…</Text>
+                    ) : (
+                      <Text style={{ color: SOL_THEME.text, fontSize: 13.5, lineHeight: 20, textAlign: 'center', fontStyle: 'italic', paddingHorizontal: 2 }}>{nextDoor}</Text>
+                    )}
                   </View>
                 )}
 
@@ -2437,7 +2492,7 @@ RATIFIED = passes all 5 tests and earns a place in the lexicon.
 CHALLENGED = passes 3-4 tests — name the specific refinement needed.
 REJECTED = fails a core test — be direct about which one and why.`;
         const userMsg = `PROPOSED PRIMITIVE\nGlyph: ${forgeGlyph.trim()}\nName: ${forgeName.trim()}\nClass: ${forgeClass}\nMeaning: ${forgeMeaning.trim()}\nUsage example: ${forgeUsage.trim() || '(none provided)'}`;
-        const result = await sendMessage([{ role: 'user', content: userMsg }], systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
+        const result = await sendMessageResilient([{ role: 'user', content: userMsg }], systemPrompt, apiKey, (model || 'gemini-2.5-flash') as AIModel);
         const raw = (result.text || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const parsed = JSON.parse(raw);
         setForgeVerdict(parsed);
@@ -4595,6 +4650,38 @@ REJECTED = fails a core test — be direct about which one and why.`;
               <View style={{ height: 2, backgroundColor: SOL_THEME.headmaster + '0F' }} />
             </View>
 
+            {/* ── #251 OPEN DOORS — the curiosity gap that pulls you back ── */}
+            {openDoors.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ color: SOL_THEME.headmaster + 'AA', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 8, paddingLeft: 2 }}>⟳ DOORS YOU LEFT OPEN</Text>
+                {openDoors.slice(0, 2).map(d => (
+                  <View key={d.subject + d.date} style={{ borderRadius: 14, borderWidth: 1, borderColor: d.domainColor + '55', backgroundColor: d.domainColor + '10', padding: 14, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <Text style={{ color: d.domainColor, fontSize: 16 }}>{d.domainGlyph}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', flex: 1 }} numberOfLines={1}>{d.subject}</Text>
+                      <TouchableOpacity onPress={() => { const next = openDoors.filter(x => x.subject !== d.subject); setOpenDoors(next); AsyncStorage.setItem('sol_open_doors', JSON.stringify(next)).catch(() => {}); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 12.5, lineHeight: 19, fontStyle: 'italic', marginBottom: 10 }}>{d.door}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const dom = MYSTERY_SCHOOL_DOMAINS.find(x => x.label === d.domainLabel);
+                        const subj = dom?.subjects.find(s => s.name === d.subject);
+                        const next = openDoors.filter(x => x.subject !== d.subject);
+                        setOpenDoors(next);
+                        AsyncStorage.setItem('sol_open_doors', JSON.stringify(next)).catch(() => {});
+                        if (dom && subj) { setSelectedDomain(dom); openSubjectDetail(subj, dom); }
+                        else if (dom) { setSelectedDomain(dom); setSchoolView('domain'); }
+                      }}
+                      style={{ alignSelf: 'flex-start', paddingVertical: 7, paddingHorizontal: 16, borderRadius: 10, backgroundColor: d.domainColor }}>
+                      <Text style={{ color: '#000', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>Walk through →</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
             {/* ── ACTIVE STATE ─────────────────────────────────────────── */}
             {(studyStreak >= 1 || fallowReturn) && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
@@ -4651,11 +4738,11 @@ REJECTED = fails a core test — be direct about which one and why.`;
                 { glyph: '◈', label: 'TIME BRAID', color: '#4ECDC4',          onPress: () => { setTimeBraidView('list'); setSchoolView('time-braiding'); }, badge: timeBraidDue.length > 0 ? String(timeBraidDue.length) : undefined },
                 { glyph: '⟟', label: 'LAMAGUE',  color: '#E8D4A0',            onPress: () => { setGlyphSearch(''); setGlyphExpandedId(null); setLamagueSection('glyphs'); setSchoolView('lamague'); } },
                 { glyph: '✦', label: 'SCRIPTORIUM', color: '#B06BE0',        onPress: () => setSchoolView('scriptorium') },
-                // Depth tools
                 { glyph: '◇', label: 'DIVE LOG', color: '#7ED6DF',            onPress: () => setSchoolView('dive-log') },
-                { glyph: '⟁', label: 'SIGIL',    color: '#CC88FF',            onPress: () => setSchoolView('sigil') },
                 { glyph: '☉', label: 'WORLD',    color: '#F5A623',            onPress: () => setSchoolView('world') },
                 { glyph: '◉', label: 'SPIRAL',   color: '#FF6B9D',            onPress: () => setSchoolView('spiral') },
+                { glyph: '✦', label: 'FIELD',    color: SOL_THEME.headmaster, onPress: () => setSchoolTodayOpen(true) },
+                // (SIGIL removed → Zodiac's Sigil Forge is the single sigil home; keeps grid a clean 3×4)
               ];
               return (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
@@ -4933,30 +5020,8 @@ REJECTED = fails a core test — be direct about which one and why.`;
               );
             })()}
 
-            {/* ── DEPTH TOOLS ───────────────────────────────────────────── */}
-            <TouchableOpacity onPress={() => setToolsCollapsed(c => !c)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }} activeOpacity={0.7}>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', flex: 1 }}>◬ DEPTH TOOLS</Text>
-              <Text style={{ color: SOL_THEME.textMuted, fontSize: 11 }}>{toolsCollapsed ? '▶' : '▼'}</Text>
-            </TouchableOpacity>
-            {!toolsCollapsed && (
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-                {[
-                  { glyph: '◈', label: 'Grimoire', sub: 'Your writings', view: 'scriptorium' as const,  color: SOL_THEME.primary },
-                  { glyph: '◌', label: 'Shadow',   sub: 'Named parts',  view: 'shadow-parts' as const,  color: '#B71C1C' },
-                  { glyph: '⌛', label: 'Letters',  sub: 'Across time',  view: 'time-braiding' as const, color: '#9B59B6' },
-                  { glyph: '⊕', label: 'Sigil',    sub: 'Living glyph', view: 'sigil' as const,          color: '#E8C76A' },
-                ].map(tool => (
-                  <TouchableOpacity key={tool.view} onPress={() => setSchoolView(tool.view)}
-                    style={{ flex: 1, padding: 10, borderRadius: 12, borderWidth: 1, borderColor: tool.color + '33', backgroundColor: tool.color + '08', alignItems: 'center', gap: 4 }}
-                    activeOpacity={0.75}>
-                    <Text style={{ color: tool.color, fontSize: 18 }}>{tool.glyph}</Text>
-                    <Text style={{ color: SOL_THEME.text, fontSize: 11, fontWeight: '700' }}>{tool.label}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, textAlign: 'center' }}>{tool.sub}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            {/* DEPTH TOOLS bar deleted — Grimoire/Letters/Sigil were dupes of the main grid;
+                Shadow Parts moved into the FIELD modal. One coherent grid now. */}
 
 
             {/* ── TODAY'S DOOR (returning user) ────────────────────────── */}
@@ -5044,16 +5109,30 @@ REJECTED = fails a core test — be direct about which one and why.`;
               </View>
             )}
 
-            {/* ── ✦ TODAY — contextual stack, collapsed by default so DOMAINS lead (#255b) ── */}
-            <TouchableOpacity onPress={() => setSchoolTodayOpen(v => !v)} activeOpacity={0.75}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9, paddingHorizontal: 12, marginBottom: 12, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.headmaster + '33', backgroundColor: SOL_THEME.headmaster + '0A' }}>
+            {/* ── ✦ TODAY · YOUR FIELD — opened from the FIELD grid tile as a full-screen modal (declutters home) ── */}
+            <Modal visible={schoolTodayOpen} animationType="slide" onRequestClose={() => setSchoolTodayOpen(false)}>
+            <View style={{ flex: 1, backgroundColor: '#06060E' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 52, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: SOL_THEME.headmaster + '33' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={{ color: SOL_THEME.headmaster, fontSize: 12 }}>✦</Text>
-                <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700' }}>TODAY · YOUR FIELD</Text>
+                <Text style={{ color: SOL_THEME.headmaster, fontSize: 14 }}>✦</Text>
+                <Text style={{ color: SOL_THEME.headmaster, fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700' }}>TODAY · YOUR FIELD</Text>
               </View>
-              <Text style={{ color: SOL_THEME.headmaster + 'AA', fontSize: 11 }}>{schoolTodayOpen ? '▼' : '▸ open'}</Text>
+              <TouchableOpacity onPress={() => setSchoolTodayOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>✕ CLOSE</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+            {/* Shadow Parts — relocated from the old depth bar; personal inner work belongs in your field */}
+            <TouchableOpacity onPress={() => { setSchoolTodayOpen(false); setSchoolView('shadow-parts'); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#B71C1C44', backgroundColor: '#B71C1C0C', marginBottom: 14 }} activeOpacity={0.78}>
+              <Text style={{ color: '#E06C6C', fontSize: 18 }}>◌</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>Shadow Parts</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 1 }}>Name and work with your inner parts</Text>
+              </View>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13 }}>→</Text>
             </TouchableOpacity>
-            {schoolTodayOpen && (<>
 
             {/* Active field trial */}
             {activeFieldTrial && !activeFieldTrial.completed && (
@@ -5307,8 +5386,10 @@ REJECTED = fails a core test — be direct about which one and why.`;
             })()}
 
 
-            </>)}
-            {/* ── end ✦ TODAY collapsible — DOMAINS now lead the home view ── */}
+            </ScrollView>
+            </View>
+            </Modal>
+            {/* ── end ✦ TODAY field modal — DOMAINS now lead the home view ── */}
 
             {/* Domain grid — wing selectors */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -5741,7 +5822,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
                           try {
                             const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
                             if (!apiKey) { setSynthesisLoading(null); Alert.alert('No API Key', 'Add a key in Settings to generate your synthesis.', [{ text: 'OK' }]); return; }
-                            const res = await sendMessage(
+                            const res = await sendMessageResilient(
                               [{ role: 'user', content: `The student has studied: ${studied.map(s => s.name).join(', ')} in ${domain.label}. Write a 3-4 sentence synthesis of what they now understand. Be honest about gaps. No preamble.` }],
                               'You are the Headmaster. Synthesize the student\'s learning with precision and honesty. 3-4 sentences. No flattery.',
                               apiKey, (model || 'gemini-2.5-flash') as AIModel, undefined, 'fast', 200, 0.65,

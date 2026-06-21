@@ -1,10 +1,14 @@
 # SOVEREIGN SOL — LIVE TASK LIST
-## v5.23.0 · June 21 2026 · 🚀 LAUNCHED · type-clean
+## v5.26.0 · June 22 2026 · 🚀 LAUNCHED · type-clean
 **Name locked: Sovereign Sol** · Run: `npx expo start -c` → QR → phone
+
+> **June 22 shipped:** ⟳ **#251 THE CURIOSITY GAP** (addictive wisdom / north star) — dives end on an
+> AI-generated open door, persisted to `sol_open_doors`, surfaced as "DOORS YOU LEFT OPEN" on school
+> home with one-tap resume. Type-clean. ⚠ untested on device — Mac: `npx expo start -c` to confirm.
 
 ---
 
-## ✅ SHIPPED TODAY (June 21 — the marathon)
+## ✅ SHIPPED June 21 — DAY MARATHON (→ v5.23.0)
 Living entry (breathing mark + glow) · persona **knowledge** + **8-file split** + `THE_VOICES` ensemble ·
 **GLYPHIC** mode · **chips** rebuilt (5 colour, 1 row) · **secret reader** (𝔏 READ) ·
 **YOU OWN THIS** sovereign manifesto · **Welcome Tour** (7-step) · onboarding refresh ·
@@ -13,6 +17,20 @@ Living entry (breathing mark + glow) · persona **knowledge** + **8-file split**
 2 **unification audits** (5 bugs incl. a crash → code type-clean) · **tarot deck spec** (Veil & Vein) ·
 **Sovereign Knowledge Economy** crypto thesis · **Soul Forge Vault** (8 full soul-docs)
 
+## ✅ SHIPPED June 21 — NIGHT: "THE COMPANION FORGE" (v5.24.0)
+**GameBoy map** — 🗺 one-tap overlay + mini-map HUD (you-are-here + neighbour hops) + ⚔ ENCOUNTER button (D-pad arrows removed) + zoom 0.3–3.0 + clean tiered map redraw + **map-travel bug fix** (room-only handleSkin) ·
+**DIVE-CURRENCY economy** — dives spendable (`companionAcquire`: ORIGIN free / dives buy / capture catches / rotating daily shop); replaced brutal 290-dive thresholds ·
+**Tarot Viewer** (#277) · per-tab collapsible **help zones** · audits passed (school 41/347, numbers, assets, offline)
+
+## ✅ SHIPPED June 21 — NIGHT: "THE DEPTH PASS" (v5.25.0) — biggest session since launch, ~35 tasks
+**VOID BOSSES** (#273, `lib/bosses.ts`) — study-to-win: aggression-zone grows, can't out-fight → dive subject → earn incantation → SPEAK THE SPELL → repel. *The signature mechanic.* ·
+**PARTY system** (#260, `sol_party`, field of 3) · **per-companion LEVELS + stat builds** (#265, `sol_companion_xp/alloc`) · **CHRONICLE** (#264, `sol_chronicle`) ·
+**THE HIDDEN ONE** (#274, ~0.001% on zone arrival, never buyable) · **battle voice** (#245) · rotating shop **TODAY'S FORGE** (#261) ·
+**79-card Veil & Vein tarot deck** (real PNGs + viewer, Major/Minor) + **THE INTERTWINING** zone (`veilvein`) + Veil&Vein cosmetics (SECRET tier) (#282) ·
+**per-tab HOT colours** (#227, companion=hot pink) · **school home rebuild** (12-button tools grid + collapsed TODAY + minimizable START HERE) (#255) · covenant ambush removed ·
+**chat audit** 4 modes (#278) · psi/zonk **empty states** (#281) · zodiac perf **LiveClock** (#279) · **help pass** (#280) · **VERAS** economy spec'd
+Release notes: `RELEASE_NOTES_5.22-5.25.md` (app root) — shareable 5.22.6→5.25.0.
+
 ---
 
 ## 🔥 BUILD QUEUE — reordered by viability × usefulness
@@ -20,13 +38,22 @@ Living entry (breathing mark + glow) · persona **knowledge** + **8-file split**
 ### 🟢 NEXT (high value, viable solo, serve the north star)
 | # | Task |
 |---|---|
+| ✅ **#251** | **★ NORTH STAR — curiosity gap SHIPPED v5.26.0** (open door at dive-end + persisted + home greeting). Next layers: tie door to a return-*streak*; "threads pulling" badge for open-door count; Walk-through pre-loads the door's question into the dive. |
 | **#249** | **Fix wack first-run flow** — two 7-step flows stacking (onboarding + WelcomeTour) + TALK living-field. Dedupe/reorder to ONE clean first run. ⚠ CONFIRM with Mac which screen is "the living field" first. Then: per-section first-time onboarding. |
-| **#251** | **★ NORTH STAR — knowledge addictive.** First build: the **curiosity gap** (lessons end on an open door → next layer tomorrow). Cheapest, biggest retention lever. |
-| **evo** | **Effect-based companion evolution** — universal, no new art: glow/particles/aura/crown/eyes intensify per stage. Infra already exists. Ships evolution for all 19. |
-| **#250** | **GameBoy → main background** + fix world-zone access (currently needs scroll). Old GB → auto-battles. (Needs Mac's eyes.) |
-| **#245** | **Companion reacts to study** — comments/evolves dialogue from domains actually engaged. Small code, huge "alive" payoff. |
+| **evo** | **Effect-based companion evolution** — universal, no new art: glow/particles/aura/crown/eyes intensify per stage. (Per-companion LEVELS shipped v5.25 — this is the *visual* evolution layer on top.) Ships for all 19. |
+| **#245** | **Companion reacts to study** — comments/evolves dialogue from domains actually engaged. (Battle voice shipped v5.25; this is the *study-reaction* half.) Small code, huge "alive" payoff. |
 | **#243** | **Daily Transit** ritual (personalized zodiac insight + study-spark on open) — extends existing daily/streak. Companion-Clause safe. |
 | **#242** | **Onboarding archetype-spark** — 3-Q Seeker/Warrior/Mystic/Scholar → starter stage + domain rec. Extend existing sovereignty baseline. |
+
+### 🟢 DEPTH-PASS FOLLOW-ONS (from June 21 night — most need Mac design input, don't slam)
+| # | Task |
+|---|---|
+| **#263** | **Split the monolith** — `companion.tsx` is 8327 lines. Carve into modules (map / battle / shop / scene). Pure refactor, viable solo, lowers every future risk. |
+| **#262** | **Companion art dedup** — VERIFIED June 22: 10 shared faces. **quol×3 (kabbala/noetic/quantum) — files don't exist, worst offender, do FIRST.** Also: noctis→void/phantom_citadel/void_colosseum · akasha→akashic/crystal_spire · anoth→egyptian/bone_archive · augurum→sovereign/sovereign_forge · nimue→celtic/veras_garden · pythia→delphi/deep_market · ragna→norse/war_sanctum · lycheetah→lycheetah_spire. Drop unique PNG at key → fallback auto-picks (no code). Full list: `COMPANION_ART_DEDUP.md`. |
+| **#264** | **Lore that grows** — Chronicle shipped; make it *compound* (entries reference past, deepen with depth). |
+| **#258** | **Make Sanctum compelling** — HELD, do NOT cut. Zodiac chart + LQ sparkline + dive history + transit readings. |
+| **#250** | **GameBoy → main background** + fix world-zone access (currently needs scroll). (Map overlay shipped v5.24; this is the *background* treatment.) Needs Mac's eyes. |
+| **#248** | **Lycheetah = mythic CAT mythos** — needs Mac's canon call before build. |
 
 ### 🟡 WORTH IT (useful, more design/effort)
 | # | Task |
@@ -34,9 +61,9 @@ Living entry (breathing mark + glow) · persona **knowledge** + **8-file split**
 | **#233** | **D&D failable knowledge mode** — the differentiator; knowledge runs with stakes/fail states. Bigger build. |
 | **#232** | Decision-based combat (choice + consequence, not attack-spam) |
 | **#228** | **Stars grimoire** — natal wheel as illustrated hero object + FLUX celestial art + grimoire frame (Veil&Vein palette). Needs Mac's eyes. |
-| **#238** | **Help audit** → global help w/ **minimizable per-tab help zones** + per-tab first-time onboarding |
 | **#244** | Community — exportable **Sanctum Card** PNG (extends DiveShareCard) + journey gallery |
-| **#227** | Per-tab colour sets · **#229** redundancy/weak-writing scan · **#240** splash refresh · **#248** Lycheetah=mythic-CAT mythos fix · **#247** Sanctum Lite + privacy analytics · **#220** Sanctum header glow polish |
+| **#229** | redundancy/weak-writing scan · **#240** splash refresh · **#247** Sanctum Lite + privacy analytics · **#220** Sanctum header glow polish |
+| ~~#227~~ | ✅ per-tab colours — SHIPPED v5.25 · ~~#238~~ ✅ help audit/per-tab zones — SHIPPED v5.24–25 |
 
 ### 🔵 STRATEGIC (right, but bigger/later)
 | # | Task |
@@ -58,8 +85,15 @@ Living entry (breathing mark + glow) · persona **knowledge** + **8-file split**
 - `npx expo install expo-clipboard` (true 1-tap copy) · `expo-media-library` (save-to-gallery)
 - **EAS build** — `eas build --platform android --profile preview` when tight on phone
 
+## 🎨 ART DROPS (Mac generates via FLUX/Grok → Sol wires, no code wait)
+| Art | Status | Wire-in |
+|---|---|---|
+| **Veil & Vein HERO character** `veilvein_1.png` | ⬜ MISSING — brief ready `~/Downloads/VEIL_VEIN_DROP_ART_BRIEF.md` | → `assets/companions/` + COMPANION_LORE + SKINS entry (tarot-drop exclusive skin). Cosmetics (halo/wing/pet_26) already shipped — only the totem creature is missing. |
+| **#262 quol×3** kabbala/noetic/quantum `_1.png` | ⬜ MISSING — wearing quol | drop at key, fallback auto-picks (no code) |
+| **#262 other doubles** (8 more, see above) | ⬜ shared faces | same — drop PNG at key |
+
 ## ⏳ OUTREACH
-- **Simon / Alliance** — waiting on reply. Do NOT send a 3rd. Light nudge only after 5–7d. Kit ready (`~/Desktop/ALLIANCE_PITCH_KIT/`).
+- **Simon / Alliance** — reconnect message DRAFTED + ready (in `project_alliance_moment` memory). NOT yet sent. Rec: send the low-risk door-opener while launch is fresh (asks next deadline + if interview-help stands, commits to nothing). Next cohort ALL18 = Sept 7, early deadline ~July → weeks not days. Kit: `~/Desktop/ALLIANCE_PITCH_KIT/`. **Mac fires.**
 - **Angel (X)** — Mac fired "Addictive wisdom". Follow-up loaded if he bites.
 
 ---
@@ -346,8 +380,8 @@ Art: pixel bg + floating painterly companion + glow at boundary.
 
 | Thing | Value |
 |---|---|
-| Version | 5.23.0 (launched; versionCode 8 not yet rebuilt) |
-| Git branch | master |
+| Version | 5.25.0 (launched; versionCode 8 — APK still on 5.22.6, rebuild = Mac fires) |
+| Git | master · committed 74a9297 (depth pass + release notes) · tree clean |
 | Run command | `npx expo start -c` |
 | Distribution | Sovereign Sideloading → GitHub Releases + lycheetah.io |
 | Halos | 17 (halo_1–17, enlarged: 680×360, opacity:0.75) |
