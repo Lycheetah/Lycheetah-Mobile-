@@ -39,11 +39,11 @@ Release notes: `RELEASE_NOTES_5.22-5.25.md` (app root) — shareable 5.22.6→5.
 | # | Task |
 |---|---|
 | ✅ **#251** | **★ NORTH STAR — curiosity gap SHIPPED v5.26.0** (open door at dive-end + persisted + home greeting). Next layers: tie door to a return-*streak*; "threads pulling" badge for open-door count; Walk-through pre-loads the door's question into the dive. |
-| **#249** | **Fix wack first-run flow** — two 7-step flows stacking (onboarding + WelcomeTour) + TALK living-field. Dedupe/reorder to ONE clean first run. ⚠ CONFIRM with Mac which screen is "the living field" first. Then: per-section first-time onboarding. |
-| **evo** | **Effect-based companion evolution** — universal, no new art: glow/particles/aura/crown/eyes intensify per stage. (Per-companion LEVELS shipped v5.25 — this is the *visual* evolution layer on top.) Ships for all 19. |
-| **#245** | **Companion reacts to study** — comments/evolves dialogue from domains actually engaged. (Battle voice shipped v5.25; this is the *study-reaction* half.) Small code, huge "alive" payoff. |
-| **#243** | **Daily Transit** ritual (personalized zodiac insight + study-spark on open) — extends existing daily/streak. Companion-Clause safe. |
-| **#242** | **Onboarding archetype-spark** — 3-Q Seeker/Warrior/Mystic/Scholar → starter stage + domain rec. Extend existing sovereignty baseline. |
+| ✅ **#249** | **First-run flow fixed SHIPPED v5.33.0** — removed race condition in `_layout.tsx`; `onboarding.tsx` now runs cleanly on first launch; WelcomeTour suppressed after onboarding completes. |
+| ✅ **evo** | **Effect-based companion evolution SHIPPED v5.29.0** — stage-gated glow blob + particles in CompanionScene. |
+| ✅ **#245** | **Companion reacts to study SHIPPED v5.28.0** — sol_fresh_dive signal; companion fires live AI greeting on tab return after dive. |
+| ✅ **#243** | **Daily Transit SHIPPED v5.33.0** — personalized zodiac insight + study-spark tile in Zodiac tab, cached daily, auto-generates on focus. |
+| ✅ **#242** | **Onboarding archetype-spark SHIPPED v5.33.0** — SEEKER/MYSTIC/WARRIOR/SCHOLAR scoring; archetype card in step 6; saved to `sol_archetype`. |
 
 ### 🟢 DEPTH-PASS FOLLOW-ONS (from June 21 night — most need Mac design input, don't slam)
 | # | Task |

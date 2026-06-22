@@ -80,6 +80,34 @@ const SOVEREIGNTY_QUESTIONS = [
   },
 ];
 
+// ── ARCHETYPE SPARK ──────────────────────────────────────────────────────────
+// Sovereignty answers → one of four archetypes → starter domain + companion rec
+const ARCHETYPES = {
+  SEEKER:  { glyph: '↗', color: '#1ABC9C', label: 'THE SEEKER',  desc: 'Curiosity before certainty. You follow the thread wherever it leads.', domain: 'Irish Mythology', companion: 'wanderer' },
+  MYSTIC:  { glyph: 'Ψ', color: '#9B6BFF', label: 'THE MYSTIC',  desc: 'You sit with mystery. Depth before conclusion.', domain: 'Alchemy', companion: 'alchemist' },
+  WARRIOR: { glyph: '◈', color: '#FF6B6B', label: 'THE WARRIOR', desc: 'You test everything. Truth survives pressure or it fails.', domain: 'Truth Pressure', companion: 'sentinel' },
+  SCHOLAR: { glyph: '△', color: '#E8C76A', label: 'THE SCHOLAR', desc: 'You map what others call chaos. Structure reveals what intuition misses.', domain: 'LAMAGUE Language', companion: 'archivist' },
+} as const;
+type ArchetypeKey = keyof typeof ARCHETYPES;
+
+function computeArchetype(answers: Record<string, string>): ArchetypeKey {
+  const scores: Record<ArchetypeKey, number> = { SEEKER: 0, MYSTIC: 0, WARRIOR: 0, SCHOLAR: 0 };
+  const { mystery, truth, unknown } = answers;
+  if (mystery === 'chase') { scores.SEEKER += 2; scores.WARRIOR += 1; }
+  if (mystery === 'sit')   { scores.MYSTIC  += 2; scores.SEEKER  += 1; }
+  if (mystery === 'map')   { scores.SCHOLAR += 2; }
+  if (mystery === 'test')  { scores.WARRIOR += 2; }
+  if (truth === 'empirical')    { scores.WARRIOR += 2; scores.SCHOLAR += 1; }
+  if (truth === 'experiential') { scores.SEEKER  += 2; scores.MYSTIC  += 1; }
+  if (truth === 'structural')   { scores.SCHOLAR += 2; scores.WARRIOR += 1; }
+  if (truth === 'narrative')    { scores.MYSTIC  += 2; scores.SEEKER  += 1; }
+  if (unknown === 'excitement') { scores.SEEKER  += 2; }
+  if (unknown === 'tools')      { scores.WARRIOR += 2; scores.SCHOLAR += 1; }
+  if (unknown === 'patience')   { scores.MYSTIC  += 2; scores.SCHOLAR += 1; }
+  if (unknown === 'curiosity')  { scores.SEEKER  += 2; scores.MYSTIC  += 1; }
+  return (Object.keys(scores) as ArchetypeKey[]).reduce((a, b) => scores[a] >= scores[b] ? a : b);
+}
+
 // ── DOMAIN INTERESTS ────────────────────────────────────────────────────────
 const DOMAINS = [
   { label: 'Mindfulness',        color: '#4A9EFF' },
@@ -228,6 +256,10 @@ export default function OnboardingScreen() {
     }
     if (Object.keys(sovereigntyAnswers).length > 0) {
       await AsyncStorage.setItem('sol_sovereignty_profile', JSON.stringify(sovereigntyAnswers));
+      if (Object.keys(sovereigntyAnswers).length >= SOVEREIGNTY_QUESTIONS.length) {
+        const arcKey = computeArchetype(sovereigntyAnswers);
+        await AsyncStorage.setItem('sol_archetype', arcKey);
+      }
     }
     // Lumen + Veras founding reward
     const stored = await AsyncStorage.getItem('sol_coins');
@@ -236,6 +268,7 @@ export default function OnboardingScreen() {
     const verasStored = await AsyncStorage.getItem('sol_veras');
     await AsyncStorage.setItem('sol_veras', String((verasStored ? parseInt(verasStored) : 0) + 50));
     await AsyncStorage.setItem('lycheetah_onboarded', 'true');
+    await AsyncStorage.setItem('sol_welcome_tour_seen', 'true');
     router.replace('/(tabs)');
   }
 
@@ -620,6 +653,29 @@ export default function OnboardingScreen() {
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Founding reward. Lumens spend in the shop. Veras — smallest unit of knowledge dust — earned from learning.</Text>
                 </View>
               </View>
+              {/* Archetype reveal — shown when sovereignty questions answered */}
+              {Object.keys(sovereigntyAnswers).length >= SOVEREIGNTY_QUESTIONS.length && (() => {
+                const arc = ARCHETYPES[computeArchetype(sovereigntyAnswers)];
+                return (
+                  <View style={{ width: '100%', borderRadius: 14, borderWidth: 1, borderColor: arc.color + '55', backgroundColor: arc.color + '0C', padding: 16, marginBottom: 16 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 28, color: arc.color }}>{arc.glyph}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: arc.color, fontSize: 11, fontWeight: '700', fontFamily: mono, letterSpacing: 2 }}>{arc.label}</Text>
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 17 }}>{arc.desc}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                      <View style={{ backgroundColor: arc.color + '18', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: arc.color + '33' }}>
+                        <Text style={{ color: arc.color, fontSize: 10, fontFamily: mono, fontWeight: '700' }}>✦ {arc.domain}</Text>
+                      </View>
+                      <View style={{ backgroundColor: arc.color + '18', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: arc.color + '33' }}>
+                        <Text style={{ color: arc.color, fontSize: 10, fontFamily: mono, fontWeight: '700' }}>⊚ {arc.companion}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })()}
               <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', marginBottom: 20, lineHeight: 20 }}>
                 {'The field is ready.\nThe school is open.\nThe Work begins now.'}
               </Text>

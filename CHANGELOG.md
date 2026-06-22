@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.33.0] — 2026-06-22 — ◈ DAILY TRANSIT + ARCHETYPE SPARK + FIRST-RUN FIX
+> Three quality-of-life tasks closed in one session pass.
+- **#243 Daily Transit ritual** — a personalized daily zodiac insight appears in the Zodiac tab, below TODAY'S SKY. Generated once per day (cached in `sol_daily_transit_v1`). Personalized if natal chart is set; falls back to today's sun/moon/phase. Includes a ✦ STUDY SPARK domain recommendation tied to today's sky. Tap to refresh.
+- **#242 Onboarding archetype-spark** — sovereignty answers now resolve to one of four archetypes (SEEKER / MYSTIC / WARRIOR / SCHOLAR) via a scoring function. Step 6 of onboarding reveals the result with domain rec and companion suggestion. Saved to `sol_archetype`. Pure addition on top of existing sovereignty baseline.
+- **#249 First-run flow fix** — removed race condition in `_layout.tsx` that pre-wrote `lycheetah_onboarded = 'true'` before `index.tsx` could route to `onboarding.tsx`. On first launch, `onboarding.tsx` now runs cleanly. On completion, `sol_welcome_tour_seen` is also set, so `WelcomeTour` never stacks on top of a completed onboarding.
+
 ## [5.30.0] — 2026-06-22 — 🜍 SHOP AUDIT + VOID ENTITIES MOVED
 > Fixed 3 filler cosmetics that could never unlock; moved Void Entities below Encounters.
 - **3 filler cosmetics fixed** — THE VEILCROWN (`halo_veilcrown`), INTERTWINED SPAN (`wings_intertwined`), THE VEILKITTEN (`pet_veilkitten`) had art (`*_26.png`) but no shop entry and no award path → permanently locked, "Buy in Shop" forever. Now **awarded on reaching THE INTERTWINING (veilvein) zone** — earned by discovery, never bought. Covenant-safe (pure exploration, no paywall). Fires a Chronicle entry + toast.

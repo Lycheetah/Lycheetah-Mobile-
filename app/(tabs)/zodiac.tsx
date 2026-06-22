@@ -498,6 +498,8 @@ export default function ZodiacScreen() {
   const [birthDraft, setBirthDraft] = useState({ day: '', month: '', year: '', hour: '', minute: '', utcOffset: '-0', latitude: '51.5', fullName: '', motherName: '', cityName: '' });
   const [zodiacReading, setZodiacReading] = useState<{ date: string; text: string } | null>(null);
   const [zodiacLoading, setZodiacLoading] = useState(false);
+  const [dailyTransit, setDailyTransit] = useState<{ date: string; text: string; spark: string } | null>(null);
+  const [dailyTransitLoading, setDailyTransitLoading] = useState(false);
   const skyDataFetched = React.useRef(false); // network sky data (Kp+weather) fetched once per session, not every focus
   const [question, setQuestion] = useState('');
   const [questionReading, setQuestionReading] = useState<string | null>(null);
@@ -659,7 +661,7 @@ export default function ZodiacScreen() {
   useFocusEffect(useCallback(() => {
     (async () => {
       const today = todayKey();
-      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw] = await Promise.all([
+      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw, transitRaw] = await Promise.all([
         AsyncStorage.getItem('zodiac_birth_v1'),
         AsyncStorage.getItem('zodiac_reading_v1'),
         AsyncStorage.getItem(`sanctum_aura_${today}`),
@@ -667,9 +669,17 @@ export default function ZodiacScreen() {
         AsyncStorage.getItem(ZONK_LOG_KEY),
         AsyncStorage.getItem('zodiac_reading_history_v1'),
         AsyncStorage.getItem('zodiac_gem_collection_v1'),
+        AsyncStorage.getItem('sol_daily_transit_v1'),
       ]);
       if (birthRaw) setBirthData(JSON.parse(birthRaw));
       if (readingRaw) setZodiacReading(JSON.parse(readingRaw));
+      if (transitRaw) {
+        const t = JSON.parse(transitRaw);
+        if (t.date === today) setDailyTransit(t);
+        else generateDailyTransit();
+      } else {
+        generateDailyTransit();
+      }
       if (auraRaw) {
         const a = JSON.parse(auraRaw);
         setLq(getLQ(a.tes ?? 0, a.vtr ?? 0, a.pai ?? 0));
@@ -905,6 +915,48 @@ export default function ZodiacScreen() {
     setEditingBirth(false);
     setZodiacReading(null);
   };
+
+  const generateDailyTransit = useCallback(async () => {
+    const key = todayKey();
+    setDailyTransitLoading(true);
+    try {
+      const today = new Date();
+      const sun = ZODIAC_SIGNS[getTodaySunSign()];
+      const moon = ZODIAC_SIGNS[getTodayMoonSign()];
+      const phase = getMoonPhase(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      const [apiKey, model, birthRaw] = await Promise.all([
+        getActiveKey(), getModel(), AsyncStorage.getItem('zodiac_birth_v1'),
+      ]);
+      const bd: BirthData | null = birthRaw ? JSON.parse(birthRaw) : null;
+      if (!apiKey) {
+        const t = { date: key, text: `${sun.glyph} Sun in ${sun.name} · ${moon.glyph} Moon in ${moon.name} — ${phase.name}.`, spark: sun.name };
+        setDailyTransit(t);
+        await AsyncStorage.setItem('sol_daily_transit_v1', JSON.stringify(t));
+        return;
+      }
+      let natLine = '';
+      if (bd) {
+        const ns = ZODIAC_SIGNS[getSunSignIndex(bd.month, bd.day)];
+        const nm = ZODIAC_SIGNS[getMoonSignIndex(bd.year, bd.month, bd.day, bd.hour)];
+        natLine = `Natal: Sun in ${ns.name}, Moon in ${nm.name}. `;
+      }
+      const prompt = `${natLine}Today's sky: Sun in ${sun.name} (${sun.keywords}), Moon in ${moon.name}, ${phase.name}.\nOne sentence: a precise, warm transit insight for today. Not a prediction — a signal about what the day's inner climate asks for. No preamble, no sign-off.\nNew line: one study domain that resonates with today's sky (e.g. "Alchemy", "Shadow Work", "Celtic Old Gods"). Just the domain name.`;
+      const result = await sendMessage(
+        [{ role: 'user', content: prompt }],
+        'You are Sol — precise, warm, grounded. Daily transit oracle.',
+        apiKey, (model || 'gemini-2.5-flash') as AIModel,
+        undefined, 'fast', 80,
+      );
+      const lines = (result.text?.trim() || '').split('\n').filter(Boolean);
+      const text = lines[0] || `Sun in ${sun.name} — ${sun.keywords}.`;
+      const spark = lines[1]?.replace(/^[^a-zA-Z✦◈⊚☽◉✧⟡⊼⚙𝔏⊼⚔◬ψ⟐⬡]*/, '').trim() || sun.name;
+      const t = { date: key, text, spark };
+      setDailyTransit(t);
+      await AsyncStorage.setItem('sol_daily_transit_v1', JSON.stringify(t));
+    } catch { /* silent — transit is non-critical */ } finally {
+      setDailyTransitLoading(false);
+    }
+  }, []);
 
   const generateReading = async () => {
     if (!birthData) return;
@@ -2031,6 +2083,38 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
           )}
         </View>
       </View>
+
+      {/* ── DAILY TRANSIT ─────────────────────────────────────────── */}
+      <TouchableOpacity
+        onPress={() => !dailyTransitLoading && generateDailyTransit()}
+        activeOpacity={0.8}
+        style={{ borderRadius: 14, borderWidth: 1, borderColor: '#9B6BFF33', backgroundColor: '#0A0010', marginBottom: 14, padding: 14 }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <Text style={{ color: '#9B6BFF', fontSize: 13 }}>◈</Text>
+          <Text style={{ color: '#9B6BFF', fontSize: 9, fontWeight: '700', letterSpacing: 2, fontFamily: mono, flex: 1 }}>TODAY'S TRANSIT</Text>
+          {dailyTransit && !dailyTransitLoading && (
+            <Text style={{ color: '#9B6BFF44', fontSize: 8, fontFamily: mono }}>tap to refresh</Text>
+          )}
+        </View>
+        {dailyTransitLoading ? (
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>reading the sky...</Text>
+        ) : dailyTransit ? (
+          <>
+            <Text style={{ color: '#CDCDE0', fontSize: 14, lineHeight: 22 }}>{dailyTransit.text}</Text>
+            {!!dailyTransit.spark && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                <Text style={{ color: '#9B6BFF55', fontSize: 8, fontFamily: mono, letterSpacing: 1.5 }}>✦ STUDY SPARK</Text>
+                <View style={{ backgroundColor: '#9B6BFF18', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: '#9B6BFF33' }}>
+                  <Text style={{ color: '#9B6BFF', fontSize: 11, fontFamily: mono, fontWeight: '700' }}>{dailyTransit.spark}</Text>
+                </View>
+              </View>
+            )}
+          </>
+        ) : (
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>Tap to read today's sky</Text>
+        )}
+      </TouchableOpacity>
 
       {/* THE WHEEL — interactive zodiac circle */}
       <View style={{ borderRadius: 16, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', backgroundColor: '#060010', marginBottom: 16, alignItems: 'center', overflow: 'hidden' }}>

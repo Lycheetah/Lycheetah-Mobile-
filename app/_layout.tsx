@@ -24,9 +24,6 @@ export default function RootLayout() {
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
       setOnboarded(val === 'true');
-      if (val !== 'true') {
-        AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-      }
     });
   }, []);
 
