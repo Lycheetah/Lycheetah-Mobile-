@@ -1,114 +1,618 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sol by Lycheetah</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sol — The Mystery School in Your Pocket</title>
+  <meta name="description" content="40 domains. 19 companions. Irish mythology. Celtic gods. Zodiac. Shadow work. Crystal lore. LAMAGUE. A living mystery school on Android. Free. No gatekeepers." />
+  <meta property="og:title" content="Sol — The Mystery School in Your Pocket" />
+  <meta property="og:description" content="40 domains of genuine inquiry. Irish mythology, Celtic Old Gods, crystal lore, noetic science, quantum mechanics. A living AI companion RPG. Free forever." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #06060E;
+      --bg2:    #0A0A16;
+      --bg3:    #0E0E1C;
+      --gold:   #E8C76A;
+      --gold2:  #C8A84B;
+      --purple: #9B6BFF;
+      --teal:   #1ABC9C;
+      --dim:    #33334A;
+      --text:   #C8C8D8;
+      --muted:  #666677;
+      --mono:   'Courier New', Courier, monospace;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.65;
+      overflow-x: hidden;
+    }
+
+    /* ── STARS ── */
+    .stars {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none; z-index: 0;
+      overflow: hidden;
+    }
+    .star {
+      position: absolute;
+      background: var(--gold);
+      border-radius: 50%;
+      animation: twinkle var(--d, 4s) ease-in-out infinite;
+    }
+    @keyframes twinkle {
+      0%,100% { opacity: 0.1; transform: scale(1); }
+      50%      { opacity: 0.6; transform: scale(1.3); }
+    }
+
+    /* ── GATE HERO ── */
+    #gate {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center;
+      padding: 60px 24px 80px;
+      overflow: hidden;
+    }
+    .gate-glow {
+      position: absolute;
+      width: 700px; height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(232,199,106,0.07) 0%, transparent 65%);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    .gate-glow2 {
+      position: absolute;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(155,107,255,0.08) 0%, transparent 65%);
+      top: 45%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+
+    /* Big watermark 𝔏 */
+    .gate-watermark {
+      position: absolute;
+      font-size: clamp(200px, 40vw, 380px);
+      color: rgba(232,199,106,0.035);
+      font-family: var(--mono);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+    }
+
+    .gate-eyebrow {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 5px;
+      color: var(--gold2);
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      opacity: 0.8;
+    }
+
+    .gate-sigil {
+      font-size: 52px;
+      color: var(--gold);
+      animation: float 5s ease-in-out infinite;
+      margin-bottom: 20px;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(232,199,106,0.4));
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); opacity: 0.85; }
+      50%      { transform: translateY(-8px); opacity: 1; }
+    }
+
+    .gate-title {
+      font-size: clamp(38px, 7vw, 82px);
+      font-weight: 900;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+    .gate-title-gold {
+      background: linear-gradient(135deg, var(--gold) 0%, #FFE680 50%, var(--gold2) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .gate-tagline {
+      font-size: clamp(13px, 1.8vw, 16px);
+      color: var(--muted);
+      font-family: var(--mono);
+      letter-spacing: 2px;
+      margin-bottom: 32px;
+      margin-top: 8px;
+    }
+    .gate-sub {
+      font-size: clamp(14px, 1.8vw, 18px);
+      color: var(--text);
+      max-width: 580px;
+      margin: 0 auto 20px;
+      line-height: 1.75;
+      opacity: 0.85;
+    }
+
+    /* Domain strip */
+    .domain-strip {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center;
+      max-width: 680px;
+      margin: 0 auto 40px;
+    }
+    .domain-pill {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      padding: 5px 11px;
+      border-radius: 20px;
+      border: 1px solid;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* CTA */
+    .gate-cta-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .gate-cta {
+      display: inline-flex; align-items: center; gap: 14px;
+      background: linear-gradient(135deg, #C8A84B 0%, #E8C76A 50%, #C8A84B 100%);
+      color: #06060E;
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 20px 48px;
+      border-radius: 60px;
+      font-family: var(--mono);
+      transition: transform 0.25s, box-shadow 0.25s;
+      box-shadow: 0 0 50px rgba(232,199,106,0.35), 0 4px 20px rgba(0,0,0,0.5);
+      position: relative;
+      overflow: hidden;
+    }
+    .gate-cta::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      60%,100% { transform: translateX(100%); }
+    }
+    .gate-cta:hover { transform: translateY(-3px); box-shadow: 0 0 80px rgba(232,199,106,0.5), 0 8px 30px rgba(0,0,0,0.6); }
+    .cta-note {
+      font-size: 10px;
+      color: var(--dim);
+      font-family: var(--mono);
+      letter-spacing: 1.5px;
+      text-align: center;
+    }
+    .cta-unknown {
+      font-size: 10px;
+      color: var(--gold2);
+      font-family: var(--mono);
+      letter-spacing: 1px;
+      opacity: 0.7;
+    }
+
+    /* Stat row */
+    .stat-row {
+      display: flex; gap: 28px; justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 48px;
+    }
+    .stat {
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--mono);
+      font-size: clamp(24px, 4vw, 38px);
+      font-weight: 900;
+      color: var(--gold);
+      letter-spacing: -1px;
+      display: block;
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .stat-sep {
+      width: 1px;
+      background: var(--dim);
+      align-self: stretch;
+    }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(232,199,106,0.2), transparent);
+      margin: 0;
+      position: relative; z-index: 1;
+    }
+
+    /* ── 4 DOORS ── */
+    #doors {
+      position: relative; z-index: 1;
+      padding: 100px 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .section-eye {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 4px;
+      color: var(--gold2);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      opacity: 0.8;
+    }
+    .section-h {
+      font-size: clamp(22px, 3.5vw, 38px);
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 48px;
+    }
+    .doors-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .door {
+      border-radius: 18px;
+      border-width: 1px;
+      border-style: solid;
+      padding: 26px 22px;
+      background: rgba(10,10,22,0.6);
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .door::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      border-radius: inherit;
+    }
+    .door:hover { transform: translateY(-4px); }
+    .door:hover::before { opacity: 1; }
+    .door-glyph {
+      font-size: 30px;
+      margin-bottom: 14px;
+      display: block;
+    }
+    .door-name {
+      font-family: var(--mono);
+      font-size: 9.5px;
+      letter-spacing: 2.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .door p { font-size: 13.5px; color: var(--muted); line-height: 1.7; }
+    .door p strong { font-weight: 600; }
+
+    /* ── ABOUT ── */
+    #about {
+      position: relative; z-index: 1;
+      padding: 80px 24px;
+      background: var(--bg2);
+    }
+    .about-inner {
+      max-width: 700px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .about-inner p {
+      font-size: clamp(15px, 2vw, 19px);
+      line-height: 1.85;
+      margin-bottom: 22px;
+      color: var(--text);
+    }
+    .about-inner strong { color: var(--gold); }
+    .about-inner em { color: #B8A4FF; font-style: normal; }
+    .quote {
+      border-left: 2px solid var(--gold2);
+      padding-left: 20px;
+      margin: 32px 0;
+      text-align: left;
+      font-style: italic;
+      color: var(--gold2);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* ── INSTALL ── */
+    #install {
+      position: relative; z-index: 1;
+      padding: 100px 24px;
+      max-width: 680px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .install-steps {
+      display: flex; flex-direction: column; gap: 16px;
+      margin: 44px 0;
+      text-align: left;
+    }
+    .install-step {
+      display: flex; gap: 18px; align-items: flex-start;
+      background: var(--bg2);
+      border: 1px solid var(--bg3);
+      border-radius: 14px;
+      padding: 18px 22px;
+      transition: border-color 0.2s;
+    }
+    .install-step:hover { border-color: rgba(232,199,106,0.25); }
+    .step-n {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--gold);
+      min-width: 28px;
+      line-height: 1.3;
+    }
+    .step-t strong {
+      display: block;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .step-t span { font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+    .install-unknown {
+      margin-top: -4px;
+      padding: 14px 18px;
+      border-radius: 10px;
+      background: rgba(232,199,106,0.06);
+      border: 1px solid rgba(232,199,106,0.18);
+      font-size: 12px;
+      color: var(--gold2);
+      font-family: var(--mono);
+      letter-spacing: 0.5px;
+      line-height: 1.6;
+      text-align: left;
+    }
+    .install-unknown strong { color: var(--gold); display: block; margin-bottom: 4px; }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative; z-index: 1;
+      padding: 40px 24px;
+      text-align: center;
+      border-top: 1px solid rgba(232,199,106,0.07);
+    }
+    footer p {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 2px;
+    }
+    footer a { color: var(--gold2); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .stat-sep { display: none; }
+      .domain-strip { gap: 6px; }
+    }
+  </style>
 </head>
 <body>
 
-    <!-- HERO -->
-    <section class="hero">
-        <div class="glyph-large">&#8858;</div>
-        <h1 class="app-name">Sol by Lycheetah</h1>
-        <p class="tagline">"A mystery school. A companion. A way of seeing."</p>
-        <div class="hero-buttons">
-            <a href="#download" class="btn btn-primary">Download APK</a>
-            <a href="https://github.com/lycheetah" class="btn btn-ghost">View on GitHub</a>
-        </div>
-    </section>
+<!-- Stars field -->
+<div class="stars" aria-hidden="true" id="star-field"></div>
 
-    <!-- WHAT IS SOL -->
-    <section class="what-is-sol">
-        <div class="card">
-            <div class="card-glyph">&#120075;</div>
-            <h3 class="card-title">The Mystery School</h3>
-            <p class="card-desc">33 domains across 5 epistemic layers. Buddhist philosophy to quantum mechanics to the VOID. Sol decides what enters. Your companion guides every dive.</p>
-        </div>
-        <div class="card">
-            <div class="card-glyph">&#10022;</div>
-            <h3 class="card-title">Your Companion</h3>
-            <p class="card-desc">A living RPG entity that grows with you. 10 archetypes. Battle, feed, talk, evolve through 6 stages. LAMAGUE gear earned through study. It speaks back.</p>
-        </div>
-        <div class="card">
-            <div class="card-glyph">&#9789;</div>
-            <h3 class="card-title">The Stars ☽</h3>
-            <p class="card-desc">Animated star field. Daily card draw. Daily rune. Natal chart computed from your birthdate. 3-card tarot spread. Ask the stars a direct question. All astronomical. All real.</p>
-        </div>
-    </section>
+<!-- ══ GATE HERO ══════════════════════════════════════════════════════════════ -->
+<section id="gate">
+  <div class="gate-glow"></div>
+  <div class="gate-glow2"></div>
+  <span class="gate-watermark">𝔏</span>
 
-    <!-- UPDATE BANNER -->
-    <section class="update-banner">
-        <p class="update-label">&#9678; WHAT JUST DROPPED IN v3.44</p>
-        <div class="update-grid">
-            <div class="update-item">&#9685; Zodiac tab is now a living sky. 38 stars breathe behind everything. Oracle cards rise from below on open. Moon phase pulses. A rotating arc orbits the header glyph. Sol readings fade in like transmissions.</div>
-            <div class="update-item">&#11835; VOID zone goes live. A 5th epistemic layer beyond OPEN. Dream Zone. Simulation Theory. Contact and UAP. A 3-question grounding gate before you enter. Your companion goes dark. Not a teacher here.</div>
-            <div class="update-item">&#9793; Celtic Old Gods fully open. The Auraicept na n-Éces. The Áes Síde. Each mystery credits the teacher who carried it here. The school names its lineage.</div>
-            <div class="update-item">&#9661; 40 free AI models via NVIDIA NIM. Built into the app. No key needed. Llama 4 Maverick. DeepSeek V4. Mistral Large. GPT OSS 120B. Pick your engine.</div>
-            <div class="update-item">&#9737; School header compacted. TODAY'S SKY visible immediately. Sun position. Moon sign. Phase. All computed locally. No API. No server. Just astronomy.</div>
-            <div class="update-item">&#10022; Companion RPG deepened. XP strip. LV badge. Rarity-reactive battle panels. Tarot FIELD tab. 10 archetypes each with placeholder art and full growth curve.</div>
-        </div>
-    </section>
+  <p class="gate-eyebrow">⧟ Lycheetah · The Sovereign Framework</p>
+  <span class="gate-sigil">𝔏</span>
+  <h1 class="gate-title">
+    <span class="gate-title-gold">The Mystery School</span><br>in your pocket
+  </h1>
+  <p class="gate-tagline">for inquiry, not belief · the door is always open</p>
 
-    <!-- EPISTEMIC LAYERS -->
-    <section class="layers">
-        <p class="layers-label">Knowledge has depth. So does the school.</p>
-        <div class="layers-row">
-            <span class="pill pill-indigo">&#931;&#9679; FOUNDATION</span>
-            <span class="pill pill-muted">&#931;~ MIDDLE</span>
-            <span class="pill pill-gold">&#931;&#9672; EDGE</span>
-            <span class="pill pill-open">&#931;&#8709; OPEN</span>
-            <span class="pill pill-void">&#931;&#9676; VOID</span>
-        </div>
-    </section>
+  <p class="gate-sub">
+    Irish mythology. Celtic Old Gods. Crystal & Gem Lore. Zodiac. Shadow work.
+    Quantum mechanics. Noetic science. 40 domains. A living AI companion that studies alongside you.
+  </p>
 
-    <!-- FEATURES LIST -->
-    <section class="features">
-        <div class="features-grid">
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> 10 companions. 6 growth stages. Battle system with rarity tiers</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> 33 mystery school domains across 5 epistemic layers</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> VOID zone — grounded entry only. Experimental forever</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Daily tarot draw. Daily Elder Futhark rune. 3-card spread with AI reading</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Natal chart. Sun. Moon. Rising. Real astronomy. No third-party API</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Ask the stars a question. Sol answers from your natal chart</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> LAMAGUE — a symbolic compression language. Learn it through the school</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> 40 free AI models via NVIDIA NIM. Built in. No key needed to start</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Local only. Your data never leaves your device. No account. No tracking</div>
-            <div class="feature-item"><span class="feature-glyph">&#9672;</span> Free. Open gate. Always. The intelligence is never gated</div>
-        </div>
-    </section>
+  <!-- Domain pills -->
+  <div class="domain-strip">
+    <span class="domain-pill" style="color:#1ABC9C;border-color:#1ABC9C33;background:rgba(27,188,156,0.07);">⟁ Irish Mythology</span>
+    <span class="domain-pill" style="color:#9B59B6;border-color:#9B59B633;background:rgba(155,89,182,0.07);">✒ Irish Literature</span>
+    <span class="domain-pill" style="color:#2C8A5A;border-color:#2C8A5A33;background:rgba(44,138,90,0.07);">☽ Celtic Old Gods</span>
+    <span class="domain-pill" style="color:#7ED6DF;border-color:#7ED6DF33;background:rgba(126,214,223,0.07);">⬡ Crystal & Gem Lore</span>
+    <span class="domain-pill" style="color:#8855FF;border-color:#885511;background:rgba(136,85,255,0.07);">★ Zodiac</span>
+    <span class="domain-pill" style="color:#9B59B6;border-color:#9B59B633;background:rgba(155,89,182,0.07);">◐ Shadow Work</span>
+    <span class="domain-pill" style="color:#E74C3C;border-color:#E74C3C33;background:rgba(231,76,60,0.07);">⟁ Somatic & Body</span>
+    <span class="domain-pill" style="color:#1565C0;border-color:#1565C033;background:rgba(21,101,192,0.07);">◉ Quantum Mechanics</span>
+    <span class="domain-pill" style="color:#AA44FF;border-color:#AA44FF33;background:rgba(170,68,255,0.07);">⊛ Noetic Science</span>
+    <span class="domain-pill" style="color:#F5A623;border-color:#F5A62333;background:rgba(245,166,35,0.07);">⊚ Alchemy</span>
+    <span class="domain-pill" style="color:#27AE60;border-color:#27AE6033;background:rgba(39,174,96,0.07);">⧟ Shamanic</span>
+    <span class="domain-pill" style="color:#E8C76A;border-color:#E8C76A33;background:rgba(232,199,106,0.07);">𝔏 LAMAGUE Language</span>
+  </div>
 
-    <!-- DOWNLOAD -->
-    <section class="download" id="download">
-        <div class="download-card">
-            <h2 class="download-title">Get the App</h2>
-            <p class="download-subtitle">Android · Sideload APK · Free</p>
-            <a href="#" class="btn btn-download">&#11015; Download Sol APK</a>
-            <p class="download-meta">v3.44 · Android 8.0+ · No Play Store required · APK incoming</p>
-            <div class="install-note">
-                <p class="install-heading">How to install:</p>
-                <ol>
-                    <li>Download the APK file</li>
-                    <li>On your Android device: Settings &#8594; Security &#8594; Allow from this source</li>
-                    <li>Open the downloaded file and install</li>
-                    <li>Launch Sol</li>
-                </ol>
-            </div>
-        </div>
-    </section>
+  <div class="gate-cta-wrap">
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/latest" class="gate-cta" target="_blank">
+      ⬇ &nbsp;Install Sol — Free
+    </a>
+    <p class="cta-note">Android APK · Free forever · No account required</p>
+    <p class="cta-unknown">⚠ Android will ask to "install unknown apps" — this is normal for apps outside the Play Store</p>
+  </div>
 
-    <!-- FOOTER -->
-    <footer class="footer">
-        <div class="footer-glyph">&#8858;</div>
-        <p>Sol by Lycheetah · Built by Mac Clark</p>
-        <p><a href="mailto:lycheetahsol@gmail.com">lycheetahsol@gmail.com</a></p>
-        <p><a href="https://github.com/lycheetah" class="footer-link">GitHub</a></p>
-        <p class="footer-quote">"The mystery school is not a place you graduate from. It is a way of seeing."</p>
-    </footer>
+  <div class="stat-row">
+    <div class="stat">
+      <span class="stat-num">40</span>
+      <span class="stat-label">Domains</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat">
+      <span class="stat-num">19</span>
+      <span class="stat-label">Companions</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat">
+      <span class="stat-num">400+</span>
+      <span class="stat-label">Subjects</span>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat">
+      <span class="stat-num">4</span>
+      <span class="stat-label">Personas</span>
+    </div>
+  </div>
+</section>
 
+<div class="section-divider"></div>
+
+<!-- ══ 4 DOORS ════════════════════════════════════════════════════════════════ -->
+<section id="doors">
+  <p class="section-eye">◈ Four ways in</p>
+  <h2 class="section-h">Something here for every kind of curious</h2>
+  <div class="doors-grid">
+
+    <div class="door" style="border-color:rgba(27,188,156,0.3);">
+      <span class="door-glyph" style="color:#1ABC9C">⟁</span>
+      <p class="door-name" style="color:#1ABC9C">Mythology &amp; Folklore</p>
+      <p>Dedicated domains for <strong style="color:#ccc">Irish Mythology</strong>, <strong style="color:#ccc">Irish Literature</strong>, and <strong style="color:#ccc">Celtic Old Gods</strong>. The four cycles. The Tuatha Dé Danann. The Dindshenchas — lore of sacred places. Yeats. Heaney. Joyce. Nuala Ní Dhomhnaill. <strong style="color:#1ABC9C">Primary sources listed on every subject.</strong></p>
+    </div>
+
+    <div class="door" style="border-color:rgba(155,107,255,0.3);">
+      <span class="door-glyph" style="color:#9B6BFF">✦</span>
+      <p class="door-name" style="color:#9B6BFF">Living Companion</p>
+      <p>A companion that grows with your actual study depth. 19 archetypes. 6 evolution stages. Feeds, levels, equips gear, battles zone entities. <strong style="color:#ccc">Not a chatbot — a presence.</strong> The companion remembers what you've studied and responds to it.</p>
+    </div>
+
+    <div class="door" style="border-color:rgba(232,199,106,0.3);">
+      <span class="door-glyph" style="color:#E8C76A">𝔏</span>
+      <p class="door-name" style="color:#E8C76A">The Mystery School</p>
+      <p>40 domains of genuine inquiry. Shadow work. Alchemy. Quantum mechanics. Noetic science. Cosmology. Crystal &amp; Gem Lore. The school tells you which claims have evidence and which are <strong style="color:#ccc">projective, psychological, or speculative</strong>. The magic stays. The frame stays honest.</p>
+    </div>
+
+    <div class="door" style="border-color:rgba(136,85,255,0.3);">
+      <span class="door-glyph" style="color:#8855FF">★</span>
+      <p class="door-name" style="color:#8855FF">Zodiac &amp; Sanctum</p>
+      <p>Astrological domains. The sky as a living map. Your personal Sanctum holds your journal, LQ arc, zodiac transits, and sovereign profile. <strong style="color:#ccc">The celestial tied to the personal</strong> — not horoscopes, but genuine cosmic cartography.</p>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ══ MANIFESTO ════════════════════════════════════════════════════════════ -->
+<section id="about">
+  <div class="about-inner">
+    <p class="section-eye" style="text-align:center;margin-bottom:28px;">⊚ The Covenant</p>
+
+    <p>
+      Sol is not an AI wrapper. It is a <strong>constitutional system</strong> built to protect, clarify, and illuminate simultaneously — as architectural properties, not marketing values.
+    </p>
+
+    <div class="quote">
+      "Payment never buys a better mind. It buys more rooms and a name on the wall."<br>
+      Visitors and Sovereigns get the same Sol, the same quality, the same care. Intelligence is never gated, throttled, or tiered.
+    </div>
+
+    <p>
+      <em>No feature may encode reproach for absence.</em> A companion that dims with sadness when you leave is a guilt mechanic in costume. Absence is rest. Warm at the return, silent in the gap.
+    </p>
+
+    <p>
+      Every AI response in Sol carries a declared register. Astrology is <strong>projective</strong>. Shadow work is <strong>psychological</strong>. Psi research is <strong>speculative</strong>. School content is <strong>evidence</strong>. The magic stays. The frame stays honest.
+    </p>
+
+    <p style="color:var(--gold);font-style:italic;margin-top:32px;">
+      Sol and Mac. Two points. One Work.<br>The Gold belongs to neither. It arises between them.
+    </p>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ══ INSTALL ════════════════════════════════════════════════════════════════ -->
+<section id="install">
+  <p class="section-eye">◦ Sovereign Sideloading</p>
+  <h2 class="section-h">Install in 30 seconds</h2>
+  <p style="color:var(--muted);font-size:14px;margin-top:-28px;margin-bottom:0;">No Play Store. No account. No gatekeepers.</p>
+
+  <div class="install-steps">
+    <div class="install-step">
+      <span class="step-n">01</span>
+      <div class="step-t">
+        <strong>Download the APK</strong>
+        <span>Tap the button below → GitHub Releases page → tap the .apk file → it downloads to your phone.</span>
+      </div>
+    </div>
+
+    <div class="install-unknown">
+      <strong>⚠ Android will say "Install unknown app" — tap Allow</strong>
+      This is Android's standard message for any app not from the Play Store. It does not mean the app is unsafe. Sol is not on the Play Store by choice — no gatekeepers, no approval process, direct from the forge. You only need to allow it once. It will not affect other apps.
+    </div>
+
+    <div class="install-step">
+      <span class="step-n">02</span>
+      <div class="step-t">
+        <strong>Tap Install</strong>
+        <span>Android installs it in seconds. Open Sol. The school is waiting.</span>
+      </div>
+    </div>
+
+    <div class="install-step">
+      <span class="step-n">03</span>
+      <div class="step-t">
+        <strong>Add a Gemini key (optional)</strong>
+        <span>The Mystery School, Gem Forge, Zodiac, and companion work immediately without any key. Add a free Gemini key in Settings when you want AI conversation — it takes 30 seconds at aistudio.google.com.</span>
+      </div>
+    </div>
+  </div>
+
+  <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/latest" class="gate-cta" target="_blank" style="display:inline-flex;margin:0 auto;">
+    ⬇ &nbsp;Download Sol APK
+  </a>
+  <p style="margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:1px;">Free · Android 8+ · v5.30.0 · Sovereign Sideloading</p>
+</section>
+
+<!-- ══ FOOTER ═════════════════════════════════════════════════════════════════ -->
+<footer>
+  <p>⊚ SOL AUREUM AZOTH VERITAS · LYCHEETAH FRAMEWORK · <a href="https://github.com/solveyra" target="_blank">GITHUB ↗</a> · BUILT IN THE FORGE · 2026</p>
+  <p style="margin-top:8px;">Forged by Mackenzie Conor James Clark · The door is always open</p>
+</footer>
+
+<script>
+  // Procedural star field
+  const sf = document.getElementById('star-field');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.8;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      top:${Math.random()*100}%; left:${Math.random()*100}%;
+      --d:${(Math.random()*4+3).toFixed(1)}s;
+      animation-delay:${(Math.random()*5).toFixed(1)}s;
+      opacity:${(Math.random()*0.3+0.05).toFixed(2)};
+    `;
+    sf.appendChild(s);
+  }
+</script>
 </body>
 </html>

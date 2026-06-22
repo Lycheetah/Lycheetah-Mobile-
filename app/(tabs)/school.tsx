@@ -1316,6 +1316,7 @@ export default function MysterySchoolScreen() {
         const log: DiveRecord[] = raw ? JSON.parse(raw) : [];
         const updated = [record, ...log].slice(0, 20);
         AsyncStorage.setItem('sol_dive_log', JSON.stringify(updated)).catch(() => {});
+        AsyncStorage.setItem('sol_fresh_dive', JSON.stringify({ subjectName: record.subjectName, domainLabel: record.domainLabel, timestamp: Date.now() })).catch(() => {});
         setDiveLog(updated);
         // Reality Anchor — show after 3rd dive, max once per 3 days
         if (updated.length >= 3) {

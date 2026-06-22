@@ -1,5 +1,5 @@
 # SOVEREIGN SOL — LIVE TASK LIST
-## v5.26.0 · June 22 2026 · 🚀 LAUNCHED · type-clean
+## v5.30.0 · June 22 2026 · 🚀 LAUNCHED · type-clean
 **Name locked: Sovereign Sol** · Run: `npx expo start -c` → QR → phone
 
 > **June 22 shipped:** ⟳ **#251 THE CURIOSITY GAP** (addictive wisdom / north star) — dives end on an

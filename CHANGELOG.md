@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.30.0] — 2026-06-22 — 🜍 SHOP AUDIT + VOID ENTITIES MOVED
+> Fixed 3 filler cosmetics that could never unlock; moved Void Entities below Encounters.
+- **3 filler cosmetics fixed** — THE VEILCROWN (`halo_veilcrown`), INTERTWINED SPAN (`wings_intertwined`), THE VEILKITTEN (`pet_veilkitten`) had art (`*_26.png`) but no shop entry and no award path → permanently locked, "Buy in Shop" forever. Now **awarded on reaching THE INTERTWINING (veilvein) zone** — earned by discovery, never bought. Covenant-safe (pure exploration, no paywall). Fires a Chronicle entry + toast.
+- **VOID ENTITIES moved below ENCOUNTERS** in the battle tab — the Void boss list (study-to-win) now sits under the live encounter panel instead of above it, so the active fight is the first thing you see.
+- **SHOP_ART.md created** — full map of every cosmetic, its art file, unlock path, and a flagged filler list. The audit doc for all 76 cosmetics across halos/wings/pets/secrets. Confirms every item now has both art AND a working unlock path.
+
+## [5.29.0] — 2026-06-22 — ✦ EFFECT-BASED COMPANION EVOLUTION (#3)
+> All 19 companions now visibly evolve as you study. Zero new art — pure animated effects.
+- **Stage-gated particles** — stage 0: no particles; stage 1: 2; stage 2: 4; stage 3: 6; stage 4: 8; stage 5: full 10. Particle peak opacity climbs from 0 → 0.95 across stages. A SEED companion is still, a SOVEREIGN companion shimmers with a full particle field.
+- **Stage glow blob** — animated colored radial glow behind the companion body, bobs with the creature, invisible at stage 0 and radiant at stage 5 (opacity 0.26→0.46 range). Uses the existing `glowAnim` pulse for breathing.
+- **CompanionSpecOverlay already has** orbit speed, glyph count, core size, and aura intensity scaling per stage (written earlier). Together the effect stack is: glow blob → aura rings → orbiting glyphs → core → particles. Fully layered evolution.
+
+## [5.28.0] — 2026-06-22 — ⟳ COMPANION REACTS TO STUDY (#245)
+> Finish a dive in School → switch to Companion → the companion greets you with a live AI reaction to *exactly what you just studied*.
+- **`sol_fresh_dive` signal** written in `school.tsx` at `dismissSessionComplete` right after the dive log entry is saved — carries subject name, domain, and timestamp.
+- **Companion reads the flag on focus** — if the flag exists and is < 2 hours old, it's consumed (removed) and loaded into `freshDiveRef`.
+- **`generateStudyReaction()`** — new async function in companion.tsx: generates a 1-2 sentence live AI reaction in the companion's voice, specific to the studied subject + domain. Falls back to MEMORY_TEMPLATE if no key.
+- **Greeting priority:** fresh-dive reaction → MEMORY_TEMPLATE (random recent dive, 60%) → generic COMPANION_GREETING. The "studying is the game" loop now closes properly.
+
 ## [5.27.3] — 2026-06-22 — 🃏 TAROT GRID VIRTUALIZED (no more 40+ glitch)
 > The deck grid rendered all 79 cards at once → glitch past ~40. Now windowed.
 - **TarotViewer grids → FlatList** (both the real-art `✦ DECK` grid and the MAJOR/MINOR data grid): numColumns 3, `initialNumToRender 9`, `maxToRenderPerBatch 9`, `windowSize 5`, `removeClippedSubviews`. Only visible cards mount → smooth scroll through all 79.

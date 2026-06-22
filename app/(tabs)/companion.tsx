@@ -3062,6 +3062,13 @@ function CompanionScene({
     prevHP.current = battleHP;
   }, [battleHP]);
 
+  const effectiveStage    = devStagePin !== null ? devStagePin : stage;
+  const stageParticleCount = [0, 2, 4, 6, 8, 10][effectiveStage];
+  const stageParticlePeak  = [0, 0.38, 0.55, 0.72, 0.86, 0.95][effectiveStage];
+  const stageGlowLo        = [0, 0.04, 0.07, 0.12, 0.18, 0.26][effectiveStage];
+  const stageGlowHi        = [0, 0.09, 0.16, 0.24, 0.34, 0.46][effectiveStage];
+  const stageGlowSize      = 80 + effectiveStage * 18;
+
   const breathScale = breathAnim.interpolate({ inputRange: [0,1], outputRange: [0.94, 1.06] });
   const auraScale   = auraPulse.interpolate({ inputRange: [0,1], outputRange: [1, 1.15] });
   const auraOpacity = auraPulse.interpolate({ inputRange: [0,1], outputRange: [0.18, 0.45] });
@@ -3155,12 +3162,12 @@ function CompanionScene({
       <View style={{ position:'absolute', bottom:0, left:0, right:0, height:SCENE_H*0.10, backgroundColor:'#000000', opacity:0.35 }} pointerEvents="none" />
 
 
-      {particleAnims.map((anim, i) => {
+      {particleAnims.slice(0, stageParticleCount).map((anim, i) => {
         const yRange = mood === 'lit' ? [-80,-140] : mood === 'dormant' ? [-10,-30] : [-40,-90];
         return (
           <Animated.Text key={i} style={{ position:'absolute', bottom:SCENE_H*0.35+(i%3)*12, left:P_X[i]*SCREEN_W, fontSize:P_SZ[i], color,
             transform:[{ translateY: anim.interpolate({ inputRange:[0,1], outputRange:yRange }) }],
-            opacity: anim.interpolate({ inputRange:[0,0.2,0.6,1], outputRange:[0,0.9,0.85,0] }) }}>
+            opacity: anim.interpolate({ inputRange:[0,0.2,0.6,1], outputRange:[0, stageParticlePeak, stageParticlePeak*0.9, 0] }) }}>
             {particleGlyph}
           </Animated.Text>
         );
@@ -3169,6 +3176,16 @@ function CompanionScene({
 
       {/* Companion — always centred */}
       <Animated.View style={{ position:'absolute', top: SCENE_H * 0.22, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
+        {/* Stage evolution glow — behind creature, bobs with it, invisible at stage 0, radiant at stage 5 */}
+        {effectiveStage > 0 && (
+          <Animated.View pointerEvents="none" style={{
+            position:'absolute', top:20, alignSelf:'center',
+            width:stageGlowSize, height:stageGlowSize, borderRadius:stageGlowSize/2,
+            backgroundColor:color,
+            opacity:glowAnim.interpolate({ inputRange:[0,1], outputRange:[stageGlowLo, stageGlowHi] }),
+            zIndex:0,
+          }} />
+        )}
         {/* Ground sigil — subtle archetype ring, no shadow */}
         <View style={{ position:'absolute', bottom:-8, alignSelf:'center', width:110, height:18,
           borderRadius:55, borderWidth:1, borderColor:color+'33',
@@ -3458,6 +3475,7 @@ export default function CompanionScreen() {
 
   const phraseAnim      = useRef(new Animated.Value(0)).current;
   const relicAnim       = useRef(new Animated.Value(0)).current;
+  const freshDiveRef    = useRef<{ subjectName: string; domainLabel: string } | null>(null);
   const xpPopAnim       = useRef(new Animated.Value(0)).current;
   const entityShakeAnim = useRef(new Animated.Value(0)).current;
   const enemyHitFlash   = useRef(new Animated.Value(0)).current;
@@ -3702,6 +3720,7 @@ export default function CompanionScreen() {
         'sol_coins','sol_veras','sol_shop_unlocks','sol_weapons','sol_equipped_weapon',
         'sol_zone_unlocks','sol_dive_spent','sol_unlocked_companions','sol_boss_defeated','sol_chronicle',
         'sol_companion_xp','sol_companion_alloc','sol_xp_last_total',
+        'sol_fresh_dive',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -3713,6 +3732,17 @@ export default function CompanionScreen() {
       const now     = Date.now();
       const total   = dives.length;
       setRecentDives(dives.slice(0, 5).filter(d => d.subjectName).map(d => ({ subjectName: d.subjectName!, domainLabel: d.domainLabel || 'the unknown' })));
+      // Fresh dive signal from School — triggers live study-reaction on companion greeting (#245)
+      const freshRaw = get('sol_fresh_dive');
+      if (freshRaw) {
+        try {
+          const fd = JSON.parse(freshRaw);
+          if (fd?.subjectName && fd?.timestamp && (Date.now() - fd.timestamp) < 7_200_000) {
+            freshDiveRef.current = { subjectName: fd.subjectName, domainLabel: fd.domainLabel || 'the unknown' };
+            AsyncStorage.removeItem('sol_fresh_dive').catch(() => {});
+          }
+        } catch {}
+      }
       const week    = dives.filter(d => new Date(d.date).getTime() > now - 7*86400000).length;
       const todayK  = todayDateKey();
       const today   = dives.filter(d => d.date?.startsWith(todayK)).length;
@@ -3989,9 +4019,13 @@ export default function CompanionScreen() {
       // Companion spec generation — once per day or on stage change
       setTimeout(() => generateCompanionSpec(), 5000);
       // Greeting — fires on every tab open. Study-aware: if the seeker has dived recently,
-      // the companion proactively reflects on what they studied (the "studying is the game" loop).
+      // Greeting — fresh dive takes priority (live AI reaction), then memory template, then generic.
       setTimeout(() => {
-        if (recentDives.length > 0 && Math.random() < 0.6) {
+        if (freshDiveRef.current) {
+          const fd = freshDiveRef.current;
+          freshDiveRef.current = null;
+          generateStudyReaction(fd.subjectName, fd.domainLabel);
+        } else if (recentDives.length > 0 && Math.random() < 0.6) {
           const dive = recentDives[Math.floor(Math.random() * Math.min(recentDives.length, 3))];
           const tmpl = MEMORY_TEMPLATES[Math.floor(Math.random() * MEMORY_TEMPLATES.length)];
           setPhrase(tmpl(dive.subjectName, dive.domainLabel));
@@ -4101,6 +4135,23 @@ export default function CompanionScreen() {
     (s: string, d: string) => `${s} — that's an old territory. The ${d} lineage runs deep there. You touched something that has been waiting.`,
     (s: string, _d: string) => `${s}. Not everyone finds that question. Fewer follow it. You did.`,
   ];
+
+  // Live AI reaction to a fresh dive — fires when companion tab is opened right after study (#245)
+  const generateStudyReaction = async (subjectName: string, domainLabel: string) => {
+    const fallbacks = MEMORY_TEMPLATES;
+    const fallback = fallbacks[Math.floor(Math.random() * fallbacks.length)](subjectName, domainLabel);
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) { setPhrase(fallback); return; }
+      const named = displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name}` : `${archetype.name}, ${archetype.title}`;
+      const result = await sendMessage(
+        [{ role: 'user', content: `${named}. Your seeker just returned from studying "${subjectName}" (${domainLabel} domain). React in 1-2 sentences — acknowledge what they studied, make it feel significant. Mythic, alive, specific. No generic praise, no questions, no quotes.` }],
+        `You are ${displayName || archetype.name}, a living companion spirit in a mystery school. When your seeker returns from deep study, you react to exactly what they studied — specific, warm but not saccharine, mythic.`,
+        key, model as any, undefined, 'fast', 120,
+      );
+      setPhrase(result.text?.trim() || fallback);
+    } catch { setPhrase(fallback); }
+  };
 
   const generateLivePhrase = async (): Promise<string | null> => {
     try {
@@ -5131,6 +5182,23 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       setTimeout(() => {
         Animated.timing(roomLoreAnim, { toValue:0, duration:600, useNativeDriver:true }).start(() => setRoomLore(null));
       }, 5500);
+      // ✦ THE INTERTWINING — reaching the veilvein sanctum forges the three VEIL cosmetics
+      // (Veilcrown / Intertwined Span / Veilkitten). They have no shop entry by design —
+      // they are EARNED by finding where Veil meets Vein, not bought. Covenant-safe (pure discovery).
+      if (id === 'veilvein') {
+        const veilGifts = ['halo_veilcrown', 'wings_intertwined', 'pet_veilkitten'];
+        const missing = veilGifts.filter(g => !shopUnlocks.includes(g));
+        if (missing.length > 0) {
+          setTimeout(async () => {
+            const nu = [...shopUnlocks, ...missing];
+            setShopUnlocks(nu);
+            await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nu));
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            addChronicle('🜍', 'THE INTERTWINING was reached — the three Veil relics took form: the Veilcrown, the Intertwined Span, the Veilkitten.');
+            showToast('🜍 THE INTERTWINING — three Veil relics forged');
+          }, 1200);
+        }
+      }
       // ★ HIDDEN ULTRA-RARE (#274) — ~0.001% per zone arrival. Never buyable, only found.
       // Covenant-safe: pure luck, never a paywall. The mythic chase.
       if (Math.random() < 0.00001 && !unlockedCompanions.has('lycheetah_secret')) {
@@ -6731,28 +6799,6 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       {activeTab === 'battle' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:6 }}>
 
-          {/* ── VOID BOSSES (#273) — combat that can only be won by learning ── */}
-          <View style={{ marginBottom:16, padding:13, borderRadius:12, borderWidth:1, borderColor:'#8855FF44', backgroundColor:'#8855FF08' }}>
-            <Text style={{ color:'#AA88FF', fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:3 }}>◈ VOID ENTITIES</Text>
-            <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:10 }}>Cannot be out-fought. Dive the bound subject to learn the word that repels them.</Text>
-            <View style={{ gap:8 }}>
-              {VOID_BOSSES.map(b => {
-                const beaten = bossDefeated.includes(b.id);
-                return (
-                  <TouchableOpacity key={b.id} onPress={() => !beaten && startBoss(b)} activeOpacity={beaten ? 1 : 0.8}
-                    style={{ flexDirection:'row', alignItems:'center', gap:10, padding:11, borderRadius:10, borderWidth:1, borderColor: beaten ? '#44CC8844' : b.color+'44', backgroundColor: beaten ? '#44CC880A' : b.color+'0A' }}>
-                    <Text style={{ fontSize:22, color: b.color, opacity: beaten ? 0.5 : 1 }}>{b.glyph}</Text>
-                    <View style={{ flex:1 }}>
-                      <Text style={{ color: beaten ? '#66807A' : '#EEE8FF', fontSize:11, fontWeight:'700', fontFamily:mono }}>{b.name}</Text>
-                      <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginTop:1 }}>𝔏 {b.boundSubject}</Text>
-                    </View>
-                    <Text style={{ color: beaten ? '#44CC88' : b.color, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{beaten ? 'REPELLED ✓' : 'CHALLENGE'}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
           {/* BATTLE PANEL ─────────────────────────── */}
           {(() => {
             const bDef = battle ? getEnemyDef(battle.entityName) : null;
@@ -7112,6 +7158,28 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             })()}
           </View>
           ); })()}
+
+          {/* ── VOID ENTITIES (#273) — combat that can only be won by learning. Below encounters. ── */}
+          <View style={{ marginBottom:16, padding:13, borderRadius:12, borderWidth:1, borderColor:'#8855FF44', backgroundColor:'#8855FF08' }}>
+            <Text style={{ color:'#AA88FF', fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:3 }}>◈ VOID ENTITIES</Text>
+            <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:10 }}>Cannot be out-fought. Dive the bound subject to learn the word that repels them.</Text>
+            <View style={{ gap:8 }}>
+              {VOID_BOSSES.map(b => {
+                const beaten = bossDefeated.includes(b.id);
+                return (
+                  <TouchableOpacity key={b.id} onPress={() => !beaten && startBoss(b)} activeOpacity={beaten ? 1 : 0.8}
+                    style={{ flexDirection:'row', alignItems:'center', gap:10, padding:11, borderRadius:10, borderWidth:1, borderColor: beaten ? '#44CC8844' : b.color+'44', backgroundColor: beaten ? '#44CC880A' : b.color+'0A' }}>
+                    <Text style={{ fontSize:22, color: b.color, opacity: beaten ? 0.5 : 1 }}>{b.glyph}</Text>
+                    <View style={{ flex:1 }}>
+                      <Text style={{ color: beaten ? '#66807A' : '#EEE8FF', fontSize:11, fontWeight:'700', fontFamily:mono }}>{b.name}</Text>
+                      <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginTop:1 }}>𝔏 {b.boundSubject}</Text>
+                    </View>
+                    <Text style={{ color: beaten ? '#44CC88' : b.color, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{beaten ? 'REPELLED ✓' : 'CHALLENGE'}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
 
           {/* Top row: TALK + STATS */}
           <View style={{ flexDirection:'row', gap:8, marginBottom:12, marginTop:12 }}>
