@@ -276,6 +276,21 @@ export const SCENE_IMAGES: Partial<Record<SkinId, any[]>> = {
   deep_market:      [require('../../assets/scenes/alabaster_chasm.png')],
   lycheetah_spire:  [require('../../assets/scenes/lycheetah7.png')],
   veilvein:         [require('../../assets/scenes/veilvein_sanctum.png')],
+  land_1:  [require('../../assets/scenes/landscape_1.png')],
+  land_2:  [require('../../assets/scenes/landscape_2.png')],
+  land_3:  [require('../../assets/scenes/landscape_3.png')],
+  land_4:  [require('../../assets/scenes/landscape_4.png')],
+  land_5:  [require('../../assets/scenes/landscape_5.png')],
+  land_6:  [require('../../assets/scenes/landscape_6.png')],
+  land_7:  [require('../../assets/scenes/landscape_7.png')],
+  land_8:  [require('../../assets/scenes/landscape_8.png')],
+  land_9:  [require('../../assets/scenes/landscape_9.png')],
+  land_10: [require('../../assets/scenes/landscape_10.png')],
+  land_11: [require('../../assets/scenes/landscape_11.png')],
+  land_12: [require('../../assets/scenes/landscape_12.png')],
+  land_13: [require('../../assets/scenes/landscape_13.png')],
+  land_14: [require('../../assets/scenes/landscape_14.png')],
+  land_15: [require('../../assets/scenes/landscape_15.png')],
 };
 
 export const ARCHETYPE_SCENES: Partial<Record<string, any[]>> = {
@@ -303,6 +318,10 @@ export const GBA_ADJ: Partial<Record<SkinId, SkinId[]>> = {
   aurorian_pillar:['apollo_jungle','augmented_ai'], augmented_ai:['aurorian_pillar','celestial_sigil','portal_valley'], celestial_sigil:['augmented_ai','voyagers_edge'],
   portal_valley:['augmented_ai'], voyagers_edge:['celestial_sigil'],
   veilvein:['lycheetah','sovereign'],
+  land_1:['solform','land_2'], land_2:['land_1','land_3'], land_3:['land_2','land_4'], land_4:['land_3','land_5'],
+  land_5:['land_4','land_6'], land_6:['land_5','land_7'], land_7:['land_6','land_8'], land_8:['land_7','land_9'],
+  land_9:['land_8','land_10'], land_10:['land_9','land_11'], land_11:['land_10','land_12'], land_12:['land_11','land_13'],
+  land_13:['land_12','land_14'], land_14:['land_13','land_15'], land_15:['land_14','voyagers_edge'],
 };
 
 // ─── World Map ────────────────────────────────────────────────────────────────

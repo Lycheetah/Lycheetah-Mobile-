@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sovereign Sol",
     "slug": "lycheetah-mobile",
-    "version": "5.55.0",
+    "version": "5.56.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -26,7 +26,7 @@
         "backgroundColor": "#0A0A0A"
       },
       "package": "com.lycheetah.sol",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": []
     },
     "web": {

@@ -78,7 +78,7 @@ function CompanionScene({
   gearCrown, gearBody, gearCape, gearMantle, companionSpec, equippedCompanionSkin,
   currentRoomId, navigateRoom, getLockStatus, showRoomLabel, sceneFade,
   roomLore, roomLoreAnim, onDismissLore, onSwitchTab,
-  equippedWings, equippedHalo, equippedPet, equippedBg, onRandomZone, onOpenMap, onTravelTo, onEncounter,
+  equippedWings, equippedHalo, equippedPet, equippedBg, onRandomZone, onOpenMap, onTravelTo, onEncounter, showTravel = true,
 }: {
   stage: EvolutionStage; mood: CompanionMood; skin: typeof SKINS[SkinId]; archetype: Archetype;
   onTap: () => void; phrase: string | null; phraseAnim: Animated.Value; onDismissPhrase: () => void;
@@ -106,6 +106,7 @@ function CompanionScene({
   onOpenMap: () => void;
   onTravelTo: (skinId: SkinId) => void;
   onEncounter: () => void;
+  showTravel?: boolean;
 }) {
   const stageData = STAGES[stage];
   const { color, bgColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
@@ -312,15 +313,17 @@ function CompanionScene({
           </TouchableOpacity>
         ))}
       </View>
-      {/* Travel Map — top-left, one tap to the world */}
-      <TouchableOpacity onPress={onOpenMap} activeOpacity={0.8}
-        style={{ position:'absolute', top:8, left:8, flexDirection:'row', alignItems:'center', gap:5, paddingHorizontal:10, height:26, borderRadius:13, borderWidth:1, borderColor: skin.color + '66', backgroundColor:'rgba(0,0,0,0.55)' }}>
-        <Text style={{ fontSize:13 }}>🗺</Text>
-        <Text style={{ color: skin.color, fontSize:9, fontWeight:'700', letterSpacing:1.5, fontFamily:mono }}>MAP</Text>
-      </TouchableOpacity>
+      {/* Travel Map — top-left, one tap to the world (hidden in battle tab) */}
+      {showTravel && (
+        <TouchableOpacity onPress={onOpenMap} activeOpacity={0.8}
+          style={{ position:'absolute', top:8, left:8, flexDirection:'row', alignItems:'center', gap:5, paddingHorizontal:10, height:26, borderRadius:13, borderWidth:1, borderColor: skin.color + '66', backgroundColor:'rgba(0,0,0,0.55)' }}>
+          <Text style={{ fontSize:13 }}>🗺</Text>
+          <Text style={{ color: skin.color, fontSize:9, fontWeight:'700', letterSpacing:1.5, fontFamily:mono }}>MAP</Text>
+        </TouchableOpacity>
+      )}
 
-      {/* Persistent mini-map HUD — "you are here" + one-tap hop to a neighbour zone */}
-      {(() => {
+      {/* Persistent mini-map HUD — "you are here" + one-tap hop to a neighbour zone (hidden in battle tab) */}
+      {showTravel && (() => {
         const hereRoom = WORLD_MAP.find(r => r.id === currentRoomId);
         const here = (hereRoom?.skinId ?? currentRoomId.split('_')[0]) as SkinId;
         const neighbours = (GBA_ADJ[here] ?? []).filter(n => SKINS[n]).slice(0, 5);
@@ -350,7 +353,7 @@ function CompanionScene({
         );
       })()}
 
-      {/* Action row — ENCOUNTER (primary) + random hop. Travel is the mini-map + 🗺 map. */}
+      {/* Action row — ENCOUNTER always. Random zone + ⚡ only when travel enabled. */}
       <View style={{ position:'absolute', bottom:14, left:0, right:0, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8 }} pointerEvents="box-none">
         <TouchableOpacity
           onPress={onEncounter}
@@ -359,12 +362,14 @@ function CompanionScene({
           <Text style={{ fontSize:15 }}>⚔</Text>
           <Text style={{ color:'#FF8866', fontSize:12, fontWeight:'800', letterSpacing:2.5, fontFamily:mono }}>ENCOUNTER</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onRandomZone}
-          activeOpacity={0.7}
-          style={{ width:40, height:40, borderRadius:20, borderWidth:1, borderColor:'rgba(255,255,255,0.25)', backgroundColor:'rgba(0,0,0,0.6)', alignItems:'center', justifyContent:'center' }}>
-          <Text style={{ color:'rgba(255,255,255,0.8)', fontSize:15 }}>⚡</Text>
-        </TouchableOpacity>
+        {showTravel && (
+          <TouchableOpacity
+            onPress={onRandomZone}
+            activeOpacity={0.7}
+            style={{ width:40, height:40, borderRadius:20, borderWidth:1, borderColor:'rgba(255,255,255,0.25)', backgroundColor:'rgba(0,0,0,0.6)', alignItems:'center', justifyContent:'center' }}>
+            <Text style={{ color:'rgba(255,255,255,0.8)', fontSize:15 }}>⚡</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <RoomLabel name={currentRoom.name} visible={showRoomLabel} />
 
@@ -3024,6 +3029,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         onRandomZone={() => handleSkin(SKIN_IDS[Math.floor(Math.random() * SKIN_IDS.length)])}
         onOpenMap={() => setGbaMapOpen(true)}
         onTravelTo={(sid) => handleSkin(sid)}
+        showTravel={activeTab !== 'battle'}
         onEncounter={() => {
           const sid = (currentRoomId.split('_')[0] as SkinId);
           setBattle(freshZoneWave(sid, 1, undefined, playerStats.vit));
