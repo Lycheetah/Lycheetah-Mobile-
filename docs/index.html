@@ -43,43 +43,73 @@
       align-items: center; justify-content: center;
       text-align: center;
       padding: 80px 24px 100px;
+      overflow: hidden;
     }
+    /* deep vignette — pulls focus inward */
+    #gate::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 55% at 50% 38%, transparent 0%, rgba(4,4,12,0.85) 100%),
+        radial-gradient(ellipse 100% 40% at 50% 100%, rgba(4,4,12,0.9) 0%, transparent 100%);
+      pointer-events: none; z-index: 0;
+    }
+    /* sacred geometry canvas — behind sigil */
+    #geo {
+      position: absolute;
+      left: 50%; top: 0;
+      transform: translateX(-50%);
+      pointer-events: none; z-index: 0;
+      opacity: 0.28;
+      width: 520px; height: 520px;
+      margin-top: calc(50vh - 420px);
+    }
+    /* ember canvas — rising particles */
+    #embers {
+      position: absolute; inset: 0;
+      pointer-events: none; z-index: 0;
+    }
+    /* all gate children above the canvases */
+    #gate > *:not(#geo):not(#embers) { position: relative; z-index: 1; }
 
     /* Sigil */
     .sigil-wrap {
       position: relative;
-      width: 140px; height: 140px;
-      margin: 0 auto 40px;
+      width: 190px; height: 190px;
+      margin: 0 auto 48px;
     }
     .sigil-ring {
       position: absolute; inset: 0;
       border-radius: 50%;
-      border: 1px solid rgba(232,199,106,0.18);
+      border: 1px solid rgba(232,199,106,0.2);
       animation: rotate var(--spd, 18s) linear infinite;
     }
-    .sigil-ring:nth-child(2) { inset: 12px; border-color: rgba(155,107,255,0.12); --spd: 26s; animation-direction: reverse; }
-    .sigil-ring:nth-child(3) { inset: 24px; border-color: rgba(232,199,106,0.08); --spd: 38s; }
+    .sigil-ring:nth-child(2) { inset: 14px; border-color: rgba(155,107,255,0.14); --spd: 28s; animation-direction: reverse; }
+    .sigil-ring:nth-child(3) { inset: 28px; border-color: rgba(232,199,106,0.07); --spd: 44s; }
     @keyframes rotate { to { transform: rotate(360deg); } }
     .sigil-glyph {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      font-size: 56px;
+      font-size: 72px;
       color: var(--gold);
-      filter: drop-shadow(0 0 28px rgba(232,199,106,0.55)) drop-shadow(0 0 60px rgba(232,199,106,0.2));
+      filter:
+        drop-shadow(0 0 24px rgba(232,199,106,0.6))
+        drop-shadow(0 0 70px rgba(232,199,106,0.25))
+        drop-shadow(0 0 140px rgba(155,107,255,0.15));
       animation: pulse-glyph 5s ease-in-out infinite;
     }
     @keyframes pulse-glyph {
-      0%,100% { filter: drop-shadow(0 0 28px rgba(232,199,106,0.55)) drop-shadow(0 0 60px rgba(232,199,106,0.2)); opacity: 0.9; }
-      50%      { filter: drop-shadow(0 0 44px rgba(232,199,106,0.75)) drop-shadow(0 0 90px rgba(232,199,106,0.35)); opacity: 1; }
+      0%,100% { opacity: 0.88; filter: drop-shadow(0 0 24px rgba(232,199,106,0.6)) drop-shadow(0 0 70px rgba(232,199,106,0.25)); }
+      50%      { opacity: 1;    filter: drop-shadow(0 0 40px rgba(232,199,106,0.8)) drop-shadow(0 0 110px rgba(232,199,106,0.4)) drop-shadow(0 0 160px rgba(155,107,255,0.2)); }
     }
     .sigil-dot {
       position: absolute;
-      width: 4px; height: 4px;
+      width: 3px; height: 3px;
       background: var(--gold);
       border-radius: 50%;
-      opacity: 0.7;
+      opacity: 0.65;
       animation: orbit var(--orb, 8s) linear infinite;
-      transform-origin: calc(50% + var(--r, 60px)) 50%;
+      transform-origin: calc(50% + var(--r, 80px)) 50%;
     }
     @keyframes orbit { to { transform: rotate(360deg); } }
 
@@ -89,127 +119,134 @@
       letter-spacing: 5px;
       color: var(--gold2);
       text-transform: uppercase;
-      margin-bottom: 20px;
-      opacity: 0.7;
+      margin-bottom: 22px;
+      opacity: 0.55;
     }
     h1 {
-      font-size: clamp(42px, 8vw, 96px);
+      font-size: clamp(46px, 9vw, 108px);
       font-weight: 900;
       letter-spacing: -3px;
-      line-height: 1;
-      margin-bottom: 8px;
-      color: #fff;
+      line-height: 0.95;
+      margin-bottom: 0;
+      color: rgba(255,255,255,0.92);
+    }
+    h1 .the {
+      display: block;
+      font-size: clamp(18px, 3vw, 38px);
+      font-weight: 300;
+      letter-spacing: 10px;
+      color: rgba(255,255,255,0.35);
+      text-transform: uppercase;
+      margin-bottom: 4px;
     }
     .title-gold {
-      background: linear-gradient(135deg, var(--gold2) 0%, var(--gold3) 40%, var(--gold) 70%, var(--gold2) 100%);
+      display: block;
+      background: linear-gradient(160deg, #C8A030 0%, #F0D060 30%, #FFE880 50%, #E8C060 70%, #B89028 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
       background-size: 200% 200%;
-      animation: gold-shift 6s ease-in-out infinite;
+      animation: gold-shift 7s ease-in-out infinite;
+      text-shadow: none;
     }
     @keyframes gold-shift {
       0%,100% { background-position: 0% 50%; }
       50%      { background-position: 100% 50%; }
     }
-    .tagline {
-      font-family: var(--mono);
-      font-size: clamp(10px, 1.4vw, 13px);
-      letter-spacing: 3px;
-      color: var(--muted);
-      text-transform: uppercase;
-      margin-bottom: 36px;
-      margin-top: 12px;
-    }
-    .sub {
-      font-size: clamp(14px, 1.8vw, 18px);
-      color: var(--text);
-      max-width: 540px;
-      margin: 0 auto 56px;
-      line-height: 1.85;
-      opacity: 0.8;
-    }
 
-    /* CTA */
-    .cta-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    /* Gate whisper — 3 lines, sparse */
+    .gate-whisper {
+      font-size: clamp(13px, 1.6vw, 16px);
+      color: rgba(180,180,200,0.5);
+      max-width: 420px;
+      margin: 36px auto 52px;
+      line-height: 2;
+      letter-spacing: 0.3px;
+    }
+    .gate-whisper em { font-style: normal; color: rgba(232,199,106,0.55); }
+
+    /* CTA — ceremonial seal */
+    .cta-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
     .cta {
       position: relative;
-      display: inline-flex; align-items: center; justify-content: center; gap: 12px;
-      padding: 22px 64px;
-      border-radius: 100px;
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 20px 72px;
+      border-radius: 3px;
       font-family: var(--mono);
       font-weight: 900;
-      font-size: 13px;
-      letter-spacing: 4px;
+      font-size: 12px;
+      letter-spacing: 7px;
       text-transform: uppercase;
       text-decoration: none;
-      color: #050508;
-      background: linear-gradient(135deg, #B8982B 0%, #E8C76A 35%, #FFE680 50%, #E8C76A 65%, #B8982B 100%);
-      background-size: 300% 300%;
-      animation: cta-gold 4s ease-in-out infinite;
+      color: #07060F;
+      background: linear-gradient(180deg, #DDB83A 0%, #C49828 60%, #B08820 100%);
       box-shadow:
-        0 0 0 1px rgba(232,199,106,0.3),
-        0 0 40px rgba(232,199,106,0.3),
-        0 0 80px rgba(232,199,106,0.12),
-        0 8px 32px rgba(0,0,0,0.6);
-      transition: transform 0.3s, box-shadow 0.3s;
-      overflow: hidden;
-    }
-    @keyframes cta-gold {
-      0%,100% { background-position: 0% 50%; }
-      50%      { background-position: 100% 50%; }
-    }
-    .cta::before {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.25) 50%, transparent 70%);
-      animation: cta-shine 3.5s ease-in-out infinite;
-    }
-    @keyframes cta-shine {
-      0% { transform: translateX(-200%); }
-      50%,100% { transform: translateX(200%); }
+        0 0 0 1px rgba(220,185,60,0.7),
+        0 0 0 8px rgba(220,185,60,0.06),
+        0 0 0 9px rgba(220,185,60,0.13),
+        0 0 55px rgba(220,185,60,0.28),
+        0 0 110px rgba(220,185,60,0.1),
+        0 10px 40px rgba(0,0,0,0.75);
+      transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: visible;
     }
     .cta:hover {
-      transform: translateY(-4px) scale(1.02);
+      transform: translateY(-5px);
+      background: linear-gradient(180deg, #F0CC50 0%, #D8AC38 60%, #C09828 100%);
       box-shadow:
-        0 0 0 1px rgba(232,199,106,0.5),
-        0 0 60px rgba(232,199,106,0.45),
-        0 0 120px rgba(232,199,106,0.2),
-        0 12px 48px rgba(0,0,0,0.7);
+        0 0 0 1px rgba(232,199,106,0.9),
+        0 0 0 8px rgba(232,199,106,0.1),
+        0 0 0 9px rgba(232,199,106,0.2),
+        0 0 90px rgba(232,199,106,0.5),
+        0 0 160px rgba(232,199,106,0.2),
+        0 14px 55px rgba(0,0,0,0.85);
     }
-    .cta-arrow { font-size: 18px; }
     .cta-note {
       font-family: var(--mono);
-      font-size: 10px;
+      font-size: 9px;
       color: var(--muted);
-      letter-spacing: 2px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
     }
     .cta-warn {
       font-family: var(--mono);
-      font-size: 10px;
-      color: rgba(232,199,106,0.45);
-      letter-spacing: 1px;
-      max-width: 380px;
+      font-size: 9px;
+      color: rgba(232,199,106,0.3);
+      letter-spacing: 0.5px;
+      max-width: 360px;
       text-align: center;
-      line-height: 1.7;
+      line-height: 1.8;
     }
-    .gate-whisper {
-      font-size: clamp(14px, 1.8vw, 18px);
-      color: var(--muted);
-      max-width: 480px;
-      margin: 0 auto 48px;
-      line-height: 1.9;
-    }
-    .scroll-hint {
-      margin-top: 52px;
+
+    /* Divider rune line */
+    .gate-rule {
+      display: flex; align-items: center; gap: 16px;
+      margin-top: 60px;
+      color: rgba(232,199,106,0.15);
       font-family: var(--mono);
-      font-size: 10px;
-      color: rgba(232,199,106,0.2);
-      letter-spacing: 3px;
-      animation: hint-fade 3s ease-in-out infinite;
+      font-size: 11px;
+      letter-spacing: 2px;
+      width: 100%; max-width: 360px;
+    }
+    .gate-rule::before, .gate-rule::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(232,199,106,0.12));
+    }
+    .gate-rule::after { background: linear-gradient(270deg, transparent, rgba(232,199,106,0.12)); }
+
+    .scroll-hint {
+      margin-top: 18px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: rgba(232,199,106,0.18);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      animation: hint-fade 3.5s ease-in-out infinite;
     }
     @keyframes hint-fade {
-      0%,100% { opacity: 0.4; transform: translateY(0); }
-      50%      { opacity: 1;   transform: translateY(4px); }
+      0%,100% { opacity: 0.5; transform: translateY(0); }
+      50%      { opacity: 1;   transform: translateY(5px); }
     }
 
     /* Stats */
@@ -491,28 +528,46 @@
     <div class="sigil-dot" style="--r:46px; --orb:14s; animation-delay:-3s; opacity:0.4;"></div>
   </div>
 
+  <!-- sacred geometry -->
+  <canvas id="geo" width="520" height="520"></canvas>
+  <!-- rising embers -->
+  <canvas id="embers"></canvas>
+
   <p class="eyebrow">⧟ Lycheetah · The Sovereign Framework</p>
 
+  <!-- Sigil -->
+  <div class="sigil-wrap">
+    <div class="sigil-ring"></div>
+    <div class="sigil-ring"></div>
+    <div class="sigil-ring"></div>
+    <div class="sigil-glyph">𝔏</div>
+    <div class="sigil-dot" style="--r:82px; --orb:10s; animation-delay:0s;"></div>
+    <div class="sigil-dot" style="--r:82px; --orb:10s; animation-delay:-5s;"></div>
+    <div class="sigil-dot" style="--r:66px; --orb:17s; animation-delay:-3s; opacity:0.35; width:2px; height:2px;"></div>
+  </div>
+
   <h1>
-    The<br><span class="title-gold">Mystery School</span>
+    <span class="the">The</span>
+    <span class="title-gold">Mystery School</span>
   </h1>
 
   <p class="gate-whisper">
-    Irish mythology. Celtic gods. Alchemy. Zodiac. Shadow work.<br>
-    17 companions. A living AI that studies alongside you.<br>
-    No backend. No account. Free forever.
+    Irish mythology. Celtic gods. Alchemy. Zodiac.<br>
+    <em>17 named companions.</em> 40 domains of genuine inquiry.<br>
+    A living AI that studies alongside you. Free forever.
   </p>
 
   <div class="cta-wrap">
     <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.5/SOL.V.5.5.5.apk"
        class="cta" target="_blank">
-      ⬇ &nbsp;Enter the School — Free
+      ⬇ &nbsp; Enter the School
     </a>
-    <p class="cta-note">Android APK · v5.5.5 · No account required</p>
-    <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow. Normal for apps outside the Play Store.</p>
+    <p class="cta-note">Android APK · v5.5.5 · Free · No account</p>
+    <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow.</p>
   </div>
 
-  <p class="scroll-hint">↓ &nbsp; scroll to see what's inside</p>
+  <div class="gate-rule">⊚ &nbsp; ─ &nbsp; ⧟ &nbsp; ─ &nbsp; ⊚</div>
+  <p class="scroll-hint">scroll to enter &nbsp; ↓</p>
 
 </section>
 
@@ -806,6 +861,138 @@
 </footer>
 
 <script>
+// ── SACRED GEOMETRY ──────────────────────────────────────────────────────────
+(function() {
+  const c = document.getElementById('geo');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const S = 520, cx = S/2, cy = S/2;
+  let t = 0;
+
+  function hex(x, y, r, angle) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = angle + (Math.PI / 3) * i;
+      i === 0 ? ctx.moveTo(x + r * Math.cos(a), y + r * Math.sin(a))
+              : ctx.lineTo(x + r * Math.cos(a), y + r * Math.sin(a));
+    }
+    ctx.closePath();
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, S, S);
+    t += 0.003;
+
+    const gold = (a) => `rgba(232,199,106,${a})`;
+    const purp = (a) => `rgba(155,107,255,${a})`;
+
+    // outer zodiac ring — 12 marks
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(t * 0.3);
+    ctx.strokeStyle = gold(0.55); ctx.lineWidth = 0.7;
+    ctx.beginPath(); ctx.arc(0, 0, 238, 0, Math.PI*2); ctx.stroke();
+    for (let i = 0; i < 24; i++) {
+      const a = (Math.PI * 2 / 24) * i;
+      const inner = i % 2 === 0 ? 226 : 231;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+      ctx.lineTo(Math.cos(a) * 238,   Math.sin(a) * 238);
+      ctx.strokeStyle = i % 2 === 0 ? gold(0.7) : gold(0.3);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // hexagram — two overlapping triangles
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(t * 0.6);
+    ctx.strokeStyle = gold(0.35); ctx.lineWidth = 0.8;
+    hex(0, 0, 190, 0); ctx.stroke();
+    hex(0, 0, 190, Math.PI/3); ctx.stroke();
+    ctx.restore();
+
+    // inner circle
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-t * 0.4);
+    ctx.strokeStyle = purp(0.28); ctx.lineWidth = 0.6;
+    ctx.beginPath(); ctx.arc(0, 0, 140, 0, Math.PI*2); ctx.stroke();
+    // inner triangle
+    ctx.strokeStyle = gold(0.22); ctx.lineWidth = 0.7;
+    for (let i = 0; i < 3; i++) {
+      const a = (Math.PI * 2 / 3) * i - Math.PI/2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * 140, Math.sin(a) * 140);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // centre circle
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = gold(0.18); ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.arc(0, 0, 60, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+// ── EMBER PARTICLES ───────────────────────────────────────────────────────────
+(function() {
+  const c = document.getElementById('embers');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  const gate = document.getElementById('gate');
+  let W, H, particles = [];
+
+  function resize() {
+    W = c.width  = gate.offsetWidth;
+    H = c.height = gate.offsetHeight;
+  }
+
+  function spawn() {
+    particles.push({
+      x: Math.random() * W,
+      y: H * (0.5 + Math.random() * 0.5),
+      r: Math.random() * 1.8 + 0.4,
+      vy: -(Math.random() * 0.6 + 0.3),
+      vx: (Math.random() - 0.5) * 0.3,
+      a: Math.random() * 0.55 + 0.15,
+      phase: Math.random() * Math.PI * 2,
+      life: 1,
+      decay: Math.random() * 0.003 + 0.002,
+      gold: Math.random() < 0.6,
+    });
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    if (particles.length < 30 && Math.random() < 0.18) spawn();
+
+    particles = particles.filter(p => p.life > 0);
+    particles.forEach(p => {
+      p.y += p.vy;
+      p.x += p.vx + Math.sin(p.phase + p.y * 0.012) * 0.25;
+      p.life -= p.decay;
+      const alpha = p.a * p.life;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.gold
+        ? `rgba(232,199,106,${alpha})`
+        : `rgba(200,170,255,${alpha * 0.5})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+
+  window.addEventListener('resize', () => { resize(); });
+  resize(); frame();
+})();
+
 // ── COSMOS CANVAS ────────────────────────────────────────────────────────────
 (function() {
   const c = document.getElementById('cosmos');
