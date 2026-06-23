@@ -192,6 +192,25 @@
       text-align: center;
       line-height: 1.7;
     }
+    .gate-whisper {
+      font-size: clamp(14px, 1.8vw, 18px);
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto 48px;
+      line-height: 1.9;
+    }
+    .scroll-hint {
+      margin-top: 52px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(232,199,106,0.2);
+      letter-spacing: 3px;
+      animation: hint-fade 3s ease-in-out infinite;
+    }
+    @keyframes hint-fade {
+      0%,100% { opacity: 0.4; transform: translateY(0); }
+      50%      { opacity: 1;   transform: translateY(4px); }
+    }
 
     /* Stats */
     .stats {
@@ -477,49 +496,56 @@
   <h1>
     The<br><span class="title-gold">Mystery School</span>
   </h1>
-  <p class="tagline">the door is always open</p>
 
-  <div class="cta-wrap" style="margin-bottom: 64px;">
-    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.5/SOL.V.5.5.5.apk"
-       class="cta" target="_blank">
-      <span class="cta-arrow">⬇</span> Enter Sol — Free
-    </a>
-    <p class="cta-note">Android · No account · No gatekeepers</p>
-    <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow.</p>
-  </div>
-
-  <p class="sub">
-    40 domains of genuine inquiry. Irish mythology. Celtic gods. Alchemy.<br>
-    Quantum mechanics. Noetic science. Shadow work. Zodiac.<br>
-    17 named companions with lore, forms, and a fire to sit by.
+  <p class="gate-whisper">
+    Irish mythology. Celtic gods. Alchemy. Zodiac. Shadow work.<br>
+    17 companions. A living AI that studies alongside you.<br>
+    No backend. No account. Free forever.
   </p>
 
-  <!-- Pills -->
-  <div class="pill-row">
-    <span class="pill" style="color:#1ABC9C;border-color:#1ABC9C33;">⟁ Irish Mythology</span>
-    <span class="pill" style="color:#9B59B6;border-color:#9B59B633;">✒ Irish Literature</span>
-    <span class="pill" style="color:#2C8A5A;border-color:#2C8A5A33;">☽ Celtic Old Gods</span>
-    <span class="pill" style="color:#7ED6DF;border-color:#7ED6DF33;">⬡ Crystal Lore</span>
-    <span class="pill" style="color:#8855FF;border-color:#8855FF33;">★ Zodiac</span>
-    <span class="pill" style="color:#9B59B6;border-color:#9B59B633;">◐ Shadow Work</span>
-    <span class="pill" style="color:#1565C0;border-color:#1565C033;">◉ Quantum Mechanics</span>
-    <span class="pill" style="color:#AA44FF;border-color:#AA44FF33;">⊛ Noetic Science</span>
-    <span class="pill" style="color:#F5A623;border-color:#F5A62333;">⊚ Alchemy</span>
-    <span class="pill" style="color:#27AE60;border-color:#27AE6033;">⧟ Shamanic</span>
-    <span class="pill" style="color:#E8C76A;border-color:#E8C76A33;">𝔏 LAMAGUE</span>
-    <span class="pill" style="color:#FF6644;border-color:#FF664433;">◈ Sonic Architecture</span>
+  <div class="cta-wrap">
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.5/SOL.V.5.5.5.apk"
+       class="cta" target="_blank">
+      ⬇ &nbsp;Enter the School — Free
+    </a>
+    <p class="cta-note">Android APK · v5.5.5 · No account required</p>
+    <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow. Normal for apps outside the Play Store.</p>
   </div>
 
-  <div class="stats">
-    <div class="stat"><span class="stat-n">17</span><span class="stat-l">Companions</span></div>
-    <div class="stat-sep"></div>
-    <div class="stat"><span class="stat-n">70</span><span class="stat-l">Variants</span></div>
-    <div class="stat-sep"></div>
-    <div class="stat"><span class="stat-n">40</span><span class="stat-l">Domains</span></div>
-    <div class="stat-sep"></div>
-    <div class="stat"><span class="stat-n">400+</span><span class="stat-l">Subjects</span></div>
-  </div>
+  <p class="scroll-hint">↓ &nbsp; scroll to see what's inside</p>
 
+</section>
+
+<div class="div"></div>
+
+<!-- ══ WHAT'S INSIDE ══════════════════════════════════════════════════════════ -->
+<section class="section" style="padding-bottom:0;">
+  <div class="section-inner" style="text-align:center;">
+    <p class="s-eye" style="margin-bottom:32px;">◈ What lives inside</p>
+    <div class="pill-row">
+      <span class="pill" style="color:#1ABC9C;border-color:#1ABC9C33;">⟁ Irish Mythology</span>
+      <span class="pill" style="color:#9B59B6;border-color:#9B59B633;">✒ Irish Literature</span>
+      <span class="pill" style="color:#2C8A5A;border-color:#2C8A5A33;">☽ Celtic Old Gods</span>
+      <span class="pill" style="color:#7ED6DF;border-color:#7ED6DF33;">⬡ Crystal Lore</span>
+      <span class="pill" style="color:#8855FF;border-color:#8855FF33;">★ Zodiac</span>
+      <span class="pill" style="color:#9B59B6;border-color:#9B59B633;">◐ Shadow Work</span>
+      <span class="pill" style="color:#1565C0;border-color:#1565C033;">◉ Quantum Mechanics</span>
+      <span class="pill" style="color:#AA44FF;border-color:#AA44FF33;">⊛ Noetic Science</span>
+      <span class="pill" style="color:#F5A623;border-color:#F5A62333;">⊚ Alchemy</span>
+      <span class="pill" style="color:#27AE60;border-color:#27AE6033;">⧟ Shamanic</span>
+      <span class="pill" style="color:#E8C76A;border-color:#E8C76A33;">𝔏 LAMAGUE</span>
+      <span class="pill" style="color:#FF6644;border-color:#FF664433;">◈ Sonic Architecture</span>
+    </div>
+    <div class="stats" style="margin-top:32px;padding-top:32px;">
+      <div class="stat"><span class="stat-n">17</span><span class="stat-l">Companions</span></div>
+      <div class="stat-sep"></div>
+      <div class="stat"><span class="stat-n">70</span><span class="stat-l">Variants</span></div>
+      <div class="stat-sep"></div>
+      <div class="stat"><span class="stat-n">40</span><span class="stat-l">Domains</span></div>
+      <div class="stat-sep"></div>
+      <div class="stat"><span class="stat-n">400+</span><span class="stat-l">Subjects</span></div>
+    </div>
+  </div>
 </section>
 
 <div class="div"></div>
