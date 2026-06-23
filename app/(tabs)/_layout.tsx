@@ -10,6 +10,7 @@ import { useAppMode } from '../../lib/app-mode';
 import { getActiveKey, getModel } from '../../lib/storage';
 import { sendMessage, AIModel } from '../../lib/ai-client';
 import WelcomeTour from '../../components/WelcomeTour';
+import { trackTabEnter, trackTabLeave } from '../../lib/analytics';
 
 type IconProps = { color: string; focused: boolean };
 
@@ -119,6 +120,7 @@ export default function TabLayout() {
     const interval = setInterval(loadCurrencies, 5000);
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') loadCurrencies();
+      if (state === 'background' || state === 'inactive') trackTabLeave();
     });
     return () => { clearInterval(interval); sub.remove(); };
   }, [loadCurrencies]);
@@ -216,13 +218,13 @@ export default function TabLayout() {
           },
         }}
       >
-        <Tabs.Screen name="zodiac" options={{ title: 'THE STARS', tabBarLabel: 'Zodiac', tabBarActiveTintColor: HOT.zodiac, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="☽" color={color} focused={focused} hot={HOT.zodiac} /> }} />
-        <Tabs.Screen name="school" options={{ title: t('MYSTERY SCHOOL'), tabBarLabel: t('School'), tabBarActiveTintColor: HOT.school, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="𝔏" color={color} focused={focused} hot={HOT.school} /> }} />
-        <Tabs.Screen name="index" options={{ title: 'SOL', tabBarLabel: 'Sol', tabBarActiveTintColor: HOT.sol, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊚" color={color} focused={focused} hot={HOT.sol} /> }} />
-        <Tabs.Screen name="library" options={{ href: null, title: 'LIBRARY' }} />
-        <Tabs.Screen name="companion" options={{ title: 'COMPANION', tabBarLabel: 'Companion', tabBarActiveTintColor: HOT.companion, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="✦" color={color} focused={focused} hot={HOT.companion} /> }} />
-        <Tabs.Screen name="sanctum" options={{ title: t('THE SANCTUM'), tabBarLabel: t('Sanctum'), tabBarActiveTintColor: HOT.sanctum, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊼" color={color} focused={focused} hot={HOT.sanctum} /> }} />
-        <Tabs.Screen name="settings" options={{ title: 'SETTINGS', tabBarLabel: 'Settings', tabBarActiveTintColor: HOT.settings, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⚙" color={color} focused={focused} hot={HOT.settings} /> }} />
+        <Tabs.Screen name="zodiac"    options={{ title: 'THE STARS',      tabBarLabel: 'Zodiac',    tabBarActiveTintColor: HOT.zodiac,    tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="☽" color={color} focused={focused} hot={HOT.zodiac} />,    listeners: { focus: () => trackTabEnter('zodiac'),    blur: () => trackTabLeave('zodiac')    } }} />
+        <Tabs.Screen name="school"    options={{ title: t('MYSTERY SCHOOL'), tabBarLabel: t('School'), tabBarActiveTintColor: HOT.school,   tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="𝔏" color={color} focused={focused} hot={HOT.school} />,   listeners: { focus: () => trackTabEnter('school'),    blur: () => trackTabLeave('school')    } }} />
+        <Tabs.Screen name="index"     options={{ title: 'SOL',             tabBarLabel: 'Sol',       tabBarActiveTintColor: HOT.sol,       tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊚" color={color} focused={focused} hot={HOT.sol} />,       listeners: { focus: () => trackTabEnter('sol'),       blur: () => trackTabLeave('sol')       } }} />
+        <Tabs.Screen name="library"   options={{ href: null, title: 'LIBRARY' }} />
+        <Tabs.Screen name="companion" options={{ title: 'COMPANION',       tabBarLabel: 'Companion', tabBarActiveTintColor: HOT.companion, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="✦" color={color} focused={focused} hot={HOT.companion} />, listeners: { focus: () => trackTabEnter('companion'), blur: () => trackTabLeave('companion') } }} />
+        <Tabs.Screen name="sanctum"   options={{ title: t('THE SANCTUM'),  tabBarLabel: t('Sanctum'),tabBarActiveTintColor: HOT.sanctum,  tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊼" color={color} focused={focused} hot={HOT.sanctum} />,  listeners: { focus: () => trackTabEnter('sanctum'),   blur: () => trackTabLeave('sanctum')   } }} />
+        <Tabs.Screen name="settings"  options={{ title: 'SETTINGS',        tabBarLabel: 'Settings',  tabBarActiveTintColor: HOT.settings, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⚙" color={color} focused={focused} hot={HOT.settings} />,  listeners: { focus: () => trackTabEnter('settings'),  blur: () => trackTabLeave('settings')  } }} />
         <Tabs.Screen name="codex" options={{ href: null, title: 'CODEX' }} />
         <Tabs.Screen name="customize" options={{ href: null, title: 'CUSTOMIZE' }} />
         <Tabs.Screen name="modes" options={{ href: null, title: 'FIELD' }} />

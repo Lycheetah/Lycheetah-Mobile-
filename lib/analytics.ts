@@ -58,14 +58,69 @@ function sessionId(): string {
   return _sessionId;
 }
 
+// ── RETENTION STATE ──────────────────────────────────────────────────────────
+const LAST_OPEN_KEY   = 'sol_analytics_last_open';
+const OPEN_COUNT_KEY  = 'sol_analytics_open_count';
+const FIRST_OPEN_KEY  = 'sol_analytics_first_open';
+
+// ── TAB TIMER ────────────────────────────────────────────────────────────────
+let _tabName   = '';
+let _tabEnter  = 0;
+
+/** Call on AppState active — records tab time and fires retention events. */
+export async function trackTabEnter(tab: string): Promise<void> {
+  _tabName  = tab;
+  _tabEnter = Date.now();
+}
+
+/** Call on AppState background OR tab blur — fires tab_time event. */
+export function trackTabLeave(tab?: string): void {
+  const name = tab || _tabName;
+  if (!name || !_tabEnter) return;
+  const seconds = Math.round((Date.now() - _tabEnter) / 1000);
+  if (seconds < 2) return;
+  track('tab_time', { tab: name, seconds });
+  _tabEnter = 0;
+}
+
 /** Call once at app start. Loads the opt-out preference. Never throws. */
 export async function initAnalytics(): Promise<void> {
   try {
     const optout = await AsyncStorage.getItem(OPTOUT_KEY);
     _optedOut = optout === 'true';
     _ready = true;
+
+    // ── Retention tracking ──────────────────────────────────────────────────
+    const now         = Date.now();
+    const nowStr      = new Date(now).toISOString().slice(0, 10); // YYYY-MM-DD
+    const lastOpenRaw = await AsyncStorage.getItem(LAST_OPEN_KEY);
+    const countRaw    = await AsyncStorage.getItem(OPEN_COUNT_KEY);
+    const firstRaw    = await AsyncStorage.getItem(FIRST_OPEN_KEY);
+
+    const openCount   = parseInt(countRaw || '0', 10) + 1;
+    const isFirstEver = !firstRaw;
+    const firstDate   = firstRaw || nowStr;
+    const daysSince   = lastOpenRaw
+      ? Math.round((now - new Date(lastOpenRaw).getTime()) / 86400000)
+      : 0;
+
+    await AsyncStorage.setItem(LAST_OPEN_KEY,  nowStr);
+    await AsyncStorage.setItem(OPEN_COUNT_KEY, String(openCount));
+    if (isFirstEver) await AsyncStorage.setItem(FIRST_OPEN_KEY, nowStr);
+
+    track('app_open', {
+      open_count:    openCount,
+      days_since:    daysSince,
+      is_new_user:   isFirstEver,
+      install_date:  firstDate,
+    });
+
+    // Return user signal (came back after ≥1 day)
+    if (daysSince >= 1) {
+      track('user_returned', { days_away: daysSince, open_count: openCount });
+    }
   } catch {
-    _ready = false; // analytics must never break boot
+    _ready = false;
   }
 }
 
