@@ -1,8 +1,8 @@
-import type { ArchetypeId } from '../data/companion-types';
+import type { ArchetypeId } from '../../app/data/companion-types';
 import {
   SkinId, SKINS, SKIN_IDS, SKIN_ORDER, WORLD_MAP, SKIN_RARITY,
-} from './companion-zones';
-import type { SceneRoom } from './companion-zones';
+} from './zones';
+import type { SceneRoom } from './zones';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

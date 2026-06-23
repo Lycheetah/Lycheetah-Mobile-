@@ -26,7 +26,7 @@ import {
   SkinId, SKINS, SKIN_IDS, SKIN_ORDER, SKIN_RARITY, RARITY_ORDER, RarityTier,
   RARITY_COLORS, SKIN_GRID_HIDDEN, RARITY_GROUPS, SCENE_IMAGES, ARCHETYPE_SCENES,
   DAY_SEED, GBA_W, GBA_ADJ, SceneRoom, WORLD_MAP, ZONE_DIVE_COST, getSkinUnlockStatus,
-} from './companion-zones';
+} from '../../lib/companion/zones';
 import type { ArchetypeId } from '../data/companion-types';
 import type {
   EvolutionStage, CompanionMood, Direction, GearSlot, EvoPath,
@@ -34,7 +34,7 @@ import type {
   BattleState, PlayerStats, AlchemicalMode, SkillNode, SpellDef,
   BattleItem, LootItem, CosmeticRarity, CosmeticItem, FoodItem,
   Quest, QuestData, GearTier, RelicDef, CreatureBody,
-} from './companion-game-data';
+} from '../../lib/companion/game-data';
 import {
   SPECIAL_COMPANIONS, getItemEffect, getRoomById, getRoomInSkin, getSkinIndex, showToast,
   RARITY_COLOUR, EAT_EYES,
@@ -59,7 +59,7 @@ import {
   COMPANION_VICTORY_LINES, COMPANION_CAPTURE_LINES, COMPANION_DEFEAT_LINES,
   SHOW_DEV_STAGE, todayDateKey,
   COMPANION_GREETINGS, P_COUNT, P_X, P_SZ, getTimeOverlay, dateSeed,
-} from './companion-game-data';
+} from '../../lib/companion/game-data';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCENE_H = 520;
