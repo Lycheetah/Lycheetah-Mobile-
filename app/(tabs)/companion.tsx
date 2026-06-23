@@ -388,7 +388,7 @@ function CompanionScene({
 
 
       {/* Companion — always centred */}
-      <Animated.View style={{ position:'absolute', top: SCENE_H * 0.22, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
+      <Animated.View style={{ position:'absolute', top: SCENE_H * 0.32, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
         {/* Stage evolution glow — behind creature, bobs with it, invisible at stage 0, radiant at stage 5 */}
         {effectiveStage > 0 && (
           <Animated.View pointerEvents="none" style={{
