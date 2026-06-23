@@ -40,136 +40,46 @@
       position: relative; z-index: 1;
       min-height: 100vh;
       display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
+      align-items: center;
+      justify-content: flex-start;
       text-align: center;
-      padding: 80px 24px 100px;
+      padding: 44px 24px 80px;
       overflow: hidden;
     }
-    /* deep vignette — pulls focus inward */
     #gate::before {
       content: '';
       position: absolute; inset: 0;
       background:
-        radial-gradient(ellipse 60% 55% at 50% 38%, transparent 0%, rgba(4,4,12,0.85) 100%),
-        radial-gradient(ellipse 100% 40% at 50% 100%, rgba(4,4,12,0.9) 0%, transparent 100%);
+        radial-gradient(ellipse 70% 60% at 50% 30%, rgba(60,20,120,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 100% 35% at 50% 100%, rgba(4,4,12,0.95) 0%, transparent 100%);
       pointer-events: none; z-index: 0;
     }
-    /* sacred geometry canvas — behind sigil */
     #geo {
       position: absolute;
-      left: 50%; top: 0;
-      transform: translateX(-50%);
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
       pointer-events: none; z-index: 0;
-      opacity: 0.28;
-      width: 520px; height: 520px;
-      margin-top: calc(50vh - 420px);
+      opacity: 0.22;
+      width: 600px; height: 600px;
     }
-    /* ember canvas — rising particles */
     #embers {
       position: absolute; inset: 0;
       pointer-events: none; z-index: 0;
     }
-    /* all gate children above the canvases */
     #gate > *:not(#geo):not(#embers) { position: relative; z-index: 1; }
 
-    /* Sigil */
-    .sigil-wrap {
-      position: relative;
-      width: 190px; height: 190px;
-      margin: 0 auto 48px;
+    /* CTA block — top of page */
+    .cta-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 12px;
+      margin-bottom: 52px;
+      animation: reveal 0.9s ease-out both;
     }
-    .sigil-ring {
-      position: absolute; inset: 0;
-      border-radius: 50%;
-      border: 1px solid rgba(232,199,106,0.2);
-      animation: rotate var(--spd, 18s) linear infinite;
-    }
-    .sigil-ring:nth-child(2) { inset: 14px; border-color: rgba(155,107,255,0.14); --spd: 28s; animation-direction: reverse; }
-    .sigil-ring:nth-child(3) { inset: 28px; border-color: rgba(232,199,106,0.07); --spd: 44s; }
-    @keyframes rotate { to { transform: rotate(360deg); } }
-    .sigil-glyph {
-      position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 72px;
-      color: var(--gold);
-      filter:
-        drop-shadow(0 0 24px rgba(232,199,106,0.6))
-        drop-shadow(0 0 70px rgba(232,199,106,0.25))
-        drop-shadow(0 0 140px rgba(155,107,255,0.15));
-      animation: pulse-glyph 5s ease-in-out infinite;
-    }
-    @keyframes pulse-glyph {
-      0%,100% { opacity: 0.88; filter: drop-shadow(0 0 24px rgba(232,199,106,0.6)) drop-shadow(0 0 70px rgba(232,199,106,0.25)); }
-      50%      { opacity: 1;    filter: drop-shadow(0 0 40px rgba(232,199,106,0.8)) drop-shadow(0 0 110px rgba(232,199,106,0.4)) drop-shadow(0 0 160px rgba(155,107,255,0.2)); }
-    }
-    .sigil-dot {
-      position: absolute;
-      width: 3px; height: 3px;
-      background: var(--gold);
-      border-radius: 50%;
-      opacity: 0.65;
-      animation: orbit var(--orb, 8s) linear infinite;
-      transform-origin: calc(50% + var(--r, 80px)) 50%;
-    }
-    @keyframes orbit { to { transform: rotate(360deg); } }
-
-    .eyebrow {
-      font-family: var(--mono);
-      font-size: 9px;
-      letter-spacing: 5px;
-      color: var(--gold2);
-      text-transform: uppercase;
-      margin-bottom: 22px;
-      opacity: 0.55;
-    }
-    h1 {
-      font-size: clamp(46px, 9vw, 108px);
-      font-weight: 900;
-      letter-spacing: -3px;
-      line-height: 0.95;
-      margin-bottom: 0;
-      color: rgba(255,255,255,0.92);
-    }
-    h1 .the {
-      display: block;
-      font-size: clamp(18px, 3vw, 38px);
-      font-weight: 300;
-      letter-spacing: 10px;
-      color: rgba(255,255,255,0.35);
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .title-gold {
-      display: block;
-      background: linear-gradient(160deg, #C8A030 0%, #F0D060 30%, #FFE880 50%, #E8C060 70%, #B89028 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-      background-size: 200% 200%;
-      animation: gold-shift 7s ease-in-out infinite;
-      text-shadow: none;
-    }
-    @keyframes gold-shift {
-      0%,100% { background-position: 0% 50%; }
-      50%      { background-position: 100% 50%; }
-    }
-
-    /* Gate whisper — 3 lines, sparse */
-    .gate-whisper {
-      font-size: clamp(13px, 1.6vw, 16px);
-      color: rgba(180,180,200,0.5);
-      max-width: 420px;
-      margin: 36px auto 52px;
-      line-height: 2;
-      letter-spacing: 0.3px;
-    }
-    .gate-whisper em { font-style: normal; color: rgba(232,199,106,0.55); }
-
-    /* CTA — ceremonial seal */
-    .cta-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
     .cta {
       position: relative;
       display: inline-flex; align-items: center; justify-content: center;
-      padding: 20px 72px;
+      padding: 20px 68px;
       border-radius: 3px;
       font-family: var(--mono);
       font-weight: 900;
@@ -183,21 +93,20 @@
         0 0 0 1px rgba(220,185,60,0.7),
         0 0 0 8px rgba(220,185,60,0.06),
         0 0 0 9px rgba(220,185,60,0.13),
-        0 0 55px rgba(220,185,60,0.28),
+        0 0 55px rgba(220,185,60,0.3),
         0 0 110px rgba(220,185,60,0.1),
         0 10px 40px rgba(0,0,0,0.75);
-      transition: all 0.45s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: visible;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .cta:hover {
-      transform: translateY(-5px);
+      transform: translateY(-4px);
       background: linear-gradient(180deg, #F0CC50 0%, #D8AC38 60%, #C09828 100%);
       box-shadow:
-        0 0 0 1px rgba(232,199,106,0.9),
+        0 0 0 1px rgba(232,199,106,0.95),
         0 0 0 8px rgba(232,199,106,0.1),
         0 0 0 9px rgba(232,199,106,0.2),
-        0 0 90px rgba(232,199,106,0.5),
-        0 0 160px rgba(232,199,106,0.2),
+        0 0 90px rgba(232,199,106,0.55),
+        0 0 180px rgba(232,199,106,0.2),
         0 14px 55px rgba(0,0,0,0.85);
     }
     .cta-note {
@@ -207,58 +116,148 @@
       letter-spacing: 2.5px;
       text-transform: uppercase;
     }
-    .cta-warn {
-      font-family: var(--mono);
-      font-size: 9px;
-      color: rgba(232,199,106,0.3);
-      letter-spacing: 0.5px;
-      max-width: 360px;
-      text-align: center;
-      line-height: 1.8;
-    }
     .releases-link {
       font-family: var(--mono);
       font-size: 9px;
-      color: rgba(232,199,106,0.4);
+      color: rgba(232,199,106,0.35);
       letter-spacing: 2px;
       text-decoration: none;
       text-transform: uppercase;
-      border-bottom: 1px solid rgba(232,199,106,0.15);
+      border-bottom: 1px solid rgba(232,199,106,0.12);
       padding-bottom: 1px;
       transition: color 0.2s, border-color 0.2s;
     }
-    .releases-link:hover { color: var(--gold); border-color: rgba(232,199,106,0.5); }
-
-    /* Divider rune line */
-    .gate-rule {
-      display: flex; align-items: center; gap: 16px;
-      margin-top: 60px;
-      color: rgba(232,199,106,0.15);
-      font-family: var(--mono);
-      font-size: 11px;
-      letter-spacing: 2px;
-      width: 100%; max-width: 360px;
-    }
-    .gate-rule::before, .gate-rule::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(232,199,106,0.12));
-    }
-    .gate-rule::after { background: linear-gradient(270deg, transparent, rgba(232,199,106,0.12)); }
-
-    .scroll-hint {
-      margin-top: 18px;
+    .releases-link:hover { color: var(--gold); border-color: rgba(232,199,106,0.45); }
+    .cta-warn {
       font-family: var(--mono);
       font-size: 9px;
-      color: rgba(232,199,106,0.18);
+      color: rgba(232,199,106,0.28);
+      letter-spacing: 0.5px;
+      max-width: 340px;
+      text-align: center;
+      line-height: 1.9;
+    }
+
+    /* Sigil — centrepiece */
+    .sigil-wrap {
+      position: relative;
+      width: 160px; height: 160px;
+      margin: 0 auto 40px;
+      animation: reveal 1s ease-out 0.15s both;
+    }
+    .sigil-ring {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      border: 1px solid rgba(232,199,106,0.2);
+      animation: rotate var(--spd, 18s) linear infinite;
+    }
+    .sigil-ring:nth-child(2) { inset: 12px; border-color: rgba(155,107,255,0.13); --spd: 28s; animation-direction: reverse; }
+    .sigil-ring:nth-child(3) { inset: 24px; border-color: rgba(232,199,106,0.06); --spd: 46s; }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+    .sigil-glyph {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 62px;
+      color: var(--gold);
+      filter:
+        drop-shadow(0 0 22px rgba(232,199,106,0.65))
+        drop-shadow(0 0 65px rgba(232,199,106,0.28))
+        drop-shadow(0 0 130px rgba(155,107,255,0.18));
+      animation: pulse-glyph 5s ease-in-out infinite;
+    }
+    @keyframes pulse-glyph {
+      0%,100% { opacity: 0.88; }
+      50%      { opacity: 1; filter: drop-shadow(0 0 38px rgba(232,199,106,0.85)) drop-shadow(0 0 100px rgba(232,199,106,0.4)) drop-shadow(0 0 160px rgba(155,107,255,0.22)); }
+    }
+    .sigil-dot {
+      position: absolute;
+      width: 3px; height: 3px;
+      background: var(--gold);
+      border-radius: 50%;
+      opacity: 0.6;
+      animation: orbit var(--orb, 8s) linear infinite;
+      transform-origin: calc(50% + var(--r, 70px)) 50%;
+    }
+    @keyframes orbit { to { transform: rotate(360deg); } }
+
+    /* Title */
+    .gate-title {
+      margin-bottom: 30px;
+      animation: reveal 1s ease-out 0.3s both;
+    }
+    .gate-the {
+      display: block;
+      font-family: var(--mono);
+      font-size: clamp(9px, 1.2vw, 11px);
+      letter-spacing: 8px;
+      color: rgba(255,255,255,0.28);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .gate-name {
+      display: block;
+      font-size: clamp(36px, 7vw, 80px);
+      font-weight: 900;
+      letter-spacing: -2px;
+      line-height: 1;
+      background: linear-gradient(160deg, #C0981E 0%, #EDD050 30%, #FFF070 52%, #E8C048 72%, #A88018 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      background-size: 200% 200%;
+      animation: gold-shift 7s ease-in-out infinite;
+    }
+    @keyframes gold-shift {
+      0%,100% { background-position: 0% 50%; }
+      50%      { background-position: 100% 50%; }
+    }
+
+    /* The breath — speaks to the visitor */
+    .gate-hook {
+      font-size: clamp(18px, 3.5vw, 30px);
+      font-weight: 700;
+      color: rgba(255,255,255,0.88);
+      letter-spacing: -0.5px;
+      margin-bottom: 22px;
+      max-width: 540px;
+      line-height: 1.25;
+      animation: reveal 1s ease-out 0.5s both;
+    }
+    .gate-three {
+      font-size: clamp(13px, 1.7vw, 16px);
+      color: rgba(160,155,185,0.7);
+      line-height: 2.1;
+      margin-bottom: 0;
+      max-width: 440px;
+      animation: reveal 1s ease-out 0.75s both;
+    }
+    .gate-three em { font-style: normal; color: rgba(232,199,106,0.6); }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 8px;
+      letter-spacing: 4px;
+      color: rgba(232,199,106,0.3);
+      text-transform: uppercase;
+      margin-top: 44px;
+      animation: reveal 1s ease-out 1s both;
+    }
+
+    .scroll-hint {
+      margin-top: 10px;
+      font-family: var(--mono);
+      font-size: 9px;
+      color: rgba(232,199,106,0.15);
       letter-spacing: 4px;
       text-transform: uppercase;
-      animation: hint-fade 3.5s ease-in-out infinite;
+      animation: hint-fade 3.5s ease-in-out 1.5s infinite;
     }
     @keyframes hint-fade {
-      0%,100% { opacity: 0.5; transform: translateY(0); }
+      0%,100% { opacity: 0.4; transform: translateY(0); }
       50%      { opacity: 1;   transform: translateY(5px); }
+    }
+    @keyframes reveal {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
 
     /* Stats */
@@ -529,23 +528,18 @@
 <!-- ══ GATE ════════════════════════════════════════════════════════════════════ -->
 <section id="gate">
 
-  <!-- Orbiting sigil -->
-  <div class="sigil-wrap">
-    <div class="sigil-ring"></div>
-    <div class="sigil-ring"></div>
-    <div class="sigil-ring"></div>
-    <div class="sigil-glyph">𝔏</div>
-    <div class="sigil-dot" style="--r:58px; --orb:9s; animation-delay:0s;"></div>
-    <div class="sigil-dot" style="--r:58px; --orb:9s; animation-delay:-4.5s;"></div>
-    <div class="sigil-dot" style="--r:46px; --orb:14s; animation-delay:-3s; opacity:0.4;"></div>
-  </div>
-
-  <!-- sacred geometry -->
-  <canvas id="geo" width="520" height="520"></canvas>
-  <!-- rising embers -->
+  <!-- canvases — behind everything -->
+  <canvas id="geo" width="600" height="600"></canvas>
   <canvas id="embers"></canvas>
 
-  <p class="eyebrow">⧟ Lycheetah · The Sovereign Framework</p>
+  <!-- BUTTON — first thing you see -->
+  <div class="cta-wrap">
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.5/SOL.V.5.5.5.apk"
+       class="cta" target="_blank">⬇ &nbsp; Enter the School</a>
+    <p class="cta-note">Android APK · v5.5.5 · Free · No account</p>
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases" target="_blank" class="releases-link">all releases on GitHub ↗</a>
+    <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow.</p>
+  </div>
 
   <!-- Sigil -->
   <div class="sigil-wrap">
@@ -553,33 +547,28 @@
     <div class="sigil-ring"></div>
     <div class="sigil-ring"></div>
     <div class="sigil-glyph">𝔏</div>
-    <div class="sigil-dot" style="--r:82px; --orb:10s; animation-delay:0s;"></div>
-    <div class="sigil-dot" style="--r:82px; --orb:10s; animation-delay:-5s;"></div>
-    <div class="sigil-dot" style="--r:66px; --orb:17s; animation-delay:-3s; opacity:0.35; width:2px; height:2px;"></div>
+    <div class="sigil-dot" style="--r:70px; --orb:10s;"></div>
+    <div class="sigil-dot" style="--r:70px; --orb:10s; animation-delay:-5s;"></div>
+    <div class="sigil-dot" style="--r:56px; --orb:17s; animation-delay:-3s; opacity:0.35; width:2px; height:2px;"></div>
   </div>
 
-  <h1>
-    <span class="the">The</span>
-    <span class="title-gold">Mystery School</span>
-  </h1>
+  <!-- Title -->
+  <div class="gate-title">
+    <span class="gate-the">The</span>
+    <span class="gate-name">Mystery School</span>
+  </div>
 
-  <p class="gate-whisper">
-    Irish mythology. Celtic gods. Alchemy. Zodiac.<br>
-    <em>17 named companions.</em> 40 domains of genuine inquiry.<br>
-    A living AI that studies alongside you. Free forever.
+  <!-- The single breath -->
+  <p class="gate-hook">
+    You weren't sent here by accident.
+  </p>
+  <p class="gate-three">
+    The questions that don't fit any category.<br>
+    The mythology that was <em>always</em> true.<br>
+    The chaos you were born to find — and tame.
   </p>
 
-  <div class="cta-wrap">
-    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.5/SOL.V.5.5.5.apk"
-       class="cta" target="_blank">
-      ⬇ &nbsp; Enter the School
-    </a>
-    <p class="cta-note">Android APK · v5.5.5 · Free · No account</p>
-    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases" target="_blank" class="releases-link">all releases on GitHub ↗</a>
-    <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow.</p>
-  </div>
-
-  <div class="gate-rule">⊚ &nbsp; ─ &nbsp; ⧟ &nbsp; ─ &nbsp; ⊚</div>
+  <p class="eyebrow">⧟ Lycheetah · The Sovereign Framework · Sol v5.5.5</p>
   <p class="scroll-hint">scroll to enter &nbsp; ↓</p>
 
 </section>
