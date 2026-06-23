@@ -4836,77 +4836,6 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             </View>
           )}
 
-          {/* TRAVEL MAP ─────────────────────────── */}
-          {(() => {
-            const mapSkin = (currentRoomId.split('_')[0] as SkinId);
-            return (
-              <View style={{ marginBottom:20, marginTop:6 }}>
-                <TouchableOpacity onPress={() => setGbaMapOpen(true)} activeOpacity={0.8} style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:11, paddingHorizontal:12, borderRadius:10, borderWidth:1, borderColor:'#44FF8844', backgroundColor:'#44FF880A' }}>
-                  <Text style={{ fontSize:14 }}>🗺</Text>
-                  <Text style={{ color:'#AAFFCC', fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>TRAVEL MAP</Text>
-                  <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#44FF8822', borderWidth:1, borderColor:'#44FF8844' }}>
-                    <Text style={{ color:'#44FF88', fontSize:7, fontFamily:mono }}>{SKIN_IDS.length} ZONES</Text>
-                  </View>
-                  <View style={{ flex:1 }} />
-                  <Text style={{ color:'#44FF88', fontSize:12 }}>→</Text>
-                </TouchableOpacity>
-                <Modal visible={gbaMapOpen} transparent animationType="fade" onRequestClose={() => setGbaMapOpen(false)}>
-                  <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.94)', justifyContent:'center', alignItems:'center', padding:16 }}>
-                  <View style={{ borderRadius:16, borderWidth:1, borderColor:'#2A4A2A', backgroundColor:'#020504', overflow:'hidden', maxHeight:'90%' }}>
-                    <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, paddingVertical:13, borderBottomWidth:1, borderBottomColor:'#1A2A1A' }}>
-                      <Text style={{ color:'#AAFFCC', fontSize:11, letterSpacing:3, fontFamily:mono, fontWeight:'700' }}>🗺 TRAVEL MAP</Text>
-                      <TouchableOpacity onPress={() => setGbaMapOpen(false)} hitSlop={{top:12,bottom:12,left:12,right:12}}><Text style={{ color:'#66AA88', fontSize:16 }}>✕</Text></TouchableOpacity>
-                    </View>
-                    <ScrollView style={{ maxHeight:420 }} showsVerticalScrollIndicator={false}>
-                      {(() => {
-                        // Clean auto-layout — tiered rows, evenly spaced, no overlap, no chaotic web.
-                        const COLS = 7, COL_W = 42, ROW_H = 40, X0 = 24;
-                        const tierCols: Record<string, string> = { ORIGIN:'#C49A3C', ARCANE:'#9B6BFF', MYTHIC:'#5AC878', LEGENDARY:'#44DDCC', SPECTRAL:'#8855FF', BATTLE:'#FF6644', SHOP:'#44AAFF' };
-                        const els: any[] = [];
-                        let y = 22;
-                        RARITY_ORDER.forEach((tier, tierIdx) => {
-                          const ids = SKIN_IDS.filter(s => SKIN_RARITY[s]?.tier === tier);
-                          if (ids.length === 0) return;
-                          const tcol = tierCols[tier] ?? '#888899';
-                          const letter = String.fromCharCode(65 + tierIdx); // A=ORIGIN, B=ARCANE…
-                          els.push(<SvgText key={`lbl_${tier}`} x={6} y={y} fontSize={7} fill={tcol+'AA'} fontWeight="bold">{letter} · {tier}</SvgText>);
-                          y += 16;
-                          ids.forEach((sid, i) => {
-                            const cx = X0 + (i % COLS) * COL_W;
-                            const cy = y + Math.floor(i / COLS) * ROW_H;
-                            const s = SKINS[sid];
-                            const isActive = sid === mapSkin;
-                            const visited = visitedRooms.has(`${sid}_0`);
-                            const code = `${letter}${i + 1}`;
-                            els.push(
-                              <G key={sid} onPress={() => { handleSkin(sid); setGbaMapOpen(false); }}>
-                                {/* Big invisible tap target — easy to hit */}
-                                <Circle cx={cx} cy={cy} r={19} fill="transparent" />
-                                {isActive && <Circle cx={cx} cy={cy} r={12} fill="transparent" stroke={s.color} strokeWidth={1.5} opacity={0.7} />}
-                                <Circle cx={cx} cy={cy} r={isActive ? 8 : visited ? 7 : 6}
-                                  fill={visited ? s.color+'CC' : s.color+'2A'}
-                                  stroke={isActive ? s.color : s.color+'66'} strokeWidth={isActive ? 1.5 : 1} />
-                                <SvgText x={cx} y={cy + 1.5} textAnchor="middle" fontSize={4.5} fill={visited ? '#000000' : s.color+'99'} fontWeight="bold">{s.glyph}</SvgText>
-                                <SvgText x={cx} y={cy + 17} textAnchor="middle" fontSize={6.5} fill={isActive ? s.color : visited ? s.color+'CC' : '#556655'} fontWeight="bold">{code}</SvgText>
-                              </G>
-                            );
-                          });
-                          y += Math.ceil(ids.length / COLS) * ROW_H + 12;
-                        });
-                        return <Svg width={GBA_W} height={y + 10} style={{ backgroundColor:'#030806' }}>{els}</Svg>;
-                      })()}
-                    </ScrollView>
-                    <View style={{ paddingHorizontal:10, paddingVertical:6, borderTopWidth:1, borderTopColor:'#1A2A1A', flexDirection:'row', alignItems:'center', gap:8 }}>
-                      <View style={{ width:8, height:8, borderRadius:4, backgroundColor: SKINS[mapSkin]?.color ?? '#44FF88' }} />
-                      <Text style={{ color:'#66AA88', fontSize:9, fontFamily:mono }}>NOW: {SKINS[mapSkin]?.name ?? mapSkin.toUpperCase()} · TAP A DOT TO TRAVEL</Text>
-                    </View>
-                  </View>
-                  </View>
-                </Modal>
-              </View>
-            );
-          })()}
-
           {/* ── MENAGERIE ─────────────────────────────────────────────── */}
           <View style={{ marginTop:20, marginBottom:16 }}>
             <TouchableOpacity onPress={() => setMenagerieCollapsed(v => !v)}
@@ -5526,6 +5455,75 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'field' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
+
+          {/* TRAVEL MAP ─────────────────────────── */}
+          {(() => {
+            const mapSkin = (currentRoomId.split('_')[0] as SkinId);
+            return (
+              <View style={{ marginBottom:14, marginTop:0 }}>
+                <TouchableOpacity onPress={() => setGbaMapOpen(true)} activeOpacity={0.8} style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:11, paddingHorizontal:12, borderRadius:10, borderWidth:1, borderColor:'#44FF8844', backgroundColor:'#44FF880A' }}>
+                  <Text style={{ fontSize:14 }}>🗺</Text>
+                  <Text style={{ color:'#AAFFCC', fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>TRAVEL MAP</Text>
+                  <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#44FF8822', borderWidth:1, borderColor:'#44FF8844' }}>
+                    <Text style={{ color:'#44FF88', fontSize:7, fontFamily:mono }}>{SKIN_IDS.length} ZONES</Text>
+                  </View>
+                  <View style={{ flex:1 }} />
+                  <Text style={{ color:'#44FF88', fontSize:12 }}>→</Text>
+                </TouchableOpacity>
+                <Modal visible={gbaMapOpen} transparent animationType="fade" onRequestClose={() => setGbaMapOpen(false)}>
+                  <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.94)', justifyContent:'center', alignItems:'center', padding:16 }}>
+                  <View style={{ borderRadius:16, borderWidth:1, borderColor:'#2A4A2A', backgroundColor:'#020504', overflow:'hidden', maxHeight:'90%' }}>
+                    <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, paddingVertical:13, borderBottomWidth:1, borderBottomColor:'#1A2A1A' }}>
+                      <Text style={{ color:'#AAFFCC', fontSize:11, letterSpacing:3, fontFamily:mono, fontWeight:'700' }}>🗺 TRAVEL MAP</Text>
+                      <TouchableOpacity onPress={() => setGbaMapOpen(false)} hitSlop={{top:12,bottom:12,left:12,right:12}}><Text style={{ color:'#66AA88', fontSize:16 }}>✕</Text></TouchableOpacity>
+                    </View>
+                    <ScrollView style={{ maxHeight:420 }} showsVerticalScrollIndicator={false}>
+                      {(() => {
+                        const COLS = 7, COL_W = 42, ROW_H = 40, X0 = 24;
+                        const tierCols: Record<string, string> = { ORIGIN:'#C49A3C', ARCANE:'#9B6BFF', MYTHIC:'#5AC878', LEGENDARY:'#44DDCC', SPECTRAL:'#8855FF', BATTLE:'#FF6644', SHOP:'#44AAFF' };
+                        const els: any[] = [];
+                        let y = 22;
+                        RARITY_ORDER.forEach((tier, tierIdx) => {
+                          const ids = SKIN_IDS.filter(s => SKIN_RARITY[s]?.tier === tier);
+                          if (ids.length === 0) return;
+                          const tcol = tierCols[tier] ?? '#888899';
+                          const letter = String.fromCharCode(65 + tierIdx);
+                          els.push(<SvgText key={`lbl_${tier}`} x={6} y={y} fontSize={7} fill={tcol+'AA'} fontWeight="bold">{letter} · {tier}</SvgText>);
+                          y += 16;
+                          ids.forEach((sid, i) => {
+                            const cx = X0 + (i % COLS) * COL_W;
+                            const cy = y + Math.floor(i / COLS) * ROW_H;
+                            const s = SKINS[sid];
+                            const isActive = sid === mapSkin;
+                            const visited = visitedRooms.has(`${sid}_0`);
+                            const code = `${letter}${i + 1}`;
+                            els.push(
+                              <G key={sid} onPress={() => { handleSkin(sid); setGbaMapOpen(false); }}>
+                                <Circle cx={cx} cy={cy} r={19} fill="transparent" />
+                                {isActive && <Circle cx={cx} cy={cy} r={12} fill="transparent" stroke={s.color} strokeWidth={1.5} opacity={0.7} />}
+                                <Circle cx={cx} cy={cy} r={isActive ? 8 : visited ? 7 : 6}
+                                  fill={visited ? s.color+'CC' : s.color+'2A'}
+                                  stroke={isActive ? s.color : s.color+'66'} strokeWidth={isActive ? 1.5 : 1} />
+                                <SvgText x={cx} y={cy + 1.5} textAnchor="middle" fontSize={4.5} fill={visited ? '#000000' : s.color+'99'} fontWeight="bold">{s.glyph}</SvgText>
+                                <SvgText x={cx} y={cy + 17} textAnchor="middle" fontSize={6.5} fill={isActive ? s.color : visited ? s.color+'CC' : '#556655'} fontWeight="bold">{code}</SvgText>
+                              </G>
+                            );
+                          });
+                          y += Math.ceil(ids.length / COLS) * ROW_H + 12;
+                        });
+                        return <Svg width={GBA_W} height={y + 10} style={{ backgroundColor:'#030806' }}>{els}</Svg>;
+                      })()}
+                    </ScrollView>
+                    <View style={{ paddingHorizontal:10, paddingVertical:6, borderTopWidth:1, borderTopColor:'#1A2A1A', flexDirection:'row', alignItems:'center', gap:8 }}>
+                      <View style={{ width:8, height:8, borderRadius:4, backgroundColor: SKINS[mapSkin]?.color ?? '#44FF88' }} />
+                      <Text style={{ color:'#66AA88', fontSize:9, fontFamily:mono }}>NOW: {SKINS[mapSkin]?.name ?? mapSkin.toUpperCase()} · TAP A DOT TO TRAVEL</Text>
+                    </View>
+                  </View>
+                  </View>
+                </Modal>
+              </View>
+            );
+          })()}
 
           {/* ── WORLD ZONE SELECT ─────────────────────────────────── */}
           {(() => {
