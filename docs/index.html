@@ -216,6 +216,18 @@
       text-align: center;
       line-height: 1.8;
     }
+    .releases-link {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: rgba(232,199,106,0.4);
+      letter-spacing: 2px;
+      text-decoration: none;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(232,199,106,0.15);
+      padding-bottom: 1px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .releases-link:hover { color: var(--gold); border-color: rgba(232,199,106,0.5); }
 
     /* Divider rune line */
     .gate-rule {
@@ -563,6 +575,7 @@
       ⬇ &nbsp; Enter the School
     </a>
     <p class="cta-note">Android APK · v5.5.5 · Free · No account</p>
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases" target="_blank" class="releases-link">all releases on GitHub ↗</a>
     <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow.</p>
   </div>
 
