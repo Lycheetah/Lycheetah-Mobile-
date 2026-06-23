@@ -122,15 +122,36 @@
     .releases-link {
       font-family: var(--mono);
       font-size: 9px;
-      color: rgba(232,199,106,0.35);
+      color: rgba(232,120,20,0.35);
       letter-spacing: 2px;
       text-decoration: none;
       text-transform: uppercase;
-      border-bottom: 1px solid rgba(232,199,106,0.12);
+      border-bottom: 1px solid rgba(232,120,20,0.12);
       padding-bottom: 1px;
       transition: color 0.2s, border-color 0.2s;
     }
-    .releases-link:hover { color: var(--gold); border-color: rgba(232,199,106,0.45); }
+    .releases-link:hover { color: var(--gold); border-color: rgba(232,120,20,0.45); }
+    .cta-secondary {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 13px 48px;
+      border-radius: 3px;
+      font-family: var(--mono);
+      font-weight: 700;
+      font-size: 11px;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: rgba(232,130,20,0.8);
+      border: 1px solid rgba(232,120,20,0.35);
+      background: rgba(232,120,20,0.05);
+      transition: all 0.3s ease;
+    }
+    .cta-secondary:hover {
+      color: var(--gold3);
+      border-color: rgba(232,130,20,0.7);
+      background: rgba(232,120,20,0.1);
+      box-shadow: 0 0 30px rgba(232,120,20,0.15);
+    }
     .cta-warn {
       font-family: var(--mono);
       font-size: 9px;
@@ -539,10 +560,12 @@
 
   <!-- BUTTON — first thing you see -->
   <div class="cta-wrap">
-    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.5/SOL.V.5.5.5.apk"
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases/download/SOL.V.5.5.6/SOL.V.5.5.6.apk"
        class="cta" target="_blank">⬇ &nbsp; Enter the School</a>
-    <p class="cta-note">Android APK · v5.5.5 · Free · No account</p>
-    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases" target="_blank" class="releases-link">all releases on GitHub ↗</a>
+    <p class="cta-note">Android APK · v5.5.6 · Free · No account</p>
+    <a href="https://github.com/Lycheetah/Lycheetah-Mobile-/releases" target="_blank" class="cta-secondary">
+      ◈ &nbsp; Latest Release on GitHub
+    </a>
     <p class="cta-warn">⚠ Android will ask "install unknown app" — tap Allow.</p>
   </div>
 
