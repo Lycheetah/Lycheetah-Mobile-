@@ -24,7 +24,7 @@ import { Platform } from 'react-native';
 // Empty key = analytics fully disabled (every call is a no-op). Safe default.
 // Key format: "A-US-0000000000" / "A-EU-..." / "A-DEV-..." — the region segment
 // selects the ingest host automatically.
-const APTABASE_APP_KEY = '';
+const APTABASE_APP_KEY = 'A-US-6471231379';
 
 const OPTOUT_KEY = 'sol_analytics_optout';
 const SESSION_TIMEOUT_MS = 1000 * 60 * 60; // 1h of inactivity starts a new session
