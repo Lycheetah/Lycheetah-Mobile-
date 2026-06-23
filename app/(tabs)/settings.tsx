@@ -5,6 +5,7 @@ import {
   StyleSheet, Alert, Platform, Linking, Share, Vibration, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { setAnalyticsOptOut, isAnalyticsOptedOut } from '../../lib/analytics';
 import { getCognitiveWeatherEnabled, setCognitiveWeatherEnabled, getCognitiveWeatherHour, setCognitiveWeatherHour } from '../../lib/cognitive-weather';
 import { getWeirdQEnabled, setWeirdQEnabled, getWeirdQHour, setWeirdQHour } from '../../lib/weird-questions';
 import { getStreakReminderEnabled, setStreakReminderEnabled, getStreakReminderHour, setStreakReminderHour } from '../../lib/streak-reminder';
@@ -71,6 +72,7 @@ export default function SettingsScreen() {
   const [devTapCount, setDevTapCount] = useState(0);
   const [commitmentOpen, setCommitmentOpen] = useState(false);
   const [bridgeOpen, setBridgeOpen] = useState(false);
+  const [analyticsOptOut, setAnalyticsOptOutState] = useState(false);
   const { highContrast, setHighContrast } = useAccessibility();
 
   useEffect(() => {
@@ -100,6 +102,7 @@ export default function SettingsScreen() {
     getShowLamagueGloss().then(setLamagueGloss);
     getSymbolRainEnabled().then(setSymbolRainOn);
     getPremium().then(setPremiumOn);
+    AsyncStorage.getItem('sol_analytics_optout').then(v => setAnalyticsOptOutState(v === 'true'));
     initPurchases().then(() =>
       checkSovereignEntitlement().then(active => { if (active) { setPremiumOn(true); savePremium(true); } })
     );
@@ -907,6 +910,33 @@ export default function SettingsScreen() {
       <View style={{ marginBottom: 16, paddingHorizontal: 4 }}>
         <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, fontStyle: 'italic', lineHeight: 16 }}>
           Your conversations stay on your device. Your mind is yours — nothing leaves without your hand on it.
+        </Text>
+      </View>
+
+      {/* ── PRIVACY — Analytics opt-out ── */}
+      <View style={{ marginBottom: 20, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom: 10 }}>◉ PRIVACY</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '600', marginBottom: 3 }}>Anonymous Usage Analytics</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, lineHeight: 16 }}>
+              Counts app opens and dives — no names, no content, no personal data. No tracking across sessions. Helps improve Sol.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={async () => {
+              const next = !analyticsOptOut;
+              setAnalyticsOptOutState(next);
+              await setAnalyticsOptOut(next);
+            }}
+            style={{ width: 44, height: 26, borderRadius: 13, backgroundColor: !analyticsOptOut ? accentColor : SOL_THEME.border, justifyContent: 'center', paddingHorizontal: 3 }}
+            activeOpacity={0.8}
+          >
+            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignSelf: !analyticsOptOut ? 'flex-end' : 'flex-start' }} />
+          </TouchableOpacity>
+        </View>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 8, fontStyle: 'italic' }}>
+          {analyticsOptOut ? 'Analytics off — nothing is sent.' : 'Analytics on — anonymous event counts only.'}
         </Text>
       </View>
 
