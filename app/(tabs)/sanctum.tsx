@@ -201,6 +201,13 @@ export default function SanctumScreen() {
   const [sanctumBattleWave, setSanctumBattleWave] = useState(0);
   const [sanctumGearTier, setSanctumGearTier] = useState(0);
 
+  // Living Chronicle
+  const [archetype, setArchetype] = useState<string | null>(null);
+  const [dailyTransit, setDailyTransit] = useState<{ date: string; text: string; spark: string } | null>(null);
+  const [chronicle, setChronicle] = useState<{ ts: number; glyph: string; text: string }[]>([]);
+  const [chronicleVoice, setChronicleVoice] = useState<string | null>(null);
+  const [chronicleLoading, setChronicleLoading] = useState(false);
+
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
@@ -306,6 +313,27 @@ export default function SanctumScreen() {
     setFieldVerseLoading(false);
   }, [fieldVerse]);
 
+  const generateChronicleVoice = useCallback(async (entries: { ts: number; glyph: string; text: string }[]) => {
+    if (entries.length < 3) return;
+    setChronicleLoading(true);
+    try {
+      const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!apiKey) { setChronicleLoading(false); return; }
+      const lines = entries.slice(-12).map((e, i) => `[${new Date(e.ts).toLocaleDateString()}] ${e.glyph} ${e.text}`).join('\n');
+      const result = await sendMessage(
+        [{ role: 'user', content: `The Chronicle entries:\n${lines}\n\nSpeak this journey as a living narrative.` }],
+        'You are the Voice of the Living Chronicle. Read these milestone entries and write 3-4 sentences weaving them into a living narrative. Name specific events. Let later entries echo earlier ones. Show what changed and what endured. No preamble, no sign-off.',
+        apiKey, model as AIModel, undefined, 'normal', 160, 0.78,
+      );
+      if (result?.text?.trim()) {
+        const voice = result.text.trim();
+        setChronicleVoice(voice);
+        AsyncStorage.setItem('sol_chronicle_voice_v1', JSON.stringify({ date: todayKey(), text: voice })).catch(() => {});
+      }
+    } catch {}
+    setChronicleLoading(false);
+  }, []);
+
   const load = useCallback(async () => {
     setAccentColor(await getAccentColor());
     AsyncStorage.getItem('sol_skeptic_mode').then(v => setSkepticMode(v === 'true')).catch(() => {});
@@ -387,6 +415,23 @@ export default function SanctumScreen() {
     // Day Report — load cached report for today
     const dayReportRaw = await AsyncStorage.getItem(`sol_day_report_${todayKey()}`);
     if (dayReportRaw) { try { setDayReport(JSON.parse(dayReportRaw)); } catch {} }
+
+    // Living Chronicle data
+    const [transitRaw, archetypeRaw, chronicleRaw, chronicleVoiceRaw] = await Promise.all([
+      AsyncStorage.getItem('sol_daily_transit_v1'),
+      AsyncStorage.getItem('sol_archetype'),
+      AsyncStorage.getItem('sol_chronicle'),
+      AsyncStorage.getItem('sol_chronicle_voice_v1'),
+    ]);
+    if (transitRaw) { try { setDailyTransit(JSON.parse(transitRaw)); } catch {} }
+    if (archetypeRaw) setArchetype(archetypeRaw);
+    if (chronicleRaw) { try { setChronicle(JSON.parse(chronicleRaw)); } catch {} }
+    if (chronicleVoiceRaw) {
+      try {
+        const cv = JSON.parse(chronicleVoiceRaw);
+        if (cv.date === todayKey()) setChronicleVoice(cv.text);
+      } catch {}
+    }
 
     const summaries = await getFieldJournalSummaries();
     setWeeklyJournalSummaries(summaries);
@@ -725,7 +770,7 @@ export default function SanctumScreen() {
           const active = section === s;
           const tabColor = s === 'chain' ? '#9945FF' : accentColor;
           const GLYPHS = { today: '◉', journal: '§', vault: '⊛', field: 'Ψ', chain: '◎' };
-          const LABELS = { today: 'TODAY', journal: journal.length > 0 ? `JOURNAL·${journal.length}` : 'JOURNAL', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', field: 'FIELD', chain: 'CHAIN' };
+          const LABELS = { today: 'TODAY', journal: journal.length > 0 ? `JOURNAL·${journal.length}` : 'JOURNAL', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', field: 'FIELD', chain: chronicle.length > 0 ? `SCROLL·${chronicle.length}` : 'SCROLL' };
           return (
             <TouchableOpacity
               key={s}
@@ -742,17 +787,6 @@ export default function SanctumScreen() {
       {/* TODAY */}
       {section === 'today' && (
         <>
-          {/* Field greeting — always visible */}
-          {(() => {
-            const q = SHRINE_QUOTES[new Date().getDay() % SHRINE_QUOTES.length];
-            return (
-              <View style={{ marginBottom: 16, padding: 18, borderRadius: 14, borderWidth: 0, borderTopWidth: 3, borderTopColor: accentColor + '88', backgroundColor: SOL_THEME.surface }}>
-                <Text style={{ color: accentColor, fontSize: 32, lineHeight: 38, marginBottom: 8 }}>{q.sigil}</Text>
-                <Text style={{ color: SOL_THEME.text, fontSize: 14, lineHeight: 22, fontStyle: 'italic', opacity: 0.85 }}>{q.text}</Text>
-              </View>
-            );
-          })()}
-
           {/* From Sol — reciprocal presence. Sol offers a piece of itself; deepens with the journal. */}
           {(() => {
             const tier = journal.length >= 12 ? 'deep' : journal.length >= 4 ? 'mid' : 'early';
@@ -769,6 +803,28 @@ export default function SanctumScreen() {
               </View>
             );
           })()}
+
+          {/* Archetype identity badge */}
+          {archetype && (
+            <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08' }}>
+              <Text style={{ color: accentColor, fontSize: 18 }}>{'SEEKER' === archetype ? '◌' : 'MYSTIC' === archetype ? '☽' : 'WARRIOR' === archetype ? '⚔' : '◎'}</Text>
+              <View>
+                <Text style={{ color: accentColor, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2, marginBottom: 2 }}>YOUR ARCHETYPE</Text>
+                <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', letterSpacing: 1.5 }}>{archetype}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Daily Transit from Zodiac tab */}
+          {dailyTransit && (
+            <View style={{ marginBottom: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#9B6BFF33', backgroundColor: '#9B6BFF08', borderLeftWidth: 3, borderLeftColor: '#9B6BFF' }}>
+              <Text style={{ color: '#9B6BFF', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2, marginBottom: 8 }}>☽ DAILY TRANSIT</Text>
+              <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 21 }}>{dailyTransit.text}</Text>
+              {!!dailyTransit.spark && (
+                <Text style={{ color: '#9B6BFF', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', marginTop: 8 }}>✦ {dailyTransit.spark}</Text>
+              )}
+            </View>
+          )}
 
           <Text style={[styles.label, { color: accentColor }]}>{intentionLabel()}</Text>
           <Text style={styles.note}>What do you intend to bring forth today?</Text>
@@ -878,53 +934,6 @@ export default function SanctumScreen() {
             </View>
           )}
 
-          {/* Companion Pulse Card */}
-          {sanctumTotalDives > 0 && (() => {
-            const STAGE_GLYPHS = ['○', '◌', '◎', '⊚', '✦', '⊕'];
-            const STAGE_NAMES  = ['SEED', 'SPARK', 'FLAME', 'FORGE', 'SOVEREIGN', 'ASCENDANT'];
-            const ARCH_GLYPHS: Record<string, string> = { archivist:'◎', alchemist:'⟲', oracle:'◈', sentinel:'⊞', wanderer:'↗', lycheetah:'⧟', cipher:'∿', herald:'⟡', weaver:'⌘', revenant:'↺' };
-            const stageGlyph = STAGE_GLYPHS[sanctumStage] ?? '◌';
-            const stageName  = STAGE_NAMES[sanctumStage]  ?? 'SEED';
-            const archGlyph  = sanctumArchetype ? (ARCH_GLYPHS[sanctumArchetype] ?? '✦') : '✦';
-            const lamPct     = Math.round((sanctumLamagueMastery / 40) * 100);
-            const mono_      = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
-            return (
-              <View style={{ marginTop: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '07' }}>
-                <Text style={{ color: accentColor, fontSize: 10, fontFamily: mono_, fontWeight: '700', letterSpacing: 1.5, marginBottom: 10 }}>◆ COMPANION STATUS</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
-                  <View style={{ alignItems: 'center', minWidth: 54 }}>
-                    <Text style={{ color: accentColor, fontSize: 22, fontFamily: mono_ }}>{stageGlyph}</Text>
-                    <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>{stageName}</Text>
-                  </View>
-                  <View style={{ alignItems: 'center', minWidth: 54 }}>
-                    <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{sanctumTotalDives}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>DIVES</Text>
-                  </View>
-                  <View style={{ alignItems: 'center', minWidth: 54 }}>
-                    <Text style={{ color: accentColor, fontSize: 22, fontFamily: mono_ }}>{archGlyph}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>{sanctumArchetype ? sanctumArchetype.toUpperCase().slice(0, 6) : 'NONE'}</Text>
-                  </View>
-                  <View style={{ alignItems: 'center', minWidth: 54 }}>
-                    <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>⚔{sanctumBattleWave}</Text>
-                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>WAVE</Text>
-                  </View>
-                  {sanctumLamagueMastery > 0 && (
-                    <View style={{ alignItems: 'center', minWidth: 54 }}>
-                      <Text style={{ color: accentColor, fontSize: 22, fontWeight: '700' }}>{lamPct}%</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>LAMAGUE</Text>
-                    </View>
-                  )}
-                  {sanctumGearTier > 0 && (
-                    <View style={{ alignItems: 'center', minWidth: 54 }}>
-                      <Text style={{ color: accentColor, fontSize: 22, fontFamily: mono_ }}>{'◌◦⊚✦⊕'[sanctumGearTier - 1] ?? '◦'}</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono_, letterSpacing: 1, marginTop: 2 }}>GEAR T{sanctumGearTier}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            );
-          })()}
-
           {/* LQ History Sparkline */}
           {lqHistory.length >= 2 && (() => {
             const STAGE_COLOR: Record<string, string> = {
@@ -955,90 +964,6 @@ export default function SanctumScreen() {
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }}>{recent[0]?.date?.slice(5)}</Text>
                   <Text style={{ color: accentColor, fontSize: 9, fontWeight: '700' }}>today</Text>
                 </View>
-              </View>
-            );
-          })()}
-
-          {/* Sol Clock — live field state display */}
-          {(() => {
-            const hour = new Date().getHours();
-            const timeOfDay = hour >= 5 && hour < 9 ? 'DAWN' : hour >= 9 && hour < 17 ? 'ZENITH' : hour >= 17 && hour < 21 ? 'DUSK' : 'NOCTURNE';
-            const timeGlyph = { DAWN: '☀', ZENITH: '⊙', DUSK: '☽', NOCTURNE: '✦' }[timeOfDay];
-            const timeDesc = { DAWN: 'First light. Set the field.', ZENITH: 'Full presence. The forge is lit.', DUSK: 'Integration time. Let the day settle.', NOCTURNE: 'Deep processing. The field dreams.' }[timeOfDay];
-            const currentPhaseObj = PHASES.find(p => p.id === phase);
-            const lqTrend = (() => {
-              if (lqHistory.length < 2) return null;
-              const last = lqHistory[lqHistory.length - 1].lq;
-              const prev = lqHistory[lqHistory.length - 2].lq;
-              if (last > prev + 0.01) return '↑';
-              if (last < prev - 0.01) return '↓';
-              return '→';
-            })();
-            return (
-              <View style={{ marginVertical: 12, padding: 16, borderRadius: 14, borderWidth: 0, borderLeftWidth: 3, borderLeftColor: accentColor + '88', backgroundColor: SOL_THEME.surface }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                    <Text style={{ color: accentColor, fontSize: 36, lineHeight: 42 }}>{timeGlyph}</Text>
-                    <View>
-                      <Text style={{ color: accentColor, fontSize: 13, fontWeight: '700', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{timeOfDay}</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2 }}>{timeDesc}</Text>
-                    </View>
-                  </View>
-                  <View style={{ alignItems: 'flex-end', gap: 5 }}>
-                    {currentPhaseObj && (
-                      <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '700', letterSpacing: 1 }}>{currentPhaseObj.glyph} {currentPhaseObj.name}</Text>
-                    )}
-                    {lqTrend && (
-                      <Text style={{ color: lqTrend === '↑' ? '#6AE8A0' : lqTrend === '↓' ? '#FF6B6B' : accentColor, fontSize: 20, fontWeight: '700' }}>LQ {lqTrend}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            );
-          })()}
-
-          {/* Zodiac Transit Strip — live sky at a glance */}
-          {(() => {
-            const now = new Date();
-            const m = now.getMonth() + 1, d = now.getDate();
-            let sunSign = 'Pisces', sunGlyph = '♓';
-            if ((m===3&&d>=21)||(m===4&&d<=19))  { sunSign='Aries';       sunGlyph='♈'; }
-            else if ((m===4&&d>=20)||(m===5&&d<=20)) { sunSign='Taurus';  sunGlyph='♉'; }
-            else if ((m===5&&d>=21)||(m===6&&d<=20)) { sunSign='Gemini';  sunGlyph='♊'; }
-            else if ((m===6&&d>=21)||(m===7&&d<=22)) { sunSign='Cancer';  sunGlyph='♋'; }
-            else if ((m===7&&d>=23)||(m===8&&d<=22)) { sunSign='Leo';     sunGlyph='♌'; }
-            else if ((m===8&&d>=23)||(m===9&&d<=22)) { sunSign='Virgo';   sunGlyph='♍'; }
-            else if ((m===9&&d>=23)||(m===10&&d<=22)){ sunSign='Libra';   sunGlyph='♎'; }
-            else if ((m===10&&d>=23)||(m===11&&d<=21)){ sunSign='Scorpio'; sunGlyph='♏'; }
-            else if ((m===11&&d>=22)||(m===12&&d<=21)){ sunSign='Sagittarius'; sunGlyph='♐'; }
-            else if ((m===12&&d>=22)||(m===1&&d<=19)){ sunSign='Capricorn'; sunGlyph='♑'; }
-            else if ((m===1&&d>=20)||(m===2&&d<=18)){ sunSign='Aquarius'; sunGlyph='♒'; }
-            const knownNew = new Date(2000, 0, 6).getTime();
-            const synodicMs = 29.53058867 * 24 * 60 * 60 * 1000;
-            const raw = ((now.getTime() - knownNew) % synodicMs) / synodicMs;
-            const p = raw < 0 ? raw + 1 : raw;
-            let moonGlyph = '◑', moonName = 'WAXING';
-            if (p < 0.03 || p > 0.97)  { moonGlyph = '●'; moonName = 'NEW MOON'; }
-            else if (p < 0.22) { moonGlyph = '◐'; moonName = 'CRESCENT'; }
-            else if (p < 0.28) { moonGlyph = '◑'; moonName = 'FIRST QTR'; }
-            else if (p < 0.47) { moonGlyph = '◕'; moonName = 'GIBBOUS'; }
-            else if (p < 0.53) { moonGlyph = '○'; moonName = 'FULL MOON'; }
-            else if (p < 0.72) { moonGlyph = '◔'; moonName = 'WANING'; }
-            else if (p < 0.78) { moonGlyph = '◑'; moonName = 'LAST QTR'; }
-            else               { moonGlyph = '◓'; moonName = 'DARK'; }
-            const DAY_PLANETS = ['☀ SUN','☽ MOON','♂ MARS','☿ MERCURY','♃ JUPITER','♀ VENUS','♄ SATURN'];
-            const dayPlanet = DAY_PLANETS[now.getDay()];
-            return (
-              <View style={{ marginBottom: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '22', backgroundColor: accentColor + '08', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ color: '#FFD700', fontSize: 15 }}>{sunGlyph}</Text>
-                  <Text style={{ color: accentColor + 'BB', fontSize: 9, fontFamily: mono, letterSpacing: 1, fontWeight: '700' }}>{sunSign.toUpperCase()}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={{ color: '#CCCCFF', fontSize: 14 }}>{moonGlyph}</Text>
-                  <Text style={{ color: accentColor + 'BB', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>{moonName}</Text>
-                </View>
-                <Text style={{ color: accentColor + '77', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>{dayPlanet}</Text>
               </View>
             );
           })()}
@@ -2016,51 +1941,117 @@ export default function SanctumScreen() {
 
       {/* Zodiac content lives in the dedicated Zodiac tab */}
 
-      {/* CHAIN — SOVEREIGN VISION */}
+      {/* SCROLL — LIVING CHRONICLE */}
       {section === 'chain' && (
         <View style={{ paddingHorizontal: 16, paddingVertical: 8, paddingBottom: 60 }}>
-          {/* Vision header */}
-          <View style={{ marginBottom: 20, padding: 20, borderRadius: 18, borderWidth: 1.5, borderColor: '#9945FF44', backgroundColor: '#06060E',
-            shadowColor: '#9945FF', shadowOpacity: 0.2, shadowRadius: 20, elevation: 6 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: '#9945FF77',
-                backgroundColor: '#9945FF18', alignItems: 'center', justifyContent: 'center',
-                shadowColor: '#9945FF', shadowOpacity: 0.5, shadowRadius: 10, elevation: 4 }}>
-                <Text style={{ fontSize: 20, color: '#9945FF' }}>◎</Text>
-              </View>
-              <View>
-                <Text style={{ color: '#9945FF', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 3, marginBottom: 2 }}>SOVEREIGN CHAIN</Text>
-                <Text style={{ color: '#CC88FF', fontSize: 14, fontWeight: '700' }}>Crypto & Solana — Coming</Text>
-              </View>
-            </View>
-            <View style={{ height: 1, backgroundColor: '#9945FF22', marginBottom: 14 }} />
-            <Text style={{ color: '#CC88FF99', fontSize: 12, lineHeight: 20 }}>
-              {'We are planning full Solana blockchain integration — soulbound tokens, a sovereign DAO, and on-chain proof that you walked the path. Your knowledge becomes yours, permanently and verifiably.'}
-            </Text>
-          </View>
 
-          {/* What\'s planned */}
-          <Text style={{ color: '#9945FF', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 12 }}>⊕ WHAT IS PLANNED</Text>
-          {[
-            { glyph: '◌', title: 'Soulbound Tokens (SBTs)', desc: 'Non-transferable NFTs on Solana that record your sovereignty milestones. Seeker · Adept · Sovereign · Ascendant. Earned by walking the path — not purchased.' },
-            { glyph: '⊚', title: 'Lycheetah DAO', desc: 'SBT holders govern the School. Vote on new domains, companions, and protocols. The knowledge architecture becomes collectively sovereign.' },
-            { glyph: '✦', title: 'On-Chain Proof of Study', desc: 'Your dive history, LAMAGUE mastery, and LQ arc recorded to the chain. The knowledge you build becomes yours — sovereign, not rented from any platform.' },
-            { glyph: '◈', title: 'Earned Light NFT Artifacts', desc: 'Rare visual artifacts minted at threshold moments. Milestones that cannot be faked because the chain remembers when you crossed them.' },
-          ].map(item => (
-            <View key={item.title} style={{ marginBottom: 10, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: '#9945FF22', backgroundColor: '#9945FF06' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <Text style={{ color: '#9945FF77', fontSize: 18 }}>{item.glyph}</Text>
-                <Text style={{ color: '#CC88FF', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{item.title}</Text>
+          {/* Chronicle Voice — AI narrative synthesis */}
+          {(chronicle.length >= 3) && (
+            <View style={{ marginBottom: 20, padding: 18, borderRadius: 16, borderWidth: 1, borderColor: accentColor + '44', backgroundColor: accentColor + '07', borderTopWidth: 3, borderTopColor: accentColor }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ color: accentColor, fontSize: 14 }}>⊚</Text>
+                  <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2 }}>THE LIVING CHRONICLE</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => generateChronicleVoice(chronicle)}
+                  disabled={chronicleLoading}
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: accentColor + '55', backgroundColor: accentColor + '12' }}
+                >
+                  <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono, fontWeight: '700' }}>{chronicleLoading ? '...' : chronicleVoice ? '↺ REFRESH' : '✦ SPEAK'}</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={{ color: '#9945FF66', fontSize: 11, lineHeight: 17 }}>{item.desc}</Text>
+              {chronicleLoading ? (
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontStyle: 'italic' }}>The chronicle stirs...</Text>
+              ) : chronicleVoice ? (
+                <Text style={{ color: SOL_THEME.text, fontSize: 13.5, lineHeight: 22, fontStyle: 'italic' }}>{chronicleVoice}</Text>
+              ) : (
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 19 }}>
+                  {`${chronicle.length} milestone${chronicle.length !== 1 ? 's' : ''} recorded. Tap SPEAK to have the Chronicle narrate your journey.`}
+                </Text>
+              )}
             </View>
-          ))}
+          )}
 
-          {/* Timeline note */}
-          <View style={{ marginTop: 6, marginBottom: 20, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#9945FF18', backgroundColor: '#9945FF05' }}>
-            <Text style={{ color: '#9945FF55', fontSize: 9, fontFamily: mono, lineHeight: 15, letterSpacing: 0.5, textAlign: 'center' }}>
-              {'CONTRACT DEPLOYING SOON · KEEP WALKING THE PATH · YOUR MILESTONES ARE ALREADY BEING TRACKED'}
-            </Text>
+          {/* Chronicle timeline */}
+          {chronicle.length === 0 ? (
+            <View style={{ padding: 20, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface, alignItems: 'center' }}>
+              <Text style={{ color: accentColor, fontSize: 28, marginBottom: 10 }}>◌</Text>
+              <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                {'The Chronicle is empty. Walk the School, capture companions, repel void bosses — each milestone becomes a permanent entry here.'}
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 12 }}>{'◈ MILESTONE RECORD — ' + chronicle.length + ' ENTRIES'}</Text>
+              {[...chronicle].reverse().map((entry, i) => {
+                const entryNum = chronicle.length - i;
+                const isThread = entryNum > 5 && entryNum % 5 === 0;
+                const threadRef = isThread ? chronicle[entryNum - 6] : null;
+                return (
+                  <React.Fragment key={entry.ts}>
+                    {isThread && threadRef && (
+                      <View style={{ marginBottom: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: accentColor + '0A', borderWidth: 1, borderColor: accentColor + '22' }}>
+                        <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono, letterSpacing: 1.5, fontWeight: '700', marginBottom: 4 }}>◦ THREAD — echoes entry #{entryNum - 5}</Text>
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, fontStyle: 'italic' }} numberOfLines={2}>{threadRef.glyph} {threadRef.text}</Text>
+                      </View>
+                    )}
+                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
+                      <View style={{ width: 36, alignItems: 'center' }}>
+                        <Text style={{ color: accentColor, fontSize: 22 }}>{entry.glyph}</Text>
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, fontFamily: mono, marginTop: 4 }}>#{entryNum}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 20 }}>{entry.text}</Text>
+                        <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 6 }}>{new Date(entry.ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}</Text>
+                      </View>
+                    </View>
+                  </React.Fragment>
+                );
+              })}
+            </>
+          )}
+
+          {/* Sovereign Chain */}
+          <View style={{ marginTop: 24, borderRadius: 16, borderWidth: 1.5, borderColor: '#9945FF44', backgroundColor: '#06060E', overflow: 'hidden' }}>
+            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#9945FF22' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <Text style={{ color: '#9945FF', fontSize: 22 }}>◎</Text>
+                <View>
+                  <Text style={{ color: '#9945FF', fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 3 }}>SOVEREIGN CHAIN</Text>
+                  <Text style={{ color: '#CC88FF', fontSize: 12, fontWeight: '700', marginTop: 1 }}>On-chain proof of the path walked</Text>
+                </View>
+              </View>
+              <Text style={{ color: '#CC88FFAA', fontSize: 12, lineHeight: 19 }}>
+                {'Your Chronicle records what you\'ve done. Sovereign Chain makes it yours — permanently and verifiably — on Solana. Knowledge earned here becomes a public, unfakeable record that no platform can revoke.'}
+              </Text>
+            </View>
+
+            {[
+              { glyph: '◌', title: 'SOULBOUND TOKENS', status: 'DEPLOYING', desc: 'Non-transferable NFTs that mark your sovereignty milestones: SEEKER (10 dives) · ADEPT (25) · SOVEREIGN (75 + LAMAGUE) · ASCENDANT (150 + mastery). Earned by walking the path. Cannot be bought, transferred, or faked.' },
+              { glyph: '✧', title: 'VERAS ON-CHAIN', status: 'PLANNED', desc: 'Veras (✧) is the knowledge token. You accumulate it now by studying and journaling. When Sovereign Chain launches, Veras converts on-chain. If people genuinely study what you contributed to the School, your subject\'s Veras bucket fills — and at a proven-benefit threshold, you earn at full parity with established subjects.' },
+              { glyph: '⊚', title: 'LYCHEETAH DAO', status: 'PLANNED', desc: 'SBT holders govern the School. Vote on new domains, companions, and protocols. The knowledge architecture becomes collectively sovereign — not owned by a company, governed by the people who built their understanding here.' },
+              { glyph: '✦', title: 'EARNED LIGHT ARTIFACTS', status: 'PLANNED', desc: 'Rare visual artifacts minted at threshold moments — milestones the chain witnessed when you crossed them. Not generated retroactively. Not purchasable. The chain remembers exactly when.' },
+            ].map(item => (
+              <View key={item.title} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#9945FF11' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: '#9945FF88', fontSize: 14 }}>{item.glyph}</Text>
+                    <Text style={{ color: '#CC88FF', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{item.title}</Text>
+                  </View>
+                  <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: item.status === 'DEPLOYING' ? '#9945FF22' : '#1A1A2A' }}>
+                    <Text style={{ color: item.status === 'DEPLOYING' ? '#9945FF' : '#555577', fontSize: 8, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{item.status}</Text>
+                  </View>
+                </View>
+                <Text style={{ color: '#9945FF55', fontSize: 11, lineHeight: 17 }}>{item.desc}</Text>
+              </View>
+            ))}
+
+            <View style={{ padding: 12, alignItems: 'center' }}>
+              <Text style={{ color: '#9945FF33', fontSize: 9, fontFamily: mono, letterSpacing: 1, textAlign: 'center' }}>
+                {'YOUR MILESTONES ARE ALREADY BEING TRACKED · KEEP WALKING THE PATH'}
+              </Text>
+            </View>
           </View>
         </View>
       )}

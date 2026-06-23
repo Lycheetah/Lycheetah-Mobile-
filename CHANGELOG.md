@@ -1,5 +1,124 @@
 # Changelog
 
+## [5.54.0] — 2026-06-22 — ⚔ DECISION COMBAT + ◈ Sonny attribution
+
+- **#232 Decision Combat** — battle actions renamed STRIKE / SHIELD / FOCUS / SPELL.
+- **FOCUS** — new action. Charges ×2 multiplier on next STRIKE. Button turns gold when charged, dims after use. GB grid: FOCUS replaces ITEM in bottom row (ITEM moved out — cleaner). Full grid: FOCUS replaces SPELL top-right, SPELL moves bottom-right.
+- **◎ FOCUSED STRIKE** — log entry when focus charge consumed. Stack with CRIT = "◎FOCUS ✦CRIT".
+- **Sonny Moore** — added to LINEAGE & GRATITUDE footer in School. Glyph `◈`, acoustic artillery line in canon.
+
+## [5.53.0] — 2026-06-22 — ◈ SONIC ARCHITECTURE domain
+
+- **Sonic Architecture** — new Mystery School domain (7 subjects). Lycheetah Research tier.
+- Subjects: The Rupture Principle · Silence as a Weapon · CASCADE in Sound · The Entropy Paradox · Contrast as the Emotional Mechanism · The Artist as Cascade Event · Acoustic Artillery.
+- Glyph `◈`, burnt orange `#FF6644`. Sits in LYCHEETAH RESEARCH alongside cascade/truth-pressure/lamague.
+- Domain description names Sonny Moore by name. "Acoustic artillery" is in the canon. Nothing cringe, nothing soft.
+
+## [5.52.0] — 2026-06-22 — ◈ CAMPAIGN SYSTEM (3 persistent slots)
+
+- **◈ CAMPAIGN button** below HUNT/VENTURE — 3 slot dots show fill state (empty/active/complete).
+- **3 save slots** — each stores zone, name, chapter, full log, narrative, choices, phase, skill bonus, dice history. Persists to `sol_campaigns` AsyncStorage.
+- **7-chapter arc** — same beat engine as VENTURE but `isResolution` fires at ch.7 not ch.3. All dice rolls + wisdom skill checks active.
+- **Campaign select modal** — bottom sheet. Empty slots: BEGIN. Active: progress bar 7 dots + CONTINUE. Complete: gold ⟡ trophy + CLEAR.
+- **Auto-generated name** — `{Zone}: The {Epoch}` on begin (7 epoch words).
+- **Auto-save** — useEffect fires on every phase change (beat/resolve), writes slot to AsyncStorage.
+- **CONTINUE** — restores full venture state from slot, drops back into modal at exact chapter.
+- **Modal header** shows CH.N/7 + campaign name in campaign mode. Progress bar extends to 7 segments.
+- SEAL button changes to "SEAL THE CAMPAIGN" in campaign mode.
+- `isCampaignRef` keeps async `runVentureBeat` in sync with mode flag.
+
+## [5.50.0] — 2026-06-22 — 💜 THREE CURRENCY SYSTEM
+
+- **Dive Credits go purple** — diveCoins pill in companion header and shop balance now show in `#AA77FF` (was green). Label changed from "DIVES" to "DIVE CREDITS".
+- **Three-column shop balance** — ⟡ Lumens (gold) | ✦ Dive Credits (purple) | ✧ Veras (dim, N/A · coming). Veras number shows N/A to signal the powerful upcoming currency without breaking anything.
+- Veras state still accumulates in background; display will unlock when the currency launches.
+
+## [5.49.0] — 2026-06-22 — 🎲 VENTURE DICE SYSTEM
+
+- **⚡ RISK → dice roll** — picking RISK now shows an animated cycling dice (1-6, 80ms frames, settles after 1.6s). The landed number feeds into the AI prompt: high roll (5-6) rewards boldness, mid (3-4) mixed outcome, low (1-2) hardens the path.
+- **CRITICAL (6) gives +2 ✦ bonus** — same accumulation mechanic as wisdom knowledge bonus, shows in SEAL button.
+- **Dice phase locks the modal** — ABANDON SESSION hidden during roll; Heavy haptic on risk pick.
+- **Dice context in AI prompt** — the roll result is threaded into `runVentureBeat` so the narrative actually responds to fate.
+- `ventureDiceRoll`, `ventureDiceDisplay`, `ventureDiceSettled` state + dice animation useEffect.
+
+## [5.48.0] — 2026-06-22 — ⚙ SPLIT UNIFICATION + PERF PASS
+
+- **CompanionScene moved back to companion.tsx** — was incorrectly extracted into companion-game-data during monolith split. Now defined locally after SceneBg. companion-game-data.tsx is pure data again.
+- **School DOMAINS minimizable** — tap the DOMAINS header to collapse/expand filter chips + domain grid. `domainsOpen` state, default true.
+- **Zodiac perf pass** — tileGlows + nebulaPulse switched to `useNativeDriver: true`. Animated backgroundColor on tiles replaced with static values. Unused `heroGlow` loop removed. 16 tile animations now on native thread.
+
+## [5.47.0] — 2026-06-22 — ◈ VENTURE KNOWLEDGE SKILL CHECKS (#233)
+
+- **Venture wisdom skill checks** — picking a ◈ WISDOM choice now triggers a KNOWLEDGE TEST phase instead of immediately continuing. AI generates a real-world question themed to the zone (3 options). Pass = +2 ✦ bonus + "✓ Knowledge holds — the zone opens." narrative. Fail = "✗ Certainty wavers — the path hardens." then continues. Bonus accumulates across the venture, shown on SEAL button and toast. Failed fallback: skips check and continues normally.
+- **Skill bonus on SEAL** — reward display shows base + bonus breakdown. Chronicle entry updated.
+- **'skill' venture phase** — new phase state drives the skill check UI (purple, Greek letter options α/β/γ).
+
+## [5.46.0] — 2026-06-22 — ⚗ MONOLITH SPLIT COMPLETE (#263)
+
+- **#263 done** — companion.tsx split into 3 files. 8790 → 6042 lines (31% reduction).
+  - `companion-zones.ts` (~490 lines) — zone/skin data layer (Phase 1, prior session)
+  - `companion-game-data.ts` (~2824 lines) — full game data layer (Phase 2, this session): enemies, archetypes, stages, creature bodies, relics, gear, battle, skill tree, spells, items, loot, cosmetics, lore, encounter pools, food, quests, helpers, phrases
+  - `companion.tsx` (6042 lines) — React component only: hooks, handlers, JSX
+- Zero behavior change. All exports wired. `ArchetypeId` imported directly from source.
+
+## [5.45.0] — 2026-06-22 — ◈ SEEKER'S FIELD (Sanctum living data)
+
+- **#258 Sanctum living data** — ◈ SEEKER'S FIELD panel in the Growth (bond) tab. LQ sparkline: last 20 sessions rendered as proportional bars, coloured by score tier (high/mid/low). Avg LQ shown live. Dive history: last 7 dives with subject + date. Both backed by existing `sanctum_lq_history` + `sol_dive_log` storage — zero new storage keys. Panel hidden until there's actual data to show.
+
+## [5.44.0] — 2026-06-22 — ✦ CURRENCY UNIFICATION
+
+- **Landscape zones priced** — land_6-10: 3 ✦, land_11-15: 4 ✦. Moved from raw-dive-threshold check to purchasable SHOP_ZONES. Buy button now appears in zone card with correct ✦ price.
+- **CURRENCY_ECONOMY.md** — single source of truth for the two-currency system. Covers storage keys, formula, earn/spend paths, tier table, purchase flow, and file ownership.
+- **Companion unlock toast** — corrected error message from "more dives" to "more ✦".
+
+## [5.43.0] — 2026-06-22 — ⊚ CHRONICLE COMPOUNDING + COIN FIX
+
+- **#264 Chronicle compounding** — every 5 real chronicle entries triggers an AI synthesis: a single evocative sentence that weaves the last 5 events into a mythic narrative thread. Synthesis entries render as golden "THE CHRONICLE SPEAKS" blocks in the chronicle panel. Pre-seeds on load so existing entries don't re-fire. `isSynthesis` flag distinguishes real entries from synthesis.
+- **bonusCoins system** — replaces the broken `setDiveCoins` bug in venture `finishVenture`. New `bonusCoins` state persisted in `sol_bonus_coins`. First load seeds 15 test coins so Mac can test locked landscape zones immediately. Venture rewards correctly add to bonus pool.
+- **diveCoins formula** — updated to `totalDives + bonusCoins - diveSpent` (was missing bonusCoins).
+
+## [5.42.0] — 2026-06-22 — ◆ VENTURE MODE + MONOLITH SPLIT
+
+- **◆ VENTURE — D&D sessions (#233 extended)** — narrative adventure mode lives in the battle tab pre-encounter area. HUNT splits into HUNT (zone battle) + VENTURE (narrative session). VENTURE calls AI as DM: zone atmosphere + companion as ally → 3 beats of choices → resolution + ✦ coin reward. Beat progress bar. Zone scene as fullscreen background. Three choice types: explore (◉), risk (⚡), wisdom (◈). Companion Clause safe.
+- **Monolith split (#263 partial)** — zone/skin data layer extracted from companion.tsx (9025 lines → 8497) into `app/(tabs)/companion-zones.ts` (~540 lines). SkinId type, SKINS, SKIN_IDS, SKIN_RARITY, SCENE_IMAGES, GBA_ADJ, WORLD_MAP, getSkinUnlockStatus + all zone constants moved and re-exported. Zero behavior change.
+
+## [5.39.0] — 2026-06-22 — ⚔ GAUNTLET MODE + LANDSCAPE SCENES
+
+- **⚔ GAUNTLET MODE (#233)** — D&D failable knowledge: toggle before any dive. Sol generates 3 questions after the session; answer all 3 in-overlay. Pass (2/3): +1 ✦ earned. Win (3/3): +3 ✦. Fail (0–1/3): −3 ✦ + dive voided. Full grading via AI. Stakes-based learning, Companion Clause safe (no reproach copy).
+- **Landscape backgrounds (TEST)** — 4 wide-format RGBA landscape scenes (LANDSCAPE I–IV) added to SCENE slot. Auto-pan range increased to ±90px (was ±28) when a landscape is equipped; container widened to SCREEN_W+200. Old zones unchanged.
+
+## [5.38.0] — 2026-06-22 — ◎ MAP NAV FIX + ZONE UNLOCK + COMPANION CLEANUP
+
+- **Map navigation restored** — mini-map HUD compound skin IDs (`auroral_chaos`, `crystal_nexus`, etc.) no longer produce empty neighbour lists. `here` is now derived from `WORLD_MAP.find(r => r.id === currentRoomId)?.skinId` instead of the broken `split('_')[0]` pattern.
+- **Zone unlock redesign** — all zone thresholds halved; any zone can now be purchased with ✦ dive coins as an alternative to grinding dives. Buy button appears in WORLD tab zone cards. Battle zones have parallel path via wins.
+- **Companion cosmetics cleaned** — BG slot renamed to SCENE (⊟ icon). Legend text corrected: ARCANE @5 dives, MYTHIC @15 dives (was wrong: @25 / @75).
+
+## [5.37.0] — 2026-06-22 — ⟟ SIGIL FORGE SURFACED + TAROT SCENE MEANINGS
+
+- **Sigil Forge elevated** — moved to position 2 in the Zodiac tile grid (was position 5). Now the second tile users see after Oracle.
+- **Orphaned School sigil view killed** — `schoolView === 'sigil'` block dead-coded in school.tsx. Zodiac Sigil Forge is now the single sigil home, as the comment at line ~4746 always said.
+- **Tarot prose meanings added** — all 78 cards now carry a `m` (scene) field: 1-2 sentence scene-grounded traditional RWS meaning. Shown as "THE SCENE" in the card lore modal below the keyword block.
+
+## [5.36.0] — 2026-06-22 — ◎ SANCTUM AUDIT + SOVEREIGN CHAIN FLESHED
+> TODAY cleaned (4 blocks cut). Sovereign Chain fully expanded in SCROLL + global help.
+- **Sanctum TODAY audit** — removed: rotating shrine quote (redundant with FROM SOL), Sol Clock DAWN/ZENITH card (duplicated header text), Zodiac Transit Strip (3-glyph inline row — redundant with Daily Transit), Companion Status card (lives in companion tab). TODAY is now: FROM SOL → archetype → transit → intention → field state → vigil → school dives → LQ sparkline → day report → reflection.
+- **Sovereign Chain expanded** — SCROLL tab now has full 4-pillar breakdown: SOULBOUND TOKENS (deploying) / VERAS ON-CHAIN / LYCHEETAH DAO / EARNED LIGHT ARTIFACTS. Each with status badge (DEPLOYING / PLANNED). Ties explicitly to the Veras knowledge economy and the hidden-teacher model.
+- **Global help entry added** — SOVEREIGN CHAIN now has its own entry in the ? help modal with full description including the Veras earning model, DAO governance, and milestone tracking.
+- **Sanctum help entry updated** — now correctly describes SCROLL tab and all five sections.
+
+## [5.35.0] — 2026-06-22 — ⊚ SANCTUM: THE LIVING BOOK
+> #258 + #264 closed. Sanctum is now a living personal record.
+- **SCROLL tab** — CHAIN tab renamed SCROLL. Hosts the Living Chronicle (#264): all companion/battle/study milestones rendered as a timeline with entry numbers. Every 5th entry shows a THREAD back to an earlier entry. "SPEAK" button generates a daily AI narrative weaving the entries into a living arc (cached in `sol_chronicle_voice_v1`). Solana teaser collapsed to a single card at the bottom.
+- **Daily Transit in TODAY** — `sol_daily_transit_v1` (generated in Zodiac tab) now surfaces in Sanctum TODAY section, styled with a distinct purple border. No duplicate generation — reads the cached value.
+- **Archetype badge in TODAY** — `sol_archetype` (SEEKER/MYSTIC/WARRIOR/SCHOLAR from onboarding) now shows as a badge in TODAY above the intention field.
+- **Tab label** — SCROLL shows entry count when Chronicle has entries (e.g. SCROLL·7).
+
+## [5.34.0] — 2026-06-22 — ⬛ BACKGROUND SHOP + 🜍 TAROT DECK SELECTOR
+> Two new cosmetic/UX features, zero regressions.
+- **Background shop slot** — 16 buyable scene backgrounds (ORIGIN/ARCANE/MYTHIC/LEGENDARY/SECRET) in the companion shop. Equipping one overrides the current zone background while preserving the 26s cinematic drift and accelerometer parallax. Key: `sol_cosmetics.bg`. Assets from existing `assets/scenes/` directory.
+- **Tarot deck selector** — toggle between `CLASSIC RWS` (traditional card names) and `🜍 VEIL & VEIN` (Lycheetah's renamed Majors: THE SEEKER, THE ATHANOR, NIGREDO, SOL, etc.) in both the Oracle and Spread sections. Setting persists via `sol_tarot_deck`. Art unchanged — only the name labels switch.
+- Spec doc: `BACKGROUND_SHOP.md`
+
 ## [5.33.0] — 2026-06-22 — ◈ DAILY TRANSIT + ARCHETYPE SPARK + FIRST-RUN FIX
 > Three quality-of-life tasks closed in one session pass.
 - **#243 Daily Transit ritual** — a personalized daily zodiac insight appears in the Zodiac tab, below TODAY'S SKY. Generated once per day (cached in `sol_daily_transit_v1`). Personalized if natal chart is set; falls back to today's sun/moon/phase. Includes a ✦ STUDY SPARK domain recommendation tied to today's sky. Tap to refresh.

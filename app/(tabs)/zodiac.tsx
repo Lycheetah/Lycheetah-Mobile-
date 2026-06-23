@@ -15,6 +15,17 @@ import { generateImage, saveImageToDevice } from '../../lib/image-gen';
 import { CARD_IMAGE } from '../../lib/divination/tarot-images';
 import { drawDailyRune } from '../../lib/divination/runes';
 import TarotViewer from '../../components/TarotViewer';
+import { MAJOR_ARCANA as VV_MAJOR } from '../../lib/tarot/veil-and-vein';
+
+// Veil & Vein name map: RWS card name → V&V name (Majors only)
+const VV_NAME_MAP: Record<string, string> = Object.fromEntries(
+  VV_MAJOR.map(c => [c.root, c.name])
+);
+type DeckMode = 'classic' | 'vv';
+function getCardName(cardName: string, mode: DeckMode): string {
+  if (mode === 'vv' && VV_NAME_MAP[cardName]) return VV_NAME_MAP[cardName];
+  return cardName;
+}
 
 // ─── ZODIAC ENGINE ───────────────────────────────────────────────────────────
 
@@ -509,6 +520,7 @@ export default function ZodiacScreen() {
   const [oracleReading, setOracleReading] = useState<string | null>(null);
   const [oracleLoading, setOracleLoading] = useState(false);
   const [oracleInput, setOracleInput] = useState('');
+  const [deckMode, setDeckMode] = useState<DeckMode>('classic');
   const [drawnCard, setDrawnCard] = useState<DrawnCard | null>(null);
   const [lq, setLq] = useState(0);
   const [psiLog, setPsiLog]           = useState<PsiEntry[]>([]);
@@ -582,7 +594,7 @@ export default function ZodiacScreen() {
   const [chiralReply, setChiralReply]             = useState('');
   const [chiralBusy, setChiralBusy]               = useState(false);
   const chiralScrollRef                           = useRef<ScrollView>(null);
-  const [cardLore, setCardLore] = useState<{ card: { n: string; up: string; rev: string }; reversed: boolean; position: string } | null>(null);
+  const [cardLore, setCardLore] = useState<{ card: { n: string; up: string; rev: string; m?: string }; reversed: boolean; position: string } | null>(null);
   const [focusMode, setFocusMode]                 = useState(false); // hides all meta, shows oracle only
   const [technoMode, setTechnoMode]               = useState(false); // technomantic lens on all readings
   const [kpIndex, setKpIndex] = useState<number | null>(null);
@@ -661,7 +673,7 @@ export default function ZodiacScreen() {
   useFocusEffect(useCallback(() => {
     (async () => {
       const today = todayKey();
-      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw, transitRaw] = await Promise.all([
+      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw, transitRaw, deckRaw] = await Promise.all([
         AsyncStorage.getItem('zodiac_birth_v1'),
         AsyncStorage.getItem('zodiac_reading_v1'),
         AsyncStorage.getItem(`sanctum_aura_${today}`),
@@ -670,7 +682,9 @@ export default function ZodiacScreen() {
         AsyncStorage.getItem('zodiac_reading_history_v1'),
         AsyncStorage.getItem('zodiac_gem_collection_v1'),
         AsyncStorage.getItem('sol_daily_transit_v1'),
+        AsyncStorage.getItem('sol_tarot_deck'),
       ]);
+      if (deckRaw === 'vv' || deckRaw === 'classic') setDeckMode(deckRaw);
       if (birthRaw) setBirthData(JSON.parse(birthRaw));
       if (readingRaw) setZodiacReading(JSON.parse(readingRaw));
       if (transitRaw) {
@@ -804,24 +818,20 @@ export default function ZodiacScreen() {
       // stagger initial start so they don't all launch at once
       setTimeout(() => cycle(), i * 1400);
     });
-    // Hero glow — slow golden breathe (3.2s half-cycle) — useNativeDriver:false (colour)
-    Animated.loop(Animated.sequence([
-      Animated.timing(heroGlow,    { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      Animated.timing(heroGlow,    { toValue: 0, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-    ])).start();
-    // Tile glows — staggered so each tile has its own phase
+    // heroGlow unused in JSX — skipped (was wasting JS thread)
+    // Tile glows — staggered opacity pulses, native driver
     tileGlows.forEach((anim, i) => {
       setTimeout(() => {
         Animated.loop(Animated.sequence([
-          Animated.timing(anim, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-          Animated.timing(anim, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+          Animated.timing(anim, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         ])).start();
       }, i * 420);
     });
-    // Nebula pulse — deep slow breathe for bg atmospheric layer (5s)
+    // Nebula pulse — deep slow breathe, native driver
     Animated.loop(Animated.sequence([
-      Animated.timing(nebulaPulse, { toValue: 1, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
-      Animated.timing(nebulaPulse, { toValue: 0, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: false }),
+      Animated.timing(nebulaPulse, { toValue: 1, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(nebulaPulse, { toValue: 0, duration: 5000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
     ])).start();
     // Glyph drift — slow sine wave for watermark glyphs on section headers
     Animated.loop(Animated.sequence([
@@ -1487,7 +1497,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                     </View>
                   )}
                 </View>
-                <Text style={{ color: '#EEEEF8', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 14, letterSpacing: 0.3 }}>{cardLore.card.n}</Text>
+                <Text style={{ color: '#EEEEF8', fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 14, letterSpacing: 0.3 }}>{getCardName(cardLore.card.n, deckMode)}</Text>
                 <View style={{ marginBottom: 10, padding: 12, borderRadius: 10, backgroundColor: ZODIAC_INDIGO + '0F', borderWidth: 1, borderColor: ZODIAC_INDIGO + '22' }}>
                   <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>
                     {cardLore.reversed ? 'REVERSED' : 'UPRIGHT'}
@@ -1500,6 +1510,12 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                   <View style={{ marginBottom: 10, padding: 12, borderRadius: 10, backgroundColor: '#FF44440A', borderWidth: 1, borderColor: '#FF444422' }}>
                     <Text style={{ color: '#FF888899', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>UPRIGHT MEANING</Text>
                     <Text style={{ color: '#AAAAAA', fontSize: 12, lineHeight: 19, fontStyle: 'italic' }}>{cardLore.card.up}</Text>
+                  </View>
+                )}
+                {cardLore.card.m && (
+                  <View style={{ marginBottom: 10, padding: 12, borderRadius: 10, backgroundColor: '#FFFFFF06', borderWidth: 1, borderColor: '#FFFFFF14' }}>
+                    <Text style={{ color: '#999999', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>THE SCENE</Text>
+                    <Text style={{ color: '#CCCCCC', fontSize: 12, lineHeight: 20 }}>{cardLore.card.m}</Text>
                   </View>
                 )}
                 <TouchableOpacity onPress={() => setCardLore(null)} style={{ paddingVertical: 11, borderRadius: 10, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', alignItems: 'center', marginTop: 4 }}>
@@ -1698,14 +1714,14 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             {([
               { id: 'oracle',  glyph: '◎',  name: 'ORACLE',      teaser: 'Card · rune · convergence',       color: ZODIAC_INDIGO,
                 dots: [{ t:6, l:12, s:2.5 },{ t:18,l:28,s:1.5 },{ t:10,l:52,s:2 }] },
+              { id: 'sigil',   glyph: '⟟',  name: 'SIGIL FORGE', teaser: 'Intention → living symbol',      color: '#CC88FF',
+                dots: [{ t:6,l:30,s:2.5 },{ t:16,l:14,s:2 },{ t:16,l:46,s:2 },{ t:26,l:30,s:2.5 }] },
               { id: 'spread',  glyph: '⊛',  name: 'SPREAD',      teaser: '5-card · Celtic Cross',           color: '#C8A96E',
                 dots: [{ t:8,l:8,s:3 },{ t:6,l:26,s:3 },{ t:8,l:44,s:3 },{ t:20,l:17,s:3 },{ t:20,l:35,s:3 }] },
               { id: 'natal',   glyph: '✦',  name: 'SOL READS',   teaser: 'Natal chart · transit reading',   color: ZODIAC_INDIGO,
                 dots: [{ t:6,l:10,s:2 },{ t:4,l:28,s:2 },{ t:8,l:48,s:2 },{ t:18,l:64,s:1.5 }] },
               { id: 'aspects', glyph: '⟐',  name: 'ASPECTS',     teaser: 'Planet angles · conjunctions',    color: '#88AAFF',
                 dots: [{ t:10,l:12,s:2.5 },{ t:10,l:52,s:2.5 },{ t:4,l:32,s:1.5 }] },
-              { id: 'sigil',   glyph: '⟟',  name: 'SIGIL FORGE', teaser: 'Intention → living symbol',      color: '#CC88FF',
-                dots: [{ t:6,l:30,s:2.5 },{ t:16,l:14,s:2 },{ t:16,l:46,s:2 },{ t:26,l:30,s:2.5 }] },
               { id: 'chiral',  glyph: '∿',  name: 'CHIRAL LENS', teaser: 'Reality inversion protocol',      color: CHIRAL_VIOLET,
                 dots: [{ t:8,l:6,s:2 },{ t:6,l:20,s:2 },{ t:10,l:34,s:2 },{ t:6,l:48,s:2 },{ t:10,l:62,s:2 }] },
               { id: 'zonk',    glyph: '◬',  name: 'ZONK ZONE',   teaser: 'Speculative field',              color: ZONK_GOLD,
@@ -1724,9 +1740,9 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                 opacity: entryTileAnims[i]?.op ?? 1,
                 transform: [{ translateY: entryTileAnims[i]?.y ?? 0 }],
               }}>
-                <Animated.View style={{
+                <View style={{
                   flex: 1, borderRadius: 15, padding: 1,
-                  backgroundColor: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [tile.color + '10', tile.color + '88'] }),
+                  backgroundColor: tile.color + '44',
                 }}>
                 <TouchableOpacity
                   onPress={() => {
@@ -1743,10 +1759,10 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                   }}
                   style={{ borderRadius: 14, backgroundColor: '#06050F',
                     aspectRatio: 1.85, alignItems: 'center', justifyContent: 'center', padding: 8, gap: 3, overflow: 'hidden' }}>
-                  {/* Animated bg wash */}
-                  <Animated.View style={{
+                  {/* Static bg wash — was animated backgroundColor (JS thread), now static */}
+                  <View style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 14,
-                    backgroundColor: (tileGlows[i] ?? tileGlows[0]).interpolate({ inputRange: [0, 1], outputRange: [tile.color + '04', tile.color + '16'] }),
+                    backgroundColor: tile.color + '0D',
                   }} />
                   {/* Watermark glyph — large, low opacity, top-right */}
                   <Animated.Text style={{
@@ -1768,7 +1784,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                   <Text style={{ color: tile.color, fontSize: 7.5, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, textAlign: 'center' }}>{tile.name}</Text>
                   <Text style={{ color: tile.color + '66', fontSize: 6.5, textAlign: 'center', lineHeight: 9 }} numberOfLines={1}>{tile.teaser}</Text>
                 </TouchableOpacity>
-                </Animated.View>
+                </View>
               </Animated.View>
             ))}
           </View>
@@ -1805,6 +1821,19 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
         {!oracleCollapsed && <View style={{ height: 1, backgroundColor: ZODIAC_INDIGO + '22' }} />}
       {!oracleCollapsed && (
       <View style={{ padding: 14 }}>
+      {/* Deck selector */}
+      <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden', marginBottom: 14 }}>
+        {(['classic', 'vv'] as const).map(mode => (
+          <TouchableOpacity key={mode}
+            onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
+            style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
+          >
+            <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
+              {mode === 'classic' ? 'CLASSIC RWS' : '🜍 VEIL & VEIN'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
       {/* Daily oracle — full-width tarot card then rune strip */}
       {/* Tarot card */}
       <Animated.View style={{ marginBottom: 10, opacity: cardOpacity, transform: [{ translateY: cardSlide }] }}>
@@ -1832,7 +1861,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                 />
               </View>
               {/* Card name */}
-              <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '700', textAlign: 'center', letterSpacing: 0.5, marginBottom: 6 }}>{activeCard.card.n}</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '700', textAlign: 'center', letterSpacing: 0.5, marginBottom: 6 }}>{getCardName(activeCard.card.n, deckMode)}</Text>
               {/* Element + orientation */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Text style={{ color: ZODIAC_INDIGO + 'BB', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>{SUIT_ELEMENT[activeCard.card.a].toUpperCase()}</Text>
@@ -2237,7 +2266,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
         {!tarotCollapsed && !focusMode && (
         <View style={{ padding: 14 }}>
           {/* Mode toggle */}
-          <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', overflow: 'hidden', marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', overflow: 'hidden', marginBottom: 8 }}>
             {(['5card', 'celtic'] as const).map(mode => (
               <TouchableOpacity key={mode}
                 onPress={() => { setSpreadMode(mode); setSpreadReading(null); setCelticReading(null); }}
@@ -2245,6 +2274,19 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
               >
                 <Text style={{ color: spreadMode === mode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
                   {mode === '5card' ? 'FIVE CARD' : 'CELTIC CROSS'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Deck selector */}
+          <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden', marginBottom: 14 }}>
+            {(['classic', 'vv'] as const).map(mode => (
+              <TouchableOpacity key={mode}
+                onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
+                style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
+              >
+                <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
+                  {mode === 'classic' ? 'CLASSIC RWS' : '🜍 VEIL & VEIN'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -2270,7 +2312,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                       <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
                       {drawn.reversed && <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}><Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text></View>}
                     </View>
-                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{getCardName(drawn.card.n, deckMode)}</Text>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>{drawn.reversed ? drawn.card.rev : drawn.card.up}</Text>
                   </TouchableOpacity>
                 );
@@ -2287,7 +2329,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                       <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
                       {drawn.reversed && <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}><Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text></View>}
                     </View>
-                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{drawn.card.n}</Text>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{getCardName(drawn.card.n, deckMode)}</Text>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 8, textAlign: 'center', lineHeight: 12, marginTop: 1 }} numberOfLines={1}>{drawn.reversed ? drawn.card.rev : drawn.card.up}</Text>
                   </TouchableOpacity>
                 );
@@ -2357,7 +2399,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                         {drawn.reversed && <View style={{ position: 'absolute', top: 2, right: 2, backgroundColor: '#FF444422', borderRadius: 2, paddingHorizontal: 2 }}><Text style={{ color: '#FF8888', fontSize: 5, fontWeight: '700' }}>REV</Text></View>}
                         {isCrossing && <View style={{ position: 'absolute', bottom: 2, left: 2, backgroundColor: ZODIAC_INDIGO + '33', borderRadius: 2, paddingHorizontal: 3, paddingVertical: 1 }}><Text style={{ color: ZODIAC_INDIGO, fontSize: 5, fontWeight: '700' }}>✕</Text></View>}
                       </View>
-                      <Text style={{ color: SOL_THEME.text, fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>{drawn.card.n}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>{getCardName(drawn.card.n, deckMode)}</Text>
                     </TouchableOpacity>
                   );
                 })}

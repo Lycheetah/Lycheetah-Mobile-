@@ -407,6 +407,17 @@ export default function MysterySchoolScreen() {
   const shareCardRef = useRef<View>(null);
   const [shareLoading, setShareLoading] = useState(false);
 
+  // ── GAUNTLET MODE (#233) ────────────────────────────────────────────────────
+  const [gauntletMode,      setGauntletMode]      = useState(false);
+  const [gauntletPhase,     setGauntletPhase]     = useState<'idle'|'questions'|'grading'|'result'>('idle');
+  const [gauntletQuestions, setGauntletQuestions] = useState<string[]>([]);
+  const [gauntletAnswers,   setGauntletAnswers]   = useState<string[]>([]);
+  const [gauntletCurrentQ,  setGauntletCurrentQ]  = useState(0);
+  const [gauntletGrades,    setGauntletGrades]    = useState<boolean[]>([]);
+  const [gauntletDraft,     setGauntletDraft]     = useState('');
+  const [gauntletLoading,   setGauntletLoading]   = useState(false);
+  const [gauntletSkipDive,  setGauntletSkipDive]  = useState(false);
+
   // Unlock banner
   const [unlockBanner, setUnlockBanner] = useState<'seeker' | 'adept' | null>(null);
   const [breathPending, setBreathPending] = useState<{ subject: Subject; domain: SubjectDomain | null; host?: string; depth?: 'quick' | 'full' } | null>(null);
@@ -449,6 +460,7 @@ export default function MysterySchoolScreen() {
   const [spiralCollapsed, setSpiralCollapsed] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [schoolTodayOpen, setSchoolTodayOpen] = useState(false); // #255b — collapse the home contextual stack so DOMAINS lead
+  const [domainsOpen, setDomainsOpen] = useState(true);
   const [startHereMin, setStartHereMin] = useState(false);        // #255e — START HERE minimizable beneath the tools grid
   const [classroomClosedIds, setClassroomClosedIds] = useState<Set<string>>(new Set(MYSTERY_SCHOOL_DOMAINS.map(d => d.id)));
   const [closedLayers, setClosedLayers] = useState<Set<string>>(new Set());
@@ -1282,7 +1294,89 @@ export default function MysterySchoolScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const enterGauntlet = async () => {
+    setGauntletLoading(true);
+    try {
+      const apiKeyRaw = await getActiveKey();
+      if (!apiKeyRaw) throw new Error('no key');
+      const apiKey = apiKeyRaw;
+      const context = studyMessages.slice(-10).map(m =>
+        `${m.role === 'user' ? 'Student' : 'Teacher'}: ${m.content.slice(0, 200)}`
+      ).join('\n');
+      const prompt = `Subject: "${activeStudySubject?.name}". Study session:\n${context}\n\nGenerate exactly 3 concise short-answer questions that test genuine understanding of this session. Each must require a specific non-trivial answer — no yes/no. Return ONLY a JSON array of 3 strings: ["Q1?","Q2?","Q3?"]`;
+      const result = await sendMessage(
+        [{ role: 'user', content: prompt }],
+        'You generate precise knowledge-check questions. Return only a JSON array of 3 strings.',
+        apiKey, 'gemini-2.5-flash' as AIModel, undefined, 'fast', 150, 0.3
+      );
+      const match = result.text?.trim().match(/\[[\s\S]*?\]/);
+      const qs: string[] = match ? JSON.parse(match[0]) : [
+        `What is the core principle of ${activeStudySubject?.name || 'this subject'}?`,
+        'What would surprise most people about this topic?',
+        'How would you apply this knowledge in practice?',
+      ];
+      setGauntletQuestions(qs.slice(0, 3));
+    } catch {
+      setGauntletQuestions([
+        `What is the core principle of ${activeStudySubject?.name || 'this subject'}?`,
+        'What would surprise most people about this topic?',
+        'How would you apply this knowledge in practice?',
+      ]);
+    } finally {
+      setGauntletAnswers([]);
+      setGauntletCurrentQ(0);
+      setGauntletDraft('');
+      setGauntletPhase('questions');
+      setGauntletLoading(false);
+    }
+  };
+
+  const gradeGauntlet = async (allAnswers: string[]) => {
+    setGauntletPhase('grading');
+    try {
+      const apiKeyRaw = await getActiveKey();
+      if (!apiKeyRaw) throw new Error('no key');
+      const apiKey = apiKeyRaw;
+      const context = studyMessages.slice(-8).map(m =>
+        `${m.role === 'user' ? 'Student' : 'Teacher'}: ${m.content.slice(0, 160)}`
+      ).join('\n');
+      const qa = gauntletQuestions.map((q, i) =>
+        `Q${i+1}: ${q}\nA${i+1}: ${allAnswers[i] || '(no answer)'}`
+      ).join('\n\n');
+      const prompt = `Grade 3 answers on "${activeStudySubject?.name}". Mark true if the answer shows real understanding, false if shallow, wrong, or blank. Be fair but honest.\nContext:\n${context}\n\n${qa}\n\nReturn ONLY a JSON array of 3 booleans, e.g. [true,false,true]. Nothing else.`;
+      const result = await sendMessage(
+        [{ role: 'user', content: prompt }],
+        'You grade knowledge checks precisely. Return only a JSON boolean array.',
+        apiKey, 'gemini-2.5-flash' as AIModel, undefined, 'fast', 30, 0.1
+      );
+      const match = result.text?.trim().match(/\[[\s\S]*?\]/);
+      const grades: boolean[] = match ? JSON.parse(match[0]) : [false, false, false];
+      setGauntletGrades(grades);
+      const score = grades.filter(Boolean).length;
+      // Apply ✦ outcome
+      const raw = await AsyncStorage.getItem('sol_dive_spent');
+      const current = parseInt(raw || '0');
+      const delta = score === 3 ? -3 : score >= 2 ? -1 : 3;
+      await AsyncStorage.setItem('sol_dive_spent', String(Math.max(0, current + delta)));
+      // FAIL: void this dive
+      if (score <= 1) setGauntletSkipDive(true);
+    } catch {
+      setGauntletGrades([false, false, false]);
+      setGauntletSkipDive(true);
+    } finally {
+      setGauntletPhase('result');
+    }
+  };
+
   const dismissSessionComplete = (navigateToDomain?: boolean, targetView?: SchoolView) => {
+    const skipDive = gauntletSkipDive;
+    setGauntletMode(false);
+    setGauntletPhase('idle');
+    setGauntletSkipDive(false);
+    setGauntletQuestions([]);
+    setGauntletAnswers([]);
+    setGauntletGrades([]);
+    setGauntletDraft('');
     // Save closing reflection if written
     if (closingReflection.trim() && activeStudySubject) {
       AsyncStorage.getItem('sol_session_seals').then(raw => {
@@ -1293,8 +1387,8 @@ export default function MysterySchoolScreen() {
     }
     setFocusMode(false);
     if (focusTimerRef.current) { clearInterval(focusTimerRef.current); focusTimerRef.current = null; }
-    // Save dive record
-    if (activeStudySubject) {
+    // Save dive record — skipped if gauntlet was failed
+    if (activeStudySubject && !skipDive) {
       const _hour = new Date().getHours();
       const _timeOfDay: DiveRecord['timeOfDay'] = _hour < 12 ? 'morning' : _hour < 17 ? 'afternoon' : _hour < 21 ? 'evening' : 'night';
       const record: DiveRecord = {
@@ -1988,7 +2082,92 @@ export default function MysterySchoolScreen() {
                   />
                 </View>
 
-                {/* Buttons */}
+                {/* ── GAUNTLET PHASE UI ─────────────────────────── */}
+                {gauntletMode && gauntletPhase === 'idle' && (
+                  <TouchableOpacity
+                    onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); enterGauntlet(); }}
+                    disabled={gauntletLoading}
+                    style={{ width:'100%', paddingVertical:14, borderRadius:12, backgroundColor:'#FF664422', borderWidth:1.5, borderColor:'#FF664488', alignItems:'center', marginBottom:10 }}>
+                    <Text style={{ color:'#FF6644', fontSize:15, fontWeight:'700', letterSpacing:0.5 }}>
+                      {gauntletLoading ? '⚔ Preparing the trial…' : '⚔ Face the Trial →'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {gauntletMode && gauntletPhase === 'questions' && gauntletQuestions.length > 0 && (
+                  <View style={{ width:'100%', marginBottom:14 }}>
+                    <Text style={{ color:'#FF6644', fontSize:9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing:2, fontWeight:'700', marginBottom:10, textAlign:'center' }}>
+                      ⚔ TRIAL — QUESTION {gauntletCurrentQ + 1} OF {gauntletQuestions.length}
+                    </Text>
+                    <View style={{ padding:16, borderRadius:12, backgroundColor:'#FF664412', borderWidth:1, borderColor:'#FF664444', marginBottom:12 }}>
+                      <Text style={{ color:SOL_THEME.text, fontSize:14, lineHeight:21, fontWeight:'600' }}>
+                        {gauntletQuestions[gauntletCurrentQ]}
+                      </Text>
+                    </View>
+                    <TextInput
+                      style={{ width:'100%', backgroundColor:SOL_THEME.background, color:SOL_THEME.text, borderRadius:10, borderWidth:1, borderColor:'#FF664444', paddingHorizontal:12, paddingVertical:10, fontSize:13, minHeight:64, textAlignVertical:'top', marginBottom:8 }}
+                      placeholder="Your answer…"
+                      placeholderTextColor={SOL_THEME.textMuted}
+                      value={gauntletDraft}
+                      onChangeText={setGauntletDraft}
+                      multiline
+                      autoFocus
+                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        const next = [...gauntletAnswers, gauntletDraft.trim()];
+                        setGauntletAnswers(next);
+                        setGauntletDraft('');
+                        if (gauntletCurrentQ + 1 < gauntletQuestions.length) {
+                          setGauntletCurrentQ(q => q + 1);
+                        } else {
+                          gradeGauntlet(next);
+                        }
+                      }}
+                      style={{ paddingVertical:12, borderRadius:10, backgroundColor:'#FF6644', alignItems:'center' }}
+                      activeOpacity={0.8}>
+                      <Text style={{ color:'#000', fontSize:14, fontWeight:'700' }}>
+                        {gauntletCurrentQ + 1 < gauntletQuestions.length ? 'Next Question →' : 'Submit for Grading'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {gauntletMode && gauntletPhase === 'grading' && (
+                  <View style={{ width:'100%', alignItems:'center', paddingVertical:20, marginBottom:14 }}>
+                    <Text style={{ color:'#FF6644', fontSize:14, fontWeight:'700', letterSpacing:1 }}>⚔ Grading your trial…</Text>
+                    <Text style={{ color:SOL_THEME.textMuted, fontSize:11, marginTop:6 }}>The teacher reviews your answers</Text>
+                  </View>
+                )}
+
+                {gauntletMode && gauntletPhase === 'result' && (() => {
+                  const score = gauntletGrades.filter(Boolean).length;
+                  const WIN = score === 3;
+                  const PASS = score === 2;
+                  const FAIL = score <= 1;
+                  const resultColor = WIN ? '#44DD88' : PASS ? '#C8A96E' : '#FF4444';
+                  const resultLabel = WIN ? '⚔ TRIAL CONQUERED' : PASS ? '⚔ TRIAL PASSED' : '⚔ TRIAL FAILED';
+                  const outcomeText = WIN ? '+3 ✦ earned · dive recorded' : PASS ? '+1 ✦ earned · dive recorded' : '−3 ✦ lost · dive voided';
+                  return (
+                    <View style={{ width:'100%', marginBottom:14 }}>
+                      <View style={{ padding:16, borderRadius:12, backgroundColor:resultColor + '14', borderWidth:1.5, borderColor:resultColor + '55', marginBottom:12, alignItems:'center' }}>
+                        <Text style={{ color:resultColor, fontSize:13, fontWeight:'700', letterSpacing:1, marginBottom:6 }}>{resultLabel}</Text>
+                        <Text style={{ color:resultColor + 'AA', fontSize:11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom:10 }}>{outcomeText}</Text>
+                        {gauntletQuestions.map((q, i) => (
+                          <View key={i} style={{ width:'100%', flexDirection:'row', alignItems:'flex-start', gap:8, marginBottom:6 }}>
+                            <Text style={{ color: gauntletGrades[i] ? '#44DD88' : '#FF4444', fontSize:13, fontWeight:'700', marginTop:1 }}>
+                              {gauntletGrades[i] ? '✓' : '✗'}
+                            </Text>
+                            <Text style={{ color:SOL_THEME.textMuted, fontSize:11, flex:1, lineHeight:16 }}>{q}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })()}
+
+                {/* Buttons — hidden during questions/grading phases */}
+                {(!gauntletMode || gauntletPhase === 'idle' || gauntletPhase === 'result') && (<>
                 <TouchableOpacity onPress={() => dismissSessionComplete(true)}
                   style={{ width: '100%', paddingVertical: 13, borderRadius: 12, backgroundColor: domainColor, alignItems: 'center', marginBottom: 10 }}>
                   <Text style={{ color: '#000', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 }}>Explore {activeStudyDomain?.label || 'Domain'} →</Text>
@@ -2054,6 +2233,7 @@ export default function MysterySchoolScreen() {
                   style={{ width: '100%', paddingVertical: 13, borderRadius: 12, borderWidth: 1, borderColor: SOL_THEME.border, alignItems: 'center' }}>
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 14, fontWeight: '600' }}>Return to School</Text>
                 </TouchableOpacity>
+                </>)}
               </View>
               </ScrollView>
 
@@ -2318,14 +2498,39 @@ export default function MysterySchoolScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          {/* ⚔ Gauntlet toggle */}
+          <TouchableOpacity
+            onPress={() => setGauntletMode(v => !v)}
+            style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:10, paddingHorizontal:14, borderRadius:10, borderWidth:1.5,
+              borderColor: gauntletMode ? '#FF6644' : SOL_THEME.border,
+              backgroundColor: gauntletMode ? '#FF664418' : 'transparent' }}
+            activeOpacity={0.75}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+              <Text style={{ color: gauntletMode ? '#FF6644' : SOL_THEME.textMuted, fontSize:14 }}>⚔</Text>
+              <View>
+                <Text style={{ color: gauntletMode ? '#FF6644' : SOL_THEME.textMuted, fontSize:12, fontWeight:'700', letterSpacing:0.5 }}>GAUNTLET MODE</Text>
+                <Text style={{ color: gauntletMode ? '#FF664488' : SOL_THEME.border, fontSize:9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+                  {gauntletMode ? '3 questions after · pass = ✦ earned · fail = ✦ lost + dive voided' : 'study with stakes — knowledge proven, not claimed'}
+                </Text>
+              </View>
+            </View>
+            <View style={{ width:20, height:20, borderRadius:10, borderWidth:1.5,
+              borderColor: gauntletMode ? '#FF6644' : SOL_THEME.border,
+              backgroundColor: gauntletMode ? '#FF6644' : 'transparent',
+              alignItems:'center', justifyContent:'center' }}>
+              {gauntletMode && <Text style={{ color:'#000', fontSize:12, fontWeight:'900' }}>✓</Text>}
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               setBreathPending({ subject: activeSubjectDetail, domain: subjectDomain, host: selectedTeacher || host, depth: diveDepth });
             }}
-            style={{ paddingVertical: 14, borderRadius: 12, backgroundColor: domainColor, alignItems: 'center' }}
+            style={{ paddingVertical: 14, borderRadius: 12, backgroundColor: gauntletMode ? '#FF6644' : domainColor, alignItems: 'center' }}
             activeOpacity={0.8}>
-            <Text style={{ color: '#000', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>{HOST_GLYPHS[selectedTeacher || host]} Enter Classroom · {HOST_NAMES[selectedTeacher || host]}</Text>
+            <Text style={{ color: '#000', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 }}>
+              {gauntletMode ? '⚔ ' : ''}{HOST_GLYPHS[selectedTeacher || host]} Enter Classroom · {HOST_NAMES[selectedTeacher || host]}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={async () => {
@@ -3369,9 +3574,9 @@ REJECTED = fails a core test — be direct about which one and why.`;
     );
   }
 
-  // ─── RENDER: SIGIL ────────────────────────────────────────────────────────────
+  // ─── RENDER: SIGIL (removed — Zodiac Sigil Forge is the single sigil home) ───
 
-  if (schoolView === 'sigil') {
+  if (false && schoolView === 'sigil') {
     const SIGMONO = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
     const { Svg, Circle, Line, Text: SvgText, G } = require('react-native-svg');
 
@@ -5393,11 +5598,13 @@ REJECTED = fails a core test — be direct about which one and why.`;
             {/* ── end ✦ TODAY field modal — DOMAINS now lead the home view ── */}
 
             {/* Domain grid — wing selectors */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <TouchableOpacity onPress={() => setDomainsOpen(o => !o)} activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <View style={{ width: 3, height: 14, borderRadius: 2, backgroundColor: SOL_THEME.headmaster }} />
-              <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700' }}>DOMAINS</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingBottom: 2, paddingRight: 16 }} style={{ marginBottom: 12 }}>
+              <Text style={{ color: SOL_THEME.headmaster, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', flex: 1 }}>DOMAINS</Text>
+              <Text style={{ color: SOL_THEME.headmaster + '99', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{domainsOpen ? '▾' : '▸'}</Text>
+            </TouchableOpacity>
+            {domainsOpen && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingBottom: 2, paddingRight: 16 }} style={{ marginBottom: 12 }}>
               {([
                 { id: 'all',           label: 'ALL',       glyph: '◬', accent: SOL_THEME.headmaster },
                 { id: 'contemplative', label: 'TEMPLE',    glyph: '☽', accent: '#9B7FD4' },
@@ -5418,8 +5625,8 @@ REJECTED = fails a core test — be direct about which one and why.`;
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
-            {(() => {
+            </ScrollView>}
+            {domainsOpen && (() => {
               const isVisible = (d: typeof MYSTERY_SCHOOL_DOMAINS[0]) => domainFilter === 'all' ? true
                 : domainFilter === 'void' ? d.category === 'void'
                 : domainFilter === 'lycheetah' ? d.category === 'lycheetah'
@@ -5504,9 +5711,10 @@ REJECTED = fails a core test — be direct about which one and why.`;
                 { glyph: 'Ψ', name: 'Carl Jung', role: 'Depth Psychology', note: 'The shadow, the collective unconscious, individuation, synchronicity — foundational architecture for how the Mystery School understands the psyche.' },
                 { glyph: '∇', name: 'Rupert Sheldrake', role: 'Morphic Resonance', note: 'The hypothesis that nature has memory, that forms are shaped by the habits of their kind across time. A living challenge to scientific orthodoxy.' },
                 { glyph: '⟟', name: 'Lycheetah Framework', role: 'LAMAGUE · CASCADE · HARMONIA', note: 'The ten frameworks, the grammar, the council — forged across 1,402 pages of continuous development. The cathedral was built before anyone arrived to visit it.' },
+                { glyph: '◈', name: 'Sonny Moore', role: 'Sonic Architecture · Skrillex', note: 'The Sonic Architecture domain exists because of him. The creator of the Lycheetah Framework has called his music acoustic artillery — a technical assessment. Sound precision-engineered to break something open that cannot be closed again. It carried people through dark rooms and long roads and fields. The school holds that.' },
                 { glyph: '✦', name: 'The Seekers', role: 'Every practitioner', note: 'Everyone who dives, asks hard questions, sits with uncertainty, and comes back the next day. The School is only real because you showed up.' },
               ].map((entry, i) => (
-                <View key={i} style={{ flexDirection: 'row', gap: 14, marginBottom: 20, paddingBottom: 20, borderBottomWidth: i < 5 ? 1 : 0, borderBottomColor: SOL_THEME.border + '33' }}>
+                <View key={i} style={{ flexDirection: 'row', gap: 14, marginBottom: 20, paddingBottom: 20, borderBottomWidth: i < 6 ? 1 : 0, borderBottomColor: SOL_THEME.border + '33' }}>
                   <View style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: SOL_THEME.headmaster + '44', backgroundColor: SOL_THEME.headmaster + '0A', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                     <Text style={{ fontSize: 16, color: SOL_THEME.headmaster }}>{entry.glyph}</Text>
                   </View>

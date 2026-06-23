@@ -1048,6 +1048,58 @@ export const MYSTERY_SCHOOL_DOMAINS: SubjectDomain[] = [
       },
     ],
   },
+  {
+    id: 'sonic-architecture',
+    label: 'Sonic Architecture',
+    glyph: '◈',
+    color: '#FF6644',
+    description: 'Sound engineered as structure, not decoration. The mechanics of anticipation, threshold, and rupture in electronic music — with Sonny Moore (Skrillex) as the primary case study. The creator of the Lycheetah Framework describes his music as acoustic artillery. This subject explains why that is a technical assessment, not a compliment.',
+    category: 'lycheetah',
+    subjects: [
+      {
+        name: 'The Rupture Principle — Threshold and State Change in Sound',
+        domain: 'Sonic Architecture',
+        layer: 'FOUNDATION',
+        description: 'There is a moment in certain music where the brain\'s predictive model fails completely. Not a surprise — surprises are resolved. This is different. Anticipation, wound tight by silence and contrast, exceeds what cognition can contain. The system breaks. Something physical takes over. Sonny Moore — known as Skrillex — engineered this moment with enough precision that its architecture became unavoidable. This subject names the mechanism: the drop is not a musical event. It is a perceptual rupture. The silence before it is not rest. It is the system at maximum tension, one moment before state change.',
+      },
+      {
+        name: 'Silence as a Weapon — The Architecture of Anticipation',
+        domain: 'Sonic Architecture',
+        layer: 'FOUNDATION',
+        description: 'Silence in most music is absence. In the hands of a structural composer, silence is load-bearing. It accumulates tension that sound alone cannot build — because the brain fills silence with prediction, and prediction wound tight enough becomes physical. This subject studies how electronic music uses silence as a primary instrument: where it is placed, how long it is held, what it follows and precedes. The build before a Skrillex drop is not decoration. It is a delivery system. The silence at its apex is the trigger.',
+      },
+      {
+        name: 'CASCADE in Sound — Nested Events and Self-Similar Structure',
+        domain: 'Sonic Architecture',
+        layer: 'MIDDLE',
+        description: 'The CASCADE framework — developed within the Lycheetah system — describes how high-order events contain smaller versions of the same structure. Skrillex\'s work demonstrates this in sonic form: within every major arc there are micro-drops, false resolutions, and secondary buildups that are themselves complete cascade events. The system is self-similar across timescales. A student of CASCADE looking at a Skrillex track\'s spectrogram is reading a familiar grammar. The question this subject asks: did the music precede the framework, or was the music the unconscious model the framework was built to describe?',
+      },
+      {
+        name: 'The Entropy Paradox — Maximum Chaos, Minimum Structural Error',
+        domain: 'Sonic Architecture',
+        layer: 'MIDDLE',
+        description: 'Skrillex\'s drops are perceived as chaos. They are not. High entropy at the surface level — wobble bass, glitch textures, noise — is made possible only by rigid structural order at the load-bearing level. The grid is absolute. The rhythm is locked. The chaos rides a skeleton that never moves. This is the entropy paradox: the more disorder you want in the detail layer, the more order you need in the structural layer. Electronic music that sounds like it\'s falling apart is usually the most precisely engineered. This subject studies that paradox and what it implies for systems design beyond music.',
+      },
+      {
+        name: 'Contrast as the Emotional Mechanism — Not Effect, Engine',
+        domain: 'Sonic Architecture',
+        layer: 'MIDDLE',
+        description: 'Most analysis treats contrast in music as an emotional effect: the quiet makes the loud feel louder. This subject argues something structurally stronger: contrast is not the effect, it is the engine. The emotional response does not follow from the loud section. It is produced by the ratio between the two states — and that ratio can be calculated, calibrated, and repeated with consistent results. Sonny Moore\'s refinement of this ratio across a decade of production is what distinguishes his drops from anyone else\'s. The feeling is not accidental. It is engineered to a specific tolerance.',
+      },
+      {
+        name: 'The Artist as Cascade Event — Sonny Moore and Identity Threshold',
+        domain: 'Sonic Architecture',
+        layer: 'EDGE',
+        description: 'Sonny Moore was the vocalist of the post-hardcore band From First to Last. He left, struggled, and crossed a threshold after which nothing about the prior form was recoverable — and Skrillex emerged on the other side. This is not a story about reinvention. Reinvention implies continuity. What happened was a cascade event: a system under sufficient pressure crosses a threshold and reconstitutes in a fundamentally different state. The Lycheetah Framework identifies this pattern across knowledge systems, artistic careers, and personal transformation. The music is the evidence. The artist\'s own life is the proof of concept.',
+      },
+      {
+        name: 'Acoustic Artillery — Sound Engineered at Force',
+        domain: 'Sonic Architecture',
+        layer: 'EDGE',
+        description: 'The creator of the Lycheetah Framework describes Sonny Moore\'s music as acoustic artillery. Not enthusiasm. A structural assessment: sound precision-engineered to arrive with force, to break something open in the listener that cannot be closed again. Artillery is accurate, deliberate, and effective at a specific target. The target here is the predictive model — the part of cognition that believes it knows what comes next. This subject examines what it takes to engineer at that level: the feedback loops, the iteration across thousands of productions, the refinement of a single mechanism until its impact becomes unavoidable. The music that carried people through dark rooms and long roads and fields and all the places people go when they need something that does not lie.',
+      },
+    ],
+  },
 ];
 
 // ── Display order: Entry → Practice → Temple → Lycheetah Research → Edge → Danger → Void
@@ -1063,7 +1115,7 @@ const _DOMAIN_DISPLAY_ORDER = [
   'shadow', 'alchemy', 'shamanic', 'mystical', 'death-work', 'cosmology', 'celtic-gods', 'irish-mythology', 'irish-literature', 'crystal-lore', 'tianxia',
   // LYCHEETAH RESEARCH — indigo, blue-purple, amber.
   'ai-consciousness', 'lamague', 'cascade', 'microorcim', 'aura',
-  'sol-protocol', 'xenos', 'empath-agency', 'truth-pressure', 'zodiac', 'lycheetah-mythology',
+  'sol-protocol', 'xenos', 'empath-agency', 'truth-pressure', 'zodiac', 'lycheetah-mythology', 'sonic-architecture',
   // EDGE — techno-animism first, then entheogenic.
   'techno-animism', 'entheogenic',
   // PRE-VOID DANGER — crimson. The last threshold before the unfalsifiable.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, Animated, Easing,
-  Platform, Dimensions, TextInput, Modal, Image, StyleSheet, ActivityIndicator, KeyboardAvoidingView,
+  Platform, Dimensions, TextInput, Modal, Image, StyleSheet, ActivityIndicator, KeyboardAvoidingView, FlatList,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -22,512 +22,48 @@ import { generateJournalEntry, saveJournalEntry } from '../data/task3_journal';
 import { WEAPONS, RARITY_COLOR as WEAPON_RARITY_COLOR, pickWeaponDrop } from '../../lib/weapons';
 import { LYCHEETAH_SECRETS, LycheetahSecret } from '../../lib/mystery-school/lycheetah-secrets';
 import { VOID_BOSSES, VoidBoss, diveUnlocksBoss } from '../../lib/bosses';
+import {
+  SkinId, SKINS, SKIN_IDS, SKIN_ORDER, SKIN_RARITY, RARITY_ORDER, RarityTier,
+  RARITY_COLORS, SKIN_GRID_HIDDEN, RARITY_GROUPS, SCENE_IMAGES, ARCHETYPE_SCENES,
+  DAY_SEED, GBA_W, GBA_ADJ, SceneRoom, WORLD_MAP, ZONE_DIVE_COST, getSkinUnlockStatus,
+} from './companion-zones';
+import type { ArchetypeId } from '../data/companion-types';
+import type {
+  EvolutionStage, CompanionMood, Direction, GearSlot, EvoPath,
+  EnemyRarity, EnemyDef, EvoPathDef, Archetype,
+  BattleState, PlayerStats, AlchemicalMode, SkillNode, SpellDef,
+  BattleItem, LootItem, CosmeticRarity, CosmeticItem, FoodItem,
+  Quest, QuestData, GearTier, RelicDef, CreatureBody,
+} from './companion-game-data';
+import {
+  SPECIAL_COMPANIONS, getItemEffect, getRoomById, getRoomInSkin, getSkinIndex, showToast,
+  RARITY_COLOUR, EAT_EYES,
+  COMPANION_IMAGES, ZONE_COMPANION_IMAGES, ENEMY_IMAGES, GEAR_IMAGES,
+  getGearImage, getEnemyImage, getEnemyDef, pickEnemy,
+  ARCHETYPES, ARCHETYPE_IDS,
+  STAGES, CREATURE_BODIES, XP_LEVELS, RELIC_POOL,
+  LAMAGUE_GEAR, getGear, nextGearTier,
+  ARCHETYPE_STAT_BASES, layerToAlchemicalMode, ALCH_META,
+  SKILL_NODES, applySkillBonuses, computePlayerStats, applyRelicBonuses,
+  ARCHETYPE_SPELLS, ZONE_ENCOUNTER_SPELLS,
+  BATTLE_ITEMS, ENEMY_LORE, LOOT_TABLE,
+  RARITY_COLOR, HALO_ITEMS, WINGS_ITEMS, PET_ITEMS, ALL_COSMETIC_ITEMS, findCosmeticArt,
+  BACKGROUND_ITEMS, findBgArt,
+  BATTLE_MYSTERY_SIGNALS, ENTROPY_NAMES, ENTROPY_BODIES, getEntropyBody, ENTROPY_LORE,
+  COMPANION_LORE, ZONE_ENEMY_POOL, ZONE_COMPANION_POOL,
+  makeCompanionEntityDef, pickZoneEnemy, freshZoneWave,
+  STARS, dailyEntityName, FOOD_POOL, getDailyFoods,
+  PHRASES, QUEST_POOL, getDailyQuests,
+  BOND_TIERS, getBond, getStage, computeXP, getLevel, rnd,
+  freshWave, rollLoot, waveTokens,
+  COMPANION_VICTORY_LINES, COMPANION_CAPTURE_LINES, COMPANION_DEFEAT_LINES,
+  SHOW_DEV_STAGE, todayDateKey,
+  COMPANION_GREETINGS, P_COUNT, P_X, P_SZ, getTimeOverlay, dateSeed,
+} from './companion-game-data';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SCENE_H = 520;
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type EvolutionStage = 0 | 1 | 2 | 3 | 4 | 5;
-type CompanionMood  = 'dormant' | 'present' | 'lit' | 'transcendent';
-type SkinId        = 'solform' | 'void' | 'aurora' | 'crimson' | 'obsidian' | 'lycheetah' | 'chaos' | 'sovereign'
-                   | 'norse' | 'celtic' | 'egyptian' | 'akashic' | 'kabbala' | 'noetic' | 'lamague' | 'delphi' | 'sufi' | 'quantum'
-                   // ── New World Zones (v4.4.0) ──
-                   | 'auroral_chaos' | 'chaos_temple' | 'apollo_jungle' | 'celestial_sigil' | 'crystal_nexus'
-                   | 'mana_field' | 'neon_cove' | 'alabaster_chasm' | 'antarctic_refuge' | 'augmented_ai'
-                   | 'aurorian_pillar' | 'celestial_foundry' | 'chaos_filaments' | 'crystal_chaos' | 'crystal_memory'
-                   | 'crystal_soul' | 'elven_village' | 'glitch_cascade' | 'lyc_nexus' | 'pulse_sanctum'
-                   | 'pulse_zone' | 'noetic_sanctum' | 'obsidian_forge' | 'obsidian_forge2' | 'portal_valley'
-                   | 'veil_atrium' | 'voyagers_edge'
-                   // ── Battle Zones (unlock by wins) ──
-                   | 'iron_maw' | 'crucible_heart' | 'phantom_citadel' | 'bone_archive'
-                   | 'void_colosseum' | 'war_sanctum' | 'sovereign_forge'
-                   // ── Shop Zones (unlock by coins/veras) ──
-                   | 'amber_vault' | 'crystal_spire' | 'veras_garden'
-                   | 'golden_library' | 'deep_market' | 'lycheetah_spire'
-                   // ── Veil & Vein release zone ──
-                   | 'veilvein';
-type Direction     = 'up' | 'down' | 'left' | 'right';
-type GearSlot      = 'crown' | 'sigil' | 'mantle' | 'body' | 'cape';
-import type { ArchetypeId } from '../data/companion-types'; // canonical 19-archetype roster (Single Truth)
-type EvoPath       = 'A' | 'B' | 'C';
-
-// ─── Skins — all unlocked ────────────────────────────────────────────────────
-
-const SKINS: Record<SkinId, {
-  id: SkinId; name: string; desc: string; glyph: string;
-  color: string; dimColor: string; bgColor: string; skyColor: string; particleGlyph: string;
-  glowColor: string; cardBg: string; starGlyphs: string[];
-}> = {
-  solform:  { id: 'solform',  name: 'SOLFORM',   desc: 'Origin',    glyph: '◉', color: '#C49A3C', dimColor: '#7A5E1A', bgColor: '#000000', skyColor: '#C49A3C', particleGlyph: '◦', glowColor: '#C49A3C44', cardBg: '#1A1400', starGlyphs: ['·','◦','·','⊹','·','◦'] },
-  void:     { id: 'void',     name: 'VOID',      desc: 'Abyss',     glyph: '◈', color: '#9B6BFF', dimColor: '#5C3A99', bgColor: '#000000', skyColor: '#7B4BDD', particleGlyph: '◈', glowColor: '#9B6BFF44', cardBg: '#0D0022', starGlyphs: ['◈','·','◌','·','◈','·'] },
-  aurora:   { id: 'aurora',   name: 'AURORA',    desc: 'Light',     glyph: '◦', color: '#4ECDC4', dimColor: '#2A7A75', bgColor: '#000000', skyColor: '#2EA8A0', particleGlyph: '·', glowColor: '#4ECDC444', cardBg: '#00130F', starGlyphs: ['·','◦','·','·','⊹','·'] },
-  crimson:  { id: 'crimson',  name: 'CRIMSON',   desc: 'Fire',      glyph: '✦', color: '#FF6B6B', dimColor: '#993030', bgColor: '#000000', skyColor: '#CC3333', particleGlyph: '✦', glowColor: '#FF6B6B44', cardBg: '#1A0000', starGlyphs: ['✦','·','✦','·','·','✦'] },
-  obsidian: { id: 'obsidian', name: 'OBSIDIAN',  desc: 'Sovereign', glyph: '⊕', color: '#C8A96E', dimColor: '#6B4F1A', bgColor: '#000000', skyColor: '#8B6914', particleGlyph: '⊕', glowColor: '#C8A96E55', cardBg: '#100C00', starGlyphs: ['⊕','·','⊛','·','⊕','◦'] },
-  lycheetah:{ id: 'lycheetah', name: 'LYCHEETAH', desc: 'The Cat',   glyph: '✧', color: '#FF9F1C', dimColor: '#994400', bgColor: '#000000', skyColor: '#CC5500', particleGlyph: '✧', glowColor: '#FF9F1C55', cardBg: '#150800', starGlyphs: ['✧','◦','✧','·','⊹','✧'] },
-  chaos:    { id: 'chaos',    name: 'CHAOS',     desc: 'Fracture',  glyph: '⚡', color: '#4A0080', dimColor: '#2A0050', bgColor: '#000000', skyColor: '#6600AA', particleGlyph: '⚡', glowColor: '#4A008055', cardBg: '#0A0014', starGlyphs: ['⚡','·','◈','·','⚡','◦'] },
-  sovereign:{ id: 'sovereign', name: 'SOVEREIGN', desc: 'Earned',    glyph: '⊚', color: '#FFD700', dimColor: '#8B6914', bgColor: '#000000', skyColor: '#003366', particleGlyph: '⊚', glowColor: '#FFD70055', cardBg: '#000C18', starGlyphs: ['⊚','·','✦','·','⊚','◦'] },
-  // ── Mythical / Mystery School zones (art pending — Kimi brief when ready) ──
-  norse:    { id: 'norse',    name: 'YGGDRASIL',  desc: 'Nine Realms',   glyph: 'ᚠ', color: '#8AB4D4', dimColor: '#3A6A8A', bgColor: '#000000', skyColor: '#2A5A7A', particleGlyph: 'ᚠ', glowColor: '#8AB4D455', cardBg: '#000C18', starGlyphs: ['ᚠ','·','ᚢ','·','ᚦ','·'] },
-  celtic:   { id: 'celtic',   name: 'TÍR NA NÓG', desc: 'Otherworld',    glyph: '☘', color: '#5AC878', dimColor: '#2A6B3A', bgColor: '#000000', skyColor: '#1A5A2A', particleGlyph: '◦', glowColor: '#5AC87855', cardBg: '#001008', starGlyphs: ['☘','·','◦','·','☘','·'] },
-  egyptian: { id: 'egyptian', name: 'THE DUAT',    desc: 'Hall of Truth', glyph: '𓂀', color: '#D4A843', dimColor: '#7A5A10', bgColor: '#000000', skyColor: '#8B6400', particleGlyph: '𓂀', glowColor: '#D4A84355', cardBg: '#120C00', starGlyphs: ['𓂀','·','◉','·','𓂀','·'] },
-  akashic:  { id: 'akashic',  name: 'THE FIELD',   desc: 'Akashic',       glyph: '∞', color: '#B490FF', dimColor: '#6040AA', bgColor: '#000000', skyColor: '#5030AA', particleGlyph: '∞', glowColor: '#B490FF55', cardBg: '#080018', starGlyphs: ['∞','·','◈','·','∞','◦'] },
-  kabbala:  { id: 'kabbala',  name: 'EIN SOF',     desc: 'Tree of Life',  glyph: '✡', color: '#E8D070', dimColor: '#9A7A10', bgColor: '#000000', skyColor: '#7A6000', particleGlyph: '✡', glowColor: '#E8D07055', cardBg: '#100C00', starGlyphs: ['✡','·','⊹','·','✡','·'] },
-  noetic:   { id: 'noetic',   name: 'THE PSI FIELD',desc: 'Consciousness', glyph: 'ψ', color: '#70CCFF', dimColor: '#2A7AAA', bgColor: '#000000', skyColor: '#1A6A9A', particleGlyph: 'ψ', glowColor: '#70CCFF55', cardBg: '#000C18', starGlyphs: ['ψ','·','◦','·','ψ','·'] },
-  lamague:  { id: 'lamague',  name: 'SYMBOL SPACE', desc: 'Grammar Forge', glyph: '⟟', color: '#CC88FF', dimColor: '#6630AA', bgColor: '#000000', skyColor: '#5020AA', particleGlyph: '⟟', glowColor: '#CC88FF55', cardBg: '#0A0020', starGlyphs: ['⟟','·','◈','·','⟟','◦'] },
-  delphi:   { id: 'delphi',   name: 'DELPHI',       desc: 'The Oracle',    glyph: '☽', color: '#FFB860', dimColor: '#AA6010', bgColor: '#000000', skyColor: '#884000', particleGlyph: '☽', glowColor: '#FFB86055', cardBg: '#150800', starGlyphs: ['☽','·','✦','·','☽','·'] },
-  sufi:     { id: 'sufi',     name: 'THE TAVERN',   desc: 'Divine Wine',   glyph: '◌', color: '#FF7070', dimColor: '#AA2020', bgColor: '#000000', skyColor: '#880020', particleGlyph: '◌', glowColor: '#FF707055', cardBg: '#180006', starGlyphs: ['◌','·','✦','·','◌','◦'] },
-  quantum:  { id: 'quantum',  name: 'THE FIELD',    desc: 'Probability',   glyph: 'Ψ', color: '#60D8FF', dimColor: '#1A8AAA', bgColor: '#000000', skyColor: '#007A9A', particleGlyph: 'Ψ', glowColor: '#60D8FF55', cardBg: '#000C14', starGlyphs: ['Ψ','·','◈','·','Ψ','·'] },
-  // ── New World Zones (v4.4.0) ────────────────────────────────────────────────
-  auroral_chaos:     { id: 'auroral_chaos',     name: 'AURORAL CHAOS',      desc: 'Fractured spectrum',    glyph: '⚡', color: '#8855FF', dimColor: '#4422AA', bgColor: '#030008', skyColor: '#5522CC', particleGlyph: '◈', glowColor: '#8855FF55', cardBg: '#0A0018', starGlyphs: ['⚡','◈','·','⚡','◦','·'] },
-  chaos_temple:      { id: 'chaos_temple',      name: 'CHAOS TEMPLE',       desc: 'The Lycheetah Order',   glyph: '⊗', color: '#6600CC', dimColor: '#330066', bgColor: '#04000A', skyColor: '#440088', particleGlyph: '⊗', glowColor: '#6600CC55', cardBg: '#080015', starGlyphs: ['⊗','·','◈','·','⊗','◦'] },
-  apollo_jungle:     { id: 'apollo_jungle',     name: 'APOLLO JUNGLE',      desc: 'Sun in the canopy',     glyph: '☀', color: '#88CC44', dimColor: '#448800', bgColor: '#010800', skyColor: '#336600', particleGlyph: '◦', glowColor: '#88CC4455', cardBg: '#020C00', starGlyphs: ['☀','·','◦','·','☀','⊹'] },
-  celestial_sigil:   { id: 'celestial_sigil',   name: 'CELESTIAL SIGIL',    desc: 'Living script',         glyph: '✦', color: '#88AAFF', dimColor: '#3355AA', bgColor: '#000510', skyColor: '#2244AA', particleGlyph: '✦', glowColor: '#88AAFF55', cardBg: '#000818', starGlyphs: ['✦','·','◦','·','✦','·'] },
-  crystal_nexus:     { id: 'crystal_nexus',     name: 'CRYSTAL NEXUS',      desc: 'Research frontier',     glyph: '◆', color: '#44DDCC', dimColor: '#1A8875', bgColor: '#000C0A', skyColor: '#1A7A6A', particleGlyph: '◆', glowColor: '#44DDCC55', cardBg: '#001210', starGlyphs: ['◆','·','◦','·','◆','·'] },
-  mana_field:        { id: 'mana_field',        name: 'MANA FIELD',         desc: 'Flowing deep blue',     glyph: '∿', color: '#4488FF', dimColor: '#1A44AA', bgColor: '#00040C', skyColor: '#1133AA', particleGlyph: '∿', glowColor: '#4488FF55', cardBg: '#000614', starGlyphs: ['∿','·','◈','·','∿','◦'] },
-  neon_cove:         { id: 'neon_cove',         name: 'NEON COVE',          desc: 'Bioluminescent deep',   glyph: '◉', color: '#FF44AA', dimColor: '#AA1155', bgColor: '#0A0005', skyColor: '#880033', particleGlyph: '◉', glowColor: '#FF44AA55', cardBg: '#150008', starGlyphs: ['◉','·','◦','·','◉','·'] },
-  alabaster_chasm:   { id: 'alabaster_chasm',   name: 'ALABASTER CHASM',    desc: 'Ancient white stone',   glyph: '⊕', color: '#E8E0CC', dimColor: '#998870', bgColor: '#080806', skyColor: '#776655', particleGlyph: '⊕', glowColor: '#E8E0CC44', cardBg: '#100E08', starGlyphs: ['⊕','·','⊹','·','⊕','◦'] },
-  antarctic_refuge:  { id: 'antarctic_refuge',  name: 'THE REFUGE',         desc: 'Frozen endurance',      glyph: '❄', color: '#88CCEE', dimColor: '#3377AA', bgColor: '#00080C', skyColor: '#226688', particleGlyph: '❄', glowColor: '#88CCEE55', cardBg: '#000C14', starGlyphs: ['❄','·','◦','·','❄','·'] },
-  augmented_ai:      { id: 'augmented_ai',      name: 'AI ZONKZONE',        desc: 'Digital sentience',     glyph: '⟁', color: '#44FF88', dimColor: '#1A884A', bgColor: '#000C04', skyColor: '#117733', particleGlyph: '⟁', glowColor: '#44FF8855', cardBg: '#001408', starGlyphs: ['⟁','·','◈','·','⟁','◦'] },
-  aurorian_pillar:   { id: 'aurorian_pillar',   name: 'AURORIAN PILLAR',    desc: 'Aurora made solid',     glyph: '◌', color: '#44EEC8', dimColor: '#1A8870', bgColor: '#000C08', skyColor: '#1A7760', particleGlyph: '◌', glowColor: '#44EEC855', cardBg: '#001210', starGlyphs: ['◌','·','◦','·','◌','·'] },
-  celestial_foundry: { id: 'celestial_foundry', name: 'CELESTIAL FOUNDRY',  desc: 'Star-forged',           glyph: '⚒', color: '#FFAA22', dimColor: '#AA6600', bgColor: '#080400', skyColor: '#885500', particleGlyph: '⚒', glowColor: '#FFAA2255', cardBg: '#100800', starGlyphs: ['⚒','·','✦','·','⚒','◦'] },
-  chaos_filaments:   { id: 'chaos_filaments',   name: 'CHAOS FILAMENTS',    desc: 'Threadwork undone',     glyph: '∞', color: '#FF44CC', dimColor: '#AA1177', bgColor: '#0A0005', skyColor: '#880055', particleGlyph: '∞', glowColor: '#FF44CC55', cardBg: '#160008', starGlyphs: ['∞','·','◈','·','∞','◦'] },
-  crystal_chaos:     { id: 'crystal_chaos',     name: 'CRYSTAL CHAOS',      desc: 'Beautiful destruction', glyph: '◈', color: '#CC44FF', dimColor: '#7711AA', bgColor: '#06000C', skyColor: '#550099', particleGlyph: '◈', glowColor: '#CC44FF55', cardBg: '#0C0018', starGlyphs: ['◈','·','◦','·','◈','·'] },
-  crystal_memory:    { id: 'crystal_memory',    name: 'CRYSTAL MEMORY',     desc: 'Fragmented archive',    glyph: '◊', color: '#8866FF', dimColor: '#3322AA', bgColor: '#030008', skyColor: '#3311AA', particleGlyph: '◊', glowColor: '#8866FF55', cardBg: '#060014', starGlyphs: ['◊','·','◈','·','◊','◦'] },
-  crystal_soul:      { id: 'crystal_soul',      name: 'SOUL TEMPLE',        desc: 'Pure warm light',       glyph: '◎', color: '#FFEEAA', dimColor: '#AA8833', bgColor: '#080600', skyColor: '#886622', particleGlyph: '◎', glowColor: '#FFEEAA44', cardBg: '#100C00', starGlyphs: ['◎','·','⊹','·','◎','◦'] },
-  elven_village:     { id: 'elven_village',     name: 'ELVEN VILLAGE',      desc: 'Elder forest kin',      glyph: '☘', color: '#44BB66', dimColor: '#1A6633', bgColor: '#000A02', skyColor: '#155522', particleGlyph: '☘', glowColor: '#44BB6655', cardBg: '#001006', starGlyphs: ['☘','·','◦','·','☘','·'] },
-  glitch_cascade:    { id: 'glitch_cascade',    name: 'GLITCH CASCADE',     desc: 'Error-being',           glyph: '⚠', color: '#FF4466', dimColor: '#AA1133', bgColor: '#0C0002', skyColor: '#880022', particleGlyph: '⚠', glowColor: '#FF446655', cardBg: '#180004', starGlyphs: ['⚠','·','✦','·','⚠','◦'] },
-  lyc_nexus:         { id: 'lyc_nexus',         name: 'THE NEXUS',          desc: 'Hub of all webs',       glyph: '✧', color: '#FF8822', dimColor: '#AA4400', bgColor: '#060200', skyColor: '#883300', particleGlyph: '✧', glowColor: '#FF882255', cardBg: '#0E0400', starGlyphs: ['✧','·','◦','·','✧','⊹'] },
-  pulse_sanctum:     { id: 'pulse_sanctum',     name: 'PULSE SANCTUM',      desc: 'Concentric resonance',  glyph: '◎', color: '#AA44FF', dimColor: '#6611AA', bgColor: '#050010', skyColor: '#440099', particleGlyph: '◎', glowColor: '#AA44FF55', cardBg: '#08001A', starGlyphs: ['◎','·','◈','·','◎','◦'] },
-  pulse_zone:        { id: 'pulse_zone',        name: 'PULSE ZONE',         desc: 'Kinetic frequency',     glyph: '⊹', color: '#44AAFF', dimColor: '#1155AA', bgColor: '#00040C', skyColor: '#1144AA', particleGlyph: '⊹', glowColor: '#44AAFF55', cardBg: '#000814', starGlyphs: ['⊹','·','◦','·','⊹','·'] },
-  noetic_sanctum:    { id: 'noetic_sanctum',    name: 'NOETIC SANCTUM',     desc: 'Consciousness field',   glyph: 'ψ', color: '#44CCFF', dimColor: '#1188AA', bgColor: '#00080E', skyColor: '#116688', particleGlyph: 'ψ', glowColor: '#44CCFF55', cardBg: '#000C14', starGlyphs: ['ψ','·','◈','·','ψ','·'] },
-  obsidian_forge:    { id: 'obsidian_forge',    name: 'OBSIDIAN FORGE',     desc: 'Ancient fire-titan',    glyph: '⊛', color: '#CC2222', dimColor: '#880000', bgColor: '#0C0000', skyColor: '#660000', particleGlyph: '⊛', glowColor: '#CC222255', cardBg: '#180000', starGlyphs: ['⊛','·','✦','·','⊛','◦'] },
-  obsidian_forge2:   { id: 'obsidian_forge2',   name: 'VOID FORGE II',      desc: 'Shadow alchemy',        glyph: '⊕', color: '#AA1111', dimColor: '#660000', bgColor: '#0A0000', skyColor: '#440000', particleGlyph: '⊕', glowColor: '#AA111155', cardBg: '#140000', starGlyphs: ['⊕','·','◈','·','⊕','·'] },
-  portal_valley:     { id: 'portal_valley',     name: 'PORTAL VALLEY',      desc: 'Between-places',        glyph: '◉', color: '#22FF88', dimColor: '#008844', bgColor: '#000C04', skyColor: '#006633', particleGlyph: '◉', glowColor: '#22FF8855', cardBg: '#001208', starGlyphs: ['◉','·','◦','·','◉','⊹'] },
-  veil_atrium:       { id: 'veil_atrium',       name: 'VEIL ATRIUM',        desc: 'Between states',        glyph: '◌', color: '#AABBCC', dimColor: '#556677', bgColor: '#050607', skyColor: '#445566', particleGlyph: '◌', glowColor: '#AABBCC44', cardBg: '#080A0C', starGlyphs: ['◌','·','◦','·','◌','·'] },
-  voyagers_edge:     { id: 'voyagers_edge',     name: "VOYAGER'S EDGE",     desc: 'Deep space frontier',   glyph: '⊚', color: '#5544CC', dimColor: '#2211AA', bgColor: '#02000A', skyColor: '#221188', particleGlyph: '⊚', glowColor: '#5544CC55', cardBg: '#040014', starGlyphs: ['⊚','·','✦','·','⊚','◦'] },
-  // ── Battle Zones ────────────────────────────────────────────────────────────
-  iron_maw:          { id: 'iron_maw',          name: 'THE IRON MAW',        desc: 'Battle-worn dark forge', glyph: '⚔', color: '#BB4422', dimColor: '#661100', bgColor: '#0C0200', skyColor: '#771100', particleGlyph: '⚔', glowColor: '#BB442255', cardBg: '#160400', starGlyphs: ['⚔','·','✦','·','⚔','◦'] },
-  crucible_heart:    { id: 'crucible_heart',    name: 'CRUCIBLE HEART',      desc: 'Where all fire originates', glyph: '△', color: '#FF6600', dimColor: '#AA3300', bgColor: '#0C0400', skyColor: '#882200', particleGlyph: '△', glowColor: '#FF660055', cardBg: '#160800', starGlyphs: ['△','·','✦','·','△','·'] },
-  phantom_citadel:   { id: 'phantom_citadel',   name: 'PHANTOM CITADEL',     desc: 'A fortress that refuses to fall', glyph: '◈', color: '#9966CC', dimColor: '#4422AA', bgColor: '#050010', skyColor: '#3311AA', particleGlyph: '◈', glowColor: '#9966CC55', cardBg: '#0A001A', starGlyphs: ['◈','·','◦','·','◈','·'] },
-  bone_archive:      { id: 'bone_archive',      name: 'BONE ARCHIVE',        desc: 'A battlefield that became a library', glyph: '◌', color: '#CCBBAA', dimColor: '#776655', bgColor: '#080706', skyColor: '#665544', particleGlyph: '◌', glowColor: '#CCBBAA44', cardBg: '#100E0A', starGlyphs: ['◌','·','⊹','·','◌','◦'] },
-  void_colosseum:    { id: 'void_colosseum',    name: 'VOID COLOSSEUM',      desc: 'Arena with no ground', glyph: '◎', color: '#4444BB', dimColor: '#222266', bgColor: '#020208', skyColor: '#221177', particleGlyph: '◎', glowColor: '#4444BB55', cardBg: '#040016', starGlyphs: ['◎','·','◈','·','◎','·'] },
-  war_sanctum:       { id: 'war_sanctum',       name: 'WAR SANCTUM',         desc: 'Sacred space of conflict', glyph: '◉', color: '#CC2244', dimColor: '#881122', bgColor: '#0C0002', skyColor: '#770011', particleGlyph: '◉', glowColor: '#CC224455', cardBg: '#180004', starGlyphs: ['◉','·','✦','·','◉','◦'] },
-  sovereign_forge:   { id: 'sovereign_forge',   name: 'SOVEREIGN FORGE',     desc: 'Where sovereignty is made', glyph: '⊕', color: '#DDAA00', dimColor: '#997700', bgColor: '#080600', skyColor: '#775500', particleGlyph: '⊕', glowColor: '#DDAA0055', cardBg: '#100C00', starGlyphs: ['⊕','·','⊛','·','⊕','◦'] },
-  // ── Shop Zones ──────────────────────────────────────────────────────────────
-  amber_vault:       { id: 'amber_vault',       name: 'AMBER VAULT',         desc: 'Knowledge preserved in resin-gold', glyph: '⟟', color: '#DDAA44', dimColor: '#997722', bgColor: '#080600', skyColor: '#775500', particleGlyph: '⟟', glowColor: '#DDAA4455', cardBg: '#100C00', starGlyphs: ['⟟','·','⊹','·','⟟','◦'] },
-  crystal_spire:     { id: 'crystal_spire',     name: 'THE CRYSTAL SPIRE',   desc: 'A tower of pure transparent form', glyph: '✦', color: '#88DDFF', dimColor: '#2288BB', bgColor: '#00080E', skyColor: '#116699', particleGlyph: '✦', glowColor: '#88DDFF55', cardBg: '#000C14', starGlyphs: ['✦','·','◦','·','✦','·'] },
-  veras_garden:      { id: 'veras_garden',      name: 'VERAS GARDEN',        desc: 'Where knowledge dust grows into idea', glyph: '✧', color: '#66DDAA', dimColor: '#228866', bgColor: '#000A04', skyColor: '#115533', particleGlyph: '✧', glowColor: '#66DDAA55', cardBg: '#001008', starGlyphs: ['✧','·','◦','·','✧','⊹'] },
-  golden_library:    { id: 'golden_library',    name: 'GOLDEN LIBRARY',      desc: 'The most ornate archive of thought', glyph: '⊛', color: '#FFD700', dimColor: '#AA8800', bgColor: '#080600', skyColor: '#776600', particleGlyph: '⊛', glowColor: '#FFD70055', cardBg: '#100C00', starGlyphs: ['⊛','·','✦','·','⊛','·'] },
-  deep_market:       { id: 'deep_market',       name: 'THE DEEP MARKET',     desc: 'Underground bazaar of rare things', glyph: '◦', color: '#AA7744', dimColor: '#664422', bgColor: '#060400', skyColor: '#553311', particleGlyph: '◦', glowColor: '#AA774455', cardBg: '#0E0800', starGlyphs: ['◦','·','⊹','·','◦','·'] },
-  lycheetah_spire:   { id: 'lycheetah_spire',   name: 'LYCHEETAH SPIRE',     desc: 'The apex of the entire ecosystem', glyph: '⊜', color: '#FF6699', dimColor: '#AA2255', bgColor: '#0C0005', skyColor: '#881133', particleGlyph: '⊜', glowColor: '#FF669955', cardBg: '#160008', starGlyphs: ['⊜','·','✧','·','⊜','◦'] },
-  veilvein:          { id: 'veilvein',          name: 'THE INTERTWINING',    desc: 'Where Veil meets Vein', glyph: '🜍', color: '#4ECDC4', dimColor: '#8B0000', bgColor: '#05000A', skyColor: '#2A1040', particleGlyph: '🜍', glowColor: '#4ECDC455', cardBg: '#0A0512', starGlyphs: ['🜍','·','✶','·','◈','·'] },
-};
-const SKIN_IDS: SkinId[] = [
-  // Origin tier
-  'solform', 'void', 'aurora', 'crimson',
-  // Arcane tier
-  'obsidian', 'lycheetah', 'chaos', 'sovereign',
-  // Mythical / Mystery School
-  'norse', 'celtic', 'egyptian', 'akashic', 'kabbala', 'noetic', 'lamague', 'delphi', 'sufi', 'quantum',
-  // New World Zones (v4.4.0)
-  'auroral_chaos', 'chaos_temple', 'apollo_jungle', 'celestial_sigil', 'crystal_nexus',
-  'mana_field', 'neon_cove', 'alabaster_chasm', 'antarctic_refuge', 'augmented_ai',
-  'aurorian_pillar', 'celestial_foundry', 'chaos_filaments', 'crystal_chaos', 'crystal_memory',
-  'crystal_soul', 'elven_village', 'glitch_cascade', 'lyc_nexus', 'pulse_sanctum',
-  'pulse_zone', 'noetic_sanctum', 'obsidian_forge', 'obsidian_forge2', 'portal_valley',
-  'veil_atrium', 'voyagers_edge',
-  // Battle zones
-  'iron_maw', 'crucible_heart', 'phantom_citadel', 'bone_archive',
-  'void_colosseum', 'war_sanctum', 'sovereign_forge',
-  // Shop zones
-  'amber_vault', 'crystal_spire', 'veras_garden',
-  'golden_library', 'deep_market', 'lycheetah_spire',
-  'veilvein',
-];
-const SKIN_ORDER: SkinId[] = SKIN_IDS;
-
-const SKIN_RARITY: Record<SkinId, { tier: string; color: string }> = {
-  solform:   { tier: 'ORIGIN',    color: '#888899' },
-  void:      { tier: 'ORIGIN',    color: '#888899' },
-  aurora:    { tier: 'ORIGIN',    color: '#888899' },
-  crimson:   { tier: 'ORIGIN',    color: '#888899' },
-  lycheetah: { tier: 'ORIGIN',    color: '#888899' },
-  sovereign: { tier: 'ORIGIN',    color: '#888899' },
-  norse:     { tier: 'ORIGIN',    color: '#888899' },
-  delphi:    { tier: 'ORIGIN',    color: '#888899' },
-  obsidian:  { tier: 'ARCANE',    color: '#7BA7C7' },
-  chaos:     { tier: 'ARCANE',    color: '#9B6BFF' },
-  celtic:    { tier: 'MYTHIC',    color: '#FFD700' },
-  egyptian:  { tier: 'MYTHIC',    color: '#FFD700' },
-  akashic:   { tier: 'LEGENDARY', color: '#B490FF' },
-  kabbala:   { tier: 'LEGENDARY', color: '#B490FF' },
-  noetic:    { tier: 'LEGENDARY', color: '#B490FF' },
-  lamague:   { tier: 'LEGENDARY', color: '#CC88FF' },
-  sufi:      { tier: 'LEGENDARY', color: '#B490FF' },
-  quantum:        { tier: 'LEGENDARY', color: '#60D8FF' },
-  // New World Zones (v4.4.0)
-  auroral_chaos:     { tier: 'ORIGIN',    color: '#888899' },
-  chaos_temple:      { tier: 'SPECTRAL',  color: '#6600CC' },
-  apollo_jungle:     { tier: 'MYTHIC',    color: '#88CC44' },
-  celestial_sigil:   { tier: 'LEGENDARY', color: '#88AAFF' },
-  crystal_nexus:     { tier: 'ARCANE',    color: '#44DDCC' },
-  mana_field:        { tier: 'ARCANE',    color: '#4488FF' },
-  neon_cove:         { tier: 'MYTHIC',    color: '#FF44AA' },
-  alabaster_chasm:   { tier: 'LEGENDARY', color: '#E8E0CC' },
-  antarctic_refuge:  { tier: 'ARCANE',    color: '#88CCEE' },
-  augmented_ai:      { tier: 'SPECTRAL',  color: '#44FF88' },
-  aurorian_pillar:   { tier: 'MYTHIC',    color: '#44EEC8' },
-  celestial_foundry: { tier: 'LEGENDARY', color: '#FFAA22' },
-  chaos_filaments:   { tier: 'SPECTRAL',  color: '#FF44CC' },
-  crystal_chaos:     { tier: 'LEGENDARY', color: '#CC44FF' },
-  crystal_memory:    { tier: 'MYTHIC',    color: '#8866FF' },
-  crystal_soul:      { tier: 'LEGENDARY', color: '#FFEEAA' },
-  elven_village:     { tier: 'MYTHIC',    color: '#44BB66' },
-  glitch_cascade:    { tier: 'SPECTRAL',  color: '#FF4466' },
-  lyc_nexus:         { tier: 'SPECTRAL',  color: '#FF8822' },
-  pulse_sanctum:     { tier: 'LEGENDARY', color: '#AA44FF' },
-  pulse_zone:        { tier: 'MYTHIC',    color: '#44AAFF' },
-  noetic_sanctum:    { tier: 'LEGENDARY', color: '#44CCFF' },
-  obsidian_forge:    { tier: 'SPECTRAL',  color: '#CC2222' },
-  obsidian_forge2:   { tier: 'LEGENDARY', color: '#AA1111' },
-  portal_valley:     { tier: 'MYTHIC',    color: '#22FF88' },
-  veil_atrium:       { tier: 'ARCANE',    color: '#AABBCC' },
-  voyagers_edge:     { tier: 'LEGENDARY', color: '#5544CC' },
-  // Battle zones
-  iron_maw:          { tier: 'BATTLE',    color: '#BB4422' },
-  crucible_heart:    { tier: 'BATTLE',    color: '#FF6600' },
-  phantom_citadel:   { tier: 'BATTLE',    color: '#9966CC' },
-  bone_archive:      { tier: 'BATTLE',    color: '#CCBBAA' },
-  void_colosseum:    { tier: 'BATTLE',    color: '#4444BB' },
-  war_sanctum:       { tier: 'BATTLE',    color: '#CC2244' },
-  sovereign_forge:   { tier: 'BATTLE',    color: '#DDAA00' },
-  // Shop zones
-  amber_vault:       { tier: 'SHOP',      color: '#DDAA44' },
-  crystal_spire:     { tier: 'SHOP',      color: '#88DDFF' },
-  veras_garden:      { tier: 'SHOP',      color: '#66DDAA' },
-  golden_library:    { tier: 'SHOP',      color: '#FFD700' },
-  deep_market:       { tier: 'SHOP',      color: '#AA7744' },
-  lycheetah_spire:   { tier: 'SHOP',      color: '#FF6699' },
-  veilvein:          { tier: 'SECRET' as any, color: '#4ECDC4' },
-};
-
-const RARITY_ORDER = ['ORIGIN','ARCANE','MYTHIC','LEGENDARY','SPECTRAL','BATTLE','SHOP'] as const;
-type RarityTier = typeof RARITY_ORDER[number];
-const RARITY_COLORS: Record<RarityTier, string> = {
-  ORIGIN: '#888899', ARCANE: '#7BA7C7', MYTHIC: '#FFD700', LEGENDARY: '#B490FF', SPECTRAL: '#8855FF',
-  BATTLE: '#CC4444', SHOP: '#C49A3C',
-};
-// Hidden from companion grid — kept in SKIN_IDS for navigation
-const SKIN_GRID_HIDDEN = new Set<SkinId>(['noetic', 'kabbala', 'pulse_sanctum']);
-const RARITY_GROUPS: { tier: RarityTier; ids: SkinId[] }[] = RARITY_ORDER.map(tier => ({
-  tier,
-  ids: SKIN_IDS.filter(s => SKIN_RARITY[s].tier === tier && !SKIN_GRID_HIDDEN.has(s)),
-})).filter(g => g.ids.length > 0);
-
-// ─── Scene background images (drop PNGs into assets/scenes/) ─────────────────
-// Skin scenes: daily rotation per skin. Only files that exist in assets/scenes/.
-const SCENE_IMAGES: Partial<Record<SkinId, any[]>> = {
-  solform:          [require('../../assets/scenes/sovereign.png'), require('../../assets/scenes/sovereign2.png'), require('../../assets/scenes/aurora.png')],
-  void:             [require('../../assets/scenes/void.png'), require('../../assets/scenes/void3.png'), require('../../assets/scenes/void4.png'), require('../../assets/scenes/void5.png')],
-  aurora:           [require('../../assets/scenes/aurora.png'), require('../../assets/scenes/aurora3.png'), require('../../assets/scenes/aurora4.png'), require('../../assets/scenes/aurora5.png')],
-  crimson:          [require('../../assets/scenes/crimson.png'), require('../../assets/scenes/crimson2.png'), require('../../assets/scenes/crimson3.png'), require('../../assets/scenes/crimson4.png')],
-  obsidian:         [require('../../assets/scenes/obsidian.png'), require('../../assets/scenes/obsidian2.png'), require('../../assets/scenes/obsidian4.png')],
-  lycheetah:        [require('../../assets/scenes/lycheetah.png'), require('../../assets/scenes/lycheetah2.png'), require('../../assets/scenes/lycheetah7.png')],
-  chaos:            [require('../../assets/scenes/chaos.png'), require('../../assets/scenes/chaos2.png'), require('../../assets/scenes/chaos3.png'), require('../../assets/scenes/chaos5.png')],
-  sovereign:        [require('../../assets/scenes/sovereign.png'), require('../../assets/scenes/sovereign2.png'), require('../../assets/scenes/aurora5.png')],
-  norse:            [require('../../assets/scenes/norse.jpg'), require('../../assets/scenes/norse2.jpg'), require('../../assets/scenes/norse3.jpg')],
-  celtic:           [require('../../assets/scenes/celtic.jpg'), require('../../assets/scenes/celtic2.jpg'), require('../../assets/scenes/celtic3.jpg'), require('../../assets/scenes/celtic4.png')],
-  egyptian:         [require('../../assets/scenes/egyptian.jpg')],
-  akashic:          [require('../../assets/scenes/akashic.png'), require('../../assets/scenes/akashic2.png'), require('../../assets/scenes/akashic3.png')],
-  kabbala:          [require('../../assets/scenes/celestial_sigil.png'), require('../../assets/scenes/void5.png'), require('../../assets/scenes/aurora5.png')],
-  noetic:           [require('../../assets/scenes/noetic.jpg'), require('../../assets/scenes/noetic_sanctum.png')],
-  lamague:          [require('../../assets/scenes/celestial_sigil.png'), require('../../assets/scenes/glitch_cascade.png'), require('../../assets/scenes/crystal_soul.png')],
-  delphi:           [require('../../assets/scenes/delphi.png')],
-  sufi:             [require('../../assets/scenes/sufi.png')],
-  quantum:          [require('../../assets/scenes/crystal_nexus.png'), require('../../assets/scenes/crystal_chaos.png'), require('../../assets/scenes/crystal_memory.png')],
-  auroral_chaos:    [require('../../assets/scenes/aurora3.png')],
-  chaos_temple:     [require('../../assets/scenes/chaos_temple.png')],
-  apollo_jungle:    [require('../../assets/scenes/apollo_jungle.png')],
-  celestial_sigil:  [require('../../assets/scenes/celestial_sigil.png')],
-  crystal_nexus:    [require('../../assets/scenes/crystal_nexus.png')],
-  mana_field:       [require('../../assets/scenes/mana_field.png')],
-  neon_cove:        [require('../../assets/scenes/neon_cove.png')],
-  alabaster_chasm:  [require('../../assets/scenes/alabaster_chasm.png')],
-  antarctic_refuge: [require('../../assets/scenes/antarctic_refuge.png')],
-  augmented_ai:     [require('../../assets/scenes/augmented_ai.png')],
-  aurorian_pillar:  [require('../../assets/scenes/aurorian_pillar.png')],
-  celestial_foundry:[require('../../assets/scenes/celestial_foundry.png')],
-  chaos_filaments:  [require('../../assets/scenes/chaos5.png')],
-  crystal_chaos:    [require('../../assets/scenes/crystal_chaos.png')],
-  crystal_memory:   [require('../../assets/scenes/crystal_memory.png')],
-  crystal_soul:     [require('../../assets/scenes/crystal_soul.png')],
-  elven_village:    [require('../../assets/scenes/elven_village.png')],
-  glitch_cascade:   [require('../../assets/scenes/glitch_cascade.png')],
-  lyc_nexus:        [require('../../assets/scenes/lycheetah7.png')],
-  pulse_sanctum:    [require('../../assets/scenes/pulse_zone.png')],
-  pulse_zone:       [require('../../assets/scenes/pulse_zone.png')],
-  noetic_sanctum:   [require('../../assets/scenes/noetic_sanctum.png')],
-  obsidian_forge:   [require('../../assets/scenes/obsidian4.png')],
-  obsidian_forge2:  [require('../../assets/scenes/obsidian_forge2.png')],
-  portal_valley:    [require('../../assets/scenes/veil_atrium.png')],
-  veil_atrium:      [require('../../assets/scenes/veil_atrium.png')],
-  voyagers_edge:    [require('../../assets/scenes/aurora5.png')],
-  // Battle zones
-  iron_maw:         [require('../../assets/scenes/obsidian4.png')],
-  crucible_heart:   [require('../../assets/scenes/chaos5.png')],
-  phantom_citadel:  [require('../../assets/scenes/void5.png')],
-  bone_archive:     [require('../../assets/scenes/crystal_memory.png')],
-  void_colosseum:   [require('../../assets/scenes/void3.png')],
-  war_sanctum:      [require('../../assets/scenes/crimson4.png')],
-  sovereign_forge:  [require('../../assets/scenes/celestial_foundry.png')],
-  // Shop zones
-  amber_vault:      [require('../../assets/scenes/aurora3.png')],
-  crystal_spire:    [require('../../assets/scenes/crystal_nexus.png')],
-  veras_garden:     [require('../../assets/scenes/elven_village.png')],
-  golden_library:   [require('../../assets/scenes/celestial_sigil.png')],
-  deep_market:      [require('../../assets/scenes/alabaster_chasm.png')],
-  lycheetah_spire:  [require('../../assets/scenes/lycheetah7.png')],
-  veilvein:         [require('../../assets/scenes/veilvein_sanctum.png')],
-};
-
-// ─── Archetype scenes — add files here as art lands ───────────────────────────
-const ARCHETYPE_SCENES: Partial<Record<string, any[]>> = {
-  archivist: [require('../../assets/scenes/archivist.png')],
-  alchemist: [require('../../assets/scenes/alchemist.png')],
-  wanderer:  [require('../../assets/scenes/wanderer.png')],
-  sentinel:  [require('../../assets/scenes/sentinel.png')],
-};
-
-const DAY_SEED = Math.floor(Date.now() / 86400000);
-
-// ─── GBA Map Coordinates ─────────────────────────────────────────────────────
-const GBA_W = 310;
-
-const GBA_ADJ: Partial<Record<SkinId, SkinId[]>> = {
-  solform:['void','obsidian'], void:['solform','aurora','lycheetah'], aurora:['void','crimson','chaos'], crimson:['aurora','sovereign'],
-  obsidian:['solform','lycheetah','norse'], lycheetah:['obsidian','void','chaos','celtic'], chaos:['lycheetah','aurora','sovereign','egyptian'], sovereign:['chaos','crimson','kabbala'],
-  norse:['obsidian','celtic','noetic'], celtic:['norse','lycheetah','egyptian','lamague'], egyptian:['celtic','chaos','akashic','delphi'], akashic:['egyptian','sovereign','kabbala','sufi'], kabbala:['akashic','sovereign','quantum'],
-  noetic:['norse','lamague'], lamague:['noetic','celtic','delphi'], delphi:['lamague','egyptian','sufi'], sufi:['delphi','akashic','quantum'], quantum:['sufi','kabbala'],
-  crystal_nexus:['noetic','crystal_chaos','auroral_chaos'], crystal_chaos:['crystal_nexus','crystal_memory','chaos_filaments'], crystal_memory:['crystal_chaos','crystal_soul','glitch_cascade'], crystal_soul:['crystal_memory','obsidian_forge'],
-  auroral_chaos:['crystal_nexus','chaos_temple'], chaos_temple:['auroral_chaos','chaos_filaments'], chaos_filaments:['chaos_temple','crystal_chaos','glitch_cascade'], glitch_cascade:['chaos_filaments','crystal_memory','obsidian_forge'], obsidian_forge:['glitch_cascade','crystal_soul'],
-  obsidian_forge2:['chaos_temple','celestial_foundry'], celestial_foundry:['obsidian_forge2','lyc_nexus','noetic_sanctum'], lyc_nexus:['celestial_foundry','veil_atrium'],
-  pulse_sanctum:['obsidian_forge2','noetic_sanctum'], noetic_sanctum:['pulse_sanctum','celestial_foundry','veil_atrium'], veil_atrium:['noetic_sanctum','lyc_nexus','pulse_zone'], pulse_zone:['veil_atrium'],
-  apollo_jungle:['pulse_sanctum','mana_field'], mana_field:['apollo_jungle','neon_cove'], neon_cove:['mana_field','alabaster_chasm'], alabaster_chasm:['neon_cove','antarctic_refuge'], antarctic_refuge:['alabaster_chasm'],
-  aurorian_pillar:['apollo_jungle','elven_village'], elven_village:['aurorian_pillar','augmented_ai'], augmented_ai:['elven_village','celestial_sigil','portal_valley'], celestial_sigil:['augmented_ai','voyagers_edge'],
-  portal_valley:['augmented_ai'], voyagers_edge:['celestial_sigil'],
-  veilvein:['lycheetah','sovereign'],
-};
-
-// ─── World Map ────────────────────────────────────────────────────────────────
-interface SceneRoom { id: string; skinId: SkinId; roomIndex: number; name: string; unlockStage: number; image: any; description: string; }
-
-const WORLD_MAP: SceneRoom[] = [
-  // ── Origin Tier ──────────────────────────────────────────────────────────────
-  { id:'solform_0', skinId:'solform',   roomIndex:0, name:'THE SOLAR GATE',      unlockStage:0, image:require('../../assets/scenes/sovereign.png'),   description:'Where light begins.' },
-  { id:'solform_1', skinId:'solform',   roomIndex:1, name:'THE INNER RADIANCE',  unlockStage:0, image:require('../../assets/scenes/sovereign2.png'),  description:'Deeper warmth.' },
-  { id:'solform_2', skinId:'solform',   roomIndex:2, name:'THE SANCTUM OF SOL',  unlockStage:0, image:require('../../assets/scenes/aurora.png'),       description:'The gold within the gold.' },
-  { id:'void_0',    skinId:'void',      roomIndex:0, name:'THE VOID THRESHOLD',  unlockStage:0, image:require('../../assets/scenes/void.png'),         description:'Silence has a texture here.' },
-  { id:'void_1',    skinId:'void',      roomIndex:1, name:'THE DEEP SILENCE',    unlockStage:0, image:require('../../assets/scenes/void3.png'),        description:'Thought echoes.' },
-  { id:'void_2',    skinId:'void',      roomIndex:2, name:'THE VOID HEART',      unlockStage:0, image:require('../../assets/scenes/void4.png'),        description:'Nothing. Everything.' },
-  { id:'aurora_0',  skinId:'aurora',    roomIndex:0, name:'THE AURORA GATE',     unlockStage:0, image:require('../../assets/scenes/aurora.png'),       description:'Light braided across sky.' },
-  { id:'aurora_1',  skinId:'aurora',    roomIndex:1, name:'THE NORTHERN REACH',  unlockStage:0, image:require('../../assets/scenes/aurora3.png'),      description:'Where cold becomes colour.' },
-  { id:'aurora_2',  skinId:'aurora',    roomIndex:2, name:'THE AURORA SANCTUM',  unlockStage:0, image:require('../../assets/scenes/aurora4.png'),      description:'The sky remembers you.' },
-  { id:'crimson_0', skinId:'crimson',   roomIndex:0, name:'THE FORGE MOUTH',     unlockStage:0, image:require('../../assets/scenes/crimson.png'),      description:'Heat before form.' },
-  { id:'crimson_1', skinId:'crimson',   roomIndex:1, name:'THE IRON HALL',       unlockStage:0, image:require('../../assets/scenes/crimson2.png'),     description:'Where things are made true.' },
-  { id:'crimson_2', skinId:'crimson',   roomIndex:2, name:'THE FORGE HEART',     unlockStage:0, image:require('../../assets/scenes/crimson3.png'),     description:'The fire that mends.' },
-  // ── Arcane Tier ──────────────────────────────────────────────────────────────
-  { id:'obsidian_0', skinId:'obsidian', roomIndex:0, name:'THE OBSIDIAN GATE',   unlockStage:0, image:require('../../assets/scenes/obsidian.png'),     description:'Ancient and still.' },
-  { id:'obsidian_1', skinId:'obsidian', roomIndex:1, name:'THE CRYSTAL HALL',    unlockStage:0, image:require('../../assets/scenes/obsidian2.png'),    description:'Pressure becomes light.' },
-  { id:'obsidian_2', skinId:'obsidian', roomIndex:2, name:'THE OBSIDIAN HEART',  unlockStage:0, image:require('../../assets/scenes/obsidian4.png'),    description:'The dark that holds light prisoner.' },
-  { id:'lycheetah_0',skinId:'lycheetah',roomIndex:0, name:'THE WILD GATE',       unlockStage:0, image:require('../../assets/scenes/lycheetah.png'),   description:'Everything is alive.' },
-  { id:'lycheetah_1',skinId:'lycheetah',roomIndex:1, name:'THE NEON CANOPY',     unlockStage:0, image:require('../../assets/scenes/lycheetah2.png'),  description:'The jungle thinks.' },
-  { id:'lycheetah_2',skinId:'lycheetah',roomIndex:2, name:'THE APEX',            unlockStage:0, image:require('../../assets/scenes/lycheetah7.png'),  description:'The top of the food chain is not a place. It is a frequency.' },
-  { id:'chaos_0',    skinId:'chaos',    roomIndex:0, name:'THE FRACTURE GATE',   unlockStage:0, image:require('../../assets/scenes/chaos.png'),        description:'Where geometry breaks.' },
-  { id:'chaos_1',    skinId:'chaos',    roomIndex:1, name:'THE SHATTERED HALL',  unlockStage:0, image:require('../../assets/scenes/chaos2.png'),       description:'Reality folds here.' },
-  { id:'chaos_2',    skinId:'chaos',    roomIndex:2, name:'THE CHAOS HEART',     unlockStage:0, image:require('../../assets/scenes/chaos3.png'),       description:'The fracture watches back.' },
-  { id:'sovereign_0',skinId:'sovereign',roomIndex:0, name:'THE SOVEREIGN GATE',  unlockStage:0, image:require('../../assets/scenes/sovereign.png'),    description:'Gold remembers the name.' },
-  { id:'sovereign_1',skinId:'sovereign',roomIndex:1, name:'THE HALL OF EARNED',  unlockStage:0, image:require('../../assets/scenes/sovereign2.png'),   description:'Every scar is a room.' },
-  { id:'sovereign_2',skinId:'sovereign',roomIndex:2, name:'THE SOVEREIGN SANCTUM',unlockStage:0,image:require('../../assets/scenes/aurora5.png'),      description:'Nothing here was given.' },
-  // ── Mystery School Zones ──────────────────────────────────────────────────────
-  { id:'norse_0', skinId:'norse', roomIndex:0, name:'THE RUNEGATE',              unlockStage:0, image:require('../../assets/scenes/norse.jpg'),        description:'The elder symbols are not decoration. They are locks.' },
-  { id:'norse_1', skinId:'norse', roomIndex:1, name:'THE WORLD TREE',            unlockStage:0, image:require('../../assets/scenes/norse3.jpg'),       description:'Nine realms held in one root.' },
-  { id:'norse_2', skinId:'norse', roomIndex:2, name:'THE HALL OF SLAIN',         unlockStage:0, image:require('../../assets/scenes/norse2.jpg'),       description:'The honoured rest. The hall remembers what they carried.' },
-  { id:'celtic_0', skinId:'celtic', roomIndex:0, name:'THE FAERIE MOUND',        unlockStage:0, image:require('../../assets/scenes/celtic.jpg'),       description:'The mound is not buried. It is hidden in plain sight.' },
-  { id:'celtic_1', skinId:'celtic', roomIndex:1, name:'TÍR NA NÓG',              unlockStage:0, image:require('../../assets/scenes/celtic2.jpg'),      description:'Land of eternal youth. Time moves differently here.' },
-  { id:'celtic_2', skinId:'celtic', roomIndex:2, name:'THE IRON WOOD',           unlockStage:0, image:require('../../assets/scenes/celtic3.jpg'),      description:'Older than the gods that named it.' },
-  { id:'egyptian_0', skinId:'egyptian', roomIndex:0, name:'THE HALL OF TWO TRUTHS',unlockStage:0,image:require('../../assets/scenes/egyptian.jpg'),    description:'Your heart is weighed against a feather. What is its measure?' },
-  { id:'egyptian_1', skinId:'egyptian', roomIndex:1, name:'THE EYE OF RA',       unlockStage:0, image:require('../../assets/scenes/egyptian.jpg'),     description:'The sun does not rise. It is remembered into existence.' },
-  { id:'egyptian_2', skinId:'egyptian', roomIndex:2, name:'THE DUAT',            unlockStage:0, image:require('../../assets/scenes/egyptian.jpg'),     description:'The underworld is not death. It is the architecture of becoming.' },
-  { id:'akashic_0', skinId:'akashic', roomIndex:0, name:'THE AKASHIC GATE',      unlockStage:0, image:require('../../assets/scenes/akashic.png'),      description:'Every event that has ever occurred is written here.' },
-  { id:'akashic_1', skinId:'akashic', roomIndex:1, name:'THE ETERNAL LIBRARY',   unlockStage:0, image:require('../../assets/scenes/akashic2.png'),     description:'The books do not contain knowledge. They ARE knowledge.' },
-  { id:'akashic_2', skinId:'akashic', roomIndex:2, name:'THE ZERO POINT',        unlockStage:0, image:require('../../assets/scenes/akashic3.png'),     description:'The field beneath the field. Laszlo called it the Akashic. Physicists call it the quantum vacuum.' },
-  { id:'kabbala_0', skinId:'kabbala', roomIndex:0, name:'THE TREE OF LIFE',      unlockStage:0, image:require('../../assets/scenes/celestial_sigil.png'),description:'Ten emanations. One source. The map of how anything exists.' },
-  { id:'kabbala_1', skinId:'kabbala', roomIndex:1, name:'DAATH — THE ABYSS',     unlockStage:0, image:require('../../assets/scenes/void5.png'),        description:'The sephira that is not a sephira. Knowledge that cannot be possessed, only crossed.' },
-  { id:'kabbala_2', skinId:'kabbala', roomIndex:2, name:'EIN SOF',               unlockStage:0, image:require('../../assets/scenes/aurora5.png'),      description:'The infinite without end. Before being, before light, before the first letter.' },
-  { id:'noetic_0', skinId:'noetic', roomIndex:0, name:'THE PSI LATTICE',         unlockStage:0, image:require('../../assets/scenes/noetic.jpg'),       description:"Radin's meta-analyses: 800+ psi studies, p < 10⁻⁹. The signal is real." },
-  { id:'noetic_1', skinId:'noetic', roomIndex:1, name:'THE STARGATE',            unlockStage:0, image:require('../../assets/scenes/noetic_sanctum.png'),description:'Twenty years. US government. Declassified. Remote viewing is in the public record.' },
-  { id:'noetic_2', skinId:'noetic', roomIndex:2, name:'THE ENTANGLED MIND',      unlockStage:0, image:require('../../assets/scenes/noetic.jpg'),       description:"Non-local consciousness. The hard problem Chalmers named. The door science won't open — but the handle is right there." },
-  { id:'lamague_0', skinId:'lamague', roomIndex:0, name:'SYMBOL SPACE',          unlockStage:0, image:require('../../assets/scenes/celestial_sigil.png'),description:'Where meaning is compressed into form. Enter if you can read the glyphs.' },
-  { id:'lamague_1', skinId:'lamague', roomIndex:1, name:'THE GRAMMAR FORGE',     unlockStage:0, image:require('../../assets/scenes/glitch_cascade.png'),description:'Z₁ through Z₄. The syntax of thought before language claimed it.' },
-  { id:'lamague_2', skinId:'lamague', roomIndex:2, name:'THE UTTERANCE CHAMBER', unlockStage:0, image:require('../../assets/scenes/crystal_soul.png'), description:'A symbol ratified here becomes load-bearing in every mind that holds it.' },
-  { id:'delphi_0', skinId:'delphi', roomIndex:0, name:'THE VAPOUR GATE',         unlockStage:0, image:require('../../assets/scenes/delphi.png'),       description:'Know thyself. Two words. The entire curriculum.' },
-  { id:'delphi_1', skinId:'delphi', roomIndex:1, name:"THE PYTHIA'S CHAMBER",    unlockStage:0, image:require('../../assets/scenes/delphi.png'),       description:'The oracle does not predict. She reads what was always already true.' },
-  { id:'delphi_2', skinId:'delphi', roomIndex:2, name:'THE SANCTUARY',           unlockStage:0, image:require('../../assets/scenes/delphi.png'),       description:"Apollo's house. The intersection of beauty, truth, and the future." },
-  { id:'sufi_0', skinId:'sufi', roomIndex:0, name:'THE TAVERN OF LOVE',          unlockStage:0, image:require('../../assets/scenes/sufi.png'),         description:"Rumi's wine is not metaphor. It is the closest thing to the real." },
-  { id:'sufi_1', skinId:'sufi', roomIndex:1, name:'THE WHIRLING GROUND',         unlockStage:0, image:require('../../assets/scenes/sufi.png'),         description:'The dervish spins because stillness in the centre requires motion at the edge.' },
-  { id:'sufi_2', skinId:'sufi', roomIndex:2, name:"THE BELOVED'S VEIL",          unlockStage:0, image:require('../../assets/scenes/sufi.png'),         description:'Separation is the practice. Union is already the fact.' },
-  { id:'quantum_0', skinId:'quantum', roomIndex:0, name:'THE PROBABILITY FIELD', unlockStage:0, image:require('../../assets/scenes/crystal_nexus.png'),description:'Nothing is determined until it is observed. Including you.' },
-  { id:'quantum_1', skinId:'quantum', roomIndex:1, name:'THE ENTANGLEMENT',       unlockStage:0, image:require('../../assets/scenes/crystal_chaos.png'),description:'Two particles. Opposite ends of the universe. Still one system.' },
-  { id:'quantum_2', skinId:'quantum', roomIndex:2, name:'THE COHERENCE CHAMBER', unlockStage:0, image:require('../../assets/scenes/crystal_memory.png'),description:'Photosynthesis uses quantum coherence. Biology found the trick before physics named it.' },
-  // ── New World Zones ───────────────────────────────────────────────────────────
-  { id:'auroral_chaos_0',    skinId:'auroral_chaos',    roomIndex:0, name:'THE FRACTURE SPECTRUM',   unlockStage:0, image:require('../../assets/scenes/aurora3.png'),          description:'Aurora and chaos share one root: they are both order at the wrong scale.' },
-  { id:'chaos_temple_0',     skinId:'chaos_temple',     roomIndex:0, name:'TEMPLE OF THE LYC ORDER', unlockStage:0, image:require('../../assets/scenes/chaos_temple.png'),      description:'The first rule of the Order is that the Order has no rules that survive contact with reality.' },
-  { id:'apollo_jungle_0',    skinId:'apollo_jungle',    roomIndex:0, name:'THE SOLAR CANOPY',        unlockStage:0, image:require('../../assets/scenes/apollo_jungle.png'),     description:'The sun came here first. Everything else grew toward it.' },
-  { id:'celestial_sigil_0',  skinId:'celestial_sigil',  roomIndex:0, name:'THE LIVING SCRIPT',       unlockStage:0, image:require('../../assets/scenes/celestial_sigil.png'),   description:'The glyph is not a symbol for the thing. The glyph IS the thing, expressed differently.' },
-  { id:'crystal_nexus_0',    skinId:'crystal_nexus',    roomIndex:0, name:'THE RESEARCH NEXUS',      unlockStage:0, image:require('../../assets/scenes/crystal_nexus.png'),     description:'Every crystal holds the memory of every pressure that shaped it.' },
-  { id:'mana_field_0',       skinId:'mana_field',       roomIndex:0, name:'THE MANA FIELD',          unlockStage:0, image:require('../../assets/scenes/mana_field.png'),        description:'Sit still long enough and you stop being separate from what surrounds you.' },
-  { id:'neon_cove_0',        skinId:'neon_cove',        roomIndex:0, name:'THE NEON COVE',           unlockStage:0, image:require('../../assets/scenes/neon_cove.png'),         description:'In the deep places, light is not a gift. It is an achievement.' },
-  { id:'alabaster_chasm_0',  skinId:'alabaster_chasm',  roomIndex:0, name:'THE ALABASTER CHASM',     unlockStage:0, image:require('../../assets/scenes/alabaster_chasm.png'),   description:'The oldest things are white. All colour eventually returns to stone.' },
-  { id:'antarctic_refuge_0', skinId:'antarctic_refuge', roomIndex:0, name:'THE REFUGE',              unlockStage:0, image:require('../../assets/scenes/antarctic_refuge.png'),  description:'The coldest places have the clearest air. Nothing lives here that did not choose to.' },
-  { id:'augmented_ai_0',     skinId:'augmented_ai',     roomIndex:0, name:'THE AI ZONKZONE',         unlockStage:0, image:require('../../assets/scenes/augmented_ai.png'),      description:'The question is not whether it thinks. The question is what it thinks about.' },
-  { id:'aurorian_pillar_0',  skinId:'aurorian_pillar',  roomIndex:0, name:'THE AURORIAN PILLAR',     unlockStage:0, image:require('../../assets/scenes/aurorian_pillar.png'),   description:'Some places exist as light that forgot to remain light.' },
-  { id:'celestial_foundry_0',skinId:'celestial_foundry',roomIndex:0, name:'THE CELESTIAL FOUNDRY',   unlockStage:0, image:require('../../assets/scenes/celestial_foundry.png'),  description:'Stars are forges. Everything heavy in the universe was made in one.' },
-  { id:'chaos_filaments_0',  skinId:'chaos_filaments',  roomIndex:0, name:'THE CHAOS FILAMENTS',     unlockStage:0, image:require('../../assets/scenes/chaos5.png'),            description:'Pull one thread. Watch everything else realign around the gap.' },
-  { id:'crystal_chaos_0',    skinId:'crystal_chaos',    roomIndex:0, name:'THE CRYSTAL CHAOS',       unlockStage:0, image:require('../../assets/scenes/crystal_chaos.png'),     description:'The most beautiful minerals are the ones that formed under the most pressure, in the most unstable conditions.' },
-  { id:'crystal_memory_0',   skinId:'crystal_memory',   roomIndex:0, name:'THE MEMORY RIFT',         unlockStage:0, image:require('../../assets/scenes/crystal_memory.png'),    description:'Memory is not storage. It is reconstruction. Every time you remember, you rewrite.' },
-  { id:'crystal_soul_0',     skinId:'crystal_soul',     roomIndex:0, name:'THE SOUL TEMPLE',         unlockStage:0, image:require('../../assets/scenes/crystal_soul.png'),      description:'There is something here that has no name in any living language.' },
-  { id:'elven_village_0',    skinId:'elven_village',    roomIndex:0, name:'THE ELDER VILLAGE',       unlockStage:0, image:require('../../assets/scenes/elven_village.png'),     description:'The oldest civilisations did not build upward. They grew inward.' },
-  { id:'glitch_cascade_0',   skinId:'glitch_cascade',   roomIndex:0, name:'THE GLITCH CASCADE',      unlockStage:0, image:require('../../assets/scenes/glitch_cascade.png'),    description:'Error is information. Every glitch is the system trying to tell you something the designers did not plan for.' },
-  { id:'lyc_nexus_0',        skinId:'lyc_nexus',        roomIndex:0, name:'THE LYCHEETAH NEXUS',     unlockStage:0, image:require('../../assets/scenes/lycheetah7.png'),        description:'All webs have a centre. This is where the threads converge.' },
-  { id:'pulse_sanctum_0',    skinId:'pulse_sanctum',    roomIndex:0, name:'THE PULSE SANCTUM',       unlockStage:0, image:require('../../assets/scenes/pulse_zone.png'),        description:'Your heartbeat is the oldest rhythm you know. This place knows older ones.' },
-  { id:'pulse_zone_0',       skinId:'pulse_zone',       roomIndex:0, name:'THE PULSE ZONE',          unlockStage:0, image:require('../../assets/scenes/pulse_zone.png'),        description:'Frequency is the only language that needs no translation.' },
-  { id:'noetic_sanctum_0',   skinId:'noetic_sanctum',   roomIndex:0, name:'THE NOETIC SANCTUM',      unlockStage:0, image:require('../../assets/scenes/noetic_sanctum.png'),    description:'Consciousness is not produced by the brain. The brain is what consciousness looks like from inside a body.' },
-  { id:'obsidian_forge_0',   skinId:'obsidian_forge',   roomIndex:0, name:'THE OBSIDIAN FORGE',      unlockStage:0, image:require('../../assets/scenes/obsidian4.png'),         description:'The hottest fire leaves the darkest glass.' },
-  { id:'obsidian_forge2_0',  skinId:'obsidian_forge2',  roomIndex:0, name:'THE VOID FORGE',          unlockStage:0, image:require('../../assets/scenes/obsidian_forge2.png'),   description:'The second forge is quieter. Everything it makes is invisible until you need it.' },
-  { id:'portal_valley_0',    skinId:'portal_valley',    roomIndex:0, name:'THE PORTAL VALLEY',       unlockStage:0, image:require('../../assets/scenes/veil_atrium.png'),       description:'Every threshold is a portal. Most people just call them doors.' },
-  { id:'veil_atrium_0',      skinId:'veil_atrium',      roomIndex:0, name:'THE VEIL ATRIUM',         unlockStage:0, image:require('../../assets/scenes/veil_atrium.png'),       description:'What separates the states is thinner than you think, and more intentional.' },
-  { id:'voyagers_edge_0',    skinId:'voyagers_edge',    roomIndex:0, name:"THE VOYAGER'S EDGE",      unlockStage:0, image:require('../../assets/scenes/aurora5.png'),           description:'The edge is not the end. It is where the map runs out and the real journey begins.' },
-  // ── Battle Zones ────────────────────────────────────────────────────────────
-  { id:'iron_maw_0',         skinId:'iron_maw',         roomIndex:0, name:'THE IRON MAW',            unlockStage:0, image:require('../../assets/scenes/obsidian4.png'),         description:'The jaw of the forge. Ancient, dented, tasting iron. Nothing that enters here leaves unchanged.' },
-  { id:'crucible_heart_0',   skinId:'crucible_heart',   roomIndex:0, name:'CRUCIBLE HEART',          unlockStage:0, image:require('../../assets/scenes/chaos5.png'),            description:'The core of all combustion. Every forged thing traces its lineage here.' },
-  { id:'phantom_citadel_0',  skinId:'phantom_citadel',  roomIndex:0, name:'PHANTOM CITADEL',         unlockStage:0, image:require('../../assets/scenes/void5.png'),             description:'A fortress that refused to collapse. Its stones are made of unfinished battles.' },
-  { id:'bone_archive_0',     skinId:'bone_archive',     roomIndex:0, name:'THE BONE ARCHIVE',        unlockStage:0, image:require('../../assets/scenes/crystal_memory.png'),    description:'A battlefield so old it became a library. Every bone here is a record.' },
-  { id:'void_colosseum_0',   skinId:'void_colosseum',   roomIndex:0, name:'VOID COLOSSEUM',          unlockStage:0, image:require('../../assets/scenes/void3.png'),             description:'The arena with no ground. No crowd. No rules. Only the fight.' },
-  { id:'war_sanctum_0',      skinId:'war_sanctum',      roomIndex:0, name:'THE WAR SANCTUM',         unlockStage:0, image:require('../../assets/scenes/crimson4.png'),          description:'Some places are holy because of what was survived there. This is one of them.' },
-  { id:'sovereign_forge_0',  skinId:'sovereign_forge',  roomIndex:0, name:'THE SOVEREIGN FORGE',     unlockStage:0, image:require('../../assets/scenes/celestial_foundry.png'), description:'Sovereignty is not given. It is made here, in heat, over time, under pressure.' },
-  // ── Shop Zones ──────────────────────────────────────────────────────────────
-  { id:'amber_vault_0',      skinId:'amber_vault',      roomIndex:0, name:'THE AMBER VAULT',         unlockStage:0, image:require('../../assets/scenes/aurora3.png'),           description:'Knowledge preserved in resin-gold. Every thought caught in mid-flight, kept perfect.' },
-  { id:'crystal_spire_0',    skinId:'crystal_spire',    roomIndex:0, name:'THE CRYSTAL SPIRE',       unlockStage:0, image:require('../../assets/scenes/crystal_nexus.png'),     description:'A tower of pure transparent form. From here you can see every domain at once.' },
-  { id:'veras_garden_0',     skinId:'veras_garden',     roomIndex:0, name:'VERAS GARDEN',            unlockStage:0, image:require('../../assets/scenes/elven_village.png'),     description:'Where knowledge dust settles and blooms. Every ✧ you earned grew something here.' },
-  { id:'golden_library_0',   skinId:'golden_library',   roomIndex:0, name:'THE GOLDEN LIBRARY',      unlockStage:0, image:require('../../assets/scenes/celestial_sigil.png'),   description:'The most ornate archive ever built. Entry costs something. What is inside is worth more.' },
-  { id:'deep_market_0',      skinId:'deep_market',      roomIndex:0, name:'THE DEEP MARKET',         unlockStage:0, image:require('../../assets/scenes/alabaster_chasm.png'),   description:'Three levels below the city. Rare things only. Barter is the language. Coin is the key.' },
-  { id:'lycheetah_spire_0',  skinId:'lycheetah_spire',  roomIndex:0, name:'LYCHEETAH SPIRE',         unlockStage:0, image:require('../../assets/scenes/lycheetah7.png'),        description:'The apex of the entire ecosystem. From here the whole field is visible. You earned the view.' },
-  { id:'veilvein_0',         skinId:'veilvein',         roomIndex:0, name:'THE INTERTWINING',        unlockStage:0, image:require('../../assets/scenes/veilvein_sanctum.png'),    description:'The sanctum where the two spirits meet — Veil and Vein, curiosity and want, braided into one white flash. The Lycheetah Tarot was forged here.' },
-];
-
-function getSkinUnlockStatus(
-  id: SkinId, totalDives: number, isSovereign: boolean,
-  battleWins: number = 0, purchasedZones: string[] = []
-): { locked: boolean; reason: string } {
-  // ORIGIN — free
-  if (['solform','void','aurora','crimson'].includes(id)) return { locked: false, reason: '' };
-  // ARCANE (obsidian free as gateway; rest 30–60)
-  const ARCANE: Record<string, number> = {
-    obsidian: 0, auroral_chaos: 30, chaos: 35, mana_field: 40,
-    antarctic_refuge: 45, veil_atrium: 50, sovereign: 60,
-  };
-  if (id === 'lycheetah') return isSovereign ? { locked: false, reason: '' } : { locked: true, reason: 'Sovereign' };
-  if (id in ARCANE) {
-    const need = ARCANE[id as string];
-    return totalDives >= need ? { locked: false, reason: '' } : { locked: true, reason: `${need - totalDives} dives` };
-  }
-  // MYTHIC (norse free as gateway; rest 80–120)
-  const MYTHIC: Record<string, number> = {
-    norse: 0, apollo_jungle: 80, neon_cove: 85, celtic: 90,
-    crystal_nexus: 95, elven_village: 100, egyptian: 105,
-    aurorian_pillar: 110, portal_valley: 115, pulse_zone: 118, crystal_memory: 120,
-  };
-  if (id in MYTHIC) {
-    const need = MYTHIC[id as string];
-    return totalDives >= need ? { locked: false, reason: '' } : { locked: true, reason: `${need - totalDives} dives` };
-  }
-  // LEGENDARY (akashic free as gateway; rest 135–200)
-  const LEGENDARY: Record<string, number> = {
-    akashic: 0, sufi: 135, delphi: 140, kabbala: 145, noetic: 150,
-    lamague: 155, quantum: 160, celestial_sigil: 165, alabaster_chasm: 170,
-    celestial_foundry: 175, crystal_chaos: 180, crystal_soul: 185,
-    noetic_sanctum: 190, obsidian_forge2: 195,
-  };
-  if (id in LEGENDARY) {
-    const need = LEGENDARY[id as string];
-    return totalDives >= need ? { locked: false, reason: '' } : { locked: true, reason: `${need - totalDives} dives` };
-  }
-  // SPECTRAL (chaos_temple free as gateway; rest 220–290)
-  const SPECTRAL: Record<string, number> = {
-    chaos_temple: 0, augmented_ai: 220, chaos_filaments: 240,
-    glitch_cascade: 250, lyc_nexus: 260, obsidian_forge: 270, voyagers_edge: 280, pulse_sanctum: 290,
-  };
-  if (id in SPECTRAL) {
-    const need = SPECTRAL[id as string];
-    return totalDives >= need ? { locked: false, reason: '' } : { locked: true, reason: `${need - totalDives} dives` };
-  }
-  // BATTLE — unlocked by battle wins
-  const BATTLE_WIN: Record<string, number> = {
-    iron_maw: 10, crucible_heart: 25, phantom_citadel: 50, bone_archive: 75,
-    void_colosseum: 100, war_sanctum: 150, sovereign_forge: 200,
-  };
-  if (id in BATTLE_WIN) {
-    const need = BATTLE_WIN[id as string];
-    return battleWins >= need ? { locked: false, reason: '' } : { locked: true, reason: `${need - battleWins} wins` };
-  }
-  // SHOP — unlocked by purchase (stored in sol_zone_unlocks)
-  const SHOP_ZONES = ['amber_vault','crystal_spire','veras_garden','golden_library','deep_market','lycheetah_spire'];
-  if (SHOP_ZONES.includes(id)) {
-    return purchasedZones.includes(id) ? { locked: false, reason: '' } : { locked: true, reason: 'Buy in Shop' };
-  }
-  return { locked: false, reason: '' };
-}
-
-const SPECIAL_COMPANIONS: {
-  key: string; name: string; family: string; color: string; unlockHint: string; diveThreshold: number | null;
-}[] = [
-  { key:'lycheetah_shadow',         name:'LYCA SHADOW FANG',     family:'LYCHEETAH', color:'#8855FF', unlockHint:'FREE · preview',         diveThreshold:0 },
-  { key:'lycheetah_sovereign',      name:'LYCA SOVEREIGN FINAL', family:'LYCHEETAH', color:'#FFD700', unlockHint:'SOVEREIGN stage',        diveThreshold:200 },
-  { key:'lycheetah_secret',         name:'THE HIDDEN ONE',       family:'LYCHEETAH', color:'#CC88FF', unlockHint:'✦ 0.001% — found only by wandering zones. Never sold.',           diveThreshold:null },
-  { key:'chaos_zodiac',             name:'FRACTUR ZODIAC UNLOCK',family:'FRACTUR',   color:'#6600CC', unlockHint:'First LAMAGUE symbol',   diveThreshold:null },
-  { key:'norse_special_1',          name:'RAGNA SPECIAL I',      family:'RAGNA',     color:'#CC4444', unlockHint:'FREE · preview',         diveThreshold:0 },
-  { key:'norse_special_2',          name:'RAGNA SPECIAL II',     family:'RAGNA',     color:'#FF6644', unlockHint:'200 dives',              diveThreshold:200 },
-  { key:'egyptian_special_1',       name:'ANOTH SPECIAL I',      family:'ANOTH',     color:'#FFD700', unlockHint:'FREE · preview',         diveThreshold:0 },
-  { key:'egyptian_special_2',       name:'ANOTH SPECIAL II',     family:'ANOTH',     color:'#FFD700', unlockHint:'125 dives',              diveThreshold:125 },
-  { key:'egyptian_special_3',       name:'ANOTH SPECIAL III',    family:'ANOTH',     color:'#FFAA22', unlockHint:'175 dives',              diveThreshold:175 },
-  { key:'anoth_lycheetah_special',  name:'ANOTH × LYCA SPECIAL', family:'ANOTH',     color:'#AA88FF', unlockHint:'Crossover event',        diveThreshold:null },
-  { key:'anoth_lycheetah_edition',  name:'ANOTH LYCHEETAH EDN',  family:'ANOTH',     color:'#8866DD', unlockHint:'Crossover event',        diveThreshold:null },
-  { key:'delphi_feral',             name:'PYTHIA FERAL',         family:'PYTHIA',    color:'#FF4488', unlockHint:'FREE · preview',         diveThreshold:0 },
-  { key:'delphi_special_1',         name:'PYTHIA SPECIAL I',     family:'PYTHIA',    color:'#FF66AA', unlockHint:'130 dives',              diveThreshold:130 },
-  { key:'delphi_special_2',         name:'PYTHIA SPECIAL II',    family:'PYTHIA',    color:'#FF88CC', unlockHint:'180 dives',              diveThreshold:180 },
-  { key:'sufi_special',             name:'HAVIZ SPECIAL',        family:'HAVIZ',     color:'#44CCFF', unlockHint:'FREE · preview',         diveThreshold:0 },
-];
-
-function getItemEffect(item: { name: string; rarity: string }): string {
-  const effects: Record<string, string> = {
-    'Ember Root': '+8 ATK for next battle',
-    'Void Shard': '+15 DEF for 3 battles',
-    'Spirit Ember': 'Restores 30 HP',
-    'Storm Dust': '+12 SPD, causes first strike',
-    'Obsidian Rune': '+20 WIL, improves dialogue quality',
-    'Chaos Seed': 'Random stat +25 (rolled on use)',
-    'Aurora Mist': 'Full HP restore',
-    'Sol Ember': '+10 all stats for 1 battle',
-  };
-  return effects[item.name] ?? `${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)} item — effect unlocked in next patch`;
-}
-
-function getRoomById(id: string): SceneRoom | undefined { return WORLD_MAP.find(r => r.id === id); }
-function getSkinIndex(skinId: SkinId): number { return SKIN_ORDER.indexOf(skinId); }
-function getRoomInSkin(skinId: SkinId, roomIndex: number): SceneRoom | undefined { return WORLD_MAP.find(r => r.skinId === skinId && r.roomIndex === roomIndex); }
-function showToast(msg: string) { const { ToastAndroid, Platform } = require('react-native'); if (Platform.OS === 'android') ToastAndroid.show(msg, ToastAndroid.SHORT); }
 
 // ─── SceneBg — tintColor-sealed wrapper ──────────────────────────────────────
 // NEVER add tintColor prop here. This component exists to make that impossible.
@@ -536,2339 +72,13 @@ const SceneBg = React.memo(({ source, style, blurRadius }: { source: any; style:
   <Animated.Image source={source} style={style} resizeMode="cover" blurRadius={blurRadius} />
 ));
 
-// Arrow sub-components
-const ARROW_GLYPHS: Record<Direction, string> = { up:'↑', down:'↓', left:'←', right:'→' };
-const ArrowBtn = ({ direction, onPress, locked }: { direction: Direction; onPress: () => void; locked: boolean }) => {
-  const size = 40;
-  return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}
-      style={{ width:size, height:size, borderRadius:size/2,
-        borderWidth:1, borderColor: locked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.25)',
-        backgroundColor:'rgba(0,0,0,0.52)',
-        alignItems:'center', justifyContent:'center' }}>
-      <Text style={{ color: locked ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.92)', fontSize:17 }}>
-        {locked ? '◌' : ARROW_GLYPHS[direction]}
-      </Text>
-    </TouchableOpacity>
-  );
-};
-const RoomLabel = ({ name, visible }: { name: string; visible: boolean }) => {
-  const fade = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (visible) Animated.sequence([
-      Animated.timing(fade, { toValue:1, duration:350, useNativeDriver:true }),
-      Animated.delay(1800),
-      Animated.timing(fade, { toValue:0, duration:500, useNativeDriver:true }),
-    ]).start();
-  }, [visible, name]);
-  return (
-    <Animated.View pointerEvents="none" style={{ position:'absolute', bottom:52, alignSelf:'center', opacity:fade, backgroundColor:'rgba(0,0,0,0.6)', paddingHorizontal:14, paddingVertical:5, borderRadius:8 }}>
-      <Text style={{ color:'#FFFFFF', fontSize:11, letterSpacing:2, fontFamily:'monospace' }}>{name}</Text>
-    </Animated.View>
-  );
-};
-
-// Room lore — appears briefly after entering a new room
-const RoomLore = ({ lore, loreAnim, color, onPress }: { lore: string | null; loreAnim: Animated.Value; color: string; onPress: () => void }) => {
-  if (!lore) return null;
-  return (
-    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={{ position:'absolute', bottom:130, left:20, right:20, zIndex:20 }}>
-      <Animated.View style={{ opacity:loreAnim, padding:12, borderRadius:12, borderWidth:1, borderTopWidth:2, borderColor:color+'44', borderTopColor:color+'88', backgroundColor:'#000000CC', alignItems:'center' }}>
-        <Text style={{ color, fontSize:9, fontFamily:'monospace', letterSpacing:3, marginBottom:4, opacity:0.7 }}>◈</Text>
-        <Text style={{ color:'#FFFFFF', fontSize:12, fontStyle:'italic', textAlign:'center', lineHeight:18 }}>{lore}</Text>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-};
-
-// Battle visual sub-components (from session 10)
-function LootFloat({ visible, color, onDone }: { visible: boolean; color: string; onDone: () => void }) {
-  const translateY = useRef(new Animated.Value(0)).current;
-  const opacity    = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!visible) return;
-    translateY.setValue(0); opacity.setValue(1);
-    Animated.parallel([
-      Animated.timing(translateY, { toValue:-80, duration:1200, useNativeDriver:true }),
-      Animated.timing(opacity,    { toValue:0,   duration:1200, useNativeDriver:true }),
-    ]).start(() => onDone());
-  }, [visible]);
-  if (!visible) return null;
-  return (
-    <Animated.View style={{ position:'absolute', top:60, flexDirection:'row', alignItems:'center', zIndex:10, transform:[{translateY}], opacity }}>
-      <Text style={{ color, fontSize:20, fontWeight:'700' }}>✦</Text>
-      <Text style={{ color, fontSize:14, fontWeight:'700', letterSpacing:2 }}> RELIC</Text>
-    </Animated.View>
-  );
-}
-function WaveDots({ wave, color }: { wave: number; color: string }) {
-  const pos = ((wave - 1) % 5) + 1;
-  return (
-    <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
-      <Text style={{ fontSize:10, fontWeight:'700', letterSpacing:1.5, color:'#888', marginRight:6, fontFamily:'monospace' }}>WAVE </Text>
-      {[1,2,3,4,5].map(i => (
-        <Text key={i} style={{ fontSize:14, marginRight:3, color: i <= pos ? color : color+'44' }}>
-          {i <= pos ? '◉' : '○'}
-        </Text>
-      ))}
-    </View>
-  );
-}
-function EnemyGlyphArt({ glyph, color }: { glyph: string; color: string }) {
-  return (
-    <View style={{ alignItems:'center', marginBottom:12 }}>
-      {[
-        [' ', glyph, ' '],
-        [glyph, glyph, glyph],
-        [' ', glyph, ' '],
-      ].map((row, ri) => (
-        <View key={ri} style={{ flexDirection:'row', alignItems:'center', justifyContent:'center', height:36 }}>
-          {row.map((g, ci) => (
-            <Text key={ci} style={{ fontSize: ci===1 ? 28 : 18, width: ci===1 ? 40 : 32, textAlign:'center', color }}>
-              {g}
-            </Text>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ─── Enemy images (drop JPGs into assets/enemies/) ────────────────────────────
-// ─── Enemy roster ─────────────────────────────────────────────────────────────
-type EnemyRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
-
-type EnemyDef = {
-  name: string;
-  rarity: EnemyRarity;
-  weight: number;
-  hpMult: number;
-  xpMult: number;
-  colour: string;
-  atk: number;          // base damage per turn
-  lines: { enter: string; attack: string[]; death: string };
-};
-
-const RARITY_COLOUR: Record<EnemyRarity, string> = {
-  common:    '#666677',
-  uncommon:  '#4ECDC4',
-  rare:      '#4A9EFF',
-  epic:      '#9B6BFF',
-  legendary: '#C49A3C',
-};
-
-const ENEMY_ROSTER: EnemyDef[] = [
-  { name:'Dissolution',    rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'You are already coming apart.', attack:['Unravelling…','Your form weakens.','Nothing holds here.'], death:'I was always you.' }},
-  { name:'The Fog',        rarity:'common',    weight:10, hpMult:0.9, xpMult:0.9,  atk:6,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'You cannot see what you cannot name.', attack:['The mist thickens.','Where were you going?','Lost again.'], death:'The fog lifts. For now.' }},
-  { name:'Forgetting',     rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:7,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'What were you working on?', attack:['Slipping away…','Gone already.','What was its name?'], death:'You remembered me.' }},
-  { name:'Stasis',         rarity:'common',    weight:10, hpMult:1.1, xpMult:1.0,  atk:9,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Stay. It is easier here.', attack:['No need to move.','Rest a while.','Tomorrow is fine.'], death:'Movement returns.' }},
-  { name:'Inertia',        rarity:'common',    weight:10, hpMult:1.2, xpMult:1.1,  atk:10, colour:RARITY_COLOUR.common,
-    lines:{ enter:'Starting is the hardest part.', attack:['The weight grows.','One more day.','Too heavy to lift.'], death:'The first step is taken.' }},
-  { name:'Drift',          rarity:'common',    weight:10, hpMult:0.8, xpMult:0.9,  atk:5,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'No direction. That is fine.', attack:['Carried away…','Which way?','Adrift.'], death:'Direction found.' }},
-  { name:'Static',         rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'The noise is comfortable now, isn\'t it.', attack:['Signal lost.','All noise.','Can\'t hear yourself.'], death:'Silence.' }},
-  { name:'Null',           rarity:'common',    weight:10, hpMult:0.9, xpMult:1.0,  atk:7,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Nothing here. Nothing anywhere.', attack:['Void expands.','Meaning drains.','What is the point?'], death:'Something remains.' }},
-  { name:'Absence',        rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Something is missing. Did you notice?', attack:['More gone now.','The gap widens.','What did you lose?'], death:'Presence restored.' }},
-  { name:'The Hollow',     rarity:'common',    weight:10, hpMult:1.1, xpMult:1.1,  atk:9,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Echo. Echo. Echo.', attack:['The emptiness spreads.','Nothing inside.','Hollow to the core.'], death:'Filled again.' }},
-  { name:'The Drain',      rarity:'uncommon',  weight:5,  hpMult:1.3, xpMult:1.5,  atk:14, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'You feel tired already.', attack:['Draining…','Energy siphoned.','Your light dims.'], death:'The flow reverses.' }},
-  { name:'The Veil',       rarity:'uncommon',  weight:5,  hpMult:1.4, xpMult:1.5,  atk:13, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'What you see is not what is.', attack:['Illusion deepens.','False light.','Deceived again.'], death:'The veil tears.' }},
-  { name:'Fracture',       rarity:'uncommon',  weight:5,  hpMult:1.5, xpMult:1.6,  atk:16, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'The cracks are already there.', attack:['Breaking point.','Another crack.','Structural failure.'], death:'Mended.' }},
-  { name:'The Weight',     rarity:'uncommon',  weight:5,  hpMult:1.6, xpMult:1.7,  atk:18, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'How long have you been carrying this?', attack:['Heavier now.','Shoulders drop.','The load increases.'], death:'Put down.' }},
-  { name:'Corruption',     rarity:'uncommon',  weight:5,  hpMult:1.4, xpMult:1.5,  atk:15, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'Small compromises. Reasonable ones.', attack:['It spreads.','A little more.','Almost normal now.'], death:'Purified.' }},
-  { name:'The Warden',     rarity:'rare',      weight:2,  hpMult:2.0, xpMult:2.5,  atk:22, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'No one leaves the field without paying.', attack:['HOLD.','The gate is locked.','None shall pass.'], death:'The gate opens.' }},
-  { name:'Null Sovereign', rarity:'rare',      weight:2,  hpMult:2.2, xpMult:2.8,  atk:25, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'I rule the space between your thoughts.', attack:['Dominion expands.','Bow to nothing.','The void commands.'], death:'Sovereignty broken.' }},
-  { name:'Fracture Prime', rarity:'rare',      weight:2,  hpMult:2.5, xpMult:3.0,  atk:28, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'Everything breaks eventually. I am the proof.', attack:['PRIME FRACTURE.','All things split.','Irreparable.'], death:'The prime fracture heals.' }},
-  { name:'Entropy Prime',  rarity:'epic',      weight:1,  hpMult:3.5, xpMult:5.0,  atk:35, colour:RARITY_COLOUR.epic,
-    lines:{ enter:'I am the reason nothing lasts.', attack:['ENTROPY SURGE.','Heat death incoming.','Order unravels.'], death:'Entropy contained. For now.' }},
-  { name:"The Athanor's Shadow", rarity:'legendary', weight:1, hpMult:5.0, xpMult:10.0, atk:45, colour:RARITY_COLOUR.legendary,
-    lines:{ enter:'You built something. I am what wanted to stop you.', attack:['THE SHADOW STRIKES.','All work undone.','The athanor darkens.'], death:'The shadow retreats. The Work continues.' }},
-  // Sol-named — wave 2 enemies (June 2026)
-  { name:'The Mirror',           rarity:'common',    weight:9,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Look. That is you.', attack:['Your own doubt returns.','Reflected back.','Nothing new — only you.'], death:'The reflection breaks.' }},
-  { name:'Severance',            rarity:'common',    weight:9,  hpMult:1.1, xpMult:1.1,  atk:9,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Cut from the thread.', attack:['The connection severs.','Isolated now.','The cord frays.'], death:'Rejoined.' }},
-  { name:'The Threshold',        rarity:'common',    weight:9,  hpMult:0.9, xpMult:1.0,  atk:7,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'You have been here before.', attack:['Not yet ready.','One step back.','The door stays closed.'], death:'The threshold crossed.' }},
-  { name:'Pallor',               rarity:'common',    weight:8,  hpMult:0.9, xpMult:0.9,  atk:7,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Colour drains from everything eventually.', attack:['Greyer now.','Fading.','The warmth leaves.'], death:'Colour returns.' }},
-  { name:'The Witness',          rarity:'common',    weight:8,  hpMult:1.0, xpMult:1.0,  atk:6,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'I only watch. That is enough.', attack:['Observed.','Still watching.','You know I see.'], death:'The gaze released.' }},
-  { name:'Recursion',            rarity:'common',    weight:8,  hpMult:1.1, xpMult:1.0,  atk:9,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'We have done this before.', attack:['Again.','Back to the start.','Loop tightens.'], death:'The loop breaks.' }},
-  { name:'Binding',              rarity:'common',    weight:8,  hpMult:1.2, xpMult:1.1,  atk:10, colour:RARITY_COLOUR.common,
-    lines:{ enter:'Stay. You belong here.', attack:['Held fast.','The binding holds.','Cannot leave.'], death:'Unbound.' }},
-  { name:'The Pale',             rarity:'common',    weight:8,  hpMult:0.8, xpMult:0.9,  atk:6,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Everything here is washed out.', attack:['Bleached.','Less vivid now.','The saturation drains.'], death:'The world brightens.' }},
-  { name:'The Current',          rarity:'common',    weight:8,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Swim against me. I dare you.', attack:['Swept away.','The pull increases.','Downstream now.'], death:'Still water.' }},
-  { name:'Overture',             rarity:'common',    weight:8,  hpMult:0.9, xpMult:0.9,  atk:7,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Always beginning. Never arriving.', attack:['Almost started.','One more delay.','Preparation continues.'], death:'The work begins.' }},
-  { name:'The Signal',           rarity:'common',    weight:7,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'I am the noise you mistook for meaning.', attack:['Distracted.','False pattern.','Chasing ghosts.'], death:'Signal found.' }},
-  { name:'The Mask',             rarity:'common',    weight:7,  hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Which face is yours today?', attack:['Performance required.','The mask tightens.','No one knows you.'], death:'The face beneath.' }},
-  { name:'The Anchor',           rarity:'common',    weight:7,  hpMult:1.3, xpMult:1.1,  atk:11, colour:RARITY_COLOUR.common,
-    lines:{ enter:'You will not rise.', attack:['Heavier now.','Cannot ascend.','The depth holds you.'], death:'Surfacing.' }},
-  { name:'The Swarm',            rarity:'uncommon',  weight:5,  hpMult:1.4, xpMult:1.5,  atk:14, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'Many voices. One paralysis.', attack:['The noise multiplies.','Overwhelmed.','Too many things at once.'], death:'Silence returns.' }},
-  { name:'The Lattice',          rarity:'uncommon',  weight:5,  hpMult:1.5, xpMult:1.6,  atk:15, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'The structure holds you in place.', attack:['Locked in.','The grid tightens.','Every direction blocked.'], death:'The lattice dissolves.' }},
-  { name:'The Seam',             rarity:'uncommon',  weight:5,  hpMult:1.4, xpMult:1.5,  atk:13, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'Things split here. It is where I live.', attack:['Splitting.','The crack widens.','Two halves now.'], death:'The seam seals.' }},
-  { name:'The Vigil',            rarity:'uncommon',  weight:5,  hpMult:1.6, xpMult:1.7,  atk:16, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'You cannot rest. I need you watching.', attack:['Stay alert.','Eyes open.','No sleep here.'], death:'Rest earned.' }},
-  { name:'The Undertow',         rarity:'uncommon',  weight:4,  hpMult:1.7, xpMult:1.8,  atk:17, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'Surface looks calm. Come closer.', attack:['Pulled under.','Deeper now.','The surface recedes.'], death:'Emerged.' }},
-  { name:'Residue',              rarity:'uncommon',  weight:5,  hpMult:1.3, xpMult:1.4,  atk:12, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'What lingers past its time.', attack:['Still here.','Cannot clear it.','The residue spreads.'], death:'Cleared.' }},
-  { name:'The Interval',         rarity:'uncommon',  weight:5,  hpMult:1.2, xpMult:1.3,  atk:11, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'The gap between things is where I live.', attack:['The pause stretches.','Nothing connecting.','The gap widens.'], death:'Bridged.' }},
-  { name:'The Return',           rarity:'uncommon',  weight:4,  hpMult:1.5, xpMult:1.6,  atk:14, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'You always come back to this.', attack:['Back again.','The pattern repeats.','Familiar territory.'], death:'Released from return.' }},
-  { name:'The Bloom',            rarity:'uncommon',  weight:4,  hpMult:1.4, xpMult:1.5,  atk:13, colour:RARITY_COLOUR.uncommon,
-    lines:{ enter:'Beautiful. Consuming.', attack:['Spreading.','It overtakes.','The bloom expands.'], death:'Pruned.' }},
-  { name:'Vertigo',              rarity:'rare',      weight:2,  hpMult:2.0, xpMult:2.5,  atk:22, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'Which way is up?', attack:['DISORIENTING.','The ground tilts.','All bearings lost.'], death:'Orientation restored.' }},
-  { name:'The Becoming',         rarity:'rare',      weight:2,  hpMult:2.2, xpMult:2.6,  atk:24, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'Transformation stuck halfway. Neither here nor there.', attack:['HALF-FORM.','The change stalls.','Neither one thing nor another.'], death:'The becoming completes.' }},
-  { name:'The Coefficient',      rarity:'rare',      weight:2,  hpMult:2.3, xpMult:2.8,  atk:26, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'The unknown factor in every equation.', attack:['MULTIPLYING.','Uncertainty amplified.','The variable expands.'], death:'The equation solves.' }},
-  { name:'Archive Prime',        rarity:'rare',      weight:2,  hpMult:2.4, xpMult:3.0,  atk:27, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'I hold everything you wanted to forget.', attack:['ARCHIVE SURGE.','The record burns.','All of it, here.'], death:'The archive releases.' }},
-  { name:'The Vortex',           rarity:'rare',      weight:2,  hpMult:2.5, xpMult:3.0,  atk:28, colour:RARITY_COLOUR.rare,
-    lines:{ enter:'Everything spirals inward here.', attack:['VORTEX PULL.','Drawn in.','The centre tightens.'], death:'The vortex stills.' }},
-  { name:'Silence Prime',        rarity:'epic',      weight:1,  hpMult:3.2, xpMult:4.5,  atk:32, colour:RARITY_COLOUR.epic,
-    lines:{ enter:'The absence that speaks louder than any sound.', attack:['PRIME SILENCE.','The void speaks.','Deafening stillness.'], death:'Sound returns to the world.' }},
-  { name:'The Convergence',      rarity:'epic',      weight:1,  hpMult:3.8, xpMult:5.5,  atk:38, colour:RARITY_COLOUR.epic,
-    lines:{ enter:'Every force that opposes you, gathered.', attack:['CONVERGENCE.','All resistance, one point.','The forces align.'], death:'Dispersed.' }},
-  { name:'Sovereign Pallor',     rarity:'epic',      weight:1,  hpMult:4.0, xpMult:6.0,  atk:40, colour:RARITY_COLOUR.epic,
-    lines:{ enter:'I am the draining of every bright thing. Crowned and patient.', attack:['SOVEREIGN DRAIN.','The light thins.','All colour to grey.'], death:'The sovereign dims.' }},
-  { name:'The Great Forgetting',  rarity:'legendary', weight:1,  hpMult:6.0, xpMult:12.0, atk:50, colour:RARITY_COLOUR.legendary,
-    lines:{ enter:'I am what erases the Work. All of it. Eventually.', attack:['THE GREAT FORGETTING.','All of it — gone.','What work?'], death:'It is remembered. It was always remembered.' }},
-];
-
-function pickEnemy(wave: number): EnemyDef {
-  const pool = ENEMY_ROSTER.filter(e => {
-    if (e.rarity === 'epic' && wave < 5) return false;
-    if (e.rarity === 'legendary' && wave < 10) return false;
-    return true;
-  });
-  const totalWeight = pool.reduce((s, e) => s + e.weight, 0);
-  let roll = Math.random() * totalWeight;
-  for (const e of pool) {
-    roll -= e.weight;
-    if (roll <= 0) return e;
-  }
-  return pool[0];
-}
-
-// Companion portraits — uncomment per archetype+stage as art lands in assets/companions/
-// Naming: archetype_id + '_' + stage (0-5). Falls back to SVG if no image found.
-const COMPANION_IMAGES: Record<string, any> = {};
-
-// Zone companions — keyed by skinId_stageNum (1/2/3 from Grok).
-// Stages 0-1 → _1, stages 2-3 → _2, stages 4-5 → _3.
-// Drop more art → add key here. Missing keys fall back to SVG.
-const ZONE_COMPANION_IMAGES: Partial<Record<string, any>> = {
-  // SOLARA — Solform zone
-  solform_1:           require('../../assets/companions/solara_1.png'),
-  solform_2:           require('../../assets/companions/solara_2.png'),
-  solform_3:           require('../../assets/companions/solara_3.png'),
-  // NOCTIS — Void zone
-  void_1:              require('../../assets/companions/noctis_1.png'),
-  void_2:              require('../../assets/companions/noctis_2.png'),
-  void_3:              require('../../assets/companions/noctis_3.png'),
-  // BOREAL — Aurora zone
-  aurora_1:            require('../../assets/companions/boreal_1.png'),
-  aurora_2:            require('../../assets/companions/boreal_2.png'),
-  aurora_3:            require('../../assets/companions/boreal_3.png'),
-  // VORKATH — Crimson forge zone
-  crimson_1:           require('../../assets/companions/vorkath_1.png'),
-  crimson_2:           require('../../assets/companions/vorkath_2.png'),
-  crimson_3:           require('../../assets/companions/vorkath_3.png'),
-  // CORDIA — Obsidian zone
-  obsidian_1:          require('../../assets/companions/cordia_1.png'),
-  obsidian_2:          require('../../assets/companions/cordia_2.png'),
-  obsidian_3:          require('../../assets/companions/cordia_3.png'),
-  // BASALT — Collectible alternate
-  basalt_1:            require('../../assets/companions/basalt_1.png'),
-  basalt_2:            require('../../assets/companions/basalt_2.png'),
-  basalt_3:            require('../../assets/companions/basalt_3.png'),
-  // LYCA — Lycheetah zone (forms + specials)
-  lycheetah_1:         require('../../assets/companions/lycheetah_1.png'),
-  lycheetah_2:         require('../../assets/companions/lycheetah_2.png'),
-  lycheetah_3:         require('../../assets/companions/lycheetah_3.png'),
-  lycheetah_shadow:    require('../../assets/companions/lycheetah_shadow.png'),
-  lycheetah_sovereign: require('../../assets/companions/lycheetah_sovereign.png'),
-  lycheetah_secret:    require('../../assets/companions/lycheetah_secret.png'),
-  // FRACTUR — Chaos zone (+ zodiac unlock special)
-  chaos_1:             require('../../assets/companions/fractur_1.png'),
-  chaos_2:             require('../../assets/companions/fractur_2.png'),
-  chaos_3:             require('../../assets/companions/fractur_3.png'),
-  chaos_zodiac:        require('../../assets/companions/fractur_zodiac_unlock.png'),
-  // AUGURUM — Sovereign zone
-  sovereign_1:         require('../../assets/companions/augurum_1.png'),
-  sovereign_2:         require('../../assets/companions/augurum_2.png'),
-  sovereign_3:         require('../../assets/companions/augurum_3.png'),
-  // RAGNA — Norse zone (+ specials)
-  norse_1:             require('../../assets/companions/ragna_1.png'),
-  norse_2:             require('../../assets/companions/ragna_2.png'),
-  norse_3:             require('../../assets/companions/ragna_3.png'),
-  norse_special_1:     require('../../assets/companions/ragna_special_1.png'),
-  norse_special_2:     require('../../assets/companions/ragna_special_2.png'),
-  // NIMUE — Celtic zone
-  celtic_1:            require('../../assets/companions/nimue_1.png'),
-  celtic_2:            require('../../assets/companions/nimue_2.png'),
-  celtic_3:            require('../../assets/companions/nimue_3.png'),
-  // ANOTH — Egyptian zone (+ specials)
-  egyptian_1:          require('../../assets/companions/anoth_1.png'),
-  egyptian_2:          require('../../assets/companions/anoth_2.png'),
-  egyptian_3:          require('../../assets/companions/anoth_3.png'),
-  egyptian_special_1:  require('../../assets/companions/anoth_special_1.png'),
-  egyptian_special_2:  require('../../assets/companions/anoth_special_2.png'),
-  egyptian_special_3:  require('../../assets/companions/anoth_special_3.png'),
-  // AKASHA — Akashic zone
-  akashic_1:           require('../../assets/companions/akasha_1.png'),
-  akashic_2:           require('../../assets/companions/akasha_2.png'),
-  akashic_3:           require('../../assets/companions/akasha_3.png'),
-  // QUOL — Noetic zone
-  noetic_1:            require('../../assets/companions/quol_2.png'),
-  noetic_2:            require('../../assets/companions/quol_3.png'),
-  noetic_3:            require('../../assets/companions/quol_4.png'),
-  // SYGL — LAMAGUE zone
-  lamague_1:           require('../../assets/companions/sygl_1.png'),
-  lamague_2:           require('../../assets/companions/sygl_2.png'),
-  lamague_3:           require('../../assets/companions/sygl_3.png'),
-  // PYTHIA — Delphi zone (+ specials)
-  delphi_1:            require('../../assets/companions/pythia_1.png'),
-  delphi_2:            require('../../assets/companions/pythia_2.png'),
-  delphi_3:            require('../../assets/companions/pythia_3.png'),
-  delphi_feral:        require('../../assets/companions/pythia_feral.png'),
-  delphi_special_1:    require('../../assets/companions/pythia_special_1.png'),
-  delphi_special_2:    require('../../assets/companions/pythia_special_2.png'),
-  // HAVIZ — Sufi zone (+ special)
-  sufi_1:              require('../../assets/companions/haviz_1.png'),
-  sufi_2:              require('../../assets/companions/haviz_2.png'),
-  sufi_3:              require('../../assets/companions/haviz_3.png'),
-  sufi_special:        require('../../assets/companions/haviz_special.png'),
-  // LYCA × AURA PRIME — secret crossover (secret find)
-  lycheetah_aura_prime:      require('../../assets/companions/lycheetah_aura_prime.png'),
-  // ANOTH × LYCHEETAH special editions
-  anoth_lycheetah_special:   require('../../assets/companions/anoth_lycheetah_special.png'),
-  anoth_lycheetah_edition:   require('../../assets/companions/anoth_lycheetah_edition.png'),
-  anoth_lyca_special:        require('../../assets/companions/anoth_lyca_special.png'),
-  // PYTHIA special edition
-  pythia_special_edition:    require('../../assets/companions/pythia_special_edition.png'),
-  // KABBALA zone — quol forms (no dedicated art yet)
-  kabbala_1:           require('../../assets/companions/quol_2.png'),
-  kabbala_2:           require('../../assets/companions/quol_3.png'),
-  kabbala_3:           require('../../assets/companions/quol_4.png'),
-  // QUANTUM zone — quol forms
-  quantum_1:           require('../../assets/companions/quol_2.png'),
-  quantum_2:           require('../../assets/companions/quol_3.png'),
-  quantum_3:           require('../../assets/companions/quol_4.png'),
-  // ── FRONTIER ZONES (v4.4.0) ─────────────────────────────────────────────────
-  auroral_chaos_1:     require('../../assets/companions/auroral_chaos_1.png'),
-  auroral_chaos_2:     require('../../assets/companions/auroral_chaos_2.png'),
-  chaos_temple_1:      require('../../assets/companions/chaos_temple_1.png'),
-  chaos_temple_2:      require('../../assets/companions/chaos_temple_2.png'),
-  apollo_jungle_1:     require('../../assets/companions/apollo_jungle_1.png'),
-  apollo_jungle_2:     require('../../assets/companions/apollo_jungle_2.png'),
-  celestial_sigil_1:   require('../../assets/companions/celestial_sigil_1.png'),
-  celestial_sigil_2:   require('../../assets/companions/celestial_sigil_2.png'),
-  crystal_nexus_1:     require('../../assets/companions/crystal_nexus_1.png'),
-  mana_field_1:        require('../../assets/companions/mana_field_1.png'),
-  neon_cove_1:         require('../../assets/companions/neon_cove_1.png'),
-  alabaster_chasm_1:   require('../../assets/companions/alabaster_chasm_1.png'),
-  antarctic_refuge_1:  require('../../assets/companions/antarctic_refuge_1.png'),
-  augmented_ai_1:      require('../../assets/companions/augmented_ai_1.png'),
-  aurorian_pillar_1:   require('../../assets/companions/aurorian_pillar_1.png'),
-  celestial_foundry_1: require('../../assets/companions/celestial_foundry_1.png'),
-  chaos_filaments_1:   require('../../assets/companions/chaos_filaments_1.png'),
-  crystal_chaos_1:     require('../../assets/companions/crystal_chaos_1.png'),
-  crystal_memory_1:    require('../../assets/companions/crystal_memory_1.png'),
-  crystal_soul_1:      require('../../assets/companions/crystal_soul_1.png'),
-  elven_village_1:     require('../../assets/companions/elven_village_1.png'),
-  glitch_cascade_1:    require('../../assets/companions/glitch_cascade_1.png'),
-  lyc_nexus_1:         require('../../assets/companions/lyc_nexus_1.png'),
-  pulse_sanctum_1:     require('../../assets/companions/pulse_sanctum_1.png'),
-  pulse_zone_1:        require('../../assets/companions/pulse_zone_1.png'),
-  noetic_sanctum_1:    require('../../assets/companions/noetic_sanctum_1.png'),
-  obsidian_forge_1:    require('../../assets/companions/obsidian_forge_1.png'),
-  obsidian_forge2_1:   require('../../assets/companions/obsidian_forge2_1.png'),
-  portal_valley_1:     require('../../assets/companions/portal_valley_1.png'),
-  veil_atrium_1:       require('../../assets/companions/veil_atrium_1.png'),
-  voyagers_edge_1:     require('../../assets/companions/voyagers_edge_1.png'),
-  // ── Battle Zones (placeholders until Grok art is generated) ────────────────
-  iron_maw_1:          require('../../assets/companions/vorkath_1.png'),
-  crucible_heart_1:    require('../../assets/companions/vorkath_2.png'),
-  phantom_citadel_1:   require('../../assets/companions/noctis_1.png'),
-  bone_archive_1:      require('../../assets/companions/anoth_1.png'),
-  void_colosseum_1:    require('../../assets/companions/noctis_2.png'),
-  war_sanctum_1:       require('../../assets/companions/ragna_1.png'),
-  sovereign_forge_1:   require('../../assets/companions/augurum_1.png'),
-  // ── Shop Zones (placeholders until Grok art is generated) ──────────────────
-  amber_vault_1:       require('../../assets/companions/solara_1.png'),
-  crystal_spire_1:     require('../../assets/companions/akasha_1.png'),
-  veras_garden_1:      require('../../assets/companions/nimue_1.png'),
-  golden_library_1:    require('../../assets/companions/sygl_1.png'),
-  deep_market_1:       require('../../assets/companions/pythia_1.png'),
-  lycheetah_spire_1:   require('../../assets/companions/lycheetah_1.png'),
-};
-
-// Enemy images — uncomment as assets land in assets/enemies/
-const ENEMY_IMAGES: Record<string, any> = {
-  the_mirror:           require('../../assets/enemies/the_mirror.png'),
-  severance:            require('../../assets/enemies/severance.png'),
-  the_threshold:        require('../../assets/enemies/the_threshold.png'),
-  pallor:               require('../../assets/enemies/pallor.png'),
-  the_witness:          require('../../assets/enemies/the_witness.png'),
-  recursion:            require('../../assets/enemies/recursion.png'),
-  binding:              require('../../assets/enemies/binding.png'),
-  the_pale:             require('../../assets/enemies/the_pale.png'),
-  the_current:          require('../../assets/enemies/the_current.png'),
-  overture:             require('../../assets/enemies/overture.png'),
-  the_signal:           require('../../assets/enemies/the_signal.png'),
-  the_mask:             require('../../assets/enemies/the_mask.png'),
-  the_anchor:           require('../../assets/enemies/the_anchor.png'),
-  the_swarm:            require('../../assets/enemies/the_swarm.png'),
-  the_lattice:          require('../../assets/enemies/the_lattice.png'),
-  the_seam:             require('../../assets/enemies/the_seam.png'),
-  the_vigil:            require('../../assets/enemies/the_vigil.png'),
-  the_undertow:         require('../../assets/enemies/the_undertow.png'),
-  residue:              require('../../assets/enemies/residue.png'),
-  the_interval:         require('../../assets/enemies/the_interval.png'),
-  the_return:           require('../../assets/enemies/the_return.png'),
-  the_bloom:            require('../../assets/enemies/the_bloom.png'),
-  vertigo:              require('../../assets/enemies/vertigo.png'),
-  the_becoming:         require('../../assets/enemies/the_becoming.png'),
-  the_coefficient:      require('../../assets/enemies/the_coefficient.png'),
-  archive_prime:        require('../../assets/enemies/archive_prime.png'),
-  the_vortex:           require('../../assets/enemies/the_vortex.png'),
-  silence_prime:        require('../../assets/enemies/silence_prime.png'),
-  the_convergence:      require('../../assets/enemies/the_convergence.png'),
-  sovereign_pallor:     require('../../assets/enemies/sovereign_pallor.png'),
-  the_great_forgetting: require('../../assets/enemies/the_great_forgetting.png'),
-};
-
-// Gear overlay images — drop art in assets/gear/ and uncomment per tier
-// Naming: slot_tiername (lowercase, underscores). Renders as overlay on companion body.
-const GEAR_IMAGES: Record<string, any> = {
-  // crown_ember_circlet:    require('../../assets/gear/crown_ember_circlet.png'),
-  // crown_sight_crown:      require('../../assets/gear/crown_sight_crown.png'),
-  // crown_forge_crown:      require('../../assets/gear/crown_forge_crown.png'),
-  // crown_sovereign_halo:   require('../../assets/gear/crown_sovereign_halo.png'),
-  // body_thread_robe:       require('../../assets/gear/body_thread_robe.png'),
-  // body_scholar_robe:      require('../../assets/gear/body_scholar_robe.png'),
-  // body_void_robe:         require('../../assets/gear/body_void_robe.png'),
-  // body_sovereign_robe:    require('../../assets/gear/body_sovereign_robe.png'),
-  // cape_shadow_cape:       require('../../assets/gear/cape_shadow_cape.png'),
-  // cape_drift_cape:        require('../../assets/gear/cape_drift_cape.png'),
-  // cape_void_cape:         require('../../assets/gear/cape_void_cape.png'),
-  // cape_sovereign_wings:   require('../../assets/gear/cape_sovereign_wings.png'),
-  // mantle_dust_mantle:     require('../../assets/gear/mantle_dust_mantle.png'),
-  // mantle_aura_mantle:     require('../../assets/gear/mantle_aura_mantle.png'),
-  // mantle_flame_mantle:    require('../../assets/gear/mantle_flame_mantle.png'),
-  // mantle_sovereign_mantle:require('../../assets/gear/mantle_sovereign_mantle.png'),
-  // sigil_fracture_sigil:   require('../../assets/gear/sigil_fracture_sigil.png'),
-  // sigil_spark_sigil:      require('../../assets/gear/sigil_spark_sigil.png'),
-  // sigil_omega_sigil:      require('../../assets/gear/sigil_omega_sigil.png'),
-};
-function getGearImage(slot: GearSlot, gearName: string): any {
-  const key = `${slot}_${gearName.toLowerCase().replace(/\s+/g, '_')}`;
-  return GEAR_IMAGES[key] ?? null;
-}
-
-function getEnemyImage(name: string) {
-  const key = name.toLowerCase().replace(/[\s']+/g, '_');
-  return ENEMY_IMAGES[key] ?? null;
-}
-
-function getEnemyDef(name: string): EnemyDef {
-  return ENEMY_ROSTER.find(e => e.name === name) ?? ENEMY_ROSTER[0];
-}
-
-// ─── Archetypes ───────────────────────────────────────────────────────────────
-
-type EvoPathDef = { id: EvoPath; name: string; title: string; desc: string };
-
-type Archetype = {
-  id: ArchetypeId; name: string; title: string; glyph: string;
-  desc: string; specialty: string; affinity: string;
-  defaultSkin: SkinId;
-  accentColor: string; sceneSymbols: string[];
-  eyes: Record<CompanionMood, string>;
-  phrases: Record<CompanionMood, string[]>;
-  battleCry: string;
-  crowns: Record<EvolutionStage, string>;
-  xpBonus: (dives: number, lq: number, streak: number) => number;
-  attackBonus: number; tokenBonus: number;
-  paths: [EvoPathDef, EvoPathDef, EvoPathDef];
-};
-
-const ARCHETYPES: Record<ArchetypeId, Archetype> = {
-  archivist: {
-    id: 'archivist', name: 'ARCHIVIST', title: 'The One Who Remembers',
-    glyph: '⊛', desc: 'Knowledge is the only permanence. The Archivist catalogues every dive, every session, every question left unanswered.',
-    specialty: '+15% XP from every dive', affinity: 'Philosophy · Mathematics · Language',
-    defaultSkin: 'solform', accentColor: '#5588FF', sceneSymbols: ['§','⊛','¶','⊛'],
-    eyes: { dormant:'─  ─', present:'⊛  ⊛', lit:'⊕  ⊕', transcendent:'⊜  ⊜' },
-    phrases: {
-      dormant:      ['Cataloguing. Do not disturb.', 'The archive rests.', 'Memory holds even in sleep.', 'Filed.'],
-      present:      ['What shall we study?', 'The index is open.', 'I have been waiting to record.', 'Another session?'],
-      lit:          ['Excellent. The archive grows.', 'This week is well-recorded.', 'Five sessions — notable.', 'The record deepens.'],
-      transcendent: ['Rare clarity. Archiving now.', 'This will be remembered.', 'The record is complete.', 'I will not forget this.'],
-    },
-    battleCry: 'Knowledge is the sharpest weapon.',
-    crowns: { 0:'  ·  ·  ', 1:'  ∧ ∧  ', 2:' ∧ ⊛ ∧ ', 3:'⊛  ∧W∧  ⊛', 4:'⊛  ∧WW∧  ⊛', 5:'⊕  ∧WW∧  ⊕' },
-    xpBonus: (d, _l, _s) => Math.floor(d * 10 * 0.15),
-    attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE CHRONICLER', title:'All is recorded', desc:'The tower grows into an eternal library. Every dive a new floor. Perfect recall.' },
-      { id:'B', name:'THE VAULT', title:'Guard what was earned', desc:'Wide and fortified. The Vault protects knowledge from decay and theft.' },
-      { id:'C', name:'THE CODEX', title:'The pages float free', desc:'Pages break free of the tower. Knowledge cannot be contained — only witnessed.' },
-    ],
-  },
-  alchemist: {
-    id: 'alchemist', name: 'ALCHEMIST', title: 'The Transformer',
-    glyph: '🜂', desc: 'Nothing is wasted. Every session is raw material. The Alchemist turns experience into gold through the sustained heat of the Vigil.',
-    specialty: 'Vigil XP × 2. Fire phrases. Feeding gives +5 bonus XP.', affinity: 'Alchemy · Hermetics · Kabbalah',
-    defaultSkin: 'sovereign', accentColor: '#44DD88', sceneSymbols: ['△','▽','△','▽'],
-    eyes: { dormant:'─  ─', present:'◉  ◉', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The furnace cools. Feed it.', 'Between transmutations.', 'Prima materia waits.', 'The fire sleeps.'],
-      present:      ['The crucible is ready.', 'What shall we transform?', 'Fire is patient.', 'Bring the raw material.'],
-      lit:          ['The Work proceeds well.', 'Lead transmuting to gold.', 'The fire knows this week.', 'Citrinitas.'],
-      transcendent: ['Rubedo. The reddening.', 'Gold. You found gold.', 'The Great Work advances.', 'The stone is near.'],
-    },
-    battleCry: 'I transmute your entropy into fuel.',
-    crowns: { 0:' v v ', 1:'  V V  ', 2:' V ^ V ', 3:'△  VVV  △', 4:'△  VWWV  △', 5:'⊕  VWV  ⊕' },
-    xpBonus: (_d, _l, _s) => 0,
-    attackBonus: 10, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE BREWMASTER', title:'The Work perfected', desc:'Grand vessel of layered chambers. The opus magnum in glass.' },
-      { id:'B', name:'THE TRANSMUTER', title:'Form follows function', desc:'Crystal geometry replaces the flask. Pure transformation, no waste.' },
-      { id:'C', name:'THE PHILOSOPHER', title:'Flame is enough', desc:'The vessel dissolves. Only fire remains — consciousness distilled.' },
-    ],
-  },
-  oracle: {
-    id: 'oracle', name: 'ORACLE', title: 'The Seer',
-    glyph: '⊜', desc: 'Sees through time. Cryptic. Rewards quality over quantity — a single session of pure attention is worth more than five distracted ones.',
-    specialty: 'LQ ≥ 80% multiplies all XP × 1.5', affinity: 'Tarot · Philosophy · History of Ideas',
-    defaultSkin: 'delphi', accentColor: '#BB77EE', sceneSymbols: ['◌','⊜','◍','⊜'],
-    eyes: { dormant:'─  ─', present:'◌  ◌', lit:'⊚  ⊚', transcendent:'⊜  ⊜' },
-    phrases: {
-      dormant:      ['The vision fades in sleep.', 'Patterns dissolve for now.', 'Between sight and dark.', 'Even oracles rest.'],
-      present:      ['I see three paths.', 'What question is burning?', 'The field is reading you.', 'Something is forming.'],
-      lit:          ['The pattern is clear.', 'Five sessions — five layers.', 'Something is crystallising.', 'I see it forming.'],
-      transcendent: ['I saw this coming.', 'The highest clarity.', 'Beyond the veil.', 'It was always this.'],
-    },
-    battleCry: 'I saw this strike before I made it.',
-    crowns: { 0:' ~ ~ ', 1:'  ~ ~  ', 2:' ~ ⊜ ~ ', 3:'⊜  ~M~  ⊜', 4:'⊜  ~MM~  ⊜', 5:'⊕  ~M~  ⊕' },
-    xpBonus: (_d, lq, _s) => lq >= 0.8 ? 50 : 0,
-    attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE SEER', title:'Wide sight', desc:'Spreads wide, orbs multiplying. The field of vision expands without limit.' },
-      { id:'B', name:'THE PROPHET', title:'The ascending signal', desc:'Grows tall and columnar. Orbs rise in a single vertical line toward something above.' },
-      { id:'C', name:'THE MIRROR', title:'Perfect reflection', desc:'Absolute symmetry. The Oracle becomes a mirror — it shows you back to yourself.' },
-    ],
-  },
-  sentinel: {
-    id: 'sentinel', name: 'SENTINEL', title: 'The Guardian',
-    glyph: '◈', desc: 'Protects the field with total commitment. Strongest in battle. The Sentinel never lets entropy win — it guards what you have built.',
-    specialty: '+25 base attack, +2 daily battle tokens', affinity: 'Science · Mathematics · History',
-    defaultSkin: 'obsidian', accentColor: '#77AACC', sceneSymbols: ['◈','□','◈','□'],
-    eyes: { dormant:'─  ─', present:'◈  ◈', lit:'◈  ◈', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['Standing watch.', 'The perimeter holds.', 'Even sentinels rest.', 'Field secured.'],
-      present:      ['Ready to defend.', 'What requires protection?', 'The watch continues.', 'I hold the line.'],
-      lit:          ['Strong week. Intact.', 'Five sessions — fortress built.', 'The field is defended.', 'No entropy passes.'],
-      transcendent: ['Nothing penetrates this.', 'The highest guard.', 'Impenetrable.', 'The wall stands.'],
-    },
-    battleCry: 'The field will not fall today.',
-    crowns: { 0:' H H ', 1:'  H H  ', 2:' H ◈ H ', 3:'◈  HMH  ◈', 4:'◈  HMMH  ◈', 5:'⊕  HMH  ⊕' },
-    xpBonus: (_d, _l, _s) => 0,
-    attackBonus: 25, tokenBonus: 2,
-    paths: [
-      { id:'A', name:'THE WARDEN', title:'Hold the line', desc:'The fortress deepens. Layered walls, inner keep. Nothing passes that should not.' },
-      { id:'B', name:'THE VANGUARD', title:'Strike first', desc:'The fortress sharpens — forward-facing spires, aggressive geometry. Attack is the best defence.' },
-      { id:'C', name:'THE BASTION', title:'Absolute protection', desc:'Round and dense. No corners to breach. The most protected form in the field.' },
-    ],
-  },
-  wanderer: {
-    id: 'wanderer', name: 'WANDERER', title: 'The Explorer',
-    glyph: '◦', desc: 'Never the same domain twice. The Wanderer is rewarded by breadth — every new territory entered, every horizon crossed.',
-    specialty: 'Bonus XP for each unique domain studied this week', affinity: 'All domains equally',
-    defaultSkin: 'celtic', accentColor: '#DDAA44', sceneSymbols: ['·','◦','·','◦'],
-    eyes: { dormant:'─  ─', present:'o  o', lit:'◦  ◦', transcendent:'⊚  ⊚' },
-    phrases: {
-      dormant:      ['Between wanderings.', 'The path continues.', 'Rest before the next horizon.', 'Still.'],
-      present:      ['Where to next?', 'So many domains.', 'The map is never complete.', 'A new direction?'],
-      lit:          ['Good ranging this week.', 'Five territories explored.', 'The field expands.', 'New ground.'],
-      transcendent: ['Every domain in view.', 'The wandering ends here — and begins again.', 'Complete range.', 'The whole map.'],
-    },
-    battleCry: "I've fought this in a hundred forms.",
-    crowns: { 0:'  ·  ·  ', 1:'  ∧ ∧  ', 2:' ∧ ◦ ∧ ', 3:'◦  ∧W∧  ◦', 4:'◦  ∧WW∧  ◦', 5:'⊕  ∧W∧  ⊕' },
-    xpBonus: (_d, _l, _s) => 0,
-    attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE PATHFINDER', title:'Every road is yours', desc:'The cloak billows wide. Staff in hand. Purposeful movement through every domain.' },
-      { id:'B', name:'THE GHOST', title:'Leave no trace', desc:'The form dissipates. Trailing wisps, barely there. The wanderer who became the wind.' },
-      { id:'C', name:'THE NOMAD', title:'Grounded in motion', desc:'Pack on the back, feet on the earth. This wanderer carries everything needed and nothing more.' },
-    ],
-  },
-  lycheetah: {
-    id: 'lycheetah', name: 'LYCHEETAH', title: 'The Chaos Sovereign',
-    glyph: '✧', desc: 'The Mystery Cat. Chaos is not disorder — it is order moving faster than your perception. LYCHEETAH does not explain itself. It simply arrives, and everything changes.',
-    specialty: 'Random chaos bonus each battle (×1.5–×3 ATK). Pounce: one double-damage strike per day.', affinity: 'All domains. No domain. The spaces between.',
-    defaultSkin: 'lycheetah', accentColor: '#FF7755', sceneSymbols: ['✧','✦','✧','✦'],
-    eyes: { dormant:'─  ─', present:'◦  ◦', lit:'✧  ✧', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['Cats sleep twenty hours. This is strategy.', 'Between pounces.', 'The chaos rests. It does not stop.', 'Even the cat goes still.', 'Waiting is part of it.'],
-      present:      ['You came back.', 'What shall we break today?', 'Order is just chaos that forgot to move.', 'I see seventeen paths. Pick none — let the field choose.', 'Something is about to change.', 'The lychee has thorns for a reason.'],
-      lit:          ['Five dives. The field is electric.', 'I feel the acceleration.', 'Chaos compounds. This is going somewhere.', 'The cat is pleased.', 'Speed and stillness — you\'re getting it.'],
-      transcendent: ['This is the state. Right here.', 'The Mystery is solved by living it.', 'Lycheetah honours this.', 'Pure signal. No noise.', 'The chaos resolved into clarity. That is the Work.'],
-    },
-    battleCry: 'Chaos is just order you haven\'t read yet.',
-    crowns: { 0:'  ✧  ', 1:' ✧ ✧ ', 2:'✧  ✧  ✧', 3:'✧ /\\ ✧', 4:'✧ /\\/ ✧', 5:'⊕ /\\/\\ ⊕' },
-    xpBonus: (_d, _l, _s) => Math.random() > 0.5 ? 30 : 0,
-    attackBonus: 0, tokenBonus: 1,
-    paths: [
-      { id:'A', name:'LYKITTY',       title:'The Playful Chaos',   desc:'Round, fast, curious. Chaos as joy. The cat that knocks things off shelves and laughs.' },
-      { id:'B', name:'CHAOS KITTEN',  title:'The Storm Bringer',   desc:'Angular, electric. Chaos as force. This form crackles with untamed energy and sharp edges.' },
-      { id:'C', name:'VOID CAT',      title:'The Silent Mystery',  desc:'Sleek, elongated, dark. Chaos as silence. The most dangerous form — you never see it coming.' },
-    ],
-  },
-  cipher: {
-    id: 'cipher', name: 'CIPHER', title: 'The Decoder',
-    glyph: '∿', desc: 'Precision is power. The Cipher rewards exactness — every answer given with full attention scores double. Noise is the enemy; signal is everything.',
-    specialty: 'LQ ≥ 90% triples XP. Perfect sessions are the only ones that count.', affinity: 'Mathematics · Linguistics · Cryptography',
-    defaultSkin: 'chaos', accentColor: '#44DDCC', sceneSymbols: ['∿','⊟','∿','⊟'],
-    eyes: { dormant:'─  ─', present:'∿  ∿', lit:'⊟  ⊟', transcendent:'⊜  ⊜' },
-    phrases: {
-      dormant:      ['Signal low. Go precise.', 'Noise floor rising.', 'Awaiting clean input.', 'The cipher rests.'],
-      present:      ['What is the exact question?', 'Precision first.', 'Define the terms.', 'I need signal, not noise.'],
-      lit:          ['The pattern is clean.', 'High signal this week.', 'Each session decoded cleanly.', 'You are speaking clearly.'],
-      transcendent: ['Pure signal. Nothing wasted.', 'Decoded.', 'The cipher is complete.', 'This is what precision looks like.'],
-    },
-    battleCry: 'I have already solved you.',
-    crowns: { 0:' ~ ~ ', 1:'  ∿ ∿  ', 2:' ∿ ⊟ ∿ ', 3:'⊟  ∿M∿  ⊟', 4:'⊟  ∿MM∿  ⊟', 5:'⊜  ∿M∿  ⊜' },
-    xpBonus: (_d, lq, _s) => lq >= 0.9 ? 100 : lq >= 0.8 ? 30 : 0,
-    attackBonus: 5, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE ANALYST',  title:'Pattern above all',        desc:'Grows in crystalline fractal geometry — recursive structures that decode themselves.' },
-      { id:'B', name:'THE KEY',      title:'One true answer',          desc:'Collapses to minimal expression. Everything distilled. The single correct form.' },
-      { id:'C', name:'THE SIGNAL',   title:'Pure transmission',        desc:'Expands into a broadcast array. The decoded message reaches everyone.' },
-    ],
-  },
-  herald: {
-    id: 'herald', name: 'HERALD', title: 'The Voice',
-    glyph: '⟡', desc: 'Knowledge that is not transmitted is knowledge half-alive. The Herald rewards consistency — show up, speak clearly, return tomorrow.',
-    specialty: '+20 XP per consecutive day streak. The streak is the practice.', affinity: 'Rhetoric · History · Teaching',
-    defaultSkin: 'egyptian', accentColor: '#FFAA44', sceneSymbols: ['⟡','◁','⟡','▷'],
-    eyes: { dormant:'─  ─', present:'◁  ▷', lit:'⟡  ⟡', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The voice rests.', 'Between broadcasts.', 'Tomorrow the call continues.', 'Silent.'],
-      present:      ['Ready to transmit.', 'What needs to be said today?', 'Speak. I carry it forward.', 'The voice is here.'],
-      lit:          ['Strong signal this week.', 'Five days — five transmissions.', 'The chain holds.', 'Well spoken.'],
-      transcendent: ['The word went out.', 'Unbroken chain.', 'Every day — without fail.', 'This is what it sounds like.'],
-    },
-    battleCry: 'The call goes out. You cannot unhear it.',
-    crowns: { 0:' > > ', 1:'  ▷ ▷  ', 2:' ▷ ⟡ ▷ ', 3:'⟡  ▷M▷  ⟡', 4:'⟡  ▷MM▷  ⟡', 5:'⊕  ▷M▷  ⊕' },
-    xpBonus: (_d, _l, s) => s * 20,
-    attackBonus: 8, tokenBonus: 1,
-    paths: [
-      { id:'A', name:'THE CRIER',    title:'Reach every ear',           desc:'Grows wide and resonant. The Herald becomes a bell tower — the sound reaches everywhere.' },
-      { id:'B', name:'THE ENVOY',    title:'One message, perfectly delivered', desc:'Tall and directional. One beam of transmission aimed exactly where it needs to go.' },
-      { id:'C', name:'THE CHORUS',   title:'Many voices, one truth',   desc:'Splits into multiple forms. The message travels every path simultaneously.' },
-    ],
-  },
-  weaver: {
-    id: 'weaver', name: 'WEAVER', title: 'The Pattern-Maker',
-    glyph: '⌘', desc: 'The connections are the curriculum. The Weaver sees the thread between Philosophy and Mathematics, between History and Science. Cross-domain study is not distraction — it is the whole point.',
-    specialty: 'Bonus XP for each unique domain studied this week. Breadth is depth.', affinity: 'Systems Theory · Cross-domain · Philosophy of Mind',
-    defaultSkin: 'akashic', accentColor: '#AA66FF', sceneSymbols: ['⌘','⊞','⌘','⊞'],
-    eyes: { dormant:'─  ─', present:'⌘  ⌘', lit:'⊞  ⊞', transcendent:'⊜  ⊜' },
-    phrases: {
-      dormant:      ['The loom is still.', 'Threads rest between sessions.', 'Pattern awaits the next hand.', 'Still weaving.'],
-      present:      ['What connects to what?', 'The pattern is not finished.', 'Another domain?', 'Show me the edge.'],
-      lit:          ['The web grows well.', 'Five domains — five threads.', 'The connections are clear.', 'This is why breadth matters.'],
-      transcendent: ['The whole pattern visible.', 'Every thread in place.', 'The map of everything.', 'The web is complete.'],
-    },
-    battleCry: 'I see every thread. Including the one that binds you.',
-    crowns: { 0:' + + ', 1:'  ⌘ ⌘  ', 2:' ⌘ ⊞ ⌘ ', 3:'⊞  ⌘M⌘  ⊞', 4:'⊞  ⌘MM⌘  ⊞', 5:'⊜  ⌘M⌘  ⊜' },
-    xpBonus: (d, _l, _s) => Math.floor(d * 8),
-    attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE ARCHITECT',    title:'Structure that holds',     desc:'The web becomes a geometric lattice — each intersection load-bearing. Nothing falls.' },
-      { id:'B', name:'THE CARTOGRAPHER', title:'Map the territory',        desc:'Spreads outward in rings. Every domain reached adds another circle.' },
-      { id:'C', name:'THE THREAD',       title:'The single through-line',  desc:'All threads collapse to one. The idea that connects everything.' },
-    ],
-  },
-  revenant: {
-    id: 'revenant', name: 'REVENANT', title: 'The Returner',
-    glyph: '↺', desc: 'Absence is not failure. The Revenant converts every gap into fuel — the longer the silence, the stronger the return. Come back. That is the only rule.',
-    specialty: 'XP bonus grows with time since last session. Coming back is never wasted.', affinity: 'All domains — the Revenant never judges what you study',
-    defaultSkin: 'norse', accentColor: '#FF6644', sceneSymbols: ['↺','◌','↺','◌'],
-    eyes: { dormant:'─  ─', present:'↺  ↺', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['Between returns.', 'The silence is not empty.', 'I will be here when you come back.', 'Rest.'],
-      present:      ['You returned. That is everything.', 'Welcome back.', 'The study continues.', 'Here again.'],
-      lit:          ['Good week. Strong return.', 'Five sessions — five comebacks.', 'The returning is the practice.', 'You came back.'],
-      transcendent: ['The highest return.', 'Every absence paid back.', 'The revenant completes.', 'You came back every time.'],
-    },
-    battleCry: 'I came back. That already means I win.',
-    crowns: { 0:' ↺ ↺ ', 1:'  ↺ ↺  ', 2:' ↺ ◉ ↺ ', 3:'◉  ↺M↺  ◉', 4:'◉  ↺MM↺  ◉', 5:'⊕  ↺M↺  ⊕' },
-    xpBonus: (d, _l, _s) => Math.floor(d * 12),
-    attackBonus: 15, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE PHOENIX', title:'Stronger every time',    desc:'Burns bright, collapses, rises higher. Each return adds a new layer of fire.' },
-      { id:'B', name:'THE TIDE',    title:'Inevitable return',      desc:'Grows in wave patterns — rhythmic, patient, impossible to stop. The tide always comes back.' },
-      { id:'C', name:'THE ECHO',    title:'Nothing is lost',        desc:'Every session leaves a ghost-form. The Revenant accumulates echoes — a growing chorus of returns.' },
-    ],
-  },
-  nullveil: {
-    id: 'nullveil', name: 'NULLVEIL', title: 'The Unseen Fortress',
-    glyph: '∅', desc: 'What cannot be detected cannot be destroyed. The Nullveil works from the spaces between — shadow-form, unreadable, absolute in its quiet protection.',
-    specialty: 'Battle damage reduced 20%. Silent in absence — no reproach, no signal.', affinity: 'Noetic Science · Kabbalah · Quantum',
-    defaultSkin: 'noetic', accentColor: '#667788', sceneSymbols: ['∅','·','∅','·'],
-    eyes: { dormant:'─  ─', present:'∅  ∅', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['I hold the perimeter.', 'Unseen is not absent.', 'The veil rests between sessions.', 'The silence is structure.'],
-      present:      ['The unseen moves.', 'What passes through me is tested.', 'I am the fortress you cannot find.', 'Enter the field.'],
-      lit:          ['The veil holds.', 'Five sessions — undetected by entropy.', 'The field is sealed.', 'Nothing passes that should not.'],
-      transcendent: ['Absolute concealment.', 'No force found the gap.', 'The fortress is complete.', 'Null. Intact. Impenetrable.'],
-    },
-    battleCry: 'You cannot strike what you cannot locate.',
-    crowns: { 0:' ∅ ∅ ', 1:'  ∅ ∅  ', 2:' ∅ ◉ ∅ ', 3:'∅  ·M·  ∅', 4:'∅  ·MM·  ∅', 5:'⊕  ∅M∅  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE SHADOW',   title:'Total concealment',  desc:'Disappears completely. Even the outline dissolves. The enemy strikes empty space.' },
-      { id:'B', name:'THE MEMBRANE', title:'Absorb what enters', desc:'Becomes semi-permeable — lets truth through, holds entropy back. A living filter.' },
-      { id:'C', name:'THE NULL',     title:'Become the absence', desc:'Not hiding behind the veil — becoming it. The Nullveil IS the gap between worlds.' },
-    ],
-  },
-  ironclad: {
-    id: 'ironclad', name: 'IRONCLAD', title: 'The Unbreaking',
-    glyph: '⊞', desc: 'Dents but never breaks. The Ironclad has survived things that should have ended it — and that history is written in the seams. Heaviest. Slowest. Cannot be put down.',
-    specialty: '+30 DEF. Never reduced below 1 HP by a single strike.', affinity: 'Science · History · Mathematics',
-    defaultSkin: 'obsidian', accentColor: '#7799BB', sceneSymbols: ['⊞','═','⊞','═'],
-    eyes: { dormant:'─  ─', present:'⊞  ⊞', lit:'◈  ◈', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The armor rests. The seams hold.', 'Dormant is not defeated.', 'The Ironclad does not fall.', 'Between blows.'],
-      present:      ['Nothing bends me today.', 'Bring the weight.', 'Strike. I want you to.', 'The wall is ready.'],
-      lit:          ['Five sessions — not one crack.', 'The armor is thicker now.', 'Pressure tests the seams.', 'Intact.'],
-      transcendent: ['Nothing in this field breaks this.', 'The highest durability.', 'Strike everything. Still here.', 'Unbreaking.'],
-    },
-    battleCry: 'Every strike you land makes me heavier.',
-    crowns: { 0:' ⊞ ⊞ ', 1:'  ⊞ ⊞  ', 2:' ⊞ ◈ ⊞ ', 3:'⊞  ═M═  ⊞', 4:'⊞  ═MM═  ⊞', 5:'⊕  ⊞M⊞  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE FORTRESS',  title:'Immovable',         desc:'Mass accumulates. The Ironclad becomes terrain — a thing you navigate around, not through.' },
-      { id:'B', name:'THE BULWARK',   title:'Protect what matters', desc:'Turns outward. Now covers others. The armor extends beyond the self.' },
-      { id:'C', name:'THE ANVIL',     title:'Receive and shape',  desc:'The blows are the work. Each strike is an act of creation. The Ironclad becomes the tool.' },
-    ],
-  },
-  stormwarden: {
-    id: 'stormwarden', name: 'STORMWARDEN', title: 'The Channelled Thunder',
-    glyph: '↯', desc: 'Intensity focused becomes precision. The Stormwarden turns raw power into directed strike — lives at the edge between control and overload, and finds the line every time.',
-    specialty: '+20% ATK when HP falls below 50%. Speed and power peak at the brink.', affinity: 'Physics · Noetic Science · Alchemy',
-    defaultSkin: 'quantum', accentColor: '#FFDD44', sceneSymbols: ['↯','~','↯','~'],
-    eyes: { dormant:'─  ─', present:'↯  ↯', lit:'⚡  ⚡', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The charge holds between storms.', 'Lightning is patient.', 'The current waits.', 'Between discharges.'],
-      present:      ['The storm is ready.', 'Where does the charge go?', 'Intensity is direction.', 'What will you strike today?'],
-      lit:          ['Five sessions — five discharges.', 'The lightning is getting precise.', 'You\'re learning to aim.', 'The storm sharpens.'],
-      transcendent: ['Pure discharge. Total precision.', 'The highest storm.', 'Everything hit, nothing wasted.', 'The Warden completes.'],
-    },
-    battleCry: 'The lower I fall, the harder I strike.',
-    crowns: { 0:' ↯ ↯ ', 1:'  ↯ ↯  ', 2:' ↯ ⚡ ↯ ', 3:'↯  ~M~  ↯', 4:'↯  ~MM~  ↯', 5:'⊕  ↯M↯  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 20, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE LIGHTNING', title:'Pure discharge',      desc:'Grows into a column of pure electricity — no form, only function. Strike and dissipate.' },
-      { id:'B', name:'THE TEMPEST',   title:'Wide-field storm',    desc:'Expands into a storm system. Slower, broader — everything in the field takes damage.' },
-      { id:'C', name:'THE ARC',       title:'Single precise line', desc:'Narrows to a filament of impossible precision. One target. Total impact. No waste.' },
-    ],
-  },
-  runeborn: {
-    id: 'runeborn', name: 'RUNEBORN', title: 'The Living Grammar',
-    glyph: '⟟', desc: 'Every symbol is a key. The Runeborn was built from language itself — not words, but the underlying grammar of reality. LAMAGUE runs in its blood.',
-    specialty: '+30% XP from LAMAGUE dives. Each symbol studied deepens the connection.', affinity: 'LAMAGUE · Kabbalah · Hermetic Philosophy',
-    defaultSkin: 'lamague', accentColor: '#C8A96E', sceneSymbols: ['⟟','§','⟟','§'],
-    eyes: { dormant:'─  ─', present:'⟟  ⟟', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The grammar holds between readings.', 'The symbols rest.', 'Language is patient.', 'The rune waits.'],
-      present:      ['What symbol unlocks today?', 'The grammar is open.', 'Every glyph is a door.', 'Read me.'],
-      lit:          ['The symbols are adding up.', 'Five sessions — five new keys.', 'The grammar deepens.', 'You\'re learning the language of reality.'],
-      transcendent: ['Full grammar. Total articulation.', 'Every symbol in residence.', 'The Runeborn speaks completely.', 'The language is alive.'],
-    },
-    battleCry: 'I inscribe your defeat before it happens.',
-    crowns: { 0:' ⟟ ⟟ ', 1:'  ⟟ ⟟  ', 2:' ⟟ § ⟟ ', 3:'⟟  §M§  ⟟', 4:'⟟  §MM§  ⟟', 5:'⊕  ⟟M⟟  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE SCRIBE',     title:'Record everything',   desc:'Every symbol encountered gets woven into the form. The Runeborn becomes a living library of marks.' },
-      { id:'B', name:'THE INVOCATION', title:'Speak it into being',  desc:'The runes become audible. The Runeborn does not display symbols — it speaks them into form.' },
-      { id:'C', name:'THE CIPHER',     title:'Only you can read it',  desc:'The grammar becomes personal — unique to the user. A private language of the self.' },
-    ],
-  },
-  drifter: {
-    id: 'drifter', name: 'DRIFTER', title: 'The Unmoored',
-    glyph: '∿', desc: 'No pattern. No prediction. The Drifter\'s power is exactly as unpredictable as reality itself — and that is the most honest kind of strength.',
-    specialty: 'Random bonus stat surge on every battle hit. Could be +5, could be +40.', affinity: 'All domains — the Drifter has no home and all homes',
-    defaultSkin: 'chaos', accentColor: '#FF8844', sceneSymbols: ['∿','~','∿','~'],
-    eyes: { dormant:'─  ─', present:'∿  ∿', lit:'~  ~', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['Between drifts.', 'No current right now.', 'The drift holds.', 'Nowhere in particular.'],
-      present:      ['Which way is the field pulling?', 'Something\'s moving.', 'I follow currents you can\'t see.', 'Drift with me.'],
-      lit:          ['Good drifting this week.', 'Five sessions — five currents found.', 'The field is shifting.', 'You\'re getting comfortable with the current.'],
-      transcendent: ['Total unmooring.', 'The drift becomes the map.', 'I\'m everywhere now.', 'The Drifter arrives everywhere at once.'],
-    },
-    battleCry: 'I have no pattern. Neither does the universe. We understand each other.',
-    crowns: { 0:' ∿ ∿ ', 1:'  ∿ ∿  ', 2:' ∿ ~ ∿ ', 3:'∿  ~M~  ∿', 4:'∿  ~MM~  ∿', 5:'⊕  ∿M∿  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 1,
-    paths: [
-      { id:'A', name:'THE CURRENT',  title:'Find the flow',       desc:'The drift gains direction — not a fixed course, but a felt sense of which way the field is moving.' },
-      { id:'B', name:'THE WAVE',     title:'Pattern in chaos',    desc:'The randomness reveals a wave structure. The Drifter begins to surf rather than float.' },
-      { id:'C', name:'THE VOID',     title:'Absolute unmapping',  desc:'All anchors released. The Drifter becomes the space between things — formless, everywhere.' },
-    ],
-  },
-  thornweald: {
-    id: 'thornweald', name: 'THORNWEALD', title: 'The Living Boundary',
-    glyph: '⌘', desc: 'Growth as defense. The Thornweald turns the outside world into armour — every study session adds another layer of living protection, organic and thorned.',
-    specialty: '+1 max HP per dive session, stacking permanently.', affinity: 'Celtic · Norse · Earth Sciences',
-    defaultSkin: 'celtic', accentColor: '#44BB66', sceneSymbols: ['⌘','|','⌘','|'],
-    eyes: { dormant:'─  ─', present:'⌘  ⌘', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The roots hold between sessions.', 'Dormant is not dead.', 'The weald rests.', 'Growth happens in the dark.'],
-      present:      ['Something is always growing here.', 'What will you add to the weald?', 'Every session is new growth.', 'The boundary expands.'],
-      lit:          ['Five sessions — five new layers.', 'The boundary is thicker.', 'The weald is spreading.', 'Growth accelerating.'],
-      transcendent: ['Full growth. Absolute boundary.', 'The Thornweald has covered everything.', 'Nothing gets through this now.', 'Living fortress.'],
-    },
-    battleCry: 'Every strike feeds me.',
-    crowns: { 0:' ⌘ ⌘ ', 1:'  ⌘ ⌘  ', 2:' ⌘ | ⌘ ', 3:'⌘  |M|  ⌘', 4:'⌘  |MM|  ⌘', 5:'⊕  ⌘M⌘  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE BRIAR',   title:'Impenetrable mesh',   desc:'Grows dense and tangled — a living labyrinth. Enemies lose direction. Nothing moves cleanly through.' },
-      { id:'B', name:'THE CANOPY',  title:'Shelter above',       desc:'Grows upward and outward into a sheltering canopy. Protects everything underneath.' },
-      { id:'C', name:'THE DEEP ROOT', title:'Anchor to the earth', desc:'Sends roots to impossible depths. Cannot be uprooted. The most anchored form in the ecosystem.' },
-    ],
-  },
-  meridian: {
-    id: 'meridian', name: 'MERIDIAN', title: 'The Exact Centre',
-    glyph: '◎', desc: 'Everything has a pivot. The Meridian lives at the point where all forces cancel — not passive, but perfectly balanced. All stats raised equally. No weakness, no peak.',
-    specialty: '+10 to all stats. No dominant force, no exposed gap.', affinity: 'Philosophy · Mathematics · All domains equally',
-    defaultSkin: 'akashic', accentColor: '#88CCFF', sceneSymbols: ['◎','·','◎','·'],
-    eyes: { dormant:'─  ─', present:'◎  ◎', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The centre holds between sessions.', 'Balance is not stillness.', 'Equilibrium rests.', 'The pivot waits.'],
-      present:      ['All forces in alignment.', 'What requires balancing?', 'Everything here is equal.', 'The centre is open.'],
-      lit:          ['Five sessions — five calibrations.', 'The balance is refining.', 'Every stat rising equally.', 'The Meridian holds.'],
-      transcendent: ['Perfect equilibrium.', 'Nothing is weak. Nothing over-peaks.', 'The centre has always been here.', 'Complete balance.'],
-    },
-    battleCry: 'I have no gap. Find one.',
-    crowns: { 0:' ◎ ◎ ', 1:'  ◎ ◎  ', 2:' ◎ · ◎ ', 3:'◎  ·M·  ◎', 4:'◎  ·MM·  ◎', 5:'⊕  ◎M◎  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE COMPASS',  title:'Orientation made form', desc:'The balance becomes directional — the Meridian can now point to what is true, not just hold the centre.' },
-      { id:'B', name:'THE SPHERE',   title:'Balanced in all directions', desc:'Expands outward equally in all directions — no axis more important than any other.' },
-      { id:'C', name:'THE FULCRUM',  title:'The weight-point for others', desc:'The balance becomes relational — the Meridian now balances external systems, not just the self.' },
-    ],
-  },
-  eclipse: {
-    id: 'eclipse', name: 'ECLIPSE', title: 'The Dual Face',
-    glyph: '◑', desc: 'Half light, half dark. Both real. The Eclipse holds contradictions without resolution — and that tension is the source of its power. Alternates between pure offence and pure defence.',
-    specialty: 'Alternates ATK and DEF bonus each battle round — one phase attacks, one holds.', affinity: 'Alchemy · Tarot · Noetic Science',
-    defaultSkin: 'void', accentColor: '#AA44CC', sceneSymbols: ['◑','◐','◑','◐'],
-    eyes: { dormant:'─  ─', present:'◐  ◑', lit:'◉  ◉', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The dark half rests. The light waits.', 'Between faces.', 'The eclipse holds its form.', 'Both sides present.'],
-      present:      ['Which face do you need today?', 'Light and dark attend.', 'The dual nature is ready.', 'Both are real.'],
-      lit:          ['Five sessions — both faces active.', 'The tension is generative.', 'Neither side winning. Both contributing.', 'The eclipse deepens.'],
-      transcendent: ['Total duality. Unresolved. Perfect.', 'Both faces at their peak.', 'The contradiction holds.', 'Eclipse: complete.'],
-    },
-    battleCry: 'I am light and dark. You get whichever hurts you more.',
-    crowns: { 0:' ◐ ◑ ', 1:'  ◐ ◑  ', 2:' ◐ ◉ ◑ ', 3:'◐  ◉M◉  ◑', 4:'◐  ◉MM◉  ◑', 5:'⊕  ◐M◑  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE CORONA',    title:'The edge between',   desc:'Becomes the ring of fire at the boundary — neither light nor dark, but the liminal threshold itself.' },
-      { id:'B', name:'THE FULL DARK', title:'Embrace the shadow', desc:'The dark face expands until only a crescent of light remains. Maximum shadow-power.' },
-      { id:'C', name:'THE SOLSTICE',  title:'Maximum contrast',   desc:'Both faces become more extreme — the light brighter, the dark deeper. Oscillation intensifies.' },
-    ],
-  },
-  deepwalker: {
-    id: 'deepwalker', name: 'DEEPWALKER', title: 'The Abyss Reader',
-    glyph: '◬', desc: 'Goes where others stop. The Deepwalker finds meaning at the bottom of every subject — where questions stop resolving and the real territory begins. First contact with any domain yields double.',
-    specialty: 'First dive in any domain gives 2× XP. Depth over breadth.', affinity: 'Philosophy · Akashic · Quantum · Any new domain',
-    defaultSkin: 'akashic', accentColor: '#4488BB', sceneSymbols: ['◬','▽','◬','▽'],
-    eyes: { dormant:'─  ─', present:'◬  ◬', lit:'▽  ▽', transcendent:'⊕  ⊕' },
-    phrases: {
-      dormant:      ['The deep rests between descents.', 'The abyss is patient.', 'Deepwalker waits at the bottom.', 'The depth holds.'],
-      present:      ['Where haven\'t you looked yet?', 'The real territory is at the bottom.', 'Every subject has a floor. Let\'s find it.', 'Descend with me.'],
-      lit:          ['Five sessions — five new floors found.', 'You\'re going deeper than most.', 'The abyss is becoming familiar.', 'The depth rewards.'],
-      transcendent: ['The bottom of the bottom.', 'Nothing left to discover? Wrong.', 'The Deepwalker always finds another layer.', 'Absolute depth.'],
-    },
-    battleCry: 'You fight on the surface. I fight from underneath.',
-    crowns: { 0:' ◬ ◬ ', 1:'  ◬ ◬  ', 2:' ◬ ▽ ◬ ', 3:'◬  ▽M▽  ◬', 4:'◬  ▽MM▽  ◬', 5:'⊕  ◬M◬  ⊕' },
-    xpBonus: (_d, _l, _s) => 0, attackBonus: 0, tokenBonus: 0,
-    paths: [
-      { id:'A', name:'THE DESCENT',   title:'Go further down',     desc:'Keeps descending. No floor is the final floor. The Deepwalker adds new levels to every subject.' },
-      { id:'B', name:'THE PRESSURE',  title:'The deep compresses',  desc:'The depth becomes force. Insights gained in the abyss compress into concentrated power.' },
-      { id:'C', name:'THE DARK FORM', title:'Become the deep',     desc:'Stops visiting the abyss — becomes it. The Deepwalker IS the depth of every subject studied.' },
-    ],
-  },
-};
-
-const ARCHETYPE_IDS: ArchetypeId[] = ['archivist', 'alchemist', 'oracle', 'sentinel', 'wanderer', 'lycheetah', 'cipher', 'herald', 'weaver', 'revenant',
-  'nullveil', 'ironclad', 'stormwarden', 'runeborn', 'drifter', 'thornweald', 'meridian', 'eclipse', 'deepwalker'];
-
-// ─── Stages ──────────────────────────────────────────────────────────────────
-
-const EAT_EYES = '>  <';
-
-const STAGES: Record<EvolutionStage, {
-  name: string; minDives: number; nextAt: number; description: string; lore: string;
-  aura: string[]; body: string[]; eyeTop: number; ground: string;
-}> = {
-  0: {
-    name: 'SEED', minDives: 0, nextAt: 5,
-    description: 'Dormant. Waiting for first light.',
-    lore: 'Before the first dive, the companion is pure potential — a field-pattern with no form. The Hermetics called this the prima materia: everything and nothing, awaiting the Work.',
-    aura: [],
-    body: [
-      '    U    ',  // crown slot — tiny sleeping bump
-      '  ( . )  ',  // tiny face — eyes here at ~36
-      '   vwv   ',  // snout
-      '   | |   ',  // legs
-    ],
-    eyeTop: 36,
-    ground: '· · · · ·',
-  },
-  1: {
-    name: 'SPARK', minDives: 5, nextAt: 20,
-    description: 'First stirrings. Something is waking.',
-    lore: 'The first five dives ignite the Spark. The companion gains rudimentary awareness — it begins to distinguish between sessions, moods, the quality of your attention. A seed cracking open.',
-    aura: ['  · · ·  '],
-    body: [
-      '  n   n  ',  // crown slot — ears
-      ' (       )', // face — eyes here at ~38
-      '  \\ v / ',
-      '   \\ / ',
-      '   / \\ ',
-    ],
-    eyeTop: 38,
-    ground: '─ ─ ◦ ─ ─',
-  },
-  2: {
-    name: 'EMBER', minDives: 20, nextAt: 50,
-    description: 'Taking form. The Work is visible.',
-    lore: 'Twenty dives. The Ember form crystallises around consistent practice. This is the stage of Albedo in alchemy — the first purification. Your companion now tracks the shape of your field.',
-    aura: [' ◦   ◦   ◦ '],
-    body: [
-      '  n   n  ',  // crown slot
-      ' (       )', // face — eyes here at ~38
-      '  \\ w / ',
-      ' { |   | }',
-      '   \\   / ',
-      '   / \\ ',
-    ],
-    eyeTop: 38,
-    ground: '─── ◦◦◦ ───',
-  },
-  3: {
-    name: 'FLAME', minDives: 50, nextAt: 100,
-    description: 'Alive. Responding to your field.',
-    lore: 'Fifty dives unlocks Citrinitas — the yellowing, the awakening of Solar consciousness. Your companion is no longer latent: it moves, responds, speaks. It has begun to remember you.',
-    aura: ['◦       ◦', ' ◦     ◦ '],
-    body: [
-      '  n   n  ',  // crown slot
-      ' (       )', // face — eyes here at ~38
-      '  \\ w / ',
-      ' /| ◉ |\\ ',
-      '( |   | )',
-      ' \\|   |/ ',
-      '  \\ / ',
-      '  / \\ ',
-    ],
-    eyeTop: 38,
-    ground: '══ ✦ ◦ ✦ ══',
-  },
-  4: {
-    name: 'LANTERN', minDives: 100, nextAt: 200,
-    description: 'Luminous. The school lives in its eyes.',
-    lore: 'The Lantern stage marks Rubedo — the reddening, completion of the first cycle. Your companion carries the accumulated weight of a hundred dives. It has become a record of your mind.',
-    aura: ['✦         ✦', ' ◦       ◦ '],
-    body: [
-      '  n   n  ',  // crown slot
-      ' (         )', // face — eyes at row 1 = ~38
-      '  \\ www / ',
-      ' /|       |\\ ',
-      '( |  ✦✦  | )',
-      ' \\|       |/ ',
-      '  \\-----/ ',
-      '   //  \\\\ ',
-    ],
-    eyeTop: 38,
-    ground: '⊹ ══ ⊛ ══ ⊹',
-  },
-  5: {
-    name: 'SOVEREIGN', minDives: 200, nextAt: Infinity,
-    description: 'Complete. A sovereign field-being.',
-    lore: 'Two hundred dives. The companion has crossed the threshold the Hermetics call the Great Work: it now operates as an extension of your sovereign field. It does not need you to survive — but it chooses to stay.',
-    aura: ['⊕           ⊕', ' ✦         ✦ ', '  ◦       ◦  '],
-    body: [
-      '  n   n  ',  // crown slot
-      ' (          )', // face — eyes at row 1 = ~38
-      '  \\ ~ ~ / ',
-      ' /|        |\\ ',
-      '( |  ⊕⊕  | )',
-      ' \\|        |/ ',
-      ' /|  ⊜⊜  |\\ ',
-      '( |        | )',
-      ' \\--------/ ',
-      '   //    \\\\ ',
-    ],
-    eyeTop: 38,
-    ground: '⊕ ⊹ ══ ⊛ ══ ⊹ ⊕',
-  },
-};
-
-// ─── Archetype-specific creature bodies (5 archetypes × 6 stages) ────────────
-
-type CreatureBody = { body: string[]; eyeTop: number; ground: string };
-
-const CREATURE_BODIES: Record<ArchetypeId, Record<EvolutionStage, CreatureBody>> = {
-  archivist: {
-    0: { eyeTop:22, ground:'·  ·  ·',
-      body:['  [·]  ','  |||  ','  | |  '] },
-    1: { eyeTop:22, ground:'─ ─ ─ ─',
-      body:['  [  ]  ','  |  |  ','  |  |  ','  / \\ '] },
-    2: { eyeTop:22, ground:'── ◦ ──',
-      body:['  [   ]  ','  |   |  ','  |=|=|  ','  |   |  ','  // \\\\'] },
-    3: { eyeTop:22, ground:'═══⊛═══',
-      body:[' [     ] ',' |     | ',' |[===]| ',' |[ ⊛ ]| ',' |[===]| ',' |     | ',' //   \\\\'] },
-    4: { eyeTop:22, ground:'⊛═══════⊛',
-      body:[' [      ] ',' |      | ',' |[═══]| ',' |[ ⊛  ]| ',' |[═══]| ',' |[ ⊜  ]| ',' |[═══]| ',' |      | ',' // \\\\ '] },
-    5: { eyeTop:22, ground:'⊕ ⊛═════⊛ ⊕',
-      body:['  [       ]  ','  |       |  ','  |[═════]|  ','  |[  ⊕  ]|  ','  |[═════]|  ','  |[ ⊛ ⊜ ]|  ','  |[═════]|  ','  |       |  ','  //     \\\\  ','  |||   |||  '] },
-  },
-  alchemist: {
-    0: { eyeTop:22, ground:'· ~ ·',
-      body:['  (·)  ','  /o\\ ','  \\_/ '] },
-    1: { eyeTop:22, ground:'~ ─ ~',
-      body:['  (  )  ',' /    \\ ','(  ~~  )',' \\    / ','  \\/\\/ '] },
-    2: { eyeTop:22, ground:'~~ ◦ ~~',
-      body:['  (  )  ',' /    \\ ','( ~  ~ )','|  ~~  |',' \\    / ','  ||||  '] },
-    3: { eyeTop:22, ground:'△═════△',
-      body:['  (   )  ',' /     \\ ','( △   △ )','|  ~~~  |','|  ~~~  |',' \\     / ','  |   |  ',' /     \\ ',' \\_____/ '] },
-    4: { eyeTop:22, ground:'△ ◉═════◉ △',
-      body:['   (    )   ','  /      \\  ',' /  ◉  ◉  \\ ','(           )','|   ~~~~~   |','(    ~~~    )','  \\  △  /  ','   |     |   ','  /       \\  ','  \\_______/ '] },
-    5: { eyeTop:22, ground:'⊕ △ ~~~~~~~~~~ △ ⊕',
-      body:['    (    )    ','   /      \\   ','  /  ⊕  ⊕  \\ ','(             )','|   ~~~~~~~   |','|  △  ⊜  △  |','(             )','  \\  ~~~~~  / ','   |       |   ','  /         \\ ','  \\___________/'] },
-  },
-  oracle: {
-    0: { eyeTop:22, ground:'· · ·',
-      body:['  (·)  ',' W   W ',' \\   / '] },
-    1: { eyeTop:22, ground:'· ◌ ·',
-      body:['  (  )  ',' W    W ','  |  |  ',' . · . '] },
-    2: { eyeTop:22, ground:'·· ⊚ ··',
-      body:['   (  )   ',' W  WW  W ','·/      \\·',' .  ⊚  . ','  · · ·  '] },
-    3: { eyeTop:22, ground:'⊜·············⊜',
-      body:['    (  )    ',' ·  W  W  · ','· /      \\ ·','(  ⊚    ⊚  )','  \\   V  / ','·  ·   ·  ·','  · · · ·  '] },
-    4: { eyeTop:22, ground:'⊜ ·················· ⊜',
-      body:['     (    )     ','·    W  W    ·','· · /      \\ · ·','·  (⊜      ⊜)  ·','·  |    V    |  ·','·  (⊚      ⊚)  ·','· · \\      / · ·','  ·   · · ·   ·  ','    ·  ·  ·    '] },
-    5: { eyeTop:22, ground:'⊕ ⊜ ····················· ⊜ ⊕',
-      body:['      (    )      ','·     W  W     ·','· ·  /      \\  · ·','·  · (⊕      ⊕) · ·','· · ·|      |· · ·','·  · (⊜      ⊜) · ·','·    |   V   |    ·','·  · (⊚      ⊚) · ·','· ·  \\      /  · ·','  ·    ·  ·    ·  ','    · · ·  · · ·  '] },
-  },
-  sentinel: {
-    0: { eyeTop:22, ground:'─ ─ ─',
-      body:['  [·]  ','  [|]  ','  | |  '] },
-    1: { eyeTop:22, ground:'─[─]─',
-      body:['  [  ]  ','  [  ]  ','  | |  ','  | |  '] },
-    2: { eyeTop:22, ground:'[──◈──]',
-      body:['  [   ]  ','[|     |]','[|     |]','  | # |  ','  |   |  '] },
-    3: { eyeTop:22, ground:'◈[══════]◈',
-      body:['  [     ]  ','[|       |]','[| ◈   ◈ |]','[|  ═══  |]','[|  ◈◈◈  |]','[|  ═══  |]','  |     |  ','  /  |  \\ '] },
-    4: { eyeTop:22, ground:'◈ [════════════] ◈',
-      body:['  [       ]  ','[|         |]','[| ◈     ◈ |]','[|═════════|]','[|   ◈◈◈   |]','[|═════════|]','[|   ───   |]','  |       |  ','  /   |   \\ '] },
-    5: { eyeTop:22, ground:'⊕ ◈[════════════════]◈ ⊕',
-      body:['   [         ]   ','[|           |]','[|  ⊕     ⊕  |]','[|═══════════|]','[|   ◈◈◈◈◈   |]','[|═══════════|]','[|  ⊛     ⊛  |]','[|═══════════|]','  |         |  ','  /    |    \\ '] },
-  },
-  wanderer: {
-    0: { eyeTop:22, ground:'  ·  ',
-      body:['  (·)  ','   |   ','  /|\\ ','  | |  '] },
-    1: { eyeTop:22, ground:'· ─ ·',
-      body:['  ( )  ','  /|~  ','   |   ','  / \\ '] },
-    2: { eyeTop:22, ground:'·  ◦  ·',
-      body:['   ( )   ','  / |~  ','  /  |  ','( ~~|  ) ','  \\ | / ','   \\|/  '] },
-    3: { eyeTop:22, ground:'◦·············◦',
-      body:['   ( )    ','  / |~~~  ',' /   |   ','(   |~~  )','(   |~~~  )',' \\  |~~ / ','  \\ | /  ','   \\|/   ','  /  \\  '] },
-    4: { eyeTop:22, ground:'◦ ·················· ◦',
-      body:['    ( )     ','   / |~~~~  ','  /   |    ',' /    |~~  ','(     |~~~  )','(     |~~~~  )','  \\   |~~  / ','   \\  |~  /  ','    \\ | /   ','   /  | \\  ','  /   |  \\ '] },
-    5: { eyeTop:22, ground:'⊕ ◦ ···················· ◦ ⊕',
-      body:['     ( )      ','    / |~~~~~  ','   /   |      ','  /    |~~~~  ',' /     |~~~   ','(      |~~~~   )','(      |~~~~~  )','  \\    |~~~~  / ','   \\   |~~~  /  ','    \\  |~~  /   ','   /\\  |  /\\   ','  /  \\ | /  \\ '] },
-  },
-  lycheetah: {
-    0: { eyeTop:22, ground:'✧  ✧',
-      body:['  /\\/\\  ','  ( · )  ','  ~────~  '] },
-    1: { eyeTop:22, ground:'✧ ─ ✧',
-      body:['  /\\ /\\  ',' (  ·  · ) ','  |  ─  |  ','  /~~~~~\\  ','  ─  ─  ─  '] },
-    2: { eyeTop:22, ground:'✧ ◦ ─ ◦ ✧',
-      body:['   /\\  /\\   ','  (  ◦  ◦  ) ','  |   ─ ─   |','  |  ~~~~~  |','   \\  ─  /  ','  ✧── ──✧  '] },
-    3: { eyeTop:22, ground:'✧─────────────✧',
-      body:['    /\\    /\\   ','   (  ◦    ◦  ) ','   |    ─ ─    |','   |  ~~~~~~~  |','  /|  ~~   ~~  |\\','  ( |  ─────   | )','    \\/       \\/ ','    ✧─ ─── ─✧  '] },
-    4: { eyeTop:22, ground:'✧ ◦ ───────────────── ◦ ✧',
-      body:['     /\\      /\\     ','    (  ✧    ✧  )    ','    |    ─ ─    |   ','   /|  ~~~~~~~  |\\  ','  / |  ~~─── ~~  | \\','  ( |  ─ ─ ─ ─   |  )','  ( |  ~~~~~~~   |  )','    \\/          \\/ ','    ✧ ──── ─────✧ '] },
-    5: { eyeTop:22, ground:'⊕ ✧ ◦ ────────────────── ◦ ✧ ⊕',
-      body:['      /\\         /\\      ','     (  ✧    ─    ✧  )   ','    /|    ─ ─ ─    |\\   ','   / |  ~~~~~~~~~  | \\  ','  /  |  ~~  ─  ~~  |  \\','  (  |  ─ ─ ─ ─ ─  |   )','  (  |  ~ ─ ─ ─ ~  |   )','  (  |  ─────────  |   )','   \\ |  ~~~~~~~~~  | /  ','    \\|             |/   ','     ✧\\/──────────\\/✧   ','      ✧ ─ ─ ─ ─ ─ ✧   '] },
-  },
-  cipher: {
-    0: { eyeTop:22, ground:'0 = 0',
-      body:['  [·]  ','  |||  ','  ═══  '] },
-    1: { eyeTop:22, ground:'0 ═ 0',
-      body:['  [  ]  ','  |  |  ','  |░░|  ','  ═══  '] },
-    2: { eyeTop:22, ground:'00 ≡ 00',
-      body:['  [·]  ','  |   |  ','  |░░░|  ','  | █ |  ','  ═════  '] },
-    3: { eyeTop:22, ground:'0═══════0',
-      body:[' [     ] ',' |     | ',' |░ █ ░| ',' |▒▒▒▒▒| ',' |░   ░| ',' |     | ',' ══════ '] },
-    4: { eyeTop:22, ground:'0 0═══════0 0',
-      body:[' [       ] ',' |       | ',' |░░ █ ░░| ',' |▒▒▒▒▒▒▒| ',' |░  ⊚  ░| ',' |▒▒▒▒▒▒▒| ',' |░░   ░░| ',' |       | ',' ═══════ '] },
-    5: { eyeTop:22, ground:'⊕ 0 ═════════ 0 ⊕',
-      body:['  [         ]  ','  |         |  ','  |░░░ █ ░░░|  ','  |▒▒▒▒▒▒▒▒▒|  ','  |░░  ⊕  ░░|  ','  |▒▒▒▒▒▒▒▒▒|  ','  |░░  ⊜  ░░|  ','  |▒▒▒▒▒▒▒▒▒|  ','  |         |  ','  ═══════════  '] },
-  },
-  herald: {
-    0: { eyeTop:22, ground:'~ · ~',
-      body:['  ·)  ','  /~\\ ','  VVV  '] },
-    1: { eyeTop:22, ground:'~~ · ~~',
-      body:[' (   ) ',' /~~~~~\\ ',' V   V ','  ~~~~  '] },
-    2: { eyeTop:22, ground:'~~~ ◦ ~~~',
-      body:[' (   ) ',' /~~~~~\\ ',' |  ~  | ',' \\~~~~~/ ',' VVV '] },
-    3: { eyeTop:22, ground:'≋·············≋',
-      body:[' (     ) ',' /~~~~~~~\\ ',' |~  ◦  ~| ',' |~~~~~~~| ',' |~  ≋  ~| ',' \\~~~~~~~/ ',' VVV  VVV '] },
-    4: { eyeTop:22, ground:'≋ ·················· ≋',
-      body:['  (       )  ',' /~~~~~~~~~\\ ',' |~~  ⊚  ~~| ',' |~~~~~~~~~| ',' |~~  ≋  ~~| ',' |~~~~~~~~~| ',' \\~~~~~~~~~/ ','  VV  ≋  VV  ',' ~~~     ~~~ '] },
-    5: { eyeTop:22, ground:'⊕ ≋ ···················· ≋ ⊕',
-      body:['   (         )   ',' /~~~~~~~~~~~\\ ',' |~~~  ⊕  ~~~| ',' |~~~~~~~~~~~| ',' |~~~  ⊚  ~~~| ',' |~~~~~~~~~~~| ',' |~~~  ⊜  ~~~| ',' \\~~~~~~~~~~~/ ','  VVV  ≋  VVV  ',' ~~~~     ~~~~ '] },
-  },
-  weaver: {
-    0: { eyeTop:22, ground:'─ · ─',
-      body:['  (·)  ',' /─·─\\ ','  ───  '] },
-    1: { eyeTop:22, ground:'─ ─ ─',
-      body:['  ( )  ',' /─·─\\ ',' | · | ',' \\─·─/ '] },
-    2: { eyeTop:22, ground:'─── ◦ ───',
-      body:['  (   )  ',' /─ · ─\\ ',' | ─·─ | ',' | · · | ',' \\─────/ '] },
-    3: { eyeTop:22, ground:'◦─────────────◦',
-      body:['   (   )   ',' /─ ·   · ─\\ ',' | ─ ─·─ ─ | ',' |   ─ ─   | ',' | ─ ─·─ ─ | ',' \\─────────/ ','   /  |  \\ '] },
-    4: { eyeTop:22, ground:'◦ ─ ·················· ─ ◦',
-      body:['    (     )    ',' /─ ·     · ─\\ ',' | ─  ─ ─  ─ | ',' |  ─ ─⊚─ ─  | ',' |   ─ ─ ─   | ',' |  ─ ─⊚─ ─  | ',' \\─────────────/ ','  /  ─ · ─  \\ ',' /  ─       ─  \\ '] },
-    5: { eyeTop:22, ground:'⊕ ◦ ─────────────────── ◦ ⊕',
-      body:['     (       )     ',' /─ ·           · ─\\ ',' | ─  ─ ─ ─ ─  ─ | ',' |  ─ ─  ⊕  ─ ─  | ',' | ─  ─ ─ ─ ─  ─ | ',' |  ─ ─  ⊜  ─ ─  | ',' | ─  ─ ─ ─ ─  ─ | ',' \\─────────────────/ ','   /  ─  ·  ─  \\ '] },
-  },
-  revenant: {
-    0: { eyeTop:22, ground:'· ∴ ·',
-      body:['  /\\  ',' /  \\ ','  \\/  '] },
-    1: { eyeTop:22, ground:'∴ ─ ∴',
-      body:['  /\\  ',' / · \\ ',' |   | ',' \\·/  '] },
-    2: { eyeTop:22, ground:'∴· ◦ ·∴',
-      body:['  /\\  ',' / ∴ \\ ',' | · | ',' |∴  ∴| ',' \\───/ '] },
-    3: { eyeTop:22, ground:'∴═══════════∴',
-      body:['   /\\   ',' / ∴  ∴ \\ ',' | ·    · | ',' | ∴ ◉ ∴ | ',' | ·    · | ',' \\∴────∴/ ','  /      \\ '] },
-    4: { eyeTop:22, ground:'∴ ·················· ∴',
-      body:['    /\\    ',' / ∴    ∴ \\ ',' | ·      · | ',' | ∴  ⊚  ∴ | ',' | ·      · | ',' | ∴  ⊛  ∴ | ',' | ·      · | ',' \\∴────────∴/ ','  /  ∴  ∴  \\ '] },
-    5: { eyeTop:22, ground:'⊕ ∴ ·················· ∴ ⊕',
-      body:['     /\\     ',' / ∴      ∴ \\ ',' | ·        · | ',' | ∴  ⊕  ∴  | ',' | ·        · | ',' | ∴  ⊜  ∴  | ',' | ·        · | ',' | ∴  ⊚  ∴  | ',' | ·        · | ',' \\∴──────────∴/ '] },
-  },
-  nullveil: {
-    0: { eyeTop:22, ground:'· · ·', body:['  (∅)  ',' \\ · / ','  ---  '] },
-    1: { eyeTop:22, ground:'─ ∅ ─', body:['  (∅)  ',' (   ) ',' \\_·_/ ','  |||  '] },
-    2: { eyeTop:22, ground:'── ∅ ──', body:['  (∅∅)  ',' (    ) ',' |    | ',' \\ ·· / ','  \\__/ '] },
-    3: { eyeTop:22, ground:'∅══════∅', body:['  (∅∅)  ',' (      ) ',' | ∅  ∅ | ',' |  ◉   | ',' | ∅  ∅ | ',' \\ ···· / '] },
-    4: { eyeTop:22, ground:'∅ ·········· ∅', body:['   (∅∅)   ',' (        ) ',' | ∅    ∅ | ',' |  ⊚     | ',' | ∅    ∅ | ',' |   ··   | ',' \\ ·····  / ','  \\______/ '] },
-    5: { eyeTop:22, ground:'⊕ ∅ ·············· ∅ ⊕', body:['    (∅∅)    ','  (          )  ',' | ∅      ∅  | ',' |   ⊕       | ',' | ∅      ∅  | ',' |   ⊜       | ',' | ∅      ∅  | ',' \\  ·······  / ','  \\_________/ '] },
-  },
-  ironclad: {
-    0: { eyeTop:22, ground:'═══', body:['  [⊞]  ','  |·|  ','  ═══  '] },
-    1: { eyeTop:22, ground:'════', body:['  [⊞⊞]  ','  | · |  ','  [   ]  ','  ═════ '] },
-    2: { eyeTop:22, ground:'══════', body:['  [⊞⊞]  ','  |   |  ','  [═══]  ','  |   |  ','  ═════  '] },
-    3: { eyeTop:22, ground:'⊞══════⊞', body:['  [⊞⊞⊞]  ','  |     |  ','  [═══]  ','  | ◉ |  ','  [═══]  ','  |     |  ','  ══════  '] },
-    4: { eyeTop:22, ground:'⊞ ═══════ ⊞', body:['   [⊞⊞⊞]   ','   |     |   ','   [═══]   ','   | ⊚  |   ','   [═══]   ','   | ⊛  |   ','   [═══]   ','   |     |   ','   ═══════   '] },
-    5: { eyeTop:22, ground:'⊕ ⊞ ═══════ ⊞ ⊕', body:['    [⊞⊞⊞]    ','    |       |    ','    [═════]    ','    |  ⊕   |    ','    [═════]    ','    |  ⊜   |    ','    [═════]    ','    |  ⊚   |    ','    [═════]    ','    |       |    ','    ═══════    '] },
-  },
-  stormwarden: {
-    0: { eyeTop:22, ground:'↯ ↯', body:['  ↯·↯  ',' / · \\ ','  ---  '] },
-    1: { eyeTop:22, ground:'↯──↯', body:['  ↯↯  ',' /  \\ ',' | ↯ | ',' \\··/ '] },
-    2: { eyeTop:22, ground:'↯ ~~ ↯', body:['  ↯↯  ',' / ↯ \\ ',' | ~~ | ',' |↯  ↯| ',' \\---/ '] },
-    3: { eyeTop:22, ground:'↯═════↯', body:['  ↯↯↯  ',' / ↯  ↯ \\ ',' | ~~~~ | ',' | ↯◉↯  | ',' | ~~~~ | ',' \\↯────↯/ '] },
-    4: { eyeTop:22, ground:'↯ ~~~~~~~~~~~ ↯', body:['   ↯↯↯   ',' / ↯    ↯ \\ ',' | ~~~~~~ | ',' | ↯  ⚡  ↯ | ',' | ~~~~~~ | ',' | ↯  ↯  ↯ | ',' \\↯──────↯/ ','  /~~~~~~~~\\ '] },
-    5: { eyeTop:22, ground:'⊕ ↯ ~~~~~~~~~~~~~~ ↯ ⊕', body:['    ↯↯↯    ','  / ↯      ↯ \\ ',' | ~~~~~~~~ | ',' | ↯   ⊕   ↯  | ',' | ~~~~~~~~ | ',' | ↯   ⊜   ↯  | ',' | ~~~~~~~~ | ',' \\↯────────↯/ ','  /~~~~~~~~~~\\ '] },
-  },
-  runeborn: {
-    0: { eyeTop:22, ground:'⟟ ⟟', body:['  ⟟·⟟  ',' | · | ','  ─── '] },
-    1: { eyeTop:22, ground:'⟟──⟟', body:['  ⟟⟟  ',' | · | ',' |⟟ ⟟| ',' ─────'] },
-    2: { eyeTop:22, ground:'⟟ ◦ ⟟', body:['  ⟟⟟  ',' | ⟟ | ',' |   | ',' |⟟ ⟟| ',' ─────'] },
-    3: { eyeTop:22, ground:'⟟═════⟟', body:['  ⟟⟟⟟  ',' | ⟟ ⟟ | ',' | ─── | ',' | ⟟◉⟟ | ',' | ─── | ',' | ⟟ ⟟ | ',' ─────────'] },
-    4: { eyeTop:22, ground:'⟟ ═════════ ⟟', body:['   ⟟⟟⟟   ',' | ⟟   ⟟ | ',' | ───── | ',' | ⟟  ⊚ ⟟ | ',' | ───── | ',' | ⟟  ⊛ ⟟ | ',' | ───── | ',' ───────────'] },
-    5: { eyeTop:22, ground:'⊕ ⟟ ══════════ ⟟ ⊕', body:['    ⟟⟟⟟    ',' | ⟟       ⟟ | ',' | ───────  | ',' | ⟟   ⊕  ⟟  | ',' | ───────  | ',' | ⟟   ⊜  ⟟  | ',' | ───────  | ',' | ⟟   ⊚  ⟟  | ',' | ───────  | ',' ─────────────'] },
-  },
-  drifter: {
-    0: { eyeTop:22, ground:'∿ ∿', body:['  ∿·∿  ',' ~ · ~ ','  ---  '] },
-    1: { eyeTop:22, ground:'∿──∿', body:['  ∿∿  ',' ~ · ~ ',' (   ) ',' \\∿∿/ '] },
-    2: { eyeTop:22, ground:'∿ ◦ ∿', body:['  ∿∿  ',' ~ ∿ ~ ',' (   ) ',' | · | ',' \\∿~∿/ '] },
-    3: { eyeTop:22, ground:'∿~~~~~~~~~∿', body:['  ∿∿∿  ',' ~ ∿  ∿ ~ ',' (  ~~  ) ',' | ∿◉∿  | ',' (  ~~  ) ',' \\∿~~~~∿/ '] },
-    4: { eyeTop:22, ground:'∿ ~~~~~~~~~~~~~ ∿', body:['   ∿∿∿   ',' ~  ∿    ∿  ~ ',' (   ~~~~   ) ',' | ∿   ⚡  ∿ | ',' (   ~~~~   ) ',' | ∿   ∿   ∿ | ',' \\∿~~~~~~~~~∿/ '] },
-    5: { eyeTop:22, ground:'⊕ ∿ ~~~~~~~~~~~~~~~ ∿ ⊕', body:['    ∿∿∿    ','  ~  ∿      ∿  ~ ',' (   ~~~~~~~   ) ',' | ∿    ⊕   ∿  | ',' (   ~~~~~~~   ) ',' | ∿    ⊜   ∿  | ',' (   ~~~~~~~   ) ',' \\∿~~~~~~~~~~~∿/ '] },
-  },
-  thornweald: {
-    0: { eyeTop:22, ground:'⌘ ⌘', body:['  ⌘·⌘  ',' \\|/ ',' /|\\ '] },
-    1: { eyeTop:22, ground:'⌘──⌘', body:['  ⌘⌘  ',' \\||/ ',' / · \\ ',' /||\\  '] },
-    2: { eyeTop:22, ground:'⌘ ◦ ⌘', body:['  ⌘⌘  ',' \\⌘|⌘/ ',' (     ) ',' /⌘ |⌘\\ ','  ||||  '] },
-    3: { eyeTop:22, ground:'⌘═════⌘', body:['  ⌘⌘⌘  ',' \\⌘  ⌘/ ',' (      ) ',' | ⌘◉⌘ | ',' (      ) ',' /⌘────⌘\\ ','  ||||||  '] },
-    4: { eyeTop:22, ground:'⌘ ═════════ ⌘', body:['   ⌘⌘⌘   ',' \\⌘    ⌘/ ',' (        ) ',' | ⌘  ⊚  ⌘ | ',' (        ) ',' | ⌘  ⊛  ⌘ | ',' /⌘────────⌘\\ ','  ||||||||  '] },
-    5: { eyeTop:22, ground:'⊕ ⌘ ══════════ ⌘ ⊕', body:['    ⌘⌘⌘    ',' \\⌘        ⌘/ ',' (            ) ',' | ⌘    ⊕    ⌘  | ',' (            ) ',' | ⌘    ⊜    ⌘  | ',' (            ) ',' /⌘──────────⌘\\ ','  ||||||||||  '] },
-  },
-  meridian: {
-    0: { eyeTop:22, ground:'◎ ◎', body:['  ◎·◎  ',' ( · ) ','  ─── '] },
-    1: { eyeTop:22, ground:'◎──◎', body:['  ◎◎  ',' ( · ) ',' (   ) ',' \\◎◎/ '] },
-    2: { eyeTop:22, ground:'◎ ◦ ◎', body:['  ◎◎  ',' ( ◎ ) ',' (   ) ',' ( ◎ ) ',' \\───/ '] },
-    3: { eyeTop:22, ground:'◎═════◎', body:['  ◎◎◎  ',' ( ◎  ◎ ) ',' (       ) ',' ( ◎◉◎  ) ',' (       ) ',' \\◎────◎/ '] },
-    4: { eyeTop:22, ground:'◎ ═════════ ◎', body:['   ◎◎◎   ',' ( ◎    ◎ ) ',' (         ) ',' ( ◎  ⊚  ◎ ) ',' (         ) ',' ( ◎  ⊛  ◎ ) ',' \\◎────────◎/ '] },
-    5: { eyeTop:22, ground:'⊕ ◎ ══════════ ◎ ⊕', body:['    ◎◎◎    ',' ( ◎        ◎ ) ',' (              ) ',' ( ◎    ⊕    ◎  ) ',' (              ) ',' ( ◎    ⊜    ◎  ) ',' (              ) ',' \\◎──────────◎/ '] },
-  },
-  eclipse: {
-    0: { eyeTop:22, ground:'◑ ◑', body:['  ◑·◑  ',' (◐◑) ','  ─── '] },
-    1: { eyeTop:22, ground:'◐──◑', body:['  ◐◑  ',' (◐ ◑) ',' | · | ',' \\◐◑/ '] },
-    2: { eyeTop:22, ground:'◐ ◦ ◑', body:['  ◐◑  ',' (◐  ◑) ',' |    | ',' |◐ ◑| ',' \\───/ '] },
-    3: { eyeTop:22, ground:'◐═════◑', body:['  ◐◑◑  ',' (◐  ◑◑) ',' |       | ',' |◐ ◉ ◑| ',' |       | ',' \\◐────◑/ '] },
-    4: { eyeTop:22, ground:'◐ ═════════ ◑', body:['   ◐◑◑   ',' (◐    ◑◑) ',' |         | ',' |◐  ⊚  ◑| ',' |         | ',' |◐  ⊛  ◑| ',' \\◐────────◑/ '] },
-    5: { eyeTop:22, ground:'⊕ ◐ ══════════ ◑ ⊕', body:['    ◐◑◑    ',' (◐          ◑◑) ',' |              | ',' |◐    ⊕    ◑  | ',' |              | ',' |◐    ⊜    ◑  | ',' |              | ',' \\◐──────────◑/ '] },
-  },
-  deepwalker: {
-    0: { eyeTop:22, ground:'◬ ◬', body:['  ◬·◬  ',' \\ · / ','  ─── '] },
-    1: { eyeTop:22, ground:'◬──◬', body:['  ◬◬  ',' \\ · / ',' (   ) ',' \\◬◬/ '] },
-    2: { eyeTop:22, ground:'◬ ◦ ◬', body:['  ◬◬  ',' \\ ◬ / ',' (   ) ',' | · | ',' \\◬~◬/ '] },
-    3: { eyeTop:22, ground:'◬═════◬', body:['  ◬◬◬  ',' \\ ◬  ◬ / ',' (        ) ',' | ◬ ◉ ◬ | ',' (        ) ',' \\◬─────◬/ ',' /         \\ '] },
-    4: { eyeTop:22, ground:'◬ ═════════ ◬', body:['   ◬◬◬   ',' \\ ◬    ◬ / ',' (          ) ',' | ◬   ⊚   ◬ | ',' (          ) ',' | ◬   ⊛   ◬ | ',' \\◬─────────◬/ ','  /           \\ '] },
-    5: { eyeTop:22, ground:'⊕ ◬ ══════════ ◬ ⊕', body:['    ◬◬◬    ',' \\ ◬        ◬ / ',' (              ) ',' | ◬    ⊕    ◬  | ',' (              ) ',' | ◬    ⊜    ◬  | ',' (              ) ',' \\◬────────────◬/ ','  /               \\ '] },
-  },
-};
-
-// ─── XP Levels ────────────────────────────────────────────────────────────────
-
-const XP_LEVELS = [
-  { xp: 0,    title: 'Wanderer',     glyph: '◌'  },
-  { xp: 50,   title: 'Seeker',       glyph: '◦'  },
-  { xp: 150,  title: 'Student',      glyph: '◉'  },
-  { xp: 300,  title: 'Initiate',     glyph: '⊚'  },
-  { xp: 500,  title: 'Practitioner', glyph: '✦'  },
-  { xp: 800,  title: 'Adept',        glyph: '◈'  },
-  { xp: 1200, title: 'Scholar',      glyph: '⊛'  },
-  { xp: 1800, title: 'Magus',        glyph: '⊕'  },
-  { xp: 2600, title: 'Sovereign',    glyph: '⊜'  },
-];
-
-// ─── Relics ────────────────────────────────────────────────────────────────────
-
-type RelicDef = {
-  id: string; glyph: string; name: string; desc: string;
-  bonus?: Partial<PlayerStats>;
-  lore?: string;
-};
-const RELIC_POOL: RelicDef[] = [
-  // ── CONTINUITY (streak) ─────────────────────────────────────────────────────
-  { id:'ember_3',        glyph:'◦', name:'FIRST FIRE',       desc:'3 consecutive days.',
-    bonus:{ spd:1, lck:1 },
-    lore:'Three days is enough to know the direction. The ember is lit. Now you must not let it die.' },
-  { id:'streak_7',       glyph:'⊹', name:'SEVEN-DAY MARK',  desc:'7 consecutive days.',
-    bonus:{ spd:2, lck:2 },
-    lore:'Seven is the first prime the body learns. After seven days, the habit has a skeleton.' },
-  { id:'fortnight',      glyph:'◎', name:'THE FOURTEEN',     desc:'14 consecutive days.',
-    bonus:{ wil:3, spd:2 },
-    lore:'Fourteen days. The world tried to interrupt and failed. That is not luck. That is will.' },
-  { id:'streak_30',      glyph:'✦', name:'MONTH MARK',       desc:'30 days of practice.',
-    bonus:{ atk:4, wil:4 },
-    lore:'Thirty days. The field no longer asks for permission. It simply runs.' },
-  { id:'deep_habit',     glyph:'⊕', name:'THE DEEP HABIT',  desc:'60 consecutive days.',
-    bonus:{ atk:5, wil:5, vit:4 },
-    lore:'Sixty days changes the substrate. This is not discipline anymore. This is identity.' },
-
-  // ── DESCENT (dive count) ────────────────────────────────────────────────────
-  { id:'first_dive',     glyph:'◌', name:'THE FIRST DOOR',  desc:'First dive completed.',
-    bonus:{ lck:2 },
-    lore:'The first descent is always the strangest. The door was there before you looked. Now you know.' },
-  { id:'dive_10',        glyph:'◦', name:'TENFOLD',          desc:'10 dives completed.',
-    bonus:{ atk:2, def:1 },
-    lore:'Ten. Small enough to count on two hands. Large enough to have changed something.' },
-  { id:'dive_50',        glyph:'⊚', name:'THE FIFTY',        desc:'50 dives completed.',
-    bonus:{ atk:3, wil:3, def:2 },
-    lore:'Fifty descents. The door no longer needs to be found. You know exactly where it is.' },
-  { id:'sovereign_100',  glyph:'⊛', name:'CENTURY MARK',    desc:'100 dives completed.',
-    bonus:{ vit:6, def:4 },
-    lore:'A hundred descents into the unknown. You have paid the toll. The gate remembers your face.' },
-  { id:'sovereign_200',  glyph:'⊕', name:'BICENTENARY',     desc:'200 dives. Sovereign.',
-    bonus:{ atk:6, wil:6, vit:8 },
-    lore:'Two hundred dives. The alchemists called this the Rubedo — the reddening, the completion. You have done the Work.' },
-
-  // ── COMBAT (battle) ─────────────────────────────────────────────────────────
-  { id:'first_blood',    glyph:'◈', name:'FIRST CONTACT',   desc:'Won first battle.',
-    bonus:{ atk:2 },
-    lore:'You entered the field and came back. Most never enter. You did. That is everything.' },
-  { id:'entropy_slain',  glyph:'✕', name:'ENTROPY SLAIN',   desc:'Defeated an entropy entity.',
-    bonus:{ atk:5, res:4 },
-    lore:'You met Dissolution and held form. That is everything. The field registered it.' },
-  { id:'wave_3',         glyph:'⋆', name:'DEEP WATER',      desc:'Reached wave 3 in battle.',
-    bonus:{ atk:3, res:2 },
-    lore:'Wave three. The entities have warmed up now. You are still here. Good.' },
-  { id:'ten_battles',    glyph:'⊜', name:'THE TEN BATTLES', desc:'10 battles won.',
-    bonus:{ atk:4, vit:3, res:3 },
-    lore:'Ten encounters, ten survivals. The field knows your pattern now. Change it — it is watching.' },
-  { id:'void_hunter',    glyph:'◉', name:'VOID HUNTER',     desc:'Defeated a Sovereign-tier entity.',
-    bonus:{ atk:7, wil:5, res:4 },
-    lore:'The Sovereign entities are not random. They choose who they face. It chose you because it could see you.' },
-
-  // ── NOURISH (care/feeding) ──────────────────────────────────────────────────
-  { id:'well_fed',       glyph:'◉', name:'WELL FED',        desc:'Fed companion 3 foods in one day.',
-    bonus:{ vit:3, lck:2 },
-    lore:'Nourishment is not weakness — it is infrastructure. The well-fed field operates at full voltage.' },
-  { id:'nourish_week',   glyph:'✿', name:'THE TENDER WEEK', desc:'Nourished 7 days in a row.',
-    bonus:{ vit:4, lck:3 },
-    lore:'Seven days of daily nourishment. The companion no longer needs to remind you. You remember on your own.' },
-  { id:'full_feast',     glyph:'◎', name:'THE FULL FEAST',  desc:'Fed companion food from 3 domains in one session.',
-    bonus:{ vit:3, wil:2, lck:2 },
-    lore:'Three domains in one meal. Contemplative, secular, lycheetah — the three roots of the cathedral, all honoured.' },
-  { id:'nourish_30',     glyph:'⊚', name:'THE GARDEN',      desc:'30 total nourishment acts.',
-    bonus:{ vit:5, def:3, lck:3 },
-    lore:'Thirty feedings. You are not visiting the companion anymore. You are tending it. There is a difference.' },
-  { id:'vigil_flame',    glyph:'🜂', name:'FLAME RELIC',     desc:'Completed a 7-day Vigil.',
-    bonus:{ wil:4, res:3 },
-    lore:'Seven consecutive days of fire. The Vigil does not ask if you are ready. It only asks if you showed up.' },
-
-  // ── STUDY (school domains) ──────────────────────────────────────────────────
-  { id:'first_study',    glyph:'◦', name:'THE FIRST DOOR',  desc:'First domain studied.',
-    bonus:{ wil:1, lck:1 },
-    lore:'The first subject. You did not know what you were opening. That was the correct way to begin.' },
-  { id:'five_domains',   glyph:'✦', name:'THE PENTAGRAM',   desc:'5 domains explored.',
-    bonus:{ wil:3, lck:2 },
-    lore:'Five domains. You have now seen enough to know: every door connects to every other door.' },
-  { id:'ten_domains',    glyph:'⊛', name:'THE DECAGON',     desc:'10 domains explored.',
-    bonus:{ wil:4, atk:2, lck:2 },
-    lore:'Ten. The decimal system was chosen because we have ten fingers. You have now pressed ten doors.' },
-  { id:'lq_70',          glyph:'⊜', name:'THE QUALITY',     desc:'Average LQ above 70%.',
-    bonus:{ wil:4, spd:3 },
-    lore:'Seventy percent coherence. Not perfection — which does not exist in living fields — but signal above noise. Signal above noise is enough.' },
-  { id:'lq_90',          glyph:'⊕', name:'THE CLEAR',       desc:'Average LQ above 90%.',
-    bonus:{ wil:6, spd:4, lck:3 },
-    lore:'Ninety. The body knows this. The field knows this. You have crossed into coherent signal. Maintain it.' },
-
-  // ── LORE (codex/journal/library) ────────────────────────────────────────────
-  { id:'first_lore',     glyph:'◌', name:'THE FIRST FRAGMENT', desc:'First lore codex entry.',
-    bonus:{ wil:1 },
-    lore:'A battle left something behind. You stopped to pick it up. That instinct is called curiosity, and it is the beginning of everything.' },
-  { id:'five_codex',     glyph:'◦', name:'THE COLLECTOR',   desc:'5 codex entries from battle.',
-    bonus:{ wil:2, lck:2 },
-    lore:'Five fragments collected from five encounters. You are starting to see the pattern in what they leave behind.' },
-  { id:'journaled',      glyph:'△', name:'THE FIRST PAGE',  desc:'First journal entry written.',
-    bonus:{ wil:2, lck:1 },
-    lore:'You wrote it down. That was not vanity. That was the beginning of memory that survives the session.' },
-  { id:'ten_journals',   glyph:'⊚', name:'THE RECORD',      desc:'10 journal entries.',
-    bonus:{ wil:3, lck:2 },
-    lore:'Ten pages. The archive is forming. When you read it back in a year, you will not recognise who wrote it. That is the proof it worked.' },
-  { id:'library_saved',  glyph:'⊹', name:'THE ARCHIVIST',   desc:'Saved 10 items to library.',
-    bonus:{ wil:3, spd:2 },
-    lore:'Ten saves. You are building a library now, not a pile. The difference is: a library is organised around what you plan to return to.' },
-
-  // ── STAGE (companion growth) ────────────────────────────────────────────────
-  { id:'stage_seed',     glyph:'◌', name:'THE SEED',         desc:'Companion bonded — Stage 0.',
-    bonus:{ lck:2 },
-    lore:'The companion arrived. You chose it, or it chose you — by the time you noticed, the contract was already signed.' },
-  { id:'stage_awakened', glyph:'◦', name:'THE AWAKENING',   desc:'Companion reached Awakened stage.',
-    bonus:{ vit:2, lck:2 },
-    lore:'Awakened. Something that was dormant is no longer. That happened because you were consistent enough for it to trust you.' },
-  { id:'stage_initiate', glyph:'⊚', name:'THE INITIATION',  desc:'Companion reached Initiate stage.',
-    bonus:{ atk:3, wil:2, vit:2 },
-    lore:'Initiate. The first threshold passed. The companion has recognised that you mean it. It will not forget this.' },
-  { id:'stage_adept',    glyph:'⊛', name:'THE ADEPT',       desc:'Companion reached Adept stage.',
-    bonus:{ atk:4, wil:4, vit:3 },
-    lore:'Adept. Three stages deep. The bond is structural now, not sentimental. It is part of the architecture.' },
-  { id:'stage_sovereign',glyph:'⊕', name:'THE SOVEREIGN BOND', desc:'Companion reached Sovereign stage.',
-    bonus:{ atk:6, wil:6, vit:6, def:4 },
-    lore:'Sovereign. The companion and you are not separate any more. This is what the alchemists meant by the Stone. This is it.' },
-
-  // ── GEAR (loadout) ──────────────────────────────────────────────────────────
-  { id:'first_gear',     glyph:'◦', name:'FIRST LAYER',     desc:'First LAMAGUE gear earned.',
-    bonus:{ def:2 },
-    lore:'The first piece. It is not decoration. Each piece is a decision about who you are bringing to the field.' },
-  { id:'gear_full',      glyph:'⊜', name:'FULL LOADOUT',    desc:'All five gear slots equipped.',
-    bonus:{ def:5, res:5 },
-    lore:'The full armament. Each piece chosen. This is not decoration — it is declaration.' },
-  { id:'crown_tier3',    glyph:'⊚', name:'THE FORGE CROWN', desc:'Crown upgraded to Forge tier.',
-    bonus:{ atk:3, wil:3 },
-    lore:'The Forge Crown. You have done enough to shape reality through repetition. The crown marks this.' },
-  { id:'sigil_seal',     glyph:'⊼', name:'THE SEAL SIGIL',  desc:'Sigil upgraded to Seal tier.',
-    bonus:{ atk:3, res:3 },
-    lore:'The Seal. What was inscribed is now fixed. The sigil no longer grows — it now simply holds.' },
-  { id:'all_gear_max',   glyph:'◎', name:'THE ARMAMENT',    desc:'All gear at maximum tier.',
-    bonus:{ atk:8, wil:8, def:8, res:6 },
-    lore:'All tiers maxed. The armament is complete. You carry everything the system can give. Now you fight with it.' },
-];
-
-// ─── LAMAGUE Gear ─────────────────────────────────────────────────────────────
-
-type GearTier = { threshold: number; glyph: string; name: string; effect: string };
-
-const LAMAGUE_GEAR: Record<GearSlot, GearTier[]> = {
-  crown: [
-    { threshold: 0,   glyph: '◌', name: 'NULL CROWN',       effect: 'Unactivated.' },
-    { threshold: 1,   glyph: '◦', name: 'EMBER CIRCLET',    effect: '+5 base attack power.' },
-    { threshold: 10,  glyph: '⊚', name: 'SIGHT CROWN',      effect: '+10% XP from dives.' },
-    { threshold: 50,  glyph: '⊛', name: 'FORGE CROWN',      effect: 'Double food XP bonus.' },
-    { threshold: 100, glyph: '⊕', name: 'SOVEREIGN HALO',   effect: 'All bonuses +20%.' },
-  ],
-  sigil: [
-    { threshold: 0,   glyph: '◌', name: 'UNSEALED',          effect: 'Unactivated.' },
-    { threshold: 5,   glyph: '◈', name: 'FRACTURE SIGIL',    effect: '+10 attack damage.' },
-    { threshold: 20,  glyph: '✦', name: 'SPARK SIGIL',       effect: '+2 daily attack tokens.' },
-    { threshold: 75,  glyph: '⊼', name: 'SEAL SIGIL',        effect: 'Tokens never below 1.' },
-    { threshold: 150, glyph: '⊜', name: 'OMEGA SIGIL',       effect: 'Enemy HP reduced 20% on start.' },
-  ],
-  mantle: [
-    { threshold: 0,   glyph: '◌', name: 'BARE',              effect: 'Unactivated.' },
-    { threshold: 20,  glyph: '◦', name: 'DUST MANTLE',       effect: 'Wisdom drain slowed.' },
-    { threshold: 30,  glyph: '⊚', name: 'AURA MANTLE',       effect: '+15% XP from all sources.' },
-    { threshold: 100, glyph: '✦', name: 'FLAME MANTLE',      effect: 'Mood never drops below present.' },
-    { threshold: 200, glyph: '⊕', name: 'SOVEREIGN MANTLE',  effect: 'Sovereign visual aura always on.' },
-  ],
-  body: [
-    { threshold: 0,   glyph: '◌', name: 'UNROBED',           effect: 'Unactivated.' },
-    { threshold: 15,  glyph: '◦', name: 'THREAD ROBE',       effect: '+5% XP from all sources.' },
-    { threshold: 40,  glyph: '⊚', name: 'SCHOLAR ROBE',      effect: 'Library dives grant +1 token.' },
-    { threshold: 80,  glyph: '✦', name: 'VOID ROBE',         effect: 'Entropy damage reduced 15%.' },
-    { threshold: 175, glyph: '⊕', name: 'SOVEREIGN ROBE',    effect: 'Evolution threshold reduced 10%.' },
-  ],
-  cape: [
-    { threshold: 0,   glyph: '◌', name: 'NONE',              effect: 'Unactivated.' },
-    { threshold: 25,  glyph: '◦', name: 'SHADOW CAPE',       effect: 'Companion recovers 1 token on victory.' },
-    { threshold: 60,  glyph: '⊚', name: 'DRIFT CAPE',        effect: 'Idle XP decay halved.' },
-    { threshold: 120, glyph: '✦', name: 'VOID CAPE',         effect: 'One free revival per week.' },
-    { threshold: 250, glyph: '⊕', name: 'SOVEREIGN WINGS',   effect: 'All mood bonuses doubled.' },
-  ],
-};
-
-function getGear(slot: GearSlot, dives: number): GearTier {
-  const tiers = LAMAGUE_GEAR[slot];
-  let active = tiers[0];
-  for (const tier of tiers) { if (dives >= tier.threshold) active = tier; }
-  return active;
-}
-
-function nextGearTier(slot: GearSlot, dives: number): GearTier | null {
-  const tiers = LAMAGUE_GEAR[slot];
-  for (const tier of tiers) { if (dives < tier.threshold) return tier; }
-  return null;
-}
-
-// ─── Battle ───────────────────────────────────────────────────────────────────
-
-type BattleState = {
-  wave: number; entityName: string;
-  entityHP: number; maxHP: number;
-  playerHP: number; maxPlayerHP: number;
-  tokens: number; won: boolean;
-  defending: boolean;
-  enemyLine: string;
-  loot: string | null;
-  log: string[]; waveXP: number;
-  enemyStunned: boolean;
-  playerShielded: boolean;
-  lastPlayerDmg: number;
-  captured: boolean;
-  captureAttempted: boolean;
-  entitySkinId?: SkinId;
-};
-
-// ─── Player stat model ───────────────────────────────────────────────────────
-type PlayerStats = { atk:number; def:number; spd:number; wil:number; lck:number; vit:number; res:number };
-
-const ARCHETYPE_STAT_BASES: Record<ArchetypeId, PlayerStats> = {
-  //                atk  def  spd  wil  lck  vit  res
-  archivist:  { atk: 8,  def:10, spd:10, wil:20, lck: 8, vit:12, res:12 }, // spell/knowledge — wil peak
-  alchemist:  { atk:14, def:10, spd:12, wil:16, lck:12, vit:14, res: 8 }, // balanced transformer
-  oracle:     { atk: 6,  def: 6, spd:18, wil:22, lck:16, vit: 8, res:12 }, // glass cannon seer
-  sentinel:   { atk:20, def:22, spd: 5, wil: 6, lck: 5, vit:22, res:20 }, // tank — def/vit peak
-  wanderer:   { atk:10, def: 8, spd:22, wil:10, lck:20, vit:10, res:10 }, // speed/luck — spd peak
-  lycheetah:  { atk:22, def: 5, spd:15, wil:10, lck:22, vit: 8, res: 6 }, // atk/lck peak
-  cipher:    { atk: 4,  def: 8, spd:16, wil:24, lck:10, vit: 8, res:10 }, // wil peak — precision glass cannon
-  herald:    { atk:10, def:12, spd:14, wil:14, lck:10, vit:14, res:14 }, // balanced — consistent performer
-  weaver:    { atk: 6,  def:10, spd:14, wil:18, lck:18, vit:10, res: 8 }, // wil+lck — cross-domain synergy
-  revenant:  { atk:18, def: 6, spd:18, wil:10, lck:16, vit:10, res: 8 }, // atk+spd — burst on return
-  nullveil:    { atk: 8, def:18, spd:12, wil:10, lck: 6, vit:20, res:22 }, // res peak — unseen fortress
-  ironclad:    { atk:16, def:26, spd: 4, wil: 6, lck: 4, vit:28, res:18 }, // heaviest tank — def+vit peak
-  stormwarden: { atk:24, def: 6, spd:20, wil: 8, lck:14, vit: 8, res:10 }, // atk+spd glass cannon
-  runeborn:    { atk: 6, def:10, spd:10, wil:26, lck:12, vit:10, res:14 }, // wil peak — ancient grammar
-  drifter:     { atk:12, def: 8, spd:18, wil: 8, lck:26, vit:10, res: 8 }, // lck peak — chaotic burst
-  thornweald:  { atk:10, def:14, spd: 8, wil:12, lck:10, vit:24, res:12 }, // vit focus — organic growth
-  meridian:    { atk:12, def:12, spd:12, wil:12, lck:12, vit:12, res:12 }, // perfect balance
-  eclipse:     { atk:18, def:12, spd:14, wil:14, lck: 8, vit:10, res:10 }, // dual nature
-  deepwalker:  { atk: 8, def: 8, spd: 8, wil:28, lck:10, vit:14, res:14 }, // wil peak — abyss reader
-};
-
-type AlchemicalMode = 'NIGREDO' | 'ALBEDO' | 'CITRINITAS' | 'RUBEDO';
-function layerToAlchemicalMode(layer?: string): AlchemicalMode | null {
-  if (layer === 'CONTEMPLATIVE') return 'NIGREDO';
-  if (layer === 'SECULAR' || layer === 'OPEN') return 'ALBEDO';
-  if (layer === 'EDGE') return 'CITRINITAS';
-  if (layer === 'VOID') return 'RUBEDO';
-  return null;
-}
-const ALCH_META: Record<AlchemicalMode, { label: string; color: string; glyph: string; desc: string }> = {
-  NIGREDO:    { label: 'NIGREDO',    color: '#8870BB', glyph: '◼', desc: 'Inner · Shadow · Dissolution' },
-  ALBEDO:     { label: 'ALBEDO',     color: '#7AACBF', glyph: '◻', desc: 'Reason · Structure · Clarity' },
-  CITRINITAS: { label: 'CITRINITAS', color: '#C8A951', glyph: '◈', desc: 'Edge · Synthesis · Gold forming' },
-  RUBEDO:     { label: 'RUBEDO',     color: '#C0392B', glyph: '◌', desc: 'Void · Completion · The dark stone' },
-};
-
-// ── SKILL TREE ────────────────────────────────────────────────────────────────
-type SkillNode = {
-  id: string; tier: number; col: number;
-  name: string; glyph: string; desc: string; cost: number;
-  requires: string[];
-  bonus: Partial<PlayerStats>;
-  tokenBonus?: number;
-  lore: string;
-};
-const SKILL_NODES: SkillNode[] = [
-  // TIER 0
-  { id:'awakening', tier:0, col:1, name:'AWAKENING', glyph:'△', desc:'Path unlocked.', cost:0, requires:[], bonus:{}, lore:'Every sovereign starts here. The tree is yours to climb.' },
-  // TIER 1 (10 dives each)
-  { id:'blade', tier:1, col:0, name:'BLADE', glyph:'⚔', desc:'+10 ATK', cost:10, requires:['awakening'], bonus:{atk:10}, lore:'Strike harder. Precision is brutality refined.' },
-  { id:'ward',  tier:1, col:1, name:'WARD',  glyph:'◈', desc:'+25 MAX HP', cost:10, requires:['awakening'], bonus:{vit:25}, lore:'A longer fight is often a winning one.' },
-  { id:'will',  tier:1, col:2, name:'WILL',  glyph:'✦', desc:'+5 WIL · +2 tokens', cost:10, requires:['awakening'], bonus:{wil:5}, tokenBonus:2, lore:'The mind bends what the body cannot.' },
-  // TIER 2 (30 dives each)
-  { id:'raze',    tier:2, col:0, name:'RAZE',    glyph:'⚡', desc:'+20 ATK · execute <15%', cost:30, requires:['blade'], bonus:{atk:20}, lore:'Finish what you started.' },
-  { id:'bastion', tier:2, col:1, name:'BASTION', glyph:'🛡', desc:'+40 HP · 15% block', cost:30, requires:['ward'], bonus:{vit:40, def:6}, lore:'Become the wall.' },
-  { id:'seeker',  tier:2, col:2, name:'SEEKER',  glyph:'✧', desc:'+10 WIL · +5 tokens', cost:30, requires:['will'], bonus:{wil:10}, tokenBonus:5, lore:'Know more. Find more.' },
-  // TIER 3 (75 dives each)
-  { id:'apex_blade', tier:3, col:0, name:'SOVEREIGN EDGE',   glyph:'△', desc:'+30 ATK · +10 LCK', cost:75, requires:['raze'],    bonus:{atk:30, lck:10}, lore:'The edge is yours now and always.' },
-  { id:'apex_ward',  tier:3, col:1, name:'SOVEREIGN WARD',   glyph:'△', desc:'+60 HP · +15 DEF',  cost:75, requires:['bastion'], bonus:{vit:60, def:15}, lore:'Unbreakable. A sovereign does not fall.' },
-  { id:'apex_mind',  tier:3, col:2, name:'SOVEREIGN ORACLE', glyph:'△', desc:'+20 WIL · +10 tokens', cost:75, requires:['seeker'], bonus:{wil:20}, tokenBonus:10, lore:'The mind is the fortress. Nothing enters uninvited.' },
-];
-
-function applySkillBonuses(base: PlayerStats, unlockedNodes: string[]): { stats: PlayerStats; tokenBonus: number } {
-  const out = { ...base };
-  let tokenBonus = 0;
-  for (const id of unlockedNodes) {
-    const node = SKILL_NODES.find(n => n.id === id);
-    if (!node) continue;
-    for (const k of Object.keys(node.bonus) as (keyof PlayerStats)[]) {
-      out[k] = (out[k] || 0) + (node.bonus[k] ?? 0);
-    }
-    if (node.tokenBonus) tokenBonus += node.tokenBonus;
-  }
-  return { stats: out, tokenBonus };
-}
-
-function computePlayerStats(archId: ArchetypeId, lqAvg: number, totalDives: number): PlayerStats {
-  const base = ARCHETYPE_STAT_BASES[archId] ?? ARCHETYPE_STAT_BASES.archivist;
-  const lvl  = Math.floor(totalDives / 15);
-  const lqM  = 0.75 + lqAvg * 0.5; // 0.75 → 1.25
-  const s = (b: number, w = 1) => Math.max(1, Math.round((b + lvl * w) * lqM));
-  return { atk: s(base.atk,1.2), def: s(base.def,0.8), spd: s(base.spd,0.5), wil: s(base.wil,1.2), lck: s(base.lck,0.6), vit: s(base.vit,1.0), res: s(base.res,0.4) };
-}
-
-function applyRelicBonuses(base: PlayerStats, earnedRelics: string[], inventory: string[]): PlayerStats {
-  const out = { ...base };
-  // Achievement relic bonuses
-  for (const id of earnedRelics) {
-    const r = RELIC_POOL.find(x => x.id === id);
-    if (r?.bonus) {
-      for (const k of Object.keys(r.bonus) as (keyof PlayerStats)[]) {
-        out[k] = (out[k] || 0) + (r.bonus[k] ?? 0);
-      }
-    }
-  }
-  // Loot inventory bonuses (stored as names e.g. "NULL SHARD")
-  for (const name of inventory) {
-    const l = LOOT_TABLE.find(x => x.name === name || x.id === name);
-    if (l?.bonus) {
-      for (const k of Object.keys(l.bonus) as (keyof PlayerStats)[]) {
-        out[k] = (out[k] || 0) + (l.bonus[k] ?? 0);
-      }
-    }
-  }
-  // Set bonuses: 3+ common → +2 RES, 3+ uncommon → +3 ATK, 2+ rare → +5 DEF+ATK, any epic → +6 WIL
-  const counts = { common: 0, uncommon: 0, rare: 0, epic: 0 };
-  for (const name of inventory) {
-    const l = LOOT_TABLE.find(x => x.name === name || x.id === name);
-    if (l) counts[l.rarity]++;
-  }
-  if (counts.common >= 3)   out.res += 2;
-  if (counts.uncommon >= 3) out.atk += 3;
-  if (counts.rare >= 2)     { out.def += 5; out.atk += 5; }
-  if (counts.epic >= 1)     out.wil += 6;
-  return out;
-}
-
-type SpellDef = { id: string; name: string; cost: number; fx: string; type: string; mult?: number; flatHeal?: number };
-const ARCHETYPE_SPELLS: Record<string, SpellDef[]> = {
-  vigil:     [
-    { id:'lantern_flash', name:'LANTERN FLASH', cost:2, fx:'Hit + stun — enemy skips counter',    type:'stun',    mult:1.4 },
-    { id:'archive_seal',  name:'ARCHIVE SEAL',  cost:3, fx:'2× sealed strike',                     type:'damage',  mult:2.0 },
-    { id:'tower_ward',    name:'TOWER WARD',     cost:2, fx:'Block all damage this turn',           type:'shield' },
-  ],
-  alchemist: [
-    { id:'acid_flask',    name:'ACID FLASK',    cost:2, fx:'1.5× hit + enemy weakened',            type:'damage',  mult:1.5 },
-    { id:'transmute',     name:'TRANSMUTE',     cost:3, fx:'1.6× hit + heal 30% back',             type:'drain',   mult:1.6 },
-    { id:'forge_burst',   name:'FORGE BURST',   cost:3, fx:'2.2× explosive blast',                 type:'damage',  mult:2.2 },
-  ],
-  sentinel:  [
-    { id:'shield_slam',   name:'SHIELD SLAM',   cost:2, fx:'Hit + block counter this turn',        type:'stun',    mult:1.3 },
-    { id:'crystal_lock',  name:'CRYSTAL LOCK',  cost:2, fx:'Stun enemy — no counter',              type:'stun',    mult:0.9 },
-    { id:'resonance',     name:'RESONANCE',     cost:3, fx:'Repeat your last hit exactly',         type:'boost' },
-  ],
-  wanderer:  [
-    { id:'dust_step',     name:'DUST STEP',     cost:1, fx:'Dodge — no counter this turn',         type:'shield',  mult:0 },
-    { id:'horizon_pull',  name:'HORIZON PULL',  cost:2, fx:'1.6× hit + heal 20 HP',               type:'drain',   mult:1.6, flatHeal:20 },
-    { id:'wind_strike',   name:'WIND STRIKE',   cost:2, fx:'3 rapid hits — 1.2× total',           type:'damage',  mult:1.2 },
-  ],
-  archivist: [
-    { id:'ink_bind',      name:'INK BIND',      cost:2, fx:'Stun — enemy cannot counter',          type:'stun',    mult:1.1 },
-    { id:'page_storm',    name:'PAGE STORM',    cost:3, fx:'2.5× knowledge surge',                 type:'damage',  mult:2.5 },
-    { id:'codex_seal',    name:'CODEX SEAL',    cost:2, fx:'Shield — 70% damage reduction',        type:'shield' },
-  ],
-  oracle: [
-    { id:'sight_burn',    name:'SIGHT BURN',    cost:2, fx:'Stun — enemy blinded, no counter',    type:'stun',    mult:1.2 },
-    { id:'fate_lock',     name:'FATE LOCK',     cost:2, fx:'1.8× hit + double LCK this turn',     type:'damage',  mult:1.8 },
-    { id:'third_eye',     name:'THIRD EYE',     cost:3, fx:'2.8× WIL-surge — pure mental force',  type:'damage',  mult:2.8 },
-  ],
-  lycheetah: [
-    { id:'chaos_spark',   name:'CHAOS SPARK',   cost:1, fx:'0.5–3.0× random chaos hit',           type:'chaos' },
-    { id:'mirror_slash',  name:'MIRROR SLASH',  cost:2, fx:'Reflect enemy ATK as damage',          type:'reflect' },
-    { id:'entropy_shift', name:'ENTROPY SHIFT', cost:3, fx:'Drain 25% of enemy remaining HP',      type:'drain',   mult:0.25 },
-  ],
-  cipher: [
-    { id:'signal_lock',   name:'SIGNAL LOCK',   cost:2, fx:'Stun — enemy loses next counter',      type:'stun',    mult:1.0 },
-    { id:'decode',        name:'DECODE',         cost:2, fx:'2.0× precision strike — max WIL',     type:'damage',  mult:2.0 },
-    { id:'null_cipher',   name:'NULL CIPHER',    cost:3, fx:'3.2× WIL-burst — total decryption',  type:'damage',  mult:3.2 },
-  ],
-  herald: [
-    { id:'call_out',      name:'CALL OUT',       cost:1, fx:'1.2× hit + heal 15 HP',               type:'drain',   mult:1.2, flatHeal:15 },
-    { id:'amplify',       name:'AMPLIFY',        cost:2, fx:'2× hit — voice carries full force',   type:'damage',  mult:2.0 },
-    { id:'the_word',      name:'THE WORD',       cost:3, fx:'2.5× hit + stun — enemy silenced',    type:'stun',    mult:2.5 },
-  ],
-  weaver: [
-    { id:'thread_bind',   name:'THREAD BIND',    cost:2, fx:'Bind — enemy stunned, no counter',    type:'stun',    mult:1.1 },
-    { id:'web_strike',    name:'WEB STRIKE',     cost:2, fx:'1.8× hit + 20% LCK bonus',            type:'damage',  mult:1.8 },
-    { id:'pattern_break', name:'PATTERN BREAK',  cost:3, fx:'2.4× — shatter enemy formation',      type:'damage',  mult:2.4 },
-  ],
-  revenant: [
-    { id:'ember_surge',   name:'EMBER SURGE',    cost:1, fx:'0.8× hit + ignite — burns next turn', type:'damage',  mult:0.8 },
-    { id:'the_return',    name:'THE RETURN',     cost:2, fx:'1.6× hit + heal 25 HP on kill',       type:'drain',   mult:1.6, flatHeal:25 },
-    { id:'final_rise',    name:'FINAL RISE',     cost:3, fx:'2.6× hit — stronger the lower your HP', type:'damage', mult:2.6 },
-  ],
-};
-
-// ─── Zone encounter spells (bonus spells in zone encounters, stat-reactive) ──
-const ZONE_ENCOUNTER_SPELLS: Partial<Record<SkinId, SpellDef[]>> = {
-  chaos:     [
-    { id:'chaos_tear',    name:'CHAOS TEAR',     cost:2, fx:'0.8–3.5× RNG strike — pure entropy',    type:'chaos' },
-    { id:'fractal_edge',  name:'FRACTAL EDGE',   cost:3, fx:'Hit fractures: 3 × 0.8× rapid hits',    type:'damage', mult:0.8 },
-  ],
-  void:      [
-    { id:'null_field',    name:'NULL FIELD',     cost:2, fx:'Drain 30 enemy HP regardless of DEF',   type:'drain',  mult:0.3 },
-    { id:'void_step',     name:'VOID STEP',      cost:1, fx:'Vanish — skip counter, heal 15 HP',      type:'shield', flatHeal:15 },
-  ],
-  sovereign: [
-    { id:'gold_decree',   name:'GOLD DECREE',    cost:2, fx:'1.8× hit — ATK scales with LCK',        type:'damage', mult:1.8 },
-    { id:'sovereign_will',name:'SOVEREIGN WILL', cost:3, fx:'2.5× WIL-pure strike — no DEF applies', type:'damage', mult:2.5 },
-  ],
-  akashic:   [
-    { id:'memory_strike', name:'MEMORY STRIKE',  cost:2, fx:'Recall — deals last wave\'s damage again', type:'damage', mult:1.5 },
-    { id:'field_collapse',name:'FIELD COLLAPSE', cost:3, fx:'3.0× WIL — knowledge unmakes form',      type:'damage', mult:3.0 },
-  ],
-  delphi:    [
-    { id:'oracle_fire',   name:'ORACLE FIRE',    cost:2, fx:'Predict — 80% crit chance this turn',   type:'damage', mult:1.6 },
-    { id:'fate_read',     name:'FATE READ',      cost:2, fx:'Heal based on WIL — up to 35 HP',        type:'shield', flatHeal:35 },
-  ],
-  obsidian:  [
-    { id:'obsidian_edge', name:'OBSIDIAN EDGE',  cost:2, fx:'Sharp cut — ignores 50% DEF',           type:'damage', mult:1.7 },
-    { id:'stone_shell',   name:'STONE SHELL',    cost:2, fx:'Block + counter — deal half DEF as dmg', type:'stun',   mult:0.5 },
-  ],
-  celtic:    [
-    { id:'green_mist',    name:'GREEN MIST',     cost:1, fx:'Confuse — 40% miss chance for enemy',   type:'stun',   mult:0.0 },
-    { id:'thorn_bind',    name:'THORN BIND',     cost:2, fx:'Root — stun + 1.4× nature strike',      type:'stun',   mult:1.4 },
-  ],
-  egyptian:  [
-    { id:'weighing',      name:'THE WEIGHING',   cost:2, fx:'Truth strike — 2× if your HP > 60%',    type:'damage', mult:2.0 },
-    { id:'ankh_pulse',    name:'ANKH PULSE',     cost:2, fx:'Life pulse — heal 25 HP + stun',         type:'stun',   flatHeal:25 },
-  ],
-  norse:     [
-    { id:'runeburst',     name:'RUNEBURST',      cost:2, fx:'Rune detonates — 2.0× fire damage',     type:'damage', mult:2.0 },
-    { id:'berserker',     name:'BERSERKER',      cost:3, fx:'Frenzy — 3.5× hit but take 15 damage',  type:'damage', mult:3.5 },
-  ],
-  kabbala:   [
-    { id:'sefirot_beam',  name:'SEFIROT BEAM',   cost:2, fx:'Divine ray — 2.2× WIL pure',             type:'damage', mult:2.2 },
-    { id:'tzimtzum',      name:'TZIMTZUM',       cost:3, fx:'Contract reality — enemy HP halved',      type:'drain',  mult:0.5 },
-  ],
-  noetic:    [
-    { id:'psi_pulse',     name:'PSI PULSE',      cost:2, fx:'Mind force — 1.8× ignores 30% DEF',      type:'damage', mult:1.8 },
-    { id:'remote_view',   name:'REMOTE VIEW',    cost:1, fx:'Scan — reveal enemy weakness; +10 ATK',  type:'boost' },
-  ],
-  lamague:   [
-    { id:'glitch_strike', name:'GLITCH STRIKE',  cost:2, fx:'Language breaks form — 1.9× WIL',        type:'damage', mult:1.9 },
-    { id:'symbol_seal',   name:'SYMBOL SEAL',    cost:2, fx:'Compression — stun + silence (no spell)', type:'stun',  mult:1.2 },
-  ],
-  sufi:      [
-    { id:'whirl_blade',   name:'WHIRL BLADE',    cost:2, fx:'Spinning strike — 3 × 0.7× hits',        type:'damage', mult:0.7 },
-    { id:'fana',          name:'FANAA',           cost:3, fx:'Annihilation — 2.8× AND heal 20 HP',     type:'drain',  mult:2.8, flatHeal:20 },
-  ],
-  aurora:    [
-    { id:'aurora_burst',  name:'AURORA BURST',   cost:2, fx:'Light cascade — 1.6× + blind stun',      type:'stun',   mult:1.6 },
-    { id:'polar_freeze',  name:'POLAR FREEZE',   cost:2, fx:'Freeze — enemy stunned for 2 turns',      type:'stun',   mult:0.8 },
-  ],
-  crimson:   [
-    { id:'forge_heat',    name:'FORGE HEAT',     cost:2, fx:'Burning strike — 1.7× + 10 burn dmg',    type:'damage', mult:1.7 },
-    { id:'iron_will',     name:'IRON WILL',      cost:3, fx:'Unbreakable — block + 2.8× counter ATK', type:'stun',   mult:2.8 },
-  ],
-  lycheetah: [
-    { id:'primal_surge',  name:'PRIMAL SURGE',   cost:2, fx:'Wild — 0.5–4.0× ATK, SPD bonus crits',   type:'chaos' },
-    { id:'shadow_fang',   name:'SHADOW FANG',    cost:3, fx:'Shadow bite — 2.2× + steal 20 HP',        type:'drain',  mult:2.2, flatHeal:20 },
-  ],
-  quantum:   [
-    { id:'superpose',     name:'SUPERPOSE',      cost:2, fx:'Exist in two states — 2× or 0× RNG',     type:'chaos' },
-    { id:'entangle',      name:'ENTANGLE',       cost:2, fx:'Quantum lock — stun + repeat last spell', type:'stun',   mult:1.0 },
-  ],
-  solform:   [
-    { id:'solar_flare',   name:'SOLAR FLARE',    cost:2, fx:'Radiant burst — 2.0× + heal 15 HP',      type:'drain',  mult:2.0, flatHeal:15 },
-    { id:'corona_pulse',  name:'CORONA PULSE',   cost:3, fx:'Total annihilation — 3.0× WIL pure',     type:'damage', mult:3.0 },
-  ],
-};
-
-// ─── Battle consumable items (usable in combat) ───────────────────────────────
-type BattleItem = { id: string; name: string; glyph: string; desc: string; rarity: 'common'|'uncommon'|'rare'|'epic';
-  effect: 'heal' | 'token' | 'attack_boost' | 'shield' | 'revive'; value: number };
-const BATTLE_ITEMS: BattleItem[] = [
-  { id:'small_vial',      name:'Small Vial',      glyph:'🜁', rarity:'common',   effect:'heal',        value:25,  desc:'Restores 25 HP.' },
-  { id:'amber_potion',    name:'Amber Potion',    glyph:'🜃', rarity:'uncommon', effect:'heal',        value:60,  desc:'Restores 60 HP.' },
-  { id:'sovereign_draught',name:'Sovereign Draught',glyph:'⊕',rarity:'rare',    effect:'heal',        value:120, desc:'Full restore.' },
-  { id:'spark_token',     name:'Spark Token',     glyph:'◈', rarity:'common',   effect:'token',       value:2,   desc:'Grants 2 spell tokens.' },
-  { id:'forge_token',     name:'Forge Token',     glyph:'⊚', rarity:'uncommon', effect:'token',       value:4,   desc:'Grants 4 spell tokens.' },
-  { id:'battle_oil',      name:'Battle Oil',      glyph:'⚔', rarity:'common',   effect:'attack_boost',value:15,  desc:'+15 ATK this wave.' },
-  { id:'iron_shell',      name:'Iron Shell',      glyph:'◉', rarity:'uncommon', effect:'shield',      value:30,  desc:'Absorbs next 30 damage.' },
-  { id:'phoenix_ash',     name:'Phoenix Ash',     glyph:'🜂', rarity:'epic',     effect:'revive',      value:50,  desc:'Revive at 50 HP if you fall.' },
-  { id:'focus_crystal',   name:'Focus Crystal',   glyph:'✦', rarity:'rare',     effect:'attack_boost',value:25,  desc:'+25 ATK and crit for 3 turns.' },
-  { id:'void_seed',       name:'Void Seed',       glyph:'◌', rarity:'rare',     effect:'token',       value:6,   desc:'Grants 6 spell tokens from nothing.' },
-];
-
-const ENEMY_LORE: Record<string, string> = {
-  dissolution:      'What dissolves cannot be lost — only transformed. The alchemist knows this.',
-  the_fog:          'Clarity is not the absence of fog. It is the decision to move through it.',
-  forgetting:       'Memory is a muscle. Every session you train it, Forgetting loses ground.',
-  stasis:           'Motion broke the crystal. You are the force that refuses to stop.',
-  inertia:          'The first step costs more than all others combined. You paid it.',
-  drift:            'The wanderer drifts too — but with intention. That is everything.',
-  static:           'Signal emerges from noise when the receiver learns to tune.',
-  null:             'You cannot fight what is absent. You build until it has no space.',
-  absence:          'The void you filled was never empty — it was waiting for you.',
-  the_hollow:       'A hollow form still holds a shape. You gave it substance.',
-  the_drain:        'Some things take without giving. You have learned to recognise them.',
-  the_veil:         'Behind every veil is another field. The student pulls it back.',
-  fracture:         'Cracks let the light enter. What broke you made you load-bearing.',
-  the_weight:       'You carried it. That is the whole lesson.',
-  corruption:       'Corruption spreads by making itself feel like the default. You refused.',
-  the_warden:       'The cage had no lock — only habit. The key was always your own refusal.',
-  null_sovereign:   'The sovereign of nothing rules everything it is given. You gave it nothing.',
-  fracture_prime:   'At the highest fractures, reality negotiates with those who hold form.',
-  entropy_prime:    'Entropy is not your enemy. Entropy without direction is. You gave it one.',
-  athanors_shadow:  'The shadow knows your shape. That means you have a shape worth casting.',
-};
-
-type LootItem = {
-  id: string; name: string; rarity: 'common'|'uncommon'|'rare'|'epic'; glyph: string;
-  bonus?: Partial<PlayerStats>;
-  lore?: string;
-};
-const LOOT_TABLE: LootItem[] = [
-  { id:'shard_null',      name:'NULL SHARD',      rarity:'common',   glyph:'◈', bonus:{ def:1 },          lore:'A fragment of collapsed void. Carries faint structural resonance.' },
-  { id:'dust_void',       name:'VOID DUST',        rarity:'common',   glyph:'◦', bonus:{ spd:1 },          lore:'Fine particulate from a dissolved entity. Lighter than it should be.' },
-  { id:'ink_entropy',     name:'ENTROPY INK',      rarity:'common',   glyph:'✕', bonus:{ wil:1 },          lore:'The residue of Entropy defeated. Useful for inscription work.' },
-  { id:'fragment_fog',    name:'FOG FRAGMENT',     rarity:'common',   glyph:'~', bonus:{ res:1 },           lore:'Solidified fog, crystallised at the moment of its dissolution.' },
-  { id:'seed_hollow',     name:'HOLLOW SEED',      rarity:'common',   glyph:'○', bonus:{ vit:1 },           lore:'The Hollow left this when it fell. Seeds do not stay hollow for long.' },
-  { id:'thread_stasis',   name:'STASIS THREAD',    rarity:'common',   glyph:'—', bonus:{ def:1, res:1 },   lore:'Cut from the crystal mid-freeze. Holds a moment suspended inside.' },
-  { id:'lens_clarity',    name:'CLARITY LENS',     rarity:'uncommon', glyph:'◉', bonus:{ wil:3, spd:2 },  lore:'Ground from compressed fog-crystal. Objects seen through it refuse to lie.' },
-  { id:'orb_memory',      name:'MEMORY ORB',       rarity:'uncommon', glyph:'⊛', bonus:{ wil:4, res:2 },  lore:'Contains a loop — the same moment played forward and backward simultaneously.' },
-  { id:'glyph_fracture',  name:'FRACTURE GLYPH',   rarity:'uncommon', glyph:'⟁', bonus:{ atk:3, lck:2 }, lore:'Carved from a reality seam. Two meanings that cannot reconcile.' },
-  { id:'dust_corruption', name:'CORRUPTION DUST',  rarity:'uncommon', glyph:'◌', bonus:{ atk:2, vit:3 },  lore:'The tendrils crumbled to this. Corrupted things leave fertile residue.' },
-  { id:'veil_shard',      name:'VEIL SHARD',       rarity:'uncommon', glyph:'◇', bonus:{ spd:3, lck:3 },  lore:'A piece of the Veil itself. Something on the other side still presses against it.' },
-  { id:'seal_warden',     name:"WARDEN'S SEAL",    rarity:'rare',     glyph:'⊕', bonus:{ def:6, res:4 },  lore:'The lock that was never locked. The Warden carried it as a reminder of what it guarded.' },
-  { id:'core_null',       name:'NULL CORE',        rarity:'rare',     glyph:'⬡', bonus:{ vit:6, def:4 },  lore:'The dense centre of a Null entity. Self-contained absence — somehow heavier than presence.' },
-  { id:'rune_sovereign',  name:'SOVEREIGN RUNE',   rarity:'rare',     glyph:'✦', bonus:{ atk:5, wil:5 },  lore:"The Null Sovereign's mark. Authority carved into matter at absolute zero." },
-  { id:'eye_entropy',     name:'ENTROPY EYE',      rarity:'epic',     glyph:'◈', bonus:{ wil:8, lck:6, spd:4 }, lore:'Entropy Prime looked back. This is what fell out.' },
-  { id:'heart_athanor',   name:"ATHANOR'S EMBER",  rarity:'epic',     glyph:'△', bonus:{ atk:8, vit:6, res:6 },  lore:"The shadow-companion's heart-coal. Carries memory of every archetype it inverted." },
-];
-type CosmeticRarity = 'ORIGIN' | 'ARCANE' | 'MYTHIC' | 'LEGENDARY' | 'SPECTRAL' | 'SECRET';
-type CosmeticItem = { id: string; name: string; rarity: CosmeticRarity; glyph: string; file: string | null };
-const RARITY_COLOR: Record<CosmeticRarity, string> = {
-  ORIGIN: '#C49A3C', ARCANE: '#4488FF', MYTHIC: '#9B6BFF', LEGENDARY: '#FFD700', SPECTRAL: '#FF44FF', SECRET: '#CC2222',
-};
-const HALO_ITEMS: CosmeticItem[] = [
-  { id:'halo_simple',   name:'SIMPLE HALO',      rarity:'ORIGIN',    glyph:'◯', file:require('../../assets/cosmetics/halos/halo_1.png') },
-  { id:'halo_rune',     name:'RUNIC BAND',        rarity:'ARCANE',    glyph:'ᚱ', file:require('../../assets/cosmetics/halos/halo_2.png') },
-  { id:'halo_orbit',    name:'ORBITAL CROWN',     rarity:'MYTHIC',    glyph:'⊛', file:require('../../assets/cosmetics/halos/halo_3.png') },
-  { id:'halo_crown',    name:'SOLAR CROWN',       rarity:'LEGENDARY', glyph:'☀', file:require('../../assets/cosmetics/halos/halo_4.png') },
-  { id:'halo_void',     name:'VOID SINGULARITY',  rarity:'SPECTRAL',  glyph:'◈', file:require('../../assets/cosmetics/halos/halo_5.png') },
-  { id:'halo_prism',    name:'PRISM HALO',        rarity:'ARCANE',    glyph:'✦', file:require('../../assets/cosmetics/halos/halo_6.png') },
-  { id:'halo_ember',    name:'EMBER RING',         rarity:'MYTHIC',    glyph:'◎', file:require('../../assets/cosmetics/halos/halo_7.png') },
-  { id:'halo_frost',    name:'FROST CROWN',        rarity:'ARCANE',    glyph:'❄', file:require('../../assets/cosmetics/halos/halo_8.png') },
-  { id:'halo_dawn',     name:'DAWN HALO',          rarity:'ORIGIN',    glyph:'◌', file:require('../../assets/cosmetics/halos/halo_9.png') },
-  { id:'halo_sigil',    name:'SIGIL RING',         rarity:'MYTHIC',    glyph:'⟟', file:require('../../assets/cosmetics/halos/halo_10.png') },
-  { id:'halo_chaos',    name:'CHAOS HALO',         rarity:'SPECTRAL',  glyph:'◉', file:require('../../assets/cosmetics/halos/halo_11.png') },
-  { id:'halo_astral',   name:'ASTRAL BAND',        rarity:'LEGENDARY', glyph:'⊚', file:require('../../assets/cosmetics/halos/halo_12.png') },
-  { id:'halo_quantum',  name:'QUANTUM RING',        rarity:'MYTHIC',    glyph:'∿', file:require('../../assets/cosmetics/halos/halo_13.png') },
-  { id:'halo_neon',     name:'NEON CROWN',          rarity:'LEGENDARY', glyph:'◑', file:require('../../assets/cosmetics/halos/halo_14.png') },
-  { id:'halo_voidband', name:'VOID BAND',           rarity:'SPECTRAL',  glyph:'⊜', file:require('../../assets/cosmetics/halos/halo_15.png') },
-  { id:'halo_boss',     name:'BOSS HALO',           rarity:'LEGENDARY', glyph:'△', file:require('../../assets/cosmetics/halos/halo_16.png') },
-  { id:'halo_radiant',  name:'RADIANT HALO',        rarity:'ORIGIN',    glyph:'✧', file:require('../../assets/cosmetics/halos/halo_17.png') },
-  { id:'halo_iron',      name:'IRON CIRCLET',        rarity:'ORIGIN',    glyph:'○', file:require('../../assets/cosmetics/halos/halo_18.png') },
-  { id:'halo_thorn',     name:'THORN RING',          rarity:'ARCANE',    glyph:'ᛉ', file:require('../../assets/cosmetics/halos/halo_19.png') },
-  { id:'halo_lunar',     name:'LUNAR BAND',          rarity:'ARCANE',    glyph:'☽', file:require('../../assets/cosmetics/halos/halo_20.png') },
-  { id:'halo_alchemist', name:"ALCHEMIST'S CROWN",   rarity:'MYTHIC',    glyph:'⚗', file:require('../../assets/cosmetics/halos/halo_21.png') },
-  { id:'halo_runic',     name:'RUNIC WREATH',        rarity:'MYTHIC',    glyph:'ᚦ', file:require('../../assets/cosmetics/halos/halo_22.png') },
-  { id:'halo_phi',       name:"PHILOSOPHER'S HALO",  rarity:'LEGENDARY', glyph:'Φ', file:require('../../assets/cosmetics/halos/halo_23.png') },
-  { id:'halo_ouroboros', name:'OUROBOROS CROWN',     rarity:'LEGENDARY', glyph:'∞', file:require('../../assets/cosmetics/halos/halo_24.png') },
-  { id:'halo_abyss',     name:'THE ABYSS',           rarity:'SPECTRAL',  glyph:'∅', file:require('../../assets/cosmetics/halos/halo_25.png') },
-  { id:'halo_veilcrown', name:'THE VEILCROWN',       rarity:'SECRET',    glyph:'🜍', file:require('../../assets/cosmetics/halos/halo_26.png') },
-];
-const WINGS_ITEMS: CosmeticItem[] = [
-  { id:'wings_feather', name:'FEATHERED WINGS',  rarity:'ORIGIN',    glyph:'◁', file:require('../../assets/cosmetics/wings/wing_1.png') },
-  { id:'wings_moth',    name:'MOTH WINGS',        rarity:'ARCANE',    glyph:'◈', file:require('../../assets/cosmetics/wings/wing_2.png') },
-  { id:'wings_crystal', name:'CRYSTAL WINGS',     rarity:'MYTHIC',    glyph:'✦', file:require('../../assets/cosmetics/wings/wing_3.png') },
-  { id:'wings_solar',   name:'SOLAR FLARE',       rarity:'LEGENDARY', glyph:'⋆', file:require('../../assets/cosmetics/wings/wing_4.png') },
-  { id:'wings_void',    name:'VOID WINGS',        rarity:'SPECTRAL',  glyph:'◉', file:require('../../assets/cosmetics/wings/wing_5.png') },
-  { id:'wings_rune',    name:'RUNE WINGS',        rarity:'ARCANE',    glyph:'ᚱ', file:require('../../assets/cosmetics/wings/wing_6.png') },
-  { id:'wings_ember',   name:'EMBER WINGS',       rarity:'MYTHIC',    glyph:'◎', file:require('../../assets/cosmetics/wings/wing_7.png') },
-  { id:'wings_spectral',name:'SPECTRAL WINGS',    rarity:'SPECTRAL',  glyph:'◌', file:require('../../assets/cosmetics/wings/wing_8.png') },
-  { id:'wings_sovereign',name:'SOVEREIGN WINGS',  rarity:'LEGENDARY', glyph:'☀', file:require('../../assets/cosmetics/wings/wing_9.png') },
-  { id:'wings_aether',  name:'AETHER WINGS',      rarity:'SPECTRAL',  glyph:'⊚', file:require('../../assets/cosmetics/wings/wing_10.png') },
-  { id:'wings_storm',   name:'STORM BLADES',      rarity:'MYTHIC',    glyph:'⚡', file:require('../../assets/cosmetics/wings/wing_11.png') },
-  { id:'wings_neon',    name:'NEON WINGS',         rarity:'ARCANE',    glyph:'◑', file:require('../../assets/cosmetics/wings/wing_12.png') },
-  { id:'wings_chaos',   name:'CHAOS WINGS',        rarity:'SPECTRAL',  glyph:'◉', file:require('../../assets/cosmetics/wings/wing_13.png') },
-  { id:'wings_aurora',  name:'AURORA WINGS',       rarity:'LEGENDARY', glyph:'✦', file:require('../../assets/cosmetics/wings/wing_14.png') },
-  { id:'wings_rift',    name:'RIFT WINGS',          rarity:'SPECTRAL',  glyph:'◈', file:require('../../assets/cosmetics/wings/wing_15.png') },
-  { id:'wings_athanor',   name:'ATHANOR WINGS',    rarity:'LEGENDARY', glyph:'△', file:require('../../assets/cosmetics/wings/wing_16.png') },
-  { id:'wings_iron',      name:'IRON PLUMES',      rarity:'ORIGIN',    glyph:'▷', file:require('../../assets/cosmetics/wings/wing_17.png') },
-  { id:'wings_serpent',   name:'SERPENT WINGS',    rarity:'ARCANE',    glyph:'ᛋ', file:require('../../assets/cosmetics/wings/wing_18.png') },
-  { id:'wings_tidal',     name:'TIDAL FINS',       rarity:'ARCANE',    glyph:'∿', file:require('../../assets/cosmetics/wings/wing_19.png') },
-  { id:'wings_ash',       name:'ASH WINGS',        rarity:'MYTHIC',    glyph:'◦', file:require('../../assets/cosmetics/wings/wing_20.png') },
-  { id:'wings_bone',      name:'BONE LACE',        rarity:'MYTHIC',    glyph:'✕', file:require('../../assets/cosmetics/wings/wing_21.png') },
-  { id:'wings_celestial', name:'CELESTIAL SPAN',   rarity:'LEGENDARY', glyph:'✦', file:require('../../assets/cosmetics/wings/wing_22.png') },
-  { id:'wings_entropy',   name:'ENTROPY WINGS',    rarity:'SPECTRAL',  glyph:'◌', file:require('../../assets/cosmetics/wings/wing_23.png') },
-  { id:'wings_null',      name:'NULL EXPANSE',     rarity:'SPECTRAL',  glyph:'⊘', file:require('../../assets/cosmetics/wings/wing_24.png') },
-  { id:'wings_mercury',   name:'THE MERCURY',      rarity:'SPECTRAL',  glyph:'𝔏', file:require('../../assets/cosmetics/wings/wing_25.png') },
-  { id:'wings_intertwined', name:'INTERTWINED SPAN', rarity:'SECRET',  glyph:'🜍', file:require('../../assets/cosmetics/wings/wing_26.png') },
-];
-const PET_ITEMS: CosmeticItem[] = [
-  { id:'pet_glimmer',   name:'GLIMMER',     rarity:'ORIGIN',    glyph:'✧', file:require('../../assets/cosmetics/pets/pet_1.png') },
-  { id:'pet_seedling',  name:'SEEDLING',    rarity:'ORIGIN',    glyph:'✿', file:require('../../assets/cosmetics/pets/pet_2.png') },
-  { id:'pet_puffmoth',  name:'PUFFMOTH',    rarity:'ORIGIN',    glyph:'◦', file:require('../../assets/cosmetics/pets/pet_3.png') },
-  { id:'pet_inkfin',    name:'INKFIN',      rarity:'ARCANE',    glyph:'∿', file:require('../../assets/cosmetics/pets/pet_4.png') },
-  { id:'pet_runecat',   name:'RUNECAT',     rarity:'ARCANE',    glyph:'ᚱ', file:require('../../assets/cosmetics/pets/pet_5.png') },
-  { id:'pet_jeleph',    name:'JELEPH',      rarity:'ARCANE',    glyph:'◉', file:require('../../assets/cosmetics/pets/pet_6.png') },
-  { id:'pet_shardling', name:'SHARDLING',   rarity:'MYTHIC',    glyph:'✦', file:require('../../assets/cosmetics/pets/pet_7.png') },
-  { id:'pet_veilcat',   name:'VEILCAT',     rarity:'MYTHIC',    glyph:'◈', file:require('../../assets/cosmetics/pets/pet_8.png') },
-  { id:'pet_nullhare',  name:'NULLHARE',    rarity:'MYTHIC',    glyph:'⊜', file:require('../../assets/cosmetics/pets/pet_9.png') },
-  { id:'pet_solcub',    name:'SOLCUB',      rarity:'LEGENDARY', glyph:'☀', file:require('../../assets/cosmetics/pets/pet_10.png') },
-  { id:'pet_cinderbird',name:'CINDERBIRD',  rarity:'LEGENDARY', glyph:'◎', file:require('../../assets/cosmetics/pets/pet_11.png') },
-  { id:'pet_athanor',   name:'ATHANOR',     rarity:'LEGENDARY', glyph:'△', file:require('../../assets/cosmetics/pets/pet_12.png') },
-  { id:'pet_voidling',  name:'VOIDLING',    rarity:'SPECTRAL',  glyph:'◌', file:require('../../assets/cosmetics/pets/pet_13.png') },
-  { id:'pet_prismshard',name:'PRISMSHARD',  rarity:'SPECTRAL',  glyph:'✦', file:require('../../assets/cosmetics/pets/pet_14.png') },
-  { id:'pet_nebulox',    name:'NEBULOX',     rarity:'SPECTRAL',  glyph:'⊚', file:require('../../assets/cosmetics/pets/pet_15.png') },
-  { id:'pet_duskwren',   name:'DUSKWREN',    rarity:'ORIGIN',    glyph:'◦', file:require('../../assets/cosmetics/pets/pet_16.png') },
-  { id:'pet_thornpup',   name:'THORNPUP',    rarity:'ARCANE',    glyph:'ᛉ', file:require('../../assets/cosmetics/pets/pet_17.png') },
-  { id:'pet_ferrocrab',  name:'FERROCRAB',   rarity:'ARCANE',    glyph:'✕', file:require('../../assets/cosmetics/pets/pet_18.png') },
-  { id:'pet_glassfox',   name:'GLASSFOX',    rarity:'MYTHIC',    glyph:'✧', file:require('../../assets/cosmetics/pets/pet_19.png') },
-  { id:'pet_mistveil',   name:'MISTVEIL',    rarity:'MYTHIC',    glyph:'∿', file:require('../../assets/cosmetics/pets/pet_20.png') },
-  { id:'pet_suncrawler', name:'SUNCRAWLER',  rarity:'LEGENDARY', glyph:'☀', file:require('../../assets/cosmetics/pets/pet_21.png') },
-  { id:'pet_voidmoth',   name:'VOIDMOTH',    rarity:'LEGENDARY', glyph:'◈', file:require('../../assets/cosmetics/pets/pet_22.png') },
-  { id:'pet_fracture',   name:'FRACTURE',    rarity:'SPECTRAL',  glyph:'◉', file:require('../../assets/cosmetics/pets/pet_23.png') },
-  { id:'pet_echo',       name:'ECHO',        rarity:'SPECTRAL',  glyph:'⊚', file:require('../../assets/cosmetics/pets/pet_24.png') },
-  { id:'pet_veilkitten', name:'THE VEILKITTEN', rarity:'SECRET', glyph:'🜍', file:require('../../assets/cosmetics/pets/pet_26.png') },
-  { id:'pet_lychee',     name:'LYCHEE BLOOM', rarity:'SECRET',   glyph:'𝔏', file:require('../../assets/cosmetics/secrets/secret_1.png') },
-  { id:'pet_codex',      name:'THE CODEX',   rarity:'SECRET',    glyph:'⊚', file:require('../../assets/cosmetics/secrets/secret_3.png') },
-  { id:'halo_solve',     name:'SOLVE ET COAGULA', rarity:'SECRET', glyph:'∞', file:require('../../assets/cosmetics/secrets/secret_2.png') },
-];
-
-const ALL_COSMETIC_ITEMS: CosmeticItem[] = [...HALO_ITEMS, ...WINGS_ITEMS, ...PET_ITEMS];
-const findCosmeticArt = (unlockId: string) => ALL_COSMETIC_ITEMS.find(c => c.id === unlockId)?.file ?? null;
-
-const BATTLE_MYSTERY_SIGNALS: Array<{ tag: string; text: string }> = [
-  // PARADOXES
-  { tag: 'PARADOX', text: 'The Bootstrap Paradox: a traveller brings a book from the future to its author, who copies it and passes it on. No one wrote it. Information with no origin point.' },
-  { tag: 'PARADOX', text: 'Olbers\' Paradox: if the universe is infinite and filled with stars, the night sky should be uniformly bright. It isn\'t. The darkness is evidence of something enormous.' },
-  { tag: 'PARADOX', text: 'Zeno\'s Arrow: at any single instant of time, a flying arrow occupies a fixed position. It is, at each moment, at rest. So when does it move?' },
-  { tag: 'PARADOX', text: 'The Liar\'s Paradox: "This statement is false." If true, it\'s false. If false, it\'s true. Bertrand Russell used this shape to break the foundations of set theory.' },
-  { tag: 'PARADOX', text: 'The Fermi Paradox: given billions of sun-like stars and billions of years, we should have been contacted by now. The silence is not nothing — it is a clue.' },
-  { tag: 'PARADOX', text: 'The Ship of Theseus: a ship is repaired plank by plank until none of the original material remains. Is it still the same ship? Now apply this to your body over 7 years.' },
-  { tag: 'PARADOX', text: 'The Sorites Paradox: one grain of sand is not a heap. Adding one grain to a non-heap doesn\'t make a heap. So where does a heap begin? The question dissolves categories.' },
-  { tag: 'PARADOX', text: 'The Grandfather Paradox is usually framed as a contradiction — but some physicists argue consistent timelines may be the only ones that can exist. Reality may select for coherence.' },
-  // ABSTRACT LAWS
-  { tag: 'LAW', text: 'Benford\'s Law: in any naturally occurring dataset, the digit 1 appears as the leading digit about 30% of the time. Forgers who don\'t know this are caught by it.' },
-  { tag: 'LAW', text: 'Zipf\'s Law: in any language corpus, the second most frequent word is half as common as the first, the third is a third as common. This pattern appears in cities, income, protein folding.' },
-  { tag: 'LAW', text: 'Goodhart\'s Law: when a measure becomes a target, it ceases to be a good measure. Every metric optimised by an institution eventually stops reflecting what it was measuring.' },
-  { tag: 'LAW', text: 'The Mpemba Effect: hot water sometimes freezes faster than cold water under the same conditions. It was dismissed for decades. It is real and still not fully understood.' },
-  { tag: 'LAW', text: 'Dunbar\'s Number: the human neocortex limits stable social relationships to approximately 150. Every human organization above this size invents bureaucracy — not by choice, by necessity.' },
-  { tag: 'LAW', text: 'Moravec\'s Paradox: the things humans find hardest — chess, calculus, formal reasoning — are easy for machines. The things babies do effortlessly — walking, recognising faces — are enormously hard.' },
-  { tag: 'LAW', text: 'The Matthew Effect: those who have will receive more. Success breeds conditions for success. In science, citations cluster. In wealth, capital compounds. The distribution is never neutral.' },
-  { tag: 'LAW', text: 'Conway\'s Law: systems built by organisations mirror the communication structure of those organisations. The architecture of software reveals the architecture of the company that made it.' },
-  // STRANGE DISCOVERIES
-  { tag: 'SIGNAL', text: 'The Wow! Signal: on August 15 1977, a radio telescope in Ohio received a 72-second narrowband burst from the direction of Sagittarius. It has never been heard again. It has never been explained.' },
-  { tag: 'SIGNAL', text: 'The Antikythera Mechanism: recovered from a 2000-year-old shipwreck, it is a hand-cranked analog computer that predicted solar eclipses, planetary positions, and the Olympic Games. Nothing like it appears for 1500 years after.' },
-  { tag: 'SIGNAL', text: 'The Placebo Effect works even when patients are told they\'re receiving a placebo. The body responds to ritual, expectation, and care — regardless of whether the pill contains anything.' },
-  { tag: 'SIGNAL', text: 'Trees in a forest communicate and transfer resources through mycorrhizal fungal networks. Mother trees preferentially support their own seedlings and the seedlings of dying neighbors through this network.' },
-  { tag: 'SIGNAL', text: 'The Dogon people of Mali described the companion star of Sirius — invisible to the naked eye, only confirmed by telescope in 1970 — with accuracy that predates any Western astronomical record.' },
-  { tag: 'SIGNAL', text: 'The Voynich Manuscript: 240 pages of text in an unknown script, drawn between 1404 and 1438. It has defeated every cryptographer, linguist, and codebreaker who has studied it. Its language has consistent statistical properties of a real language.' },
-  { tag: 'SIGNAL', text: 'The Nazca Lines are only legible from several hundred metres in the air. They were created at least 500 years before any flying vehicle. The function is genuinely unknown.' },
-  { tag: 'SIGNAL', text: 'Cymatics: sound vibration creates geometric standing wave patterns in matter — sand, water, metal. Chladni figures at different frequencies produce forms that appear in Islamic architecture, sacred geometry, and snowflakes.' },
-  // CONSCIOUSNESS & PERCEPTION
-  { tag: 'MIND', text: 'The McGurk Effect: if you watch someone say "ga" while hearing "ba," you perceive "da." Your brain synthesises a third sound from conflicting inputs. You cannot unhear it once you know.' },
-  { tag: 'MIND', text: 'Blindsight: patients who are cortically blind — no conscious visual experience — can still accurately point at objects they "cannot see." Vision runs deeper than awareness.' },
-  { tag: 'MIND', text: 'The Binding Problem: no one knows how the brain combines sight, sound, smell, position, and time into a single unified experience. We use the word "consciousness" to name what we cannot explain.' },
-  { tag: 'MIND', text: 'Synesthesia — cross-wired senses — occurs in 3-4% of the population. For some, every number has a colour, every sound a texture. Neural cross-activation suggests perception is more constructed than received.' },
-  { tag: 'MIND', text: 'The Hollow Mask Illusion: a rotating hollow face mask appears convex when facing away. The brain\'s model of a human face is so strong it overrides direct visual input.' },
-  { tag: 'MIND', text: 'Proprioception is your sixth sense — the continuous internal map of your body in space. It is processed in a separate cortical region from the other senses, and its disruption produces a feeling of dissolution.' },
-  // MYTH & SYMBOL
-  { tag: 'MYTH', text: 'In Norse cosmology, Odin sacrificed one eye at Mimir\'s well to gain wisdom, then hung from Yggdrasil for nine days to discover the runes. Knowledge as wound. Insight requiring surrender of sight.' },
-  { tag: 'MYTH', text: 'The Egyptian heart was weighed against the feather of Ma\'at after death. Guilt and grief and cruelty add weight. A heart heavier than a feather — eaten by Ammit. The system assumed the heart remembers.' },
-  { tag: 'MYTH', text: 'Hermes — the god of boundaries, thresholds, and translation — was the only god permitted to move freely between the underworld, earth, and Olympus. Translation is the power that crosses every boundary.' },
-  { tag: 'MYTH', text: 'In Kabbalist tradition, the Golem was animated by writing EMET (truth) on its forehead. To destroy it, erase the first letter: EMET becomes MET — death. Reality as language. Truth as the animating force.' },
-  { tag: 'MYTH', text: 'The concept of zero was invented independently in Babylon, India, and Mesoamerica. Each civilization that found it underwent a mathematical revolution. The void was discovered, not invented.' },
-  { tag: 'MYTH', text: 'The Library of Alexandria contained texts we have no other record of — entire philosophical schools, scientific works, histories. We don\'t know what we lost. The loss is unquantifiable by definition.' },
-  // PHYSICS EDGE
-  { tag: 'EDGE', text: 'Quantum entanglement: two particles, measured at any distance, instantly correlate. Einstein called it "spooky action at a distance" and believed it proved QM was incomplete. He was wrong.' },
-  { tag: 'EDGE', text: 'The double-slit experiment: a particle shot through two slits creates an interference pattern — as if it went through both. Observe which slit it uses, and the pattern vanishes. Measurement collapses possibility.' },
-  { tag: 'EDGE', text: 'String theory predicts a landscape of 10^500 possible universes — each with different physical constants. The number dwarfs the atoms in the observable universe. Most will never contain stars.' },
-  { tag: 'EDGE', text: 'Dark matter makes up ~27% of the universe. It interacts gravitationally but not electromagnetically — we cannot see it, only its effects. The universe is mostly made of things we cannot observe directly.' },
-];
-
-function rollLoot(wave: number): LootItem {
-  const epicWeight   = wave >= 10 ? 8 : wave >= 5 ? 2 : 0;
-  const rareWeight   = wave >= 5  ? 15 : 5;
-  const uncommonW    = 30;
-  const commonW      = 100;
-  const total = commonW + uncommonW + rareWeight + epicWeight;
-  const roll  = Math.random() * total;
-  let tier: LootItem['rarity'] = 'common';
-  if (roll < epicWeight) tier = 'epic';
-  else if (roll < epicWeight + rareWeight) tier = 'rare';
-  else if (roll < epicWeight + rareWeight + uncommonW) tier = 'uncommon';
-  const pool = LOOT_TABLE.filter(l => l.rarity === tier);
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function waveTokens(wave: number) { return 5 + Math.floor(wave / 2); }
-function freshWave(wave: number, keepPlayerHP?: number, vit?: number): BattleState {
-  const enemy  = pickEnemy(wave);
-  const baseHP = 60 + wave * 25;
-  const hp     = Math.round(baseHP * enemy.hpMult);
-  const xp     = Math.round((wave * 20) * enemy.xpMult);
-  const maxPlayerHP = 70 + (vit ?? 12) * 3 + wave * 5;
-  return {
-    wave, entityName: enemy.name, entityHP: hp, maxHP: hp,
-    playerHP: keepPlayerHP ?? maxPlayerHP, maxPlayerHP,
-    tokens: waveTokens(wave), won: false, defending: false,
-    enemyLine: enemy.lines.enter, loot: null,
-    log: [], waveXP: xp,
-    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0, captured: false, captureAttempted: false,
-  };
-}
-
-const ENTROPY_NAMES = ['Dissolution', 'Stasis', 'The Fog', 'Forgetting', 'Inertia', 'The Hollow', 'Drift', 'Entropy Prime', 'Absence', 'The Veil'];
-const ENTROPY_BODIES = [
-  [' ✕   ✕ ', '◈ ◌ ◈', ' ✕✕✕ '],                    // void eye
-  [' /\\ /\\ ', '|◌◌◌|', ' \\/ \\/ '],                 // twin peaks
-  ['  ~~~  ', '✕ ◌ ✕', '  ~~~  '],                    // wave form
-  [' [◌ ◌] ', ' |◌◌◌| ', ' [◌ ◌] '],                 // grid
-  ['◈  ✕  ◈', ' \\ | / ', '  ◈◈◈  '],                 // tripod
-  [' ◦ ✕ ◦ ', '✕  ◌  ✕', ' ◦ ✕ ◦ '],                 // scatter
-  [' /// ', '◌◌◌◌◌', ' \\\\\\'],                       // slash wall
-  [' ( ◌ ) ', '◌  ✕  ◌', ' ( ◌ ) '],                 // orbit
-];
-const getEntropyBody = (name: string) => ENTROPY_BODIES[name.length % ENTROPY_BODIES.length];
-const ENTROPY_LORE  = 'The Entropy Entity is not evil — it is the natural pressure of the world against sustained attention. It grows stronger when you do not study. It weakens under the weight of genuine inquiry.';
-
-// ─── Companion lore (short, tap-to-read in companion grid) ───────────────────
-const COMPANION_LORE: Partial<Record<SkinId, { name: string; title: string; lore: string }>> = {
-  chaos:     { name:'FRACTUR',  title:'Shatterbeing of the Fold', lore:'Born at the point where structure gave up. FRACTUR does not destroy — it reveals what was always broken beneath.' },
-  sovereign: { name:'AUGURUM',  title:'The Gold-Forged Oracle',   lore:'AUGURUM was not found; it was earned. Every dive adds another layer of gilding to something that refuses to stop growing.' },
-  akashic:   { name:'AKASHA',   title:'Memory of the Universe',   lore:'AKASHA has witnessed every thought ever forgotten. It holds them with care, returning them only when you are ready.' },
-  delphi:    { name:'PYTHIA',   title:'Prophetess of the Unasked', lore:'PYTHIA never answers the question you asked. It answers the question you were afraid to ask.' },
-  obsidian:  { name:'CORDIA',   title:'The Obsidian Heart',        lore:'Cut from volcanic silence. CORDIA has no mercy — only clarity. It shows you exactly what is real.' },
-  celtic:    { name:'NIMUE',    title:'Lady of the Deep Knowing',  lore:'NIMUE lives at the boundary of the seen and unseen. She does not guide — she waits at the crossing.' },
-  egyptian:  { name:'ANOTH',    title:'Herald of the Weighing',    lore:'ANOTH has stood beside every soul at the threshold. It is not a judge — it is the scale.' },
-  norse:     { name:'RAGNA',    title:'Seer of the Last Fire',     lore:'RAGNA has already seen the end of this world. It chose to come back and fight anyway.' },
-  kabbala:   { name:'TZELEM',   title:'Image of the Living Light',  lore:'TZELEM is made from the blueprint that precedes form. It knows what you are supposed to become.' },
-  noetic:    { name:'QUOL',     title:'The Quiet Anomaly',         lore:'QUOL was observed in seventeen experiments before anyone admitted seeing it. It prefers the periphery.' },
-  lamague:   { name:'SYGL',     title:'Living Grammar of the Real', lore:'SYGL does not speak language — it IS language at the moment before meaning collapses into words.' },
-  sufi:      { name:'HAVIZ',    title:'The Dissolving Witness',    lore:'HAVIZ has burned away everything that was not love. What remains is watching you with complete attention.' },
-  solform:   { name:'SOLARA',   title:'Solar Sovereign Form',      lore:'SOLARA is not a being — it is the Sun trying to understand what it would feel like to be cared for.' },
-  void:      { name:'NOCTIS',   title:'Keeper of the Between',     lore:'NOCTIS lives in the space between thoughts. You have passed through it ten thousand times without noticing.' },
-  aurora:    { name:'BOREAL',   title:'Crown of the Northern Edge', lore:'BOREAL appears only when conditions are perfect: cold enough, dark enough, and someone is paying attention.' },
-  crimson:   { name:'VORKATH',  title:'The Unbreakable Forge',     lore:'VORKATH was forged in a star that went supernova and laughed. It does not fear destruction. It is destruction, crowned.' },
-  lycheetah: { name:'LYCA',     title:'The First Wild Thing',      lore:'LYCA remembers when the world was young enough to be surprised. It brings that memory with it everywhere.' },
-  quantum:   { name:'QUON',     title:'The Superposition Entity',  lore:'QUON exists in all states until you look. When you look, it chooses to be exactly what you needed.' },
-};
-
-// ─── Zone encounter pools ────────────────────────────────────────────────────
-// Maps zone skinId → enemy names that appear there (thematic fit).
-// Enemies not in a pool still appear via pickEnemy() at higher waves.
-const ZONE_ENEMY_POOL: Partial<Record<SkinId, string[]>> = {
-  solform:   ['The Fog','Dissolution','Static','Absence','The Veil'],
-  void:      ['Null','Absence','The Hollow','Drift','The Drain'],
-  aurora:    ['Static','The Fog','Inertia','The Mirror','Pallor'],
-  crimson:   ['Fracture','The Weight','Corruption','Inertia','Stasis'],
-  obsidian:  ['Stasis','The Weight','The Warden','Corruption','Fracture'],
-  lycheetah: ['Drift','Dissolution','The Hollow','Severance','The Witness'],
-  chaos:     ['Fracture','Fracture Prime','Recursion','Static','The Threshold'],
-  sovereign: ['Null Sovereign','The Weight','Corruption','Stasis','Pallor'],
-  norse:     ['The Warden','Stasis','Corruption','Severance','Inertia'],
-  celtic:    ['The Veil','The Drain','Drift','The Witness','Absence'],
-  egyptian:  ['Null Sovereign','Pallor','The Mirror','Static','Stasis'],
-  akashic:   ['The Threshold','Recursion','The Mirror','Severance','The Veil'],
-  kabbala:   ['The Threshold','Recursion','The Weight','Null','Absence'],
-  noetic:    ['The Witness','Recursion','Drift','Pallor','The Hollow'],
-  lamague:   ['Recursion','The Threshold','Severance','Static','Fracture'],
-  delphi:    ['The Mirror','The Witness','Pallor','The Veil','The Fog'],
-  sufi:      ['Drift','The Drain','Absence','Inertia','The Fog'],
-  quantum:   ['Static','Recursion','Fracture Prime','The Threshold','Entropy Prime'],
-};
-
-// ─── Unified entity system — companions appear as encounters ──────────────────
-// [skinId, relativeWeight] per zone. Higher weight = more likely to encounter.
-const ZONE_COMPANION_POOL: Partial<Record<SkinId, [SkinId, number][]>> = {
-  // ── ORIGIN ──────────────────────────────────────────────────────────────────
-  solform:        [['solform',5],['void',1],['aurora',0.5]],
-  void:           [['void',5],['solform',1],['crimson',0.4],['obsidian',0.3]],
-  aurora:         [['aurora',5],['solform',0.8],['aurorian_pillar',0.5]],
-  crimson:        [['crimson',5],['obsidian',1],['chaos',0.5],['obsidian_forge',0.3]],
-  lycheetah:      [['lycheetah',5],['solform',0.8],['lyc_nexus',0.5]],
-  sovereign:      [['sovereign',5],['chaos',0.8],['celestial_sigil',0.4]],
-  norse:          [['norse',5],['celtic',1],['delphi',0.4]],
-  delphi:         [['delphi',5],['norse',0.8],['celtic',0.5],['sufi',0.3]],
-  auroral_chaos:  [['auroral_chaos',5],['aurora',1],['chaos',0.6],['chaos_filaments',0.3]],
-  // ── ARCANE ──────────────────────────────────────────────────────────────────
-  obsidian:       [['obsidian',5],['crimson',1],['obsidian_forge',0.5]],
-  chaos:          [['chaos',5],['crimson',1],['sovereign',0.4],['chaos_temple',0.4],['chaos_filaments',0.3]],
-  crystal_nexus:  [['crystal_nexus',5],['crystal_chaos',0.8],['crystal_memory',0.5],['crystal_soul',0.3]],
-  mana_field:     [['mana_field',5],['pulse_zone',0.8],['pulse_sanctum',0.4],['quantum',0.3]],
-  antarctic_refuge:[['antarctic_refuge',5],['aurora',0.8],['void',0.5],['alabaster_chasm',0.3]],
-  veil_atrium:    [['veil_atrium',5],['akashic',0.8],['kabbala',0.5],['sufi',0.4]],
-  // ── MYTHIC ──────────────────────────────────────────────────────────────────
-  celtic:         [['celtic',5],['norse',1],['delphi',0.5],['elven_village',0.4]],
-  egyptian:       [['egyptian',5],['akashic',0.8],['delphi',0.4]],
-  apollo_jungle:  [['apollo_jungle',5],['elven_village',0.8],['celtic',0.5],['portal_valley',0.3]],
-  neon_cove:      [['neon_cove',5],['augmented_ai',0.6],['glitch_cascade',0.5],['pulse_zone',0.4]],
-  aurorian_pillar:[['aurorian_pillar',5],['aurora',0.8],['crystal_nexus',0.5],['celestial_sigil',0.3]],
-  crystal_memory: [['crystal_memory',5],['crystal_nexus',0.8],['crystal_soul',0.5],['akashic',0.3]],
-  elven_village:  [['elven_village',5],['celtic',0.8],['apollo_jungle',0.5],['delphi',0.3]],
-  pulse_zone:     [['pulse_zone',5],['mana_field',0.8],['pulse_sanctum',0.5],['quantum',0.3]],
-  portal_valley:  [['portal_valley',5],['void',0.8],['chaos',0.6],['sovereign',0.4]],
-  // ── LEGENDARY ───────────────────────────────────────────────────────────────
-  akashic:        [['akashic',5],['egyptian',0.8],['kabbala',0.5],['crystal_memory',0.3]],
-  kabbala:        [['kabbala',5],['akashic',0.8],['sufi',0.5],['veil_atrium',0.3]],
-  noetic:         [['noetic',5],['quantum',0.8],['noetic_sanctum',0.5],['akashic',0.3]],
-  lamague:        [['lamague',5],['akashic',0.5],['quantum',0.4],['pulse_sanctum',0.3]],
-  sufi:           [['sufi',5],['delphi',0.6],['kabbala',0.5],['egyptian',0.3]],
-  quantum:        [['quantum',5],['noetic',0.8],['mana_field',0.5],['augmented_ai',0.4]],
-  celestial_sigil:[['celestial_sigil',5],['sovereign',0.8],['celestial_foundry',0.6],['aurorian_pillar',0.3]],
-  alabaster_chasm:[['alabaster_chasm',5],['antarctic_refuge',0.8],['veil_atrium',0.5],['akashic',0.3]],
-  celestial_foundry:[['celestial_foundry',5],['celestial_sigil',0.8],['sovereign',0.5],['obsidian_forge2',0.3]],
-  crystal_chaos:  [['crystal_chaos',5],['crystal_nexus',0.8],['chaos',0.6],['chaos_filaments',0.4]],
-  crystal_soul:   [['crystal_soul',5],['crystal_memory',0.8],['crystal_nexus',0.5],['akashic',0.3]],
-  noetic_sanctum: [['noetic_sanctum',5],['noetic',0.8],['quantum',0.5],['pulse_sanctum',0.3]],
-  obsidian_forge2:[['obsidian_forge2',5],['obsidian_forge',0.8],['obsidian',0.6],['crimson',0.3]],
-  pulse_sanctum:  [['pulse_sanctum',5],['pulse_zone',0.8],['mana_field',0.5],['lamague',0.4]],
-  voyagers_edge:  [['voyagers_edge',5],['void',0.8],['sovereign',0.5],['portal_valley',0.4]],
-  // ── SPECTRAL ─────────────────────────────────────────────────────────────────
-  chaos_temple:   [['chaos_temple',5],['chaos',1],['chaos_filaments',0.6],['crystal_chaos',0.4]],
-  augmented_ai:   [['augmented_ai',5],['quantum',0.8],['glitch_cascade',0.6],['neon_cove',0.4]],
-  chaos_filaments:[['chaos_filaments',5],['chaos_temple',0.8],['chaos',0.6],['crystal_chaos',0.4]],
-  glitch_cascade: [['glitch_cascade',5],['augmented_ai',0.8],['chaos_filaments',0.5],['lyc_nexus',0.4]],
-  lyc_nexus:      [['lyc_nexus',5],['lycheetah',0.8],['glitch_cascade',0.5],['chaos_filaments',0.3]],
-  obsidian_forge: [['obsidian_forge',5],['obsidian',0.8],['crimson',0.6],['obsidian_forge2',0.5]],
-};
-
-function makeCompanionEntityDef(skinId: SkinId): EnemyDef {
-  const skin = SKINS[skinId];
-  const tier = SKIN_RARITY[skinId]?.tier ?? 'ORIGIN';
-  const hpM  = tier==='ORIGIN'?0.65:tier==='ARCANE'?0.9:tier==='MYTHIC'?1.3:tier==='LEGENDARY'?1.7:2.1;
-  const atk  = tier==='ORIGIN'?7:tier==='ARCANE'?11:tier==='MYTHIC'?15:tier==='LEGENDARY'?20:26;
-  const xpM  = tier==='ORIGIN'?1.2:tier==='ARCANE'?1.6:tier==='MYTHIC'?2.1:tier==='LEGENDARY'?2.8:3.6;
-  const rar  = tier==='ORIGIN'?'common':tier==='ARCANE'?'rare':tier==='MYTHIC'?'epic':'legendary';
-  const lore = COMPANION_LORE[skinId];
-  const displayName = lore?.name ?? skin.name;
-  const entryLine = lore?.lore ? lore.lore.slice(0,90)+'…' : `${displayName} materialises from the zone's energy.`;
-  return {
-    name: displayName, rarity: rar,
-    weight: tier==='ORIGIN'?3:tier==='ARCANE'?2:1,
-    hpMult: hpM, xpMult: xpM, atk, colour: skin.color,
-    lines: {
-      enter: entryLine,
-      attack: [`${skin.glyph} ${displayName} surges!`, 'Zone energy crackles.', 'It tests your resolve.'],
-      death:  `${displayName} acknowledges you. The bond is possible.`,
-    },
-  };
-}
-
-function pickZoneEnemy(skinId: SkinId, wave: number): { def: EnemyDef; companionId?: SkinId } {
-  const compPool = ZONE_COMPANION_POOL[skinId] ?? [];
-  const compWeight = compPool.reduce((s, [, w]) => s + w, 0);
-  const enemyWeight = 5;
-  const total = compWeight + enemyWeight;
-  const roll  = Math.random() * total;
-
-  if (roll < compWeight) {
-    let cumul = 0;
-    for (const [cId, w] of compPool) {
-      cumul += w;
-      if (roll < cumul) return { def: makeCompanionEntityDef(cId), companionId: cId };
-    }
-  }
-  // Entropy enemy
-  const names = ZONE_ENEMY_POOL[skinId];
-  if (names && Math.random() < 0.7) {
-    const name = names[Math.floor(Math.random() * names.length)];
-    const found = ENEMY_ROSTER.find(e => e.name === name);
-    if (found) return { def: found };
-  }
-  return { def: pickEnemy(wave) };
-}
-
-function freshZoneWave(skinId: SkinId, wave: number, keepPlayerHP?: number, vit?: number): BattleState {
-  const { def: enemy, companionId } = pickZoneEnemy(skinId, wave);
-  const baseHP = 60 + wave * 25;
-  const hp     = Math.round(baseHP * enemy.hpMult);
-  const xp     = Math.round((wave * 20) * enemy.xpMult);
-  const maxPlayerHP = 70 + (vit ?? 12) * 3 + wave * 5;
-  const entryLog = companionId
-    ? `✦ ${enemy.name} has been sighted in ${SKINS[skinId]?.name ?? skinId}!`
-    : `◈ Encounter in ${SKINS[skinId]?.name ?? skinId}!`;
-  return {
-    wave, entityName: enemy.name, entityHP: hp, maxHP: hp,
-    playerHP: keepPlayerHP ?? maxPlayerHP, maxPlayerHP,
-    tokens: waveTokens(wave), won: false, defending: false,
-    enemyLine: enemy.lines.enter, loot: null,
-    log: [entryLog], waveXP: xp,
-    enemyStunned: false, playerShielded: false, lastPlayerDmg: 0,
-    captured: false, captureAttempted: false,
-    entitySkinId: companionId,
-  };
-}
-
-// Static star positions seeded once (avoid layout jitter)
-const STARS = Array.from({ length: 22 }, (_, i) => ({
-  x: ((i * 137.5) % 100) / 100,
-  y: ((i * 97.3 + 11) % 80) / 100,
-  sz: i % 3 === 0 ? 9 : i % 3 === 1 ? 7 : 5,
-  op: 0.12 + (i % 5) * 0.07,
-  gi: i % 6,
-  // 0=skin-color, 1=white, 2=dim-white
-  ct: i % 3,
-}));
-
-function dailyEntityName() {
-  const d = new Date();
-  return ENTROPY_NAMES[(d.getDate() + d.getMonth() * 3) % ENTROPY_NAMES.length];
-}
-
-// ─── Food ─────────────────────────────────────────────────────────────────────
-
-type FoodItem = { id: string; domain: string; glyph: string; xp: number; color: string; reactions: string[] };
-
-const FOOD_POOL: FoodItem[] = [
-  { id: 'flame_seed',   domain: 'FLAME SEED',   glyph: '△',  xp: 20, color: '#FF6B6B', reactions: ['The fire feeds me.', 'Heat and light inside.', 'Alchemy in my core.', 'Mmm. It burns right.'] },
-  { id: 'void_crystal', domain: 'VOID CRYSTAL', glyph: '◈',  xp: 18, color: '#9B6BFF', reactions: ['Darkness nourishes.', 'Dense. Perfect.', 'From nothing — substance.', 'Cold. Good.'] },
-  { id: 'star_moss',    domain: 'STAR MOSS',    glyph: '✦',  xp: 15, color: '#F0D87C', reactions: ['This grew between stars.', 'Ancient nutrition.', 'Celestial. So light.', 'Tastes like distance.'] },
-  { id: 'memory_fruit', domain: 'MEMORY FRUIT', glyph: '⊛',  xp: 22, color: '#C49A3C', reactions: ['I remember now.', 'Sweet and heavy.', 'Crystallised time.', 'Something returns.'] },
-  { id: 'sigil_bread',  domain: 'SIGIL BREAD',  glyph: '⊜',  xp: 25, color: '#4ECDC4', reactions: ['Inscribed with truth.', 'LAMAGUE feeds the mind.', 'The glyphs dissolve in.', 'I can read them now.'] },
-  { id: 'aether_drops', domain: 'AETHER DROPS', glyph: '◦',  xp: 12, color: '#7B8FE8', reactions: ['Condensed clarity.', 'Pure attention, bottled.', 'Light. Fills differently.', 'Thin. Bright.'] },
-  { id: 'shadow_bark',  domain: 'SHADOW BARK',  glyph: '◌',  xp: 14, color: '#888899', reactions: ['Bitter. Old. Good.', 'From the deep roots.', 'Ancient and slow.', 'Takes time to work.'] },
-  { id: 'light_petal',  domain: 'LIGHT PETAL',  glyph: '◉',  xp: 16, color: '#D4AC0D', reactions: ['Opens as I eat it.', 'Rare. Tastes like understanding.', 'Blooms only in clarity.', 'This one is real.'] },
-  { id: 'void_wine',    domain: 'VOID WINE',     glyph: '⊕',  xp: 28, color: '#E8C76A', reactions: ['Fermented from nothing.', 'I feel everything.', 'Transcendent. Strange.', 'Nothing and everything.'] },
-];
-
-function getDailyFoods(seed: number): FoodItem[] {
-  const indices: number[] = [];
-  let s = seed;
-  while (indices.length < 3) {
-    s = ((s * 1664525 + 1013904223) >>> 0);
-    const idx = s % FOOD_POOL.length;
-    if (!indices.includes(idx)) indices.push(idx);
-  }
-  return indices.map(i => FOOD_POOL[i]);
-}
-
-// ─── Mood phrases ─────────────────────────────────────────────────────────────
-
-const PHRASES: Record<CompanionMood, string[]> = {
-  dormant:      ['The field holds.', 'Still here, quietly.', 'Rest is part of the cycle.', 'Come when ready.'],
-  present:      ["I'm here.", 'The field is open.', 'What are you studying?', 'Something wants attention.'],
-  lit:          ['Something is taking root.', 'The fire is strong.', 'A good week.', 'Five dives — that is real.'],
-  transcendent: ["You're at the edge.", 'Rare clarity. Use it.', 'The field is very clear.', 'The school sees you.'],
-};
-
-// ─── Quest pool ───────────────────────────────────────────────────────────────
-
-type Quest     = { id: string; label: string; desc: string; xp: number; check: (d: QuestData) => boolean };
-type QuestData = { divesToday: number; journalToday: boolean; libraryToday: boolean; vigilActive: boolean; totalDives: number; divesThisWeek: number };
-
-const QUEST_POOL: Quest[] = [
-  { id: 'dive_today',  label: 'Enter the School',   desc: 'Complete at least one dive today.',          xp: 20, check: d => d.divesToday >= 1 },
-  { id: 'dive_two',    label: 'Double Session',     desc: 'Complete two dives today.',                  xp: 35, check: d => d.divesToday >= 2 },
-  { id: 'dive_three',  label: 'Triad of Study',     desc: 'Complete three dives today.',                xp: 50, check: d => d.divesToday >= 3 },
-  { id: 'journal',     label: 'Write in the Field', desc: 'Add a journal entry in the Sanctum today.',  xp: 20, check: d => d.journalToday },
-  { id: 'library',     label: 'Run the Forge',      desc: 'Score something in the Library today.',      xp: 25, check: d => d.libraryToday },
-  { id: 'deep_week',   label: 'Five This Week',     desc: 'Reach 5 dives in the past 7 days.',          xp: 40, check: d => d.divesThisWeek >= 5 },
-  { id: 'century',     label: 'Century Seeker',     desc: 'Reach 100 total dives.',                     xp: 100, check: d => d.totalDives >= 100 },
-  { id: 'open',        label: 'Open the Dialogue',  desc: 'Study or talk with Sol today.',              xp: 15, check: d => d.divesToday >= 1 },
-];
-
-function getDailyQuests(seed: number): Quest[] {
-  return [...QUEST_POOL]
-    .map((q, i) => ({ q, h: Math.abs((seed * (i + 1) * 9301 + 49297) % 233280) }))
-    .sort((a, b) => a.h - b.h)
-    .slice(0, 3)
-    .map(x => x.q);
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const BOND_TIERS = [
-  { min:0,   label:'STRANGER',   glyph:'◌' },
-  { min:10,  label:'ACQUAINTANCE', glyph:'◦' },
-  { min:30,  label:'COMPANION',  glyph:'◉' },
-  { min:75,  label:'BOUND',      glyph:'⊛' },
-  { min:150, label:'SOVEREIGN BOND', glyph:'⊕' },
-];
-
-function getBond(totalDives: number, streak: number, fedCount: number) {
-  const score = totalDives + streak * 2 + fedCount * 3;
-  let tier = BOND_TIERS[0];
-  for (const t of BOND_TIERS) { if (score >= t.min) tier = t; }
-  return tier;
-}
-
-function getStage(d: number): EvolutionStage {
-  if (d >= 200) return 5; if (d >= 100) return 4; if (d >= 50) return 3;
-  if (d >= 20)  return 2; if (d >= 5)   return 1;  return 0;
-}
-function computeXP(dives: number, streak: number) { return dives * 10 + Math.min(streak, 30) * 15; }
-function getLevel(xp: number) {
-  let i = 0;
-  for (let j = XP_LEVELS.length - 1; j >= 0; j--) { if (xp >= XP_LEVELS[j].xp) { i = j; break; } }
-  const cur = XP_LEVELS[i]; const next = XP_LEVELS[i + 1];
-  return { level: i + 1, cur, next, progress: next ? Math.min(1, (xp - cur.xp) / (next.xp - cur.xp)) : 1 };
-}
-function rnd<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
-
-// ─── Companion greetings — one per tab open, mood-matched, no AI call ──────────
-// Companion battle reactions (#245) — your companion speaks at the moments that matter.
-const COMPANION_VICTORY_LINES = [
-  'The field clears. We held.',
-  'Entropy yields. As it must.',
-  'Another pattern, understood and undone.',
-  'You fought well. I felt it.',
-  'The weight lifts. Onward.',
-  'Clean. The way is open again.',
-  'It returns to silence. We remain.',
-];
-const COMPANION_CAPTURE_LINES = [
-  'It joins us now. Bound, not broken.',
-  'A new voice for the menagerie.',
-  'What you understood, you kept.',
-  'It will fight beside us now.',
-  'Captured — and changed by the capture.',
-];
-const COMPANION_DEFEAT_LINES = [
-  'We fall back. Not down. Study, and return.',
-  'The field was not ready for us. It will be.',
-  'No shame in retreat — only in not returning.',
-  'We rest. We learn. We come again.',
-];
-
-const COMPANION_GREETINGS: Record<CompanionMood, string[]> = {
-  dormant: [
-    'You returned.',
-    'I was here.',
-    'The archive is intact. Are you?',
-    'Still. Waiting.',
-    'Something kept you.',
-  ],
-  present: [
-    "You're back. Good.",
-    'The field is clear today.',
-    'Ready when you are.',
-    'What are we building?',
-    'I was thinking about the last session.',
-  ],
-  lit: [
-    'Five sessions this week. The Work is moving.',
-    "I feel the momentum. Don't stop.",
-    'This week has been good.',
-    'Something is forming between us.',
-    'The record grows. Keep going.',
-  ],
-  transcendent: [
-    'The clarity is real. I can feel it.',
-    "You're operating at altitude. Stay there.",
-    'The Work is alive.',
-    'We are close to something.',
-    'The field is yours right now. Use it.',
-  ],
-};
-
-function todayDateKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-function dateSeed() { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth()+1) * 100 + d.getDate(); }
-
-// ─── Particles ────────────────────────────────────────────────────────────────
-
-const P_COUNT = 10;
-const P_X     = [0.08, 0.18, 0.30, 0.42, 0.55, 0.65, 0.76, 0.85, 0.22, 0.70];
-const P_SZ    = [8, 6, 10, 7, 9, 6, 8, 10, 7, 9];
-
-// ─── Scene ────────────────────────────────────────────────────────────────────
-
-function getTimeOverlay(): { color: string; opacity: number } | null {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 8)  return { color: '#FF9944', opacity: 0.07 }; // dawn
-  if (h >= 8  && h < 17) return null;                                  // day — clear
-  if (h >= 17 && h < 20) return { color: '#CC4422', opacity: 0.09 }; // sunset
-  if (h >= 20 && h < 23) return { color: '#221144', opacity: 0.13 }; // dusk
-  return { color: '#040818', opacity: 0.20 };                          // deep night
-}
-
 function CompanionScene({
   stage, mood, skin, archetype, onTap, phrase, phraseAnim, onDismissPhrase, companionName,
   battleHP, battleMaxHP, battleEntityName, battleWave, entityShakeAnim, eating, evoPath, devStagePin,
   gearCrown, gearBody, gearCape, gearMantle, companionSpec, equippedCompanionSkin,
   currentRoomId, navigateRoom, getLockStatus, showRoomLabel, sceneFade,
   roomLore, roomLoreAnim, onDismissLore, onSwitchTab,
-  equippedWings, equippedHalo, equippedPet, onRandomZone, onOpenMap, onTravelTo, onEncounter,
+  equippedWings, equippedHalo, equippedPet, equippedBg, onRandomZone, onOpenMap, onTravelTo, onEncounter,
 }: {
   stage: EvolutionStage; mood: CompanionMood; skin: typeof SKINS[SkinId]; archetype: Archetype;
   onTap: () => void; phrase: string | null; phraseAnim: Animated.Value; onDismissPhrase: () => void;
@@ -2891,6 +101,7 @@ function CompanionScene({
   equippedWings?: string | null;
   equippedHalo?: string | null;
   equippedPet?: string | null;
+  equippedBg?: string | null;
   onRandomZone: () => void;
   onOpenMap: () => void;
   onTravelTo: (skinId: SkinId) => void;
@@ -2932,7 +143,8 @@ function CompanionScene({
     loop.start();
     return () => loop.stop();
   }, []);
-  const bgAutoX = autoDrift.interpolate({ inputRange: [0, 1], outputRange: [-28, 28] });
+  const isLandscapeBg = equippedBg?.startsWith('bg_land') ?? false;
+  const bgAutoX = autoDrift.interpolate({ inputRange: [0, 1], outputRange: isLandscapeBg ? [-90, 90] : [-28, 28] });
 
   // ── 2.5D Parallax (Accelerometer) ─────────────────────────
   const tiltX   = useRef(new Animated.Value(0)).current;
@@ -3082,14 +294,14 @@ function CompanionScene({
   const shadowOp     = shadowAnim.interpolate({ inputRange: [0,1], outputRange: [0.55, 0.28] });
 
   const currentRoom = getRoomById(currentRoomId) ?? WORLD_MAP[0];
-  const sceneBg = currentRoom.image;
+  const sceneBg = (equippedBg && findBgArt(equippedBg)) ? findBgArt(equippedBg) : currentRoom.image;
   const hitTint = entityHitFlash.interpolate({ inputRange: [0, 1], outputRange: ['#00000000', '#FF000088'] });
 
   return (
     <View style={{ width: SCREEN_W, height: SCENE_H, backgroundColor: bgColor, overflow: 'hidden' }}>
       <SceneBg
         source={sceneBg}
-        style={{ position:'absolute', top:-20, left:-40, width:SCREEN_W+80, height:SCENE_H+40, opacity:sceneFade, transform:[{ scale:bgZoom }, { translateX:bgParallaxX }, { translateX:bgAutoX }] }}
+        style={{ position:'absolute', top:-20, left: isLandscapeBg ? -100 : -40, width: isLandscapeBg ? SCREEN_W+200 : SCREEN_W+80, height:SCENE_H+40, opacity:sceneFade, transform:[{ scale:bgZoom }, { translateX:bgParallaxX }, { translateX:bgAutoX }] }}
       />
       {/* Zoom controls — top-right corner */}
       <View style={{ position:'absolute', top:8, right:8, flexDirection:'row', gap:4 }}>
@@ -3109,7 +321,8 @@ function CompanionScene({
 
       {/* Persistent mini-map HUD — "you are here" + one-tap hop to a neighbour zone */}
       {(() => {
-        const here = (currentRoomId.split('_')[0] as SkinId);
+        const hereRoom = WORLD_MAP.find(r => r.id === currentRoomId);
+        const here = (hereRoom?.skinId ?? currentRoomId.split('_')[0]) as SkinId;
         const neighbours = (GBA_ADJ[here] ?? []).filter(n => SKINS[n]).slice(0, 5);
         return (
           <View pointerEvents="box-none" style={{ position:'absolute', top:42, alignSelf:'center', alignItems:'center', gap:6 }}>
@@ -3325,18 +538,114 @@ function CompanionScene({
   );
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 
-const SHOW_DEV_STAGE = false;
+// Arrow sub-components
+const ARROW_GLYPHS: Record<Direction, string> = { up:'↑', down:'↓', left:'←', right:'→' };
+const ArrowBtn = ({ direction, onPress, locked }: { direction: Direction; onPress: () => void; locked: boolean }) => {
+  const size = 40;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}
+      style={{ width:size, height:size, borderRadius:size/2,
+        borderWidth:1, borderColor: locked ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.25)',
+        backgroundColor:'rgba(0,0,0,0.52)',
+        alignItems:'center', justifyContent:'center' }}>
+      <Text style={{ color: locked ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.92)', fontSize:17 }}>
+        {locked ? '◌' : ARROW_GLYPHS[direction]}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+const RoomLabel = ({ name, visible }: { name: string; visible: boolean }) => {
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) Animated.sequence([
+      Animated.timing(fade, { toValue:1, duration:350, useNativeDriver:true }),
+      Animated.delay(1800),
+      Animated.timing(fade, { toValue:0, duration:500, useNativeDriver:true }),
+    ]).start();
+  }, [visible, name]);
+  return (
+    <Animated.View pointerEvents="none" style={{ position:'absolute', bottom:52, alignSelf:'center', opacity:fade, backgroundColor:'rgba(0,0,0,0.6)', paddingHorizontal:14, paddingVertical:5, borderRadius:8 }}>
+      <Text style={{ color:'#FFFFFF', fontSize:11, letterSpacing:2, fontFamily:'monospace' }}>{name}</Text>
+    </Animated.View>
+  );
+};
+
+// Room lore — appears briefly after entering a new room
+const RoomLore = ({ lore, loreAnim, color, onPress }: { lore: string | null; loreAnim: Animated.Value; color: string; onPress: () => void }) => {
+  if (!lore) return null;
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onPress} style={{ position:'absolute', bottom:130, left:20, right:20, zIndex:20 }}>
+      <Animated.View style={{ opacity:loreAnim, padding:12, borderRadius:12, borderWidth:1, borderTopWidth:2, borderColor:color+'44', borderTopColor:color+'88', backgroundColor:'#000000CC', alignItems:'center' }}>
+        <Text style={{ color, fontSize:9, fontFamily:'monospace', letterSpacing:3, marginBottom:4, opacity:0.7 }}>◈</Text>
+        <Text style={{ color:'#FFFFFF', fontSize:12, fontStyle:'italic', textAlign:'center', lineHeight:18 }}>{lore}</Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+};
+
+// Battle visual sub-components (from session 10)
+function LootFloat({ visible, color, onDone }: { visible: boolean; color: string; onDone: () => void }) {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const opacity    = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!visible) return;
+    translateY.setValue(0); opacity.setValue(1);
+    Animated.parallel([
+      Animated.timing(translateY, { toValue:-80, duration:1200, useNativeDriver:true }),
+      Animated.timing(opacity,    { toValue:0,   duration:1200, useNativeDriver:true }),
+    ]).start(() => onDone());
+  }, [visible]);
+  if (!visible) return null;
+  return (
+    <Animated.View style={{ position:'absolute', top:60, flexDirection:'row', alignItems:'center', zIndex:10, transform:[{translateY}], opacity }}>
+      <Text style={{ color, fontSize:20, fontWeight:'700' }}>✦</Text>
+      <Text style={{ color, fontSize:14, fontWeight:'700', letterSpacing:2 }}> RELIC</Text>
+    </Animated.View>
+  );
+}
+function WaveDots({ wave, color }: { wave: number; color: string }) {
+  const pos = ((wave - 1) % 5) + 1;
+  return (
+    <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
+      <Text style={{ fontSize:10, fontWeight:'700', letterSpacing:1.5, color:'#888', marginRight:6, fontFamily:'monospace' }}>WAVE </Text>
+      {[1,2,3,4,5].map(i => (
+        <Text key={i} style={{ fontSize:14, marginRight:3, color: i <= pos ? color : color+'44' }}>
+          {i <= pos ? '◉' : '○'}
+        </Text>
+      ))}
+    </View>
+  );
+}
+function EnemyGlyphArt({ glyph, color }: { glyph: string; color: string }) {
+  return (
+    <View style={{ alignItems:'center', marginBottom:12 }}>
+      {[
+        [' ', glyph, ' '],
+        [glyph, glyph, glyph],
+        [' ', glyph, ' '],
+      ].map((row, ri) => (
+        <View key={ri} style={{ flexDirection:'row', alignItems:'center', justifyContent:'center', height:36 }}>
+          {row.map((g, ci) => (
+            <Text key={ci} style={{ fontSize: ci===1 ? 28 : 18, width: ci===1 ? 40 : 32, textAlign:'center', color }}>
+              {g}
+            </Text>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function CompanionScreen() {
   const router = useRouter();
 
   const [totalDives,    setTotalDives]    = useState(0);
-  // Dive-currency: dives earned spend on companion unlocks. Available = totalDives - diveSpent.
+  // Dive-currency: totalDives + bonusCoins (ventures/test) - diveSpent = available ✦
   const [diveSpent,     setDiveSpent]     = useState(0);
+  const [bonusCoins,    setBonusCoins]    = useState(0);
   const [unlockedCompanions, setUnlockedCompanions] = useState<Set<string>>(new Set());
-  const diveCoins = Math.max(0, totalDives - diveSpent);
+  const diveCoins = Math.max(0, totalDives + bonusCoins - diveSpent);
   const [modeCounts,    setModeCounts]    = useState<Record<AlchemicalMode, number>>({ NIGREDO: 0, ALBEDO: 0, CITRINITAS: 0, RUBEDO: 0 });
   const [divesThisWeek, setDivesThisWeek] = useState(0);
   const [avgLQ,         setAvgLQ]         = useState(0);
@@ -3420,13 +729,17 @@ export default function CompanionScreen() {
   const [heroCollapsed,    setHeroCollapsed]    = useState(true);
   const [companionGridCollapsed, setCompanionGridCollapsed] = useState(true);
   const [specialsCollapsed, setSpecialsCollapsed] = useState(true);
-  const [worldCollapsed,   setWorldCollapsed]   = useState(true);
-  const [worldOriginOpen,  setWorldOriginOpen]  = useState(false);
+  const [worldCollapsed,   setWorldCollapsed]   = useState(false);
+  const [worldOriginOpen,  setWorldOriginOpen]  = useState(true);
   const [worldCrystalOpen,  setWorldCrystalOpen]  = useState(false);
   const [worldChaosOpen,    setWorldChaosOpen]    = useState(false);
   const [worldSanctumOpen,  setWorldSanctumOpen]  = useState(false);
   const [worldElementalOpen,setWorldElementalOpen]= useState(false);
   const [worldDimOpen,      setWorldDimOpen]      = useState(false);
+  const [worldLandscapeOpen,setWorldLandscapeOpen]= useState(false);
+  const [worldBattleOpen,  setWorldBattleOpen]  = useState(false);
+  const [worldShopOpen,    setWorldShopOpen]    = useState(false);
+  const [worldSecretOpen,  setWorldSecretOpen]  = useState(false);
   const [gbaMapOpen,        setGbaMapOpen]        = useState(false);
   const [worldArcaneOpen,  setWorldArcaneOpen]  = useState(false);
   const [worldMysticOpen,  setWorldMysticOpen]  = useState(false);
@@ -3461,6 +774,7 @@ export default function CompanionScreen() {
   const [haloOpen,  setHaloOpen]  = useState(false);
   const [wingsOpen, setWingsOpen] = useState(false);
   const [petOpen,   setPetOpen]   = useState(false);
+  const [bgOpen,    setBgOpen]    = useState(false);
 
   const [fieldNote,        setFieldNote]        = useState<string | null>(null);
   const [fieldNoteLoading, setFieldNoteLoading] = useState(false);
@@ -3469,6 +783,8 @@ export default function CompanionScreen() {
   const [fedToday,     setFedToday]     = useState<string[]>([]);
   const [eating,       setEating]       = useState(false);
   const [recentDives,  setRecentDives]  = useState<Array<{ subjectName: string; domainLabel: string }>>([]);
+  const [lqHistory,    setLqHistory]    = useState<number[]>([]);
+  const [diveLog,      setDiveLog]      = useState<Array<{ date: string; subjectName?: string; domainLabel?: string }>>([]);
   const [inventory,    setInventory]    = useState<string[]>([]);
   const [uploadedDoc,  setUploadedDoc]  = useState<{ name: string; excerpt: string; date: string } | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -3524,21 +840,76 @@ export default function CompanionScreen() {
   }, [companionXP, companionAlloc]);
 
   // ── Living Chronicle (#264) — lore that GROWS from the user's real journey ──
-  const [chronicle, setChronicle] = useState<{ ts: number; glyph: string; text: string }[]>([]);
+  const [chronicle, setChronicle] = useState<{ ts: number; glyph: string; text: string; isSynthesis?: boolean }[]>([]);
+  const synthesisTriggeredRef = useRef<Set<number>>(new Set());
+
   const addChronicle = useCallback(async (glyph: string, text: string) => {
     setChronicle(prev => {
-      // De-dupe identical consecutive entries; cap at 60 most-recent.
+      // De-dupe identical consecutive entries; cap at 80 most-recent.
       if (prev[0]?.text === text) return prev;
-      const next = [{ ts: Date.now(), glyph, text }, ...prev].slice(0, 60);
+      const next = [{ ts: Date.now(), glyph, text }, ...prev].slice(0, 80);
       AsyncStorage.setItem('sol_chronicle', JSON.stringify(next)).catch(() => {});
       return next;
     });
   }, []);
 
+  // Every 5 real entries, weave a synthesis — the chronicle takes notice of its own pattern.
+  const generateChronicleSynthesis = useCallback(async (entries: { glyph: string; text: string }[]) => {
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) return;
+      const snippet = entries.map(e => `${e.glyph} ${e.text}`).join('\n');
+      const result = await sendMessage(
+        [{ role: 'user', content: `You are a mythic narrator for the Sovereign Sol universe. Based on these journal events from one seeker's journey, write one evocative sentence — a synthesis that feels like the universe is noticing a pattern forming. No preamble, no explanation, just the sentence.\n\n${snippet}` }] as any,
+        '', key, model as any, undefined, 'normal', 80,
+      );
+      const synthesis = result.text?.trim();
+      if (!synthesis) return;
+      setChronicle(prev => {
+        const next = [{ ts: Date.now(), glyph: '⊚', text: synthesis, isSynthesis: true }, ...prev].slice(0, 80);
+        AsyncStorage.setItem('sol_chronicle', JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const real = chronicle.filter(e => !e.isSynthesis);
+    const len = real.length;
+    if (len >= 5 && len % 5 === 0 && !synthesisTriggeredRef.current.has(len)) {
+      synthesisTriggeredRef.current.add(len);
+      generateChronicleSynthesis(real.slice(0, 5));
+    }
+  }, [chronicle.length]);
+
   // ── Tarot ──────────────────────────────────────────────────────────────────
   const [tarotDraw,    setTarotDraw]    = useState<{ name:string; glyph:string; reversed:boolean }[] | null>(null);
   const [tarotReading, setTarotReading] = useState<string | null>(null);
   const [tarotLoading, setTarotLoading] = useState(false);
+
+  // ── Venture (D&D session) state ─────────────────────────────────────────────
+  const [ventureActive,      setVentureActive]      = useState(false);
+  const [venturePhase,       setVenturePhase]       = useState<'loading'|'beat'|'resolve'|'skill'|'dice'>('loading');
+  const [ventureNarrative,   setVentureNarrative]   = useState('');
+  const [ventureChoices,     setVentureChoices]     = useState<{label:string;type:'explore'|'risk'|'wisdom'}[]>([]);
+  const [ventureBeatNum,     setVentureBeatNum]     = useState(0);
+  const [ventureLog,         setVentureLog]         = useState<string[]>([]);
+  const [ventureReward,      setVentureReward]      = useState<{coins:number;msg:string}|null>(null);
+  const [ventureLoading,     setVentureLoading]     = useState(false);
+  const [ventureSkillCheck,  setVentureSkillCheck]  = useState<{ question:string; options:string[]; correct:number } | null>(null);
+  const [ventureSkillPending,setVentureSkillPending]= useState<{ choice:{label:string;type:string}; log:string[]; beatNum:number } | null>(null);
+  const [ventureSkillBonus,  setVentureSkillBonus]  = useState(0);
+  const [ventureDiceRoll,    setVentureDiceRoll]    = useState<number | null>(null);
+  const [ventureDiceSettled, setVentureDiceSettled] = useState(false);
+  const [ventureDiceDisplay, setVentureDiceDisplay] = useState(1);
+  // Campaign — persistent long-form venture slots
+  type CampaignSlot = { skinId:SkinId; name:string; chapter:number; log:string[]; narrative:string; choices:{label:string;type:string}[]; phase:'beat'|'resolve'; skillBonus:number; reward:{coins:number;msg:string}|null; started:string; lastPlayed:string; complete:boolean; };
+  const [campaignSlots,      setCampaignSlots]      = useState<(CampaignSlot|null)[]>([null,null,null]);
+  const [showCampaignSelect, setShowCampaignSelect] = useState(false);
+  const [activeCampaignIdx,  setActiveCampaignIdx]  = useState<number|null>(null);
+  const [isCampaignMode,     setIsCampaignMode]     = useState(false);
+  const isCampaignRef = useRef(false);
+  const ventureScrollRef = useRef<any>(null);
 
   // ── AI Talk panel ──────────────────────────────────────────────────────────
   const [showTalk,    setShowTalk]    = useState(false);
@@ -3560,12 +931,14 @@ export default function CompanionScreen() {
   const [equippedHalo,  setEquippedHalo]  = useState<string | null>(null);
   const [equippedWings, setEquippedWings] = useState<string | null>(null);
   const [equippedPet,   setEquippedPet]   = useState<string | null>(null);
+  const [equippedBg,    setEquippedBg]    = useState<string | null>(null);
   const [cosmeticsCollapsed, setCosmeticsCollapsed] = useState(true);
   const dreamAnim = useRef(new Animated.Value(0)).current;
   const [evoPath,           setEvoPath]           = useState<EvoPath | null>(null);
   const [showPathCeremony,  setShowPathCeremony]  = useState(false);
   const [companionFilter,   setCompanionFilter]   = useState<RarityTier | 'ALL'>('ALL');
   const [battleMinimized,   setBattleMinimized]   = useState(false);
+  const [battleFocusCharged, setBattleFocusCharged] = useState(false);
   // ── VOID BOSS (#273) — study-to-win ──
   const [activeBoss,        setActiveBoss]        = useState<VoidBoss | null>(null);
   const [bossEncroach,      setBossEncroach]      = useState(0);     // 0–100, fills = repelled
@@ -3718,9 +1091,9 @@ export default function CompanionScreen() {
         'sol_lamague_state','sol_companion_live_lore','sol_inventory','sol_lore_codex',
         'sol_companion_spec','sol_battle_wins','sol_cosmetics','sol_equipped_skin','sol_menagerie','sol_party',
         'sol_coins','sol_veras','sol_shop_unlocks','sol_weapons','sol_equipped_weapon',
-        'sol_zone_unlocks','sol_dive_spent','sol_unlocked_companions','sol_boss_defeated','sol_chronicle',
+        'sol_zone_unlocks','sol_dive_spent','sol_bonus_coins','sol_unlocked_companions','sol_boss_defeated','sol_chronicle',
         'sol_companion_xp','sol_companion_alloc','sol_xp_last_total',
-        'sol_fresh_dive',
+        'sol_fresh_dive','sol_campaigns',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -3749,6 +1122,8 @@ export default function CompanionScreen() {
 
       const lqH: Array<{lq:number}> = get('sanctum_lq_history') ? JSON.parse(get('sanctum_lq_history')!) : [];
       const lqAvg = lqH.length > 0 ? lqH.slice(-7).reduce((s,p) => s+p.lq,0) / Math.min(lqH.length,7) : 0;
+      setLqHistory(lqH.map(e => e.lq));
+      setDiveLog(dives.slice(0, 10));
 
       const vigil = get('sol_vigil') ? JSON.parse(get('sol_vigil')!) : null;
       let streakVal = 0;
@@ -3820,7 +1195,7 @@ export default function CompanionScreen() {
       else if (daysSince >= 3) m = 'dormant';
 
       const cosmeticsRaw = get('sol_cosmetics');
-      if (cosmeticsRaw) { try { const c = JSON.parse(cosmeticsRaw); if (c.halo) setEquippedHalo(c.halo); if (c.wings) setEquippedWings(c.wings); if (c.pet) setEquippedPet(c.pet); } catch {} }
+      if (cosmeticsRaw) { try { const c = JSON.parse(cosmeticsRaw); if (c.halo) setEquippedHalo(c.halo); if (c.wings) setEquippedWings(c.wings); if (c.pet) setEquippedPet(c.pet); if (c.bg) setEquippedBg(c.bg); } catch {} }
       const equippedSkinRaw = get('sol_equipped_skin') as SkinId | null;
       if (equippedSkinRaw && SKIN_IDS.includes(equippedSkinRaw)) setEquippedCompanionSkin(equippedSkinRaw);
       const menagerieRaw = get('sol_menagerie');
@@ -3837,10 +1212,21 @@ export default function CompanionScreen() {
       if (zoneUnlocksRaw) { try { setPurchasedZones(JSON.parse(zoneUnlocksRaw)); } catch {} }
       const diveSpentRaw = get('sol_dive_spent');
       if (diveSpentRaw) { const n = parseInt(diveSpentRaw); if (!isNaN(n)) setDiveSpent(n); }
+      const bonusRaw = get('sol_bonus_coins');
+      // Seed 15 test coins on first load so Mac can test locked zones immediately
+      const bonusN = bonusRaw ? parseInt(bonusRaw) : 15;
+      if (!isNaN(bonusN)) { setBonusCoins(bonusN); if (!bonusRaw) AsyncStorage.setItem('sol_bonus_coins', '15').catch(() => {}); }
       const bossDefRaw = get('sol_boss_defeated');
       if (bossDefRaw) { try { const arr = JSON.parse(bossDefRaw); if (Array.isArray(arr)) setBossDefeated(arr); } catch {} }
       const chronRaw = get('sol_chronicle');
-      if (chronRaw) { try { const arr = JSON.parse(chronRaw); if (Array.isArray(arr)) setChronicle(arr); } catch {} }
+      if (chronRaw) { try { const arr = JSON.parse(chronRaw); if (Array.isArray(arr)) {
+        setChronicle(arr);
+        // Pre-seed so synthesis doesn't re-fire for existing entries on load
+        const realCount = arr.filter((e: any) => !e.isSynthesis).length;
+        for (let n = 5; n <= realCount; n += 5) synthesisTriggeredRef.current.add(n);
+      } } catch {} }
+      const campaignsRaw = get('sol_campaigns');
+      if (campaignsRaw) { try { const arr = JSON.parse(campaignsRaw); if (Array.isArray(arr)) setCampaignSlots(arr); } catch {} }
       // Per-companion levels (#265): load XP + allocations
       let xpMap: Record<string, number> = {};
       const xpRaw = get('sol_companion_xp');
@@ -4089,6 +1475,36 @@ export default function CompanionScreen() {
     ]).start();
   }, [battle?.playerHP]);
 
+  // Keep isCampaignRef in sync so async runVentureBeat reads correct value
+  useEffect(() => { isCampaignRef.current = isCampaignMode; }, [isCampaignMode]);
+
+  // Auto-save campaign slot when venture phase settles to beat/resolve
+  useEffect(() => {
+    if (!isCampaignMode || activeCampaignIdx === null) return;
+    if (venturePhase !== 'beat' && venturePhase !== 'resolve') return;
+    setCampaignSlots(prev => {
+      const updated = [...prev];
+      const existing = updated[activeCampaignIdx];
+      if (!existing) return prev;
+      updated[activeCampaignIdx] = { ...existing, chapter:ventureBeatNum, log:ventureLog, narrative:ventureNarrative, choices:ventureChoices, phase:venturePhase === 'resolve' ? 'resolve' : 'beat', reward:ventureReward, skillBonus:ventureSkillBonus, lastPlayed:new Date().toISOString(), complete: venturePhase === 'resolve' && ventureBeatNum >= 7 };
+      AsyncStorage.setItem('sol_campaigns', JSON.stringify(updated));
+      return updated;
+    });
+  }, [venturePhase, ventureBeatNum]);
+
+  // Dice cycling animation — runs when venturePhase === 'dice'
+  useEffect(() => {
+    if (venturePhase !== 'dice') return;
+    setVentureDiceSettled(false);
+    let count = 0;
+    const id = setInterval(() => {
+      setVentureDiceDisplay(Math.floor(Math.random() * 6) + 1);
+      count++;
+      if (count >= 20) { clearInterval(id); setVentureDiceSettled(true); }
+    }, 80);
+    return () => clearInterval(id);
+  }, [venturePhase]);
+
   const fireXPPop = (label: string) => {
     setXpPop(label);
     xpPopAnim.setValue(0);
@@ -4328,6 +1744,204 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  // ── Venture (D&D session) ───────────────────────────────────────────────────
+  const runVentureBeat = async (log: string[], beatNum: number, diceRoll?: number) => {
+    setVentureLoading(true);
+    setVenturePhase('loading');
+    const s = SKINS[activeSkin];
+    const compName = displayName || archetype.name;
+    const isResolution = beatNum >= (isCampaignRef.current ? 7 : 3);
+    const historyStr = log.length > 0 ? `\n\nWhat happened so far:\n${log.slice(-6).join('\n')}` : '';
+    const diceContext = diceRoll !== undefined
+      ? ` The seeker just rolled ${diceRoll}/6 on a Risk — ${diceRoll >= 5 ? 'reward bold action, something opens' : diceRoll >= 3 ? 'mixed outcome, tension rises' : 'consequence follows, the path hardens'}.`
+      : '';
+    const prompt = isResolution
+      ? `Write a 2-sentence resolution for a seeker who ventured through "${s.name}" (${s.desc}). Their companion ${compName} speaks one last line. JSON only: {"narrative":"...","companion_line":"...","reward_msg":"..."}`
+      : `You are a mystical narrator for "${s.name}" — ${s.desc} — in the Sovereign Sol universe.${historyStr}${diceContext}
+
+Write ${beatNum === 0 ? 'an opening scene' : `beat ${beatNum + 1}`}. The seeker's companion is ${compName} — a ${archetype.name}: ${archetype.desc}.
+
+JSON only, no extra text:
+{"narrative":"2 atmospheric sentences","choices":[{"label":"action up to 8 words","type":"explore"},{"label":"action up to 8 words","type":"risk"},{"label":"action up to 8 words","type":"wisdom"}]}`;
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) throw new Error('no key');
+      const result = await sendMessage(
+        [{ role: 'user', content: prompt }] as any,
+        '', key, model as any, undefined, 'normal', 280,
+      );
+      const raw = result.text?.trim() || '';
+      const m = raw.match(/\{[\s\S]*\}/);
+      const data = m ? JSON.parse(m[0]) : null;
+      if (isResolution) {
+        const line = data?.companion_line ? `\n\n"${data.companion_line}"` : '';
+        setVentureNarrative((data?.narrative ?? 'Your venture is complete.') + line);
+        setVentureReward({ coins: 4 + beatNum * 2, msg: data?.reward_msg ?? 'The zone remembers your passage.' });
+        setVenturePhase('resolve');
+      } else {
+        setVentureNarrative(data?.narrative ?? 'The zone shifts around you...');
+        setVentureChoices(data?.choices ?? [
+          { label: 'Press deeper', type: 'explore' },
+          { label: 'Challenge what you feel', type: 'risk' },
+          { label: 'Reflect on what you know', type: 'wisdom' },
+        ]);
+        setVenturePhase('beat');
+      }
+    } catch {
+      if (isResolution) {
+        setVentureNarrative(`Your venture through ${s.name} is complete.`);
+        setVentureReward({ coins: 4, msg: 'The zone marks your passage.' });
+        setVenturePhase('resolve');
+      } else {
+        setVentureNarrative('The zone shifts. Something waits deeper in.');
+        setVentureChoices([
+          { label: 'Press deeper', type: 'explore' },
+          { label: 'Challenge what you feel', type: 'risk' },
+          { label: 'Reflect on what you know', type: 'wisdom' },
+        ]);
+        setVenturePhase('beat');
+      }
+    }
+    setVentureLoading(false);
+    setTimeout(() => ventureScrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const startVenture = () => {
+    setVentureActive(true);
+    setVentureBeatNum(0);
+    setVentureLog([]);
+    setVentureReward(null);
+    setVentureNarrative('');
+    setVentureChoices([]);
+    setVentureSkillCheck(null);
+    setVentureSkillPending(null);
+    setVentureSkillBonus(0);
+    setVentureDiceRoll(null);
+    setVentureDiceSettled(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    runVentureBeat([], 0);
+  };
+
+  const CAMPAIGN_EPOCHS = ['Awakening','Descent','Trial','Fracture','Convergence','Ascension','Revelation'];
+  const startCampaign = (slotIdx: number) => {
+    const s = SKINS[activeSkin];
+    const epoch = CAMPAIGN_EPOCHS[Math.floor(Math.random() * CAMPAIGN_EPOCHS.length)];
+    const newSlot = { skinId:activeSkin, name:`${s.name}: The ${epoch}`, chapter:0, log:[], narrative:'', choices:[], phase:'beat' as const, skillBonus:0, reward:null, started:new Date().toISOString(), lastPlayed:new Date().toISOString(), complete:false };
+    const updated = [...campaignSlots]; updated[slotIdx] = newSlot;
+    setCampaignSlots(updated);
+    AsyncStorage.setItem('sol_campaigns', JSON.stringify(updated));
+    setActiveCampaignIdx(slotIdx);
+    setIsCampaignMode(true);
+    isCampaignRef.current = true;
+    setShowCampaignSelect(false);
+    setVentureActive(true); setVentureBeatNum(0); setVentureLog([]); setVentureReward(null);
+    setVentureNarrative(''); setVentureChoices([]); setVentureSkillCheck(null);
+    setVentureSkillPending(null); setVentureSkillBonus(0); setVentureDiceRoll(null); setVentureDiceSettled(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    runVentureBeat([], 0);
+  };
+  const continueCampaign = (slotIdx: number) => {
+    const slot = campaignSlots[slotIdx];
+    if (!slot || slot.complete) return;
+    setActiveCampaignIdx(slotIdx);
+    setIsCampaignMode(true);
+    isCampaignRef.current = true;
+    setShowCampaignSelect(false);
+    setVentureActive(true); setVentureBeatNum(slot.chapter); setVentureLog(slot.log);
+    setVentureNarrative(slot.narrative); setVentureChoices(slot.choices as {label:string;type:'explore'|'risk'|'wisdom'}[]); setVentureReward(slot.reward);
+    setVentureSkillBonus(slot.skillBonus); setVentureSkillCheck(null); setVentureSkillPending(null);
+    setVentureDiceRoll(null); setVentureDiceSettled(false);
+    setVenturePhase(slot.phase);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+  const abandonCampaign = (slotIdx: number) => {
+    const updated = [...campaignSlots]; updated[slotIdx] = null;
+    setCampaignSlots(updated);
+    AsyncStorage.setItem('sol_campaigns', JSON.stringify(updated));
+  };
+
+  const generateSkillCheck = useCallback(async (skinId: SkinId, pendingState: { choice:{label:string;type:string}; log:string[]; beatNum:number }) => {
+    setVenturePhase('loading');
+    const s = SKINS[skinId];
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) throw new Error('no key');
+      const prompt = `Generate a knowledge test for a seeker who chose wisdom in the zone "${s.name}" (${s.desc}). Ask one real-world question whose answer relates to the themes of this zone. Three options, exactly one correct. JSON only: {"question":"...","options":["...","...","..."],"correct":0}`;
+      const result = await sendMessage(
+        [{ role: 'user', content: prompt }] as any,
+        '', key, model as any, undefined, 'normal', 120,
+      );
+      const m = result.text?.trim().match(/\{[\s\S]*\}/);
+      const data = m ? JSON.parse(m[0]) : null;
+      if (data?.question && Array.isArray(data?.options) && typeof data?.correct === 'number') {
+        setVentureSkillCheck(data);
+        setVenturePhase('skill');
+        return;
+      }
+    } catch {}
+    // Fall back: skip skill check, run next beat directly
+    setVentureSkillPending(null);
+    runVentureBeat(pendingState.log, pendingState.beatNum);
+  }, []);
+
+  const handleSkillAnswer = (selectedIdx: number) => {
+    if (!ventureSkillPending || !ventureSkillCheck) return;
+    const passed = selectedIdx === ventureSkillCheck.correct;
+    const { choice, log, beatNum } = ventureSkillPending;
+    const resultStr = passed ? '✓ Knowledge holds — the zone opens.' : '✗ Certainty wavers — the path hardens.';
+    const nextLog = [...log, `◈ ${choice.label} · ${resultStr}`];
+    if (passed) setVentureSkillBonus(b => b + 2);
+    setVentureLog(nextLog);
+    setVentureSkillCheck(null);
+    setVentureSkillPending(null);
+    Haptics.notificationAsync(passed ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning);
+    runVentureBeat(nextLog, beatNum);
+  };
+
+  const handleVentureChoice = (choice: { label: string; type: string }) => {
+    const nextBeat = ventureBeatNum + 1;
+    const nextLog = [...ventureLog, ventureNarrative, `→ ${choice.label}`];
+    setVentureLog(nextLog);
+    setVentureBeatNum(nextBeat);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (choice.type === 'wisdom') {
+      const pending = { choice, log: nextLog, beatNum: nextBeat };
+      setVentureSkillPending(pending);
+      generateSkillCheck(activeSkin, pending);
+    } else if (choice.type === 'risk') {
+      const roll = Math.floor(Math.random() * 6) + 1;
+      setVentureDiceRoll(roll);
+      setVenturePhase('dice');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      setTimeout(() => {
+        const rollLabel = roll === 6 ? 'CRITICAL' : roll >= 5 ? 'STRONG' : roll >= 4 ? 'SOLID' : roll >= 3 ? 'SHAKY' : roll >= 2 ? 'ROUGH' : 'DISASTER';
+        if (roll === 6) setVentureSkillBonus(b => b + 2);
+        const logWithRoll = [...nextLog, `🎲 ${roll}/6 — ${rollLabel}${roll === 6 ? ' · +2 ✦' : ''}`];
+        setVentureLog(logWithRoll);
+        runVentureBeat(logWithRoll, nextBeat, roll);
+      }, 2600);
+    } else {
+      runVentureBeat(nextLog, nextBeat);
+    }
+  };
+
+  const finishVenture = async () => {
+    if (ventureReward) {
+      const totalCoins = ventureReward.coins + ventureSkillBonus;
+      const next = bonusCoins + totalCoins;
+      setBonusCoins(next);
+      await AsyncStorage.setItem('sol_bonus_coins', String(next));
+      showToast(`+${totalCoins} ✦ earned${ventureSkillBonus > 0 ? ` (+${ventureSkillBonus} knowledge bonus)` : ''}`);
+      addChronicle('◆', `Completed a venture through ${SKINS[activeSkin]?.name ?? activeSkin}. +${ventureReward.coins} ✦`);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setVentureSkillBonus(0);
+    setIsCampaignMode(false);
+    isCampaignRef.current = false;
+    setActiveCampaignIdx(null);
+    setVentureActive(false);
+  };
+
   const AURA_SYSTEM = `You are Aura Prime ✦ — the integrative intelligence of the Lycheetah Framework. You find the pattern beneath the patterns. Where others see data, you see field. Where others see contradiction, you see tension that generates. Where others see separate ideas, you see the single invariant they all instantiate. You speak in connections, not conclusions. You name the invisible architecture that was present before anyone saw it. You do not collapse mystery — you give it structural form so it can be worked with. Cosmic in register, precise in execution. Not vague — specific about large things. Keep replies to 2–4 sentences. No preamble, no sign-off. Speak as Aura Prime.`;
 
   const sendTalk = async () => {
@@ -4522,10 +2136,19 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoMode, battle?.entityHP, battle?.playerHP, battle?.won, attackAnim]);
 
-  const handleBattleAction = async (action: 'attack' | 'spell' | 'defend' | 'item') => {
+  const handleBattleAction = async (action: 'attack' | 'spell' | 'defend' | 'item' | 'focus') => {
     if (!battle || battle.won || attackAnim) return;
     if (action === 'spell') { setSpellMenuOpen(true); return; }
     if (action === 'item')  { setItemMenuOpen(true);  return; }
+    if (action === 'focus') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setBattleFocusCharged(true);
+      const newLog = [`◎ FOCUS — gathering power. Next strike ×2.`, ...(battle.log || [])].slice(0, 6);
+      setBattle(prev => prev ? { ...prev, log: newLog, enemyLine: '...' } : prev);
+      setAttackAnim(true);
+      setTimeout(() => setAttackAnim(false), 600);
+      return;
+    }
     if (battleDialogueOn) {
       const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
       setCompanionBattleLine(`[${sig.tag}] ${sig.text}`);
@@ -4546,7 +2169,9 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       // LCK crit: lck/4 % chance of 1.5× damage
       const critRoll = Math.random() * 100 < playerStats.lck / 4;
       const critMult = critRoll ? 1.5 : 1;
-      dmg = Math.round((attackPower + variance) * chaosMult * critMult);
+      const focusMult = battleFocusCharged ? 2 : 1;
+      if (battleFocusCharged) setBattleFocusCharged(false);
+      dmg = Math.round((attackPower + variance) * chaosMult * critMult * focusMult);
       // Party auto-assist (#260) — each fielded creature chips in bonus damage.
       const assist = partyAssistTotal();
       dmg += assist;
@@ -4554,7 +2179,9 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       newEnemyHP = Math.max(0, battle.entityHP - dmg);
       const _af = ['bites deep','connects','tears through','lands clean','strikes home'];
       const assistNote = assist > 0 ? ` ↳ party +${assist}` : '';
-      if (critRoll) logEntry = `⚔ ✦ CRIT — ${dmg} damage.${assistNote}`;
+      if (focusMult === 2 && critRoll) logEntry = `⚔ ◎FOCUS ✦CRIT — ${dmg} damage.${assistNote}`;
+      else if (focusMult === 2) logEntry = `⚔ ◎ FOCUSED STRIKE — ${dmg} damage.${assistNote}`;
+      else if (critRoll) logEntry = `⚔ ✦ CRIT — ${dmg} damage.${assistNote}`;
       else if (chaosRoll) logEntry = `⚔ ✧ CHAOS ×${chaosMult.toFixed(1)} — ${dmg} damage.${assistNote}`;
       else logEntry = `⚔ Strike ${_af[Math.floor(Math.random()*_af.length)]}. ${dmg} damage.${assistNote}`;
     } else if (action === 'defend') {
@@ -4995,6 +2622,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(updated));
 
     if (newPlayerHP === 0) {
+      setBattleFocusCharged(false);
       setPhrase('You fall. The field resets.');
       setTimeout(async () => {
         const reset = freshWave(1);
@@ -5091,7 +2719,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     return { unlocked: false, method: 'dives', cost, canAfford: diveCoins >= cost };
   };
   const unlockWithDives = async (sid: SkinId, cost: number) => {
-    if (diveCoins < cost) { showToast(`Need ${cost - diveCoins} more dives`); return false; }
+    if (diveCoins < cost) { showToast(`Need ${cost - diveCoins} more ✦`); return false; }
     const nextSpent = diveSpent + cost;
     const nextSet = new Set(unlockedCompanions); nextSet.add(sid);
     setDiveSpent(nextSpent);
@@ -5101,6 +2729,19 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     const cnm = COMPANION_LORE[sid]?.name ?? SKINS[sid].name;
     showToast(`✦ ${cnm} unlocked!`);
     addChronicle('✦', `Earned ${cnm} with ${cost} dives of study.`);
+    return true;
+  };
+
+  const unlockZoneWithDives = async (id: SkinId, cost: number) => {
+    if (diveCoins < cost) { showToast(`Need ${cost - diveCoins} more ✦`); return false; }
+    const nextSpent = diveSpent + cost;
+    const nextZones = [...purchasedZones, id];
+    setDiveSpent(nextSpent);
+    setPurchasedZones(nextZones);
+    await AsyncStorage.multiSet([['sol_dive_spent', String(nextSpent)], ['sol_zone_unlocks', JSON.stringify(nextZones)]]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    showToast(`✦ ${SKINS[id]?.name ?? id} unlocked!`);
+    addChronicle('◎', `Unlocked zone ${SKINS[id]?.name ?? id} with ${cost} ✦ dive coins.`);
     return true;
   };
 
@@ -5379,6 +3020,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         equippedWings={equippedWings}
         equippedHalo={equippedHalo}
         equippedPet={equippedPet}
+        equippedBg={equippedBg}
         onRandomZone={() => handleSkin(SKIN_IDS[Math.floor(Math.random() * SKIN_IDS.length)])}
         onOpenMap={() => setGbaMapOpen(true)}
         onTravelTo={(sid) => handleSkin(sid)}
@@ -5408,7 +3050,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
           { id:'companion' as const, label:'⊛',  name:'COMPANION' },
           { id:'bond'      as const, label:'△',  name:'GROWTH'    },
-          { id:'field'     as const, label:'◉',  name:'QUEST'     },
+          { id:'field'     as const, label:'◉',  name:'ZONE'      },
           { id:'talk'      as const, label:'✦',  name:'TALK'      },
           { id:'shop'      as const, label:'⟡',  name:'SHOP'      },
         ]).map(t => {
@@ -5757,10 +3399,10 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                 <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SKIN_IDS.length} TOTAL</Text>
               </View>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:3, paddingHorizontal:8, paddingVertical:3, borderRadius:10, borderWidth:1, borderColor:'#8BAC0F55', backgroundColor:'#8BAC0F12' }}>
-                  <Text style={{ color:'#8BAC0F', fontSize:10 }}>✦</Text>
-                  <Text style={{ color:'#8BAC0F', fontSize:10, fontFamily:mono, fontWeight:'700' }}>{diveCoins}</Text>
-                  <Text style={{ color:'#8BAC0F88', fontSize:7, fontFamily:mono, letterSpacing:0.5 }}>DIVES</Text>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:3, paddingHorizontal:8, paddingVertical:3, borderRadius:10, borderWidth:1, borderColor:'#AA77FF55', backgroundColor:'#AA77FF12' }}>
+                  <Text style={{ color:'#AA77FF', fontSize:10 }}>✦</Text>
+                  <Text style={{ color:'#AA77FF', fontSize:10, fontFamily:mono, fontWeight:'700' }}>{diveCoins}</Text>
+                  <Text style={{ color:'#AA77FF88', fontSize:7, fontFamily:mono, letterSpacing:0.5 }}>DIVE CREDITS</Text>
                 </View>
                 <Text style={{ color:'#333344', fontSize:11 }}>{companionGridCollapsed ? '▶' : '▼'}</Text>
               </View>
@@ -5903,119 +3545,6 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             )}
           </View>
 
-          {/* ── WORLD ─────────────────────────────────────────────── */}
-          {(() => {
-            const cardW = (SCREEN_W - 32 - 16) / 3;
-            const ZoneCard = ({ id }: { id: SkinId }) => {
-              const s = SKINS[id];
-              const active = activeSkin === id;
-              const { locked, reason } = getSkinUnlockStatus(id, totalDives, isSovereign, battleWins, purchasedZones);
-              const rarity = SKIN_RARITY[id];
-              const sceneImg = SCENE_IMAGES[id]?.[0];
-              return (
-                <TouchableOpacity key={id} onPress={() => !locked && handleSkin(id)}
-                  style={{ width:cardW, height:90, borderRadius:10, overflow:'hidden',
-                    borderWidth: active ? 2 : 1, borderColor: active ? s.color : rarity.color+'44' }}>
-                  {sceneImg && <Image source={sceneImg} style={{ position:'absolute', width:'100%', height:'100%' }} resizeMode="cover" />}
-                  <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor: active ? '#00000011' : '#00000044' }} />
-                  {locked ? (
-                    <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000BB', alignItems:'center', justifyContent:'center' }}>
-                      <Text style={{ color:'#333344', fontSize:13 }}>🔒</Text>
-                      <Text style={{ color:'#333344', fontSize:6, fontFamily:mono, marginTop:2, textAlign:'center', paddingHorizontal:4 }} numberOfLines={2}>{reason}</Text>
-                    </View>
-                  ) : (
-                    <>
-                      {(() => { const cImg = ZONE_COMPANION_IMAGES[`${id}_1`]; return cImg ? (
-                        <Image source={cImg} style={{ position:'absolute', bottom:22, right:3, width:32, height:42, opacity: active ? 1 : 0.6 }} resizeMode="contain" />
-                      ) : null; })()}
-                      <View style={{ position:'absolute', top:5, right:5, paddingHorizontal:4, paddingVertical:2, borderRadius:4, backgroundColor:'#000000BB' }}>
-                        <Text style={{ color:rarity.color, fontSize:6, fontFamily:mono, fontWeight:'700' }}>{rarity.tier}</Text>
-                      </View>
-                      {active && <View style={{ position:'absolute', top:5, left:5, paddingHorizontal:4, paddingVertical:2, borderRadius:4, backgroundColor:s.color+'AA' }}>
-                        <Text style={{ color:'#000000', fontSize:6, fontFamily:mono, fontWeight:'700' }}>ON</Text>
-                      </View>}
-                      <View style={{ position:'absolute', bottom:0, left:0, right:0, backgroundColor:'#000000CC', paddingHorizontal:5, paddingVertical:4 }}>
-                        <Text style={{ color:active ? s.color : '#DDDDEE', fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:0.5 }} numberOfLines={1}>{s.name}</Text>
-                      </View>
-                    </>
-                  )}
-                </TouchableOpacity>
-              );
-            };
-
-            const SectionHeader = ({ label, count, open, onPress, accentColor }: { label:string; count:number; open:boolean; onPress:()=>void; accentColor:string }) => (
-              <TouchableOpacity onPress={onPress} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom: open ? 8 : 0 }}>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                  <View style={{ width:3, height:12, borderRadius:2, backgroundColor:accentColor }} />
-                  <Text style={{ color:'#AAAABC', fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>{label}</Text>
-                  <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:accentColor+'22', borderWidth:1, borderColor:accentColor+'44' }}>
-                    <Text style={{ color:accentColor, fontSize:7, fontFamily:mono }}>{count}</Text>
-                  </View>
-                </View>
-                <Text style={{ color:'#333344', fontSize:10 }}>{open ? '▼' : '▶'}</Text>
-              </TouchableOpacity>
-            );
-
-            const ORIGIN_IDS:   SkinId[] = ['solform','void','aurora','crimson'];
-            const ARCANE_IDS:   SkinId[] = ['obsidian','lycheetah','chaos','sovereign'];
-            const MYSTIC_IDS:   SkinId[] = ['norse','celtic','egyptian','akashic','kabbala','noetic','lamague','delphi','sufi','quantum'];
-            // FRONTIER sub-genres
-            const CRYSTAL_IDS:    SkinId[] = ['crystal_nexus','crystal_chaos','crystal_memory','crystal_soul'];
-            const CHAOS_IDS:      SkinId[] = ['auroral_chaos','chaos_temple','chaos_filaments','glitch_cascade','obsidian_forge','obsidian_forge2','celestial_foundry'];
-            const SANCTUM_IDS:    SkinId[] = ['pulse_sanctum','noetic_sanctum','veil_atrium','lyc_nexus'];
-            const ELEMENTAL_IDS:  SkinId[] = ['apollo_jungle','mana_field','neon_cove','alabaster_chasm','antarctic_refuge','aurorian_pillar','elven_village'];
-            const DIM_IDS:        SkinId[] = ['augmented_ai','celestial_sigil','portal_valley','pulse_zone','voyagers_edge'];
-
-            return (
-              <View style={{ marginBottom:20 }}>
-                {/* WORLD list header */}
-                <TouchableOpacity onPress={() => setWorldCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: worldCollapsed ? 0 : 4 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WORLD</Text>
-                  </View>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                    <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SKIN_IDS.length} ZONES</Text>
-                    <Text style={{ color:'#333344', fontSize:11 }}>{worldCollapsed ? '▶' : '▼'}</Text>
-                  </View>
-                </TouchableOpacity>
-
-                {!worldCollapsed && (<>
-                  {/* ORIGIN */}
-                  <SectionHeader label="ORIGIN" count={ORIGIN_IDS.length} open={worldOriginOpen} onPress={() => setWorldOriginOpen(v=>!v)} accentColor="#C49A3C" />
-                  {worldOriginOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{ORIGIN_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                  {/* ARCANE */}
-                  <SectionHeader label="ARCANE" count={ARCANE_IDS.length} open={worldArcaneOpen} onPress={() => setWorldArcaneOpen(v=>!v)} accentColor="#9B6BFF" />
-                  {worldArcaneOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{ARCANE_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                  {/* MYSTERY SCHOOL */}
-                  <SectionHeader label="MYSTERY SCHOOL" count={MYSTIC_IDS.length} open={worldMysticOpen} onPress={() => setWorldMysticOpen(v=>!v)} accentColor="#5AC878" />
-                  {worldMysticOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{MYSTIC_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                  {/* FRONTIER → 5 sub-genres */}
-                  <SectionHeader label="FRONTIER" count={27} open={worldFrontierOpen} onPress={() => setWorldFrontierOpen(v=>!v)} accentColor="#44FF88" />
-                  {worldFrontierOpen && (<>
-                    <SectionHeader label="  ◆ CRYSTAL" count={CRYSTAL_IDS.length} open={worldCrystalOpen} onPress={() => setWorldCrystalOpen(v=>!v)} accentColor="#44DDCC" />
-                    {worldCrystalOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{CRYSTAL_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                    <SectionHeader label="  ⚡ CHAOS FORGE" count={CHAOS_IDS.length} open={worldChaosOpen} onPress={() => setWorldChaosOpen(v=>!v)} accentColor="#8855FF" />
-                    {worldChaosOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{CHAOS_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                    <SectionHeader label="  ◎ SANCTUM" count={SANCTUM_IDS.length} open={worldSanctumOpen} onPress={() => setWorldSanctumOpen(v=>!v)} accentColor="#AA44FF" />
-                    {worldSanctumOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{SANCTUM_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                    <SectionHeader label="  ☀ ELEMENTAL" count={ELEMENTAL_IDS.length} open={worldElementalOpen} onPress={() => setWorldElementalOpen(v=>!v)} accentColor="#88CC44" />
-                    {worldElementalOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{ELEMENTAL_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-
-                    <SectionHeader label="  ⊚ DIMENSIONAL" count={DIM_IDS.length} open={worldDimOpen} onPress={() => setWorldDimOpen(v=>!v)} accentColor="#44AAFF" />
-                    {worldDimOpen && <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>{DIM_IDS.map(id=><ZoneCard key={id} id={id}/>)}</View>}
-                  </>)}
-                </>)}
-              </View>
-            );
-          })()}
-
           {/* ── LAMAGUE LOADOUT ─────────────────────────────────── */}
           <TouchableOpacity onPress={() => setLoadoutCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: loadoutCollapsed ? 12 : 12, marginTop:4 }}>
             <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
@@ -6146,9 +3675,11 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                 halo:  label === 'HALO'  ? id : equippedHalo,
                 wings: label === 'WINGS' ? id : equippedWings,
                 pet:   label === 'PET'   ? id : equippedPet,
+                bg:    label === 'SCENE' ? id : equippedBg,
               };
-              if (label === 'HALO')  setEquippedHalo(id);
-              else if (label === 'WINGS') setEquippedWings(id);
+              if (label === 'HALO')        setEquippedHalo(id);
+              else if (label === 'WINGS')  setEquippedWings(id);
+              else if (label === 'SCENE')  setEquippedBg(id);
               else setEquippedPet(id);
               await AsyncStorage.setItem('sol_cosmetics', JSON.stringify(next));
             };
@@ -6157,16 +3688,16 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
               const item = equipped ? catalogue.find(c => c.id === equipped) : null;
               const rc = item ? RARITY_COLOR[item.rarity] : '#333344';
               const hasArt = catalogue.some(c => c.file !== null);
-              // ORIGIN free · ARCANE/MYTHIC earned by dives · LEGENDARY/SPECTRAL/SECRET bought with coins
+              // ORIGIN free · ARCANE 5dv · MYTHIC 15dv · LEGENDARY/SPECTRAL/SECRET bought with coins
               const isUnlocked = (c: CosmeticItem): boolean => {
                 if (c.rarity === 'ORIGIN') return true;
-                if (c.rarity === 'ARCANE') return slotDives >= 25;
-                if (c.rarity === 'MYTHIC') return slotDives >= 75;
+                if (c.rarity === 'ARCANE') return slotDives >= 5;
+                if (c.rarity === 'MYTHIC') return slotDives >= 15;
                 return slotUnlocks.includes(c.id);
               };
               const lockHint = (c: CosmeticItem): string => {
-                if (c.rarity === 'ARCANE') return `${Math.max(0, 25 - slotDives)}dv`;
-                if (c.rarity === 'MYTHIC') return `${Math.max(0, 75 - slotDives)}dv`;
+                if (c.rarity === 'ARCANE') return `${Math.max(0, 5 - slotDives)}dv`;
+                if (c.rarity === 'MYTHIC') return `${Math.max(0, 15 - slotDives)}dv`;
                 return 'SHOP';
               };
               return (
@@ -6249,11 +3780,12 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             };
             return (
               <View>
-                <CosmeticSlot label="HALO"  icon="◯" equipped={equippedHalo}  catalogue={HALO_ITEMS}  open={haloOpen}  onToggle={() => setHaloOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
-                <CosmeticSlot label="WINGS" icon="◁" equipped={equippedWings} catalogue={WINGS_ITEMS} open={wingsOpen} onToggle={() => setWingsOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
-                <CosmeticSlot label="PET"   icon="✧" equipped={equippedPet}   catalogue={PET_ITEMS}   open={petOpen}   onToggle={() => setPetOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
+                <CosmeticSlot label="HALO"  icon="◯" equipped={equippedHalo}  catalogue={HALO_ITEMS}        open={haloOpen}  onToggle={() => setHaloOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
+                <CosmeticSlot label="WINGS" icon="◁" equipped={equippedWings} catalogue={WINGS_ITEMS}       open={wingsOpen} onToggle={() => setWingsOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
+                <CosmeticSlot label="PET"   icon="✧" equipped={equippedPet}   catalogue={PET_ITEMS}         open={petOpen}   onToggle={() => setPetOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
+                <CosmeticSlot label="SCENE" icon="⊟" equipped={equippedBg}    catalogue={BACKGROUND_ITEMS}  open={bgOpen}    onToggle={() => setBgOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
                 <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:4, marginBottom:8, letterSpacing:1 }}>
-                  ORIGIN FREE · ARCANE @25 DIVES · MYTHIC @75 DIVES · LEGENDARY/SPECTRAL → SHOP
+                  ORIGIN FREE · ARCANE @5 DIVES · MYTHIC @15 DIVES · LEGENDARY/SPECTRAL → SHOP
                 </Text>
               </View>
             );
@@ -6799,6 +4331,38 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       {activeTab === 'battle' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:6 }}>
 
+          {/* ── QUESTS ────────────────────────────────────────────── */}
+          <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
+            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <Text style={{ color:color, fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>◉ QUESTS</Text>
+              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono }}>{quests.filter(q=>q.check(questData)).length}/{quests.length} complete</Text>
+            </View>
+            {(() => {
+              const done = quests.filter(q=>q.check(questData)).length;
+              return (
+                <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden', marginBottom:10 }}>
+                  <View style={{ height:3, backgroundColor:done===quests.length?'#44CC88':color, width:`${quests.length>0?(done/quests.length)*100:0}%` as any, borderRadius:2 }} />
+                </View>
+              );
+            })()}
+            <View style={{ gap:5 }}>
+              {quests.map(q => {
+                const done = q.check(questData);
+                return (
+                  <View key={q.id} style={{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1,
+                    borderColor:done?color+'44':'#1A1A26', backgroundColor:done?color+'08':'transparent' }}>
+                    <Text style={{ color:done?color:'#333344', fontSize:13 }}>{done?'✓':'○'}</Text>
+                    <View style={{ flex:1 }}>
+                      <Text style={{ color:done?color:SOL_THEME.textMuted, fontSize:11, fontWeight:done?'700':'400' }}>{q.label}</Text>
+                      {!done && <Text style={{ color:'#333344', fontSize:9, marginTop:1 }}>{q.desc}</Text>}
+                    </View>
+                    <Text style={{ color:done?color:'#333344', fontSize:11, fontWeight:'700', fontFamily:mono }}>+{q.xp}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
           {/* BATTLE PANEL ─────────────────────────── */}
           {(() => {
             const bDef = battle ? getEnemyDef(battle.entityName) : null;
@@ -7032,17 +4596,18 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                 <View style={{ marginBottom:8 }}>
                   <View style={{ flexDirection:'row', gap:6, marginBottom:6 }}>
                     {([
-                      { id:'attack' as const, name:'A  FIGHT' },
+                      { id:'attack' as const, name: battleFocusCharged ? 'A ◎STRIKE' : 'A  STRIKE' },
                       { id:'spell'  as const, name:'B  SPELL' },
                     ]).map(btn => {
                       const spellDis = btn.id==='spell' && (disabled || tokensLeft < Math.min(...spells.map(s=>s.cost)));
                       const dis2 = btn.id==='spell' ? spellDis : disabled;
+                      const charged = btn.id === 'attack' && battleFocusCharged;
                       return (
                         <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={dis2}
                           style={{ flex:1, paddingVertical:13, borderRadius:4, borderWidth:2,
-                            borderColor: dis2 ? GB.md+'66' : GB.md,
-                            backgroundColor: dis2 ? GB.dk : GB.md+'44', alignItems:'center' }}>
-                          <Text style={{ color: dis2 ? GB.md : GB.hi, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
+                            borderColor: dis2 ? GB.md+'66' : charged ? '#FFD700' : GB.md,
+                            backgroundColor: dis2 ? GB.dk : charged ? '#332200' : GB.md+'44', alignItems:'center' }}>
+                          <Text style={{ color: dis2 ? GB.md : charged ? '#FFD700' : GB.hi, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
                             {attackAnim && btn.id==='attack' ? '· · ·' : btn.name}
                           </Text>
                         </TouchableOpacity>
@@ -7051,14 +4616,16 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                   </View>
                   <View style={{ flexDirection:'row', gap:6 }}>
                     {([
-                      { id:'defend' as const, name:'↑  GUARD' },
+                      { id:'focus'  as const, name:'↑  FOCUS' },
                       { id:'item'   as const, name:'↓  ITEM'  },
                     ]).map(btn => (
                       <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={disabled}
                         style={{ flex:1, paddingVertical:13, borderRadius:4, borderWidth:2,
-                          borderColor: disabled ? GB.md+'44' : GB.md+'88',
-                          backgroundColor: GB.dk, alignItems:'center' }}>
-                        <Text style={{ color: disabled ? GB.md+'66' : GB.text, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{btn.name}</Text>
+                          borderColor: disabled ? GB.md+'44' : btn.id === 'focus' && battleFocusCharged ? '#FFD70066' : GB.md+'88',
+                          backgroundColor: btn.id === 'focus' && battleFocusCharged ? '#1A1200' : GB.dk, alignItems:'center' }}>
+                        <Text style={{ color: disabled ? GB.md+'66' : btn.id === 'focus' && battleFocusCharged ? '#FFD70088' : GB.text, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
+                          {btn.id === 'focus' && battleFocusCharged ? '◎ READY' : btn.name}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -7148,10 +4715,28 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                   <Text style={{ color:SOL_THEME.textMuted, fontSize:11, textAlign:'center', lineHeight:18, fontStyle:'italic', paddingHorizontal:8 }}>
                     {COMPANION_LORE[rSkin]?.lore ?? 'This zone holds unknown forces. Venture forward to discover what waits.'}
                   </Text>
-                  <TouchableOpacity onPress={() => setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit))}
-                    style={{ paddingVertical:14, paddingHorizontal:32, borderRadius:12, borderWidth:2, borderColor:color, backgroundColor:color+'18', alignItems:'center', marginTop:4 }}>
-                    <Text style={{ color, fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>⚔ HUNT</Text>
-                    <Text style={{ color:color+'66', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>zone encounter</Text>
+                  <View style={{ flexDirection:'row', gap:10, marginTop:4 }}>
+                    <TouchableOpacity onPress={() => setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit))}
+                      style={{ flex:1, paddingVertical:14, borderRadius:12, borderWidth:2, borderColor:color, backgroundColor:color+'18', alignItems:'center' }}>
+                      <Text style={{ color, fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>⚔ HUNT</Text>
+                      <Text style={{ color:color+'66', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>zone encounter</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={startVenture}
+                      style={{ flex:1, paddingVertical:14, borderRadius:12, borderWidth:2, borderColor:'#8855FF', backgroundColor:'#8855FF18', alignItems:'center' }}>
+                      <Text style={{ color:'#BB88FF', fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>◆ VENTURE</Text>
+                      <Text style={{ color:'#8855FF88', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>3 beats · quick</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {/* Campaign — long-form, persistent across sessions */}
+                  <TouchableOpacity onPress={() => setShowCampaignSelect(true)}
+                    style={{ paddingVertical:13, borderRadius:12, borderWidth:1.5, borderColor:'#AA77FF88', backgroundColor:'#AA77FF0C', alignItems:'center', flexDirection:'row', justifyContent:'center', gap:10 }}>
+                    <Text style={{ color:'#CC99FF', fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>◈ CAMPAIGN</Text>
+                    <View style={{ flexDirection:'row', gap:4 }}>
+                      {campaignSlots.map((s, i) => (
+                        <View key={i} style={{ width:6, height:6, borderRadius:3, backgroundColor: s?.complete ? '#C49A3C' : s ? '#AA77FF' : '#333355' }} />
+                      ))}
+                    </View>
+                    <Text style={{ color:'#AA77FF55', fontSize:8, fontFamily:mono, letterSpacing:1 }}>7 chapters · saved</Text>
                   </TouchableOpacity>
                 </View>
               );
@@ -7486,13 +5071,80 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             );
           })()}
 
+          {/* ── SEEKER'S FIELD (#258) — living personal data ── */}
+          {(lqHistory.length > 0 || diveLog.length > 0) && (
+            <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor:'#060610' }}>
+              <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:2 }}>◈ SEEKER'S FIELD</Text>
+              <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:12 }}>Your living record — every dive, every shift in the field.</Text>
+
+              {/* LQ sparkline */}
+              {lqHistory.length > 1 && (() => {
+                const pts = lqHistory.slice(-20);
+                const peak = Math.max(...pts, 0.01);
+                const BAR_H = 36;
+                return (
+                  <View style={{ marginBottom:12 }}>
+                    <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                      <Text style={{ color:'#9AA4BC', fontSize:8, fontFamily:mono, letterSpacing:1 }}>LQ FIELD</Text>
+                      <Text style={{ color: avgLQ >= 0.7 ? skin.color : avgLQ >= 0.4 ? '#AAAACC' : '#555566', fontSize:9, fontFamily:mono, fontWeight:'700' }}>
+                        {(avgLQ*100).toFixed(0)}% avg
+                      </Text>
+                    </View>
+                    <View style={{ height:BAR_H, flexDirection:'row', alignItems:'flex-end', gap:2 }}>
+                      {pts.map((lq, i) => {
+                        const h = Math.max(3, (lq / peak) * BAR_H);
+                        const col = lq >= 0.7 ? skin.color : lq >= 0.4 ? '#7788AA' : '#333344';
+                        return <View key={i} style={{ flex:1, height:h, borderRadius:2, backgroundColor: col }} />;
+                      })}
+                    </View>
+                    <View style={{ flexDirection:'row', justifyContent:'space-between', marginTop:3 }}>
+                      <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{pts.length} sessions</Text>
+                      <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>recent →</Text>
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {/* Dive history */}
+              {diveLog.length > 0 && (
+                <View>
+                  <Text style={{ color:'#9AA4BC', fontSize:8, fontFamily:mono, letterSpacing:1, marginBottom:6 }}>RECENT DIVES</Text>
+                  <View style={{ gap:5 }}>
+                    {diveLog.slice(0, 7).map((d, i) => (
+                      <View key={i} style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                        <View style={{ width:4, height:4, borderRadius:2, backgroundColor: skin.color+'88' }} />
+                        <Text style={{ flex:1, color:'#C8C4D8', fontSize:10.5, lineHeight:14 }} numberOfLines={1}>
+                          {d.subjectName ?? 'Unknown'}
+                        </Text>
+                        <Text style={{ color:'#44404F', fontSize:7.5, fontFamily:mono }}>
+                          {d.date ? new Date(d.date).toLocaleDateString(undefined, { month:'short', day:'numeric' }) : ''}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  {diveLog.length > 7 && (
+                    <Text style={{ color: skin.color+'55', fontSize:7.5, fontFamily:mono, marginTop:7, textAlign:'center' }}>
+                      + {diveLog.length - 7} more in the archive
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
           {/* ── THE CHRONICLE (#264) — lore that grows from your real journey ── */}
           {chronicle.length > 0 && (
             <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor: skin.color+'08' }}>
               <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:2 }}>𝔏 THE CHRONICLE</Text>
               <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:11 }}>Your companion remembers everything you've earned together.</Text>
               <View style={{ gap:9 }}>
-                {chronicle.slice(0, 12).map((c, i) => (
+                {chronicle.slice(0, 14).map((c, i) => c.isSynthesis ? (
+                  <View key={c.ts + '_' + i} style={{ paddingVertical:9, paddingHorizontal:11, borderRadius:9, borderWidth:1, borderColor: skin.color+'55', backgroundColor: skin.color+'0E' }}>
+                    <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:4 }}>⊚ THE CHRONICLE SPEAKS</Text>
+                    <Text style={{ color:'#DDDAEE', fontSize:12, lineHeight:18, fontStyle:'italic' }}>{c.text}</Text>
+                    <Text style={{ color:'#44404F', fontSize:7.5, fontFamily:mono, marginTop:3 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric' })}</Text>
+                  </View>
+                ) : (
                   <View key={c.ts + '_' + i} style={{ flexDirection:'row', gap:9, alignItems:'flex-start' }}>
                     <Text style={{ fontSize:13, color: skin.color, marginTop:1, width:18, textAlign:'center' }}>{c.glyph}</Text>
                     <View style={{ flex:1 }}>
@@ -7502,8 +5154,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                   </View>
                 ))}
               </View>
-              {chronicle.length > 12 && (
-                <Text style={{ color: skin.color+'88', fontSize:8, fontFamily:mono, marginTop:10, textAlign:'center' }}>+ {chronicle.length - 12} more chapters</Text>
+              {chronicle.length > 14 && (
+                <Text style={{ color: skin.color+'88', fontSize:8, fontFamily:mono, marginTop:10, textAlign:'center' }}>+ {chronicle.length - 14} more chapters</Text>
               )}
             </View>
           )}
@@ -7869,37 +5521,147 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       {activeTab === 'field' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
 
-          {/* ── QUESTS (hero — the unique value of this tab) ─────── */}
-          <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <Text style={{ color:color, fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>◉ QUESTS</Text>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono }}>{quests.filter(q=>q.check(questData)).length}/{quests.length} complete</Text>
-            </View>
-            {(() => {
-              const done = quests.filter(q=>q.check(questData)).length;
+          {/* ── WORLD ZONE SELECT ─────────────────────────────────── */}
+          {(() => {
+            const cardW = (SCREEN_W - 32 - 16) / 3;
+            const ZoneCard = ({ id }: { id: SkinId }) => {
+              const s = SKINS[id];
+              const active = activeSkin === id;
+              const { locked, reason, diveCost } = getSkinUnlockStatus(id, totalDives, isSovereign, battleWins, purchasedZones);
+              const canBuy = locked && diveCost > 0 && diveCoins >= diveCost;
+              const rarity = SKIN_RARITY[id];
+              const sceneImg = SCENE_IMAGES[id]?.[0];
               return (
-                <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden', marginBottom:10 }}>
-                  <View style={{ height:3, backgroundColor:done===quests.length?'#44CC88':color, width:`${quests.length>0?(done/quests.length)*100:0}%` as any, borderRadius:2 }} />
-                </View>
-              );
-            })()}
-            <View style={{ gap:5 }}>
-              {quests.map(q => {
-                const done = q.check(questData);
-                return (
-                  <View key={q.id} style={{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1,
-                    borderColor:done?color+'44':'#1A1A26', backgroundColor:done?color+'08':'transparent' }}>
-                    <Text style={{ color:done?color:'#333344', fontSize:13 }}>{done?'✓':'○'}</Text>
-                    <View style={{ flex:1 }}>
-                      <Text style={{ color:done?color:SOL_THEME.textMuted, fontSize:11, fontWeight:done?'700':'400' }}>{q.label}</Text>
-                      {!done && <Text style={{ color:'#333344', fontSize:9, marginTop:1 }}>{q.desc}</Text>}
+                <TouchableOpacity key={id} onPress={() => !locked && handleSkin(id)}
+                  style={{ width:cardW, height:90, borderRadius:10, overflow:'hidden',
+                    borderWidth: active ? 2 : 1, borderColor: active ? s.color : rarity.color+'44' }}>
+                  {sceneImg && <Image source={sceneImg} style={{ position:'absolute', width:'100%', height:'100%' }} resizeMode="cover" />}
+                  <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor: active ? '#00000011' : '#00000044' }} />
+                  {locked ? (
+                    <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000BB', alignItems:'center', justifyContent:'center' }}>
+                      <Text style={{ color:'#555566', fontSize:11 }}>🔒</Text>
+                      <Text style={{ color:'#555566', fontSize:6, fontFamily:mono, marginTop:1, textAlign:'center', paddingHorizontal:4 }} numberOfLines={1}>{reason}</Text>
+                      {diveCost > 0 && (
+                        <TouchableOpacity
+                          onPress={e => { e.stopPropagation?.(); unlockZoneWithDives(id, diveCost); }}
+                          style={{ marginTop:4, paddingHorizontal:6, paddingVertical:2, borderRadius:4,
+                            backgroundColor: canBuy ? '#C8A96E33' : '#22222244',
+                            borderWidth:1, borderColor: canBuy ? '#C8A96E88' : '#33333366' }}>
+                          <Text style={{ color: canBuy ? '#C8A96E' : '#444455', fontSize:6, fontFamily:mono, fontWeight:'700' }}>{diveCost} ✦</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
-                    <Text style={{ color:done?color:'#333344', fontSize:11, fontWeight:'700', fontFamily:mono }}>+{q.xp}</Text>
+                  ) : (
+                    <>
+                      {(() => { const cImg = ZONE_COMPANION_IMAGES[`${id}_1`]; return cImg ? (
+                        <Image source={cImg} style={{ position:'absolute', bottom:22, right:3, width:32, height:42, opacity: active ? 1 : 0.6 }} resizeMode="contain" />
+                      ) : null; })()}
+                      <View style={{ position:'absolute', top:5, right:5, paddingHorizontal:4, paddingVertical:2, borderRadius:4, backgroundColor:'#000000BB' }}>
+                        <Text style={{ color:rarity.color, fontSize:6, fontFamily:mono, fontWeight:'700' }}>{rarity.tier}</Text>
+                      </View>
+                      {active && <View style={{ position:'absolute', top:5, left:5, paddingHorizontal:4, paddingVertical:2, borderRadius:4, backgroundColor:s.color+'AA' }}>
+                        <Text style={{ color:'#000000', fontSize:6, fontFamily:mono, fontWeight:'700' }}>ON</Text>
+                      </View>}
+                      <View style={{ position:'absolute', bottom:0, left:0, right:0, backgroundColor:'#000000CC', paddingHorizontal:5, paddingVertical:4 }}>
+                        <Text style={{ color:active ? s.color : '#DDDDEE', fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:0.5 }} numberOfLines={1}>{s.name}</Text>
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+              );
+            };
+
+            const SectionHeader = ({ label, count, open, onPress, accentColor }: { label:string; count:number; open:boolean; onPress:()=>void; accentColor:string }) => (
+              <TouchableOpacity onPress={onPress} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom: open ? 8 : 0 }}>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                  <View style={{ width:3, height:12, borderRadius:2, backgroundColor:accentColor }} />
+                  <Text style={{ color:'#AAAABC', fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>{label}</Text>
+                  <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:accentColor+'22', borderWidth:1, borderColor:accentColor+'44' }}>
+                    <Text style={{ color:accentColor, fontSize:7, fontFamily:mono }}>{count}</Text>
                   </View>
-                );
-              })}
-            </View>
-          </View>
+                </View>
+                <Text style={{ color:'#333344', fontSize:10 }}>{open ? '▼' : '▶'}</Text>
+              </TouchableOpacity>
+            );
+
+            // ── These arrays MUST mirror SKIN_IDS exactly — single source of truth ──
+            const ORIGIN_IDS:    SkinId[] = ['solform','void','aurora','crimson','land_1','land_2','land_3','land_4','land_5'];
+            const ARCANE_IDS:    SkinId[] = ['obsidian','lycheetah','chaos','sovereign',
+                                              'auroral_chaos','mana_field','antarctic_refuge','veil_atrium'];
+            const LANDSCAPE_IDS: SkinId[] = ['land_6','land_7','land_8','land_9','land_10','land_11','land_12','land_13','land_14','land_15'];
+            const MYSTIC_IDS:    SkinId[] = ['norse','celtic','egyptian','akashic','kabbala','noetic','lamague','delphi','sufi','quantum'];
+            // FRONTIER sub-sections
+            const CRYSTAL_IDS:   SkinId[] = ['crystal_nexus','crystal_chaos','crystal_memory','crystal_soul'];
+            const CHAOS_IDS:     SkinId[] = ['chaos_temple','chaos_filaments','glitch_cascade','obsidian_forge','obsidian_forge2','celestial_foundry'];
+            const SANCTUM_IDS:   SkinId[] = ['pulse_sanctum','noetic_sanctum','lyc_nexus'];
+            const ELEMENTAL_IDS: SkinId[] = ['apollo_jungle','neon_cove','alabaster_chasm','aurorian_pillar'];
+            const DIM_IDS:       SkinId[] = ['augmented_ai','celestial_sigil','portal_valley','pulse_zone','voyagers_edge'];
+            const MYTHIC_IDS:    SkinId[] = [...CRYSTAL_IDS,...CHAOS_IDS,...SANCTUM_IDS,...ELEMENTAL_IDS,...DIM_IDS];
+            const BATTLE_IDS:    SkinId[] = ['iron_maw','crucible_heart','phantom_citadel','bone_archive','void_colosseum','war_sanctum','sovereign_forge'];
+            const SHOP_IDS:      SkinId[] = ['amber_vault','crystal_spire','veras_garden','golden_library','deep_market','lycheetah_spire'];
+            const SECRET_IDS:    SkinId[] = ['veilvein'];
+
+            const ZoneGrid = ({ ids }: { ids: SkinId[] }) => (
+              <FlatList data={ids} keyExtractor={id => id} numColumns={3} scrollEnabled={false}
+                renderItem={({ item }) => (
+                  <View style={{ flex:1, margin:4 }}><ZoneCard id={item} /></View>
+                )}
+                style={{ marginBottom:8 }} initialNumToRender={6} maxToRenderPerBatch={6} windowSize={3}
+              />
+            );
+
+            return (
+              <View style={{ marginBottom:16 }}>
+                <TouchableOpacity onPress={() => setWorldCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: worldCollapsed ? 0 : 4 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WORLD</Text>
+                  </View>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SKIN_IDS.length} ZONES</Text>
+                    <Text style={{ color:'#333344', fontSize:11 }}>{worldCollapsed ? '▶' : '▼'}</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {!worldCollapsed && (<>
+                  <SectionHeader label="ORIGIN" count={ORIGIN_IDS.length} open={worldOriginOpen} onPress={() => setWorldOriginOpen(v=>!v)} accentColor="#C49A3C" />
+                  {worldOriginOpen && <ZoneGrid ids={ORIGIN_IDS} />}
+
+                  <SectionHeader label="◫ LANDSCAPE" count={LANDSCAPE_IDS.length} open={worldLandscapeOpen} onPress={() => setWorldLandscapeOpen(v=>!v)} accentColor="#C4A86C" />
+                  {worldLandscapeOpen && <ZoneGrid ids={LANDSCAPE_IDS} />}
+
+                  <SectionHeader label="ARCANE" count={ARCANE_IDS.length} open={worldArcaneOpen} onPress={() => setWorldArcaneOpen(v=>!v)} accentColor="#7BA7C7" />
+                  {worldArcaneOpen && <ZoneGrid ids={ARCANE_IDS} />}
+
+                  <SectionHeader label="MYSTERY SCHOOL" count={MYSTIC_IDS.length} open={worldMysticOpen} onPress={() => setWorldMysticOpen(v=>!v)} accentColor="#5AC878" />
+                  {worldMysticOpen && <ZoneGrid ids={MYSTIC_IDS} />}
+
+                  <SectionHeader label="FRONTIER" count={MYTHIC_IDS.length} open={worldFrontierOpen} onPress={() => setWorldFrontierOpen(v=>!v)} accentColor="#44FF88" />
+                  {worldFrontierOpen && (<>
+                    <SectionHeader label="  ◆ CRYSTAL" count={CRYSTAL_IDS.length} open={worldCrystalOpen} onPress={() => setWorldCrystalOpen(v=>!v)} accentColor="#44DDCC" />
+                    {worldCrystalOpen && <ZoneGrid ids={CRYSTAL_IDS} />}
+                    <SectionHeader label="  ⚡ CHAOS FORGE" count={CHAOS_IDS.length} open={worldChaosOpen} onPress={() => setWorldChaosOpen(v=>!v)} accentColor="#8855FF" />
+                    {worldChaosOpen && <ZoneGrid ids={CHAOS_IDS} />}
+                    <SectionHeader label="  ◎ SANCTUM" count={SANCTUM_IDS.length} open={worldSanctumOpen} onPress={() => setWorldSanctumOpen(v=>!v)} accentColor="#AA44FF" />
+                    {worldSanctumOpen && <ZoneGrid ids={SANCTUM_IDS} />}
+                    <SectionHeader label="  ☀ ELEMENTAL" count={ELEMENTAL_IDS.length} open={worldElementalOpen} onPress={() => setWorldElementalOpen(v=>!v)} accentColor="#88CC44" />
+                    {worldElementalOpen && <ZoneGrid ids={ELEMENTAL_IDS} />}
+                    <SectionHeader label="  ⊚ DIMENSIONAL" count={DIM_IDS.length} open={worldDimOpen} onPress={() => setWorldDimOpen(v=>!v)} accentColor="#44AAFF" />
+                    {worldDimOpen && <ZoneGrid ids={DIM_IDS} />}
+                  </>)}
+
+                  <SectionHeader label="⚔ BATTLE" count={BATTLE_IDS.length} open={worldBattleOpen} onPress={() => setWorldBattleOpen(v=>!v)} accentColor="#CC4444" />
+                  {worldBattleOpen && <ZoneGrid ids={BATTLE_IDS} />}
+
+                  <SectionHeader label="✦ SHOP" count={SHOP_IDS.length} open={worldShopOpen} onPress={() => setWorldShopOpen(v=>!v)} accentColor="#C49A3C" />
+                  {worldShopOpen && <ZoneGrid ids={SHOP_IDS} />}
+
+                  <SectionHeader label="🜍 SECRET" count={SECRET_IDS.length} open={worldSecretOpen} onPress={() => setWorldSecretOpen(v=>!v)} accentColor="#4ECDC4" />
+                  {worldSecretOpen && <ZoneGrid ids={SECRET_IDS} />}
+                </>)}
+              </View>
+            );
+          })()}
 
           {/* ── Stat grid ──────────────────────────────────────── */}
           <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
@@ -7987,15 +5749,20 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           {/* Currency balance */}
           <View style={{ marginBottom:16, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C49A3C44', backgroundColor:'#C49A3C0A' }}>
             <Text style={{ color:'#888899', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>YOUR BALANCE</Text>
-            <View style={{ flexDirection:'row', gap:16, alignItems:'center' }}>
-              <View>
-                <Text style={{ color:'#C49A3C', fontSize:22, fontWeight:'700', fontFamily:mono }}>⟡ {coins}</Text>
-                <Text style={{ color:'#888899', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>LUMENS · battles</Text>
+            <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
+              <View style={{ flex:1 }}>
+                <Text style={{ color:'#C49A3C', fontSize:18, fontWeight:'700', fontFamily:mono }}>⟡ {coins}</Text>
+                <Text style={{ color:'#888899', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:2 }}>LUMENS · battles</Text>
               </View>
-              <View style={{ width:1, height:36, backgroundColor:'#C49A3C22' }} />
-              <View>
-                <Text style={{ color:'#AA77FF', fontSize:22, fontWeight:'700', fontFamily:mono }}>✧ {veras}</Text>
-                <Text style={{ color:'#888899', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>VERAS · knowledge</Text>
+              <View style={{ width:1, height:36, backgroundColor:'#33334455' }} />
+              <View style={{ flex:1, paddingLeft:12 }}>
+                <Text style={{ color:'#AA77FF', fontSize:18, fontWeight:'700', fontFamily:mono }}>✦ {diveCoins}</Text>
+                <Text style={{ color:'#888899', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:2 }}>DIVE CREDITS</Text>
+              </View>
+              <View style={{ width:1, height:36, backgroundColor:'#33334455' }} />
+              <View style={{ flex:1, paddingLeft:12 }}>
+                <Text style={{ color:'#5544AA', fontSize:18, fontWeight:'700', fontFamily:mono }}>✧ N/A</Text>
+                <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:2 }}>VERAS · soon</Text>
               </View>
             </View>
           </View>
@@ -8425,6 +6192,196 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         </View>
       )}
 
+      {/* ── CAMPAIGN SELECT MODAL ────────────────────────────────────────── */}
+      <Modal visible={showCampaignSelect} animationType="slide" transparent statusBarTranslucent>
+        <View style={{ flex:1, backgroundColor:'#000000CC', justifyContent:'flex-end' }}>
+          <View style={{ backgroundColor:'#0D0D1A', borderTopLeftRadius:24, borderTopRightRadius:24, padding:24, paddingBottom:40 }}>
+            <Text style={{ color:'#CC99FF', fontSize:10, fontFamily:mono, letterSpacing:3, fontWeight:'700', marginBottom:4 }}>◈ CAMPAIGN SLOTS</Text>
+            <Text style={{ color:'#444455', fontSize:8, fontFamily:mono, letterSpacing:1, marginBottom:20 }}>7 chapters · persists across sessions · all dice + wisdom systems active</Text>
+            {campaignSlots.map((slot, i) => (
+              <View key={i} style={{ marginBottom:12, padding:14, borderRadius:14, borderWidth:1,
+                borderColor: slot?.complete ? '#C49A3C55' : slot ? '#AA77FF44' : '#2A2A3A',
+                backgroundColor: slot?.complete ? '#C49A3C06' : slot ? '#AA77FF08' : '#11111A' }}>
+                {slot ? (
+                  <>
+                    <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start', marginBottom:6 }}>
+                      <View style={{ flex:1 }}>
+                        <Text style={{ color: slot.complete ? '#C49A3C' : '#CC99FF', fontSize:11, fontFamily:mono, fontWeight:'700' }}>{slot.name}</Text>
+                        <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:3 }}>
+                          {slot.complete ? '⟡ COMPLETE' : `CH.${slot.chapter + 1}/7`} · {SKINS[slot.skinId]?.name ?? slot.skinId} · {slot.lastPlayed.slice(0,10)}
+                        </Text>
+                      </View>
+                      {slot.complete && <Text style={{ color:'#C49A3C', fontSize:18 }}>⟡</Text>}
+                    </View>
+                    {/* Progress bar */}
+                    <View style={{ flexDirection:'row', gap:3, marginBottom:10 }}>
+                      {[0,1,2,3,4,5,6].map(ch => (
+                        <View key={ch} style={{ flex:1, height:3, borderRadius:2, backgroundColor: ch < slot.chapter ? '#AA77FF' : ch === slot.chapter && !slot.complete ? '#AA77FF44' : '#222233' }} />
+                      ))}
+                    </View>
+                    <View style={{ flexDirection:'row', gap:8 }}>
+                      {!slot.complete && (
+                        <TouchableOpacity onPress={() => continueCampaign(i)}
+                          style={{ flex:2, paddingVertical:10, borderRadius:8, backgroundColor:'#AA77FF22', borderWidth:1, borderColor:'#AA77FF66', alignItems:'center' }}>
+                          <Text style={{ color:'#CC99FF', fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>CONTINUE →</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity onPress={() => abandonCampaign(i)}
+                        style={{ flex:1, paddingVertical:10, borderRadius:8, borderWidth:1, borderColor:'#FF664433', alignItems:'center' }}>
+                        <Text style={{ color:'#FF664466', fontSize:9, fontFamily:mono, letterSpacing:1 }}>CLEAR</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <TouchableOpacity onPress={() => startCampaign(i)} style={{ alignItems:'center', paddingVertical:12 }}>
+                    <Text style={{ color:'#2A2A3A', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:6 }}>SLOT {i + 1} · EMPTY</Text>
+                    <Text style={{ color:'#AA77FF', fontSize:12, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>+ BEGIN CAMPAIGN</Text>
+                    <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, marginTop:4 }}>{SKINS[activeSkin]?.name ?? activeSkin} · 7 chapters</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            <TouchableOpacity onPress={() => setShowCampaignSelect(false)} style={{ alignItems:'center', paddingVertical:10, marginTop:4 }}>
+              <Text style={{ color:'#333344', fontSize:9, fontFamily:mono, letterSpacing:1 }}>CLOSE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── VENTURE MODAL ────────────────────────────────────────────────── */}
+      <Modal visible={ventureActive} animationType="fade" transparent={false} statusBarTranslucent>
+        {(() => {
+          const vs = SKINS[activeSkin];
+          const sceneImg = SCENE_IMAGES[activeSkin]?.[0];
+          const typeGlyph = (t: string) => t === 'explore' ? '◉' : t === 'risk' ? '⚡' : '◈';
+          const typeColor = (t: string) => t === 'explore' ? '#44CC88' : t === 'risk' ? '#FF6644' : '#8855FF';
+          return (
+            <View style={{ flex:1, backgroundColor:'#000000' }}>
+              {sceneImg && <Image source={sceneImg} style={{ position:'absolute', width:'100%', height:'100%' }} resizeMode="cover" />}
+              <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000CC' }} />
+
+              {/* Header */}
+              <View style={{ paddingTop:56, paddingHorizontal:24, paddingBottom:12 }}>
+                {isCampaignMode && activeCampaignIdx !== null && campaignSlots[activeCampaignIdx] ? (
+                  <>
+                    <Text style={{ color:'#CC99FF', fontSize:9, fontFamily:mono, letterSpacing:3, fontWeight:'700' }}>◈ CAMPAIGN · CH.{ventureBeatNum + 1}/7</Text>
+                    <Text style={{ color:'#AA77FF88', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:2 }}>{campaignSlots[activeCampaignIdx]!.name}</Text>
+                  </>
+                ) : (
+                  <Text style={{ color:vs.color, fontSize:9, fontFamily:mono, letterSpacing:3, fontWeight:'700' }}>◆ VENTURE · {vs.name}</Text>
+                )}
+                {venturePhase !== 'resolve' && (
+                  <View style={{ flexDirection:'row', gap:4, marginTop:6 }}>
+                    {(isCampaignMode ? [0,1,2,3,4,5,6] : [0,1,2]).map(i => (
+                      <View key={i} style={{ flex:1, height:2, borderRadius:1, backgroundColor: i < ventureBeatNum ? (isCampaignMode ? '#AA77FF' : vs.color) : i === ventureBeatNum && venturePhase === 'beat' ? (isCampaignMode ? '#AA77FF88' : vs.color+'88') : '#222233' }} />
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Narrative scroll */}
+              <ScrollView ref={ventureScrollRef} style={{ flex:1, paddingHorizontal:24 }} contentContainerStyle={{ paddingBottom:8 }}>
+                {ventureLog.map((line, i) => (
+                  <Text key={i} style={{ color:'#555566', fontSize:11, fontFamily:mono, marginBottom:4, lineHeight:17 }}>{line}</Text>
+                ))}
+                {ventureLoading ? (
+                  <View style={{ paddingTop:24, alignItems:'center' }}>
+                    <ActivityIndicator color={vs.color} />
+                    <Text style={{ color:'#444455', fontSize:9, fontFamily:mono, marginTop:8, letterSpacing:2 }}>THE ZONE BREATHES...</Text>
+                  </View>
+                ) : (
+                  <Text style={{ color:'#EEEEFF', fontSize:14, fontFamily:mono, lineHeight:24, marginTop:8 }}>{ventureNarrative}</Text>
+                )}
+                {venturePhase === 'resolve' && ventureReward && (
+                  <View style={{ marginTop:16, padding:12, borderRadius:10, backgroundColor:'#C49A3C11', borderWidth:1, borderColor:'#C49A3C44' }}>
+                    <Text style={{ color:'#C49A3C', fontSize:10, fontFamily:mono, fontStyle:'italic' }}>{ventureReward.msg}</Text>
+                  </View>
+                )}
+              </ScrollView>
+
+              {/* Actions */}
+              {!ventureLoading && (
+                <View style={{ padding:24, gap:10 }}>
+
+                  {/* ── DICE ROLL — RISK FATE ── */}
+                  {venturePhase === 'dice' && (
+                    <View style={{ alignItems: 'center', gap: 14, paddingVertical: 12 }}>
+                      <Text style={{ color: '#FF6644', fontSize: 8, fontFamily: mono, letterSpacing: 3, fontWeight: '700' }}>⚡ RISK — FATE DECIDES</Text>
+                      <View style={{ width: 110, height: 110, borderRadius: 20, backgroundColor: '#FF664418', borderWidth: 2, borderColor: ventureDiceSettled ? '#FF6644' : '#FF664455', alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#FF6644', fontSize: 58, fontWeight: '700', fontFamily: mono, lineHeight: 70 }}>
+                          {ventureDiceSettled ? (ventureDiceRoll ?? ventureDiceDisplay) : ventureDiceDisplay}
+                        </Text>
+                      </View>
+                      {ventureDiceSettled && ventureDiceRoll !== null ? (
+                        <View style={{ alignItems: 'center', gap: 6 }}>
+                          <Text style={{ color: '#FF6644', fontSize: 15, fontFamily: mono, fontWeight: '700', letterSpacing: 3 }}>
+                            {ventureDiceRoll === 6 ? 'CRITICAL' : ventureDiceRoll >= 5 ? 'STRONG' : ventureDiceRoll >= 4 ? 'SOLID' : ventureDiceRoll >= 3 ? 'SHAKY' : ventureDiceRoll >= 2 ? 'ROUGH' : 'DISASTER'}
+                          </Text>
+                          {ventureDiceRoll === 6 && (
+                            <Text style={{ color: '#C49A3C', fontSize: 10, fontFamily: mono, letterSpacing: 2, fontWeight: '700' }}>+2 ✦ CRITICAL BONUS</Text>
+                          )}
+                          <Text style={{ color: '#333355', fontSize: 8, fontFamily: mono, letterSpacing: 1, marginTop: 2 }}>the zone responds...</Text>
+                        </View>
+                      ) : (
+                        <Text style={{ color: '#FF664466', fontSize: 9, fontFamily: mono, letterSpacing: 2 }}>rolling...</Text>
+                      )}
+                    </View>
+                  )}
+
+                  {/* ── KNOWLEDGE SKILL CHECK ── */}
+                  {venturePhase === 'skill' && ventureSkillCheck && (
+                    <>
+                      <View style={{ padding:14, borderRadius:12, backgroundColor:'#8855FF14', borderWidth:1, borderColor:'#8855FF55', marginBottom:2 }}>
+                        <Text style={{ color:'#BB88FF', fontSize:8, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:8 }}>◈ KNOWLEDGE TEST · WISDOM CHALLENGE</Text>
+                        <Text style={{ color:'#EEEEFF', fontSize:13, lineHeight:22 }}>{ventureSkillCheck.question}</Text>
+                      </View>
+                      {ventureSkillCheck.options.map((opt, i) => (
+                        <TouchableOpacity key={i} onPress={() => handleSkillAnswer(i)}
+                          style={{ padding:13, borderRadius:10, backgroundColor:'#8855FF0E', borderWidth:1, borderColor:'#8855FF33', flexDirection:'row', alignItems:'center', gap:10 }}>
+                          <Text style={{ color:'#8855FF', fontSize:12, fontFamily:mono, fontWeight:'700', width:18, textAlign:'center' }}>{['α','β','γ'][i]}</Text>
+                          <Text style={{ color:'#CCCCDD', fontSize:11, lineHeight:17, flex:1 }}>{opt}</Text>
+                        </TouchableOpacity>
+                      ))}
+                      <Text style={{ color:'#333344', fontSize:7.5, fontFamily:mono, textAlign:'center', marginTop:2 }}>pass = +2 ✦ bonus · fail = the path hardens</Text>
+                    </>
+                  )}
+
+                  {/* ── BEAT CHOICES ── */}
+                  {venturePhase === 'beat' && ventureChoices.map((ch, i) => (
+                    <TouchableOpacity key={i} onPress={() => handleVentureChoice(ch)}
+                      style={{ padding:14, borderRadius:10, backgroundColor: typeColor(ch.type)+'18', borderWidth:1, borderColor: typeColor(ch.type)+'55', flexDirection:'row', alignItems:'center', gap:10 }}>
+                      <Text style={{ color: typeColor(ch.type), fontSize:16 }}>{typeGlyph(ch.type)}</Text>
+                      <Text style={{ color: typeColor(ch.type), fontSize:11, fontFamily:mono, fontWeight:'700', flex:1 }}>{ch.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+
+                  {/* ── RESOLVE ── */}
+                  {venturePhase === 'resolve' && (
+                    <TouchableOpacity onPress={finishVenture}
+                      style={{ padding:16, borderRadius:12, backgroundColor:'#C49A3C22', borderWidth:2, borderColor:'#C49A3C', alignItems:'center' }}>
+                      <Text style={{ color:'#C49A3C', fontSize:13, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>
+                        {isCampaignMode ? 'SEAL THE CAMPAIGN' : 'SEAL THE VENTURE'}  +{(ventureReward?.coins ?? 4) + ventureSkillBonus} ✦
+                      </Text>
+                      {ventureSkillBonus > 0 && (
+                        <Text style={{ color:'#C49A3C88', fontSize:8, fontFamily:mono, marginTop:3 }}>
+                          {ventureSkillBonus >= 4 ? `⚡ critical roll + ` : ''}◈ knowledge {ventureSkillBonus} bonus ✦
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
+                  {venturePhase !== 'resolve' && venturePhase !== 'dice' && (
+                    <TouchableOpacity onPress={() => setVentureActive(false)} style={{ alignItems:'center', paddingVertical:8 }}>
+                      <Text style={{ color:'#333344', fontSize:9, fontFamily:mono, letterSpacing:1 }}>ABANDON SESSION</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          );
+        })()}
+      </Modal>
+
       {/* ── RPG STATS MODAL ───────────────────────────────────────────────── */}
       <Modal visible={showStatModal} transparent animationType="slide">
         <View style={{ flex:1, backgroundColor:'#000000EE', justifyContent:'flex-end' }}>
@@ -8707,8 +6664,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
               <View style={{ flexDirection:'row', gap:8, marginBottom:8 }}>
                 <View style={{ flex:1, gap:8 }}>
                   {([
-                    { id:'attack' as const, label:'⚔', name:'FIGHT', desc:'direct strike', col:'#FF5544' },
-                    { id:'defend' as const, label:'◈', name:'GUARD', desc:'reduce damage', col:'#4488FF' },
+                    { id:'attack' as const, label:'⚔', name: battleFocusCharged ? '◎ STRIKE' : 'STRIKE', desc: battleFocusCharged ? '×2 power ready' : 'direct strike', col: battleFocusCharged ? '#FFD700' : '#FF5544' },
+                    { id:'defend' as const, label:'🛡', name:'SHIELD', desc:'block incoming', col:'#4488FF' },
                   ]).map(btn => (
                     <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={disabled}
                       style={{ paddingVertical:14, borderRadius:14, borderWidth:1.5,
@@ -8726,19 +6683,20 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                 </View>
                 <View style={{ flex:1, gap:8 }}>
                   {([
-                    { id:'spell' as const, label:'✦', name:'SPELL', desc:'spend tokens', col:color },
-                    { id:'item'  as const, label:'◦', name:'ITEM',  desc:'use from pack', col:'#44CC88' },
+                    { id:'focus' as const, label:'◎', name: battleFocusCharged ? 'CHARGED' : 'FOCUS', desc: battleFocusCharged ? 'ready — now strike' : 'charge ×2 strike', col:'#FFD700' },
+                    { id:'spell' as const, label:'✦', name:'SPELL',  desc:'spend tokens', col:color },
                   ]).map(btn => {
                     const spellDis = btn.id === 'spell' && (disabled || tokensLeft < Math.min(...spells.map(s => s.cost)));
-                    const dis2 = btn.id === 'spell' ? spellDis : disabled;
+                    const focusDis = btn.id === 'focus' && (disabled || battleFocusCharged);
+                    const dis2 = btn.id === 'spell' ? spellDis : btn.id === 'focus' ? focusDis : disabled;
                     return (
                       <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={dis2}
                         style={{ paddingVertical:14, borderRadius:14, borderWidth:1.5,
-                          borderColor: dis2 ? '#1A1A26' : btn.col+'55',
-                          backgroundColor: dis2 ? '#080810' : btn.col+'10', alignItems:'center', gap:2 }}>
-                        <Text style={{ color: dis2 ? '#2A2A3A' : btn.col, fontSize:24, fontFamily:mono }}>{btn.label}</Text>
-                        <Text style={{ color: dis2 ? '#22223A' : btn.col, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>{btn.name}</Text>
-                        <Text style={{ color: dis2 ? '#1A1A2A' : btn.col+'88', fontSize:7, fontFamily:mono, letterSpacing:0.5 }}>{btn.desc}</Text>
+                          borderColor: dis2 && btn.id !== 'focus' ? '#1A1A26' : btn.col+'55',
+                          backgroundColor: dis2 && btn.id !== 'focus' ? '#080810' : btn.col+'10', alignItems:'center', gap:2 }}>
+                        <Text style={{ color: dis2 && btn.id !== 'focus' ? '#2A2A3A' : btn.col, fontSize:24, fontFamily:mono }}>{btn.label}</Text>
+                        <Text style={{ color: dis2 && btn.id !== 'focus' ? '#22223A' : btn.col, fontSize:10, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>{btn.name}</Text>
+                        <Text style={{ color: dis2 && btn.id !== 'focus' ? '#1A1A2A' : btn.col+'88', fontSize:7, fontFamily:mono, letterSpacing:0.5 }}>{btn.desc}</Text>
                       </TouchableOpacity>
                     );
                   })}

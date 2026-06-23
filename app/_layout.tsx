@@ -8,6 +8,7 @@ import { AppModeProvider } from '../lib/app-mode';
 import { AccessibilityProvider } from '../lib/accessibility';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { EmergencyBeacon } from '../components/EmergencyBeacon';
+import { initAnalytics, track } from '../lib/analytics';
 
 const ONBOARDING_KEY = 'lycheetah_onboarded';
 
@@ -25,6 +26,12 @@ export default function RootLayout() {
     AsyncStorage.getItem(ONBOARDING_KEY).then(val => {
       setOnboarded(val === 'true');
     });
+  }, []);
+
+  // Anonymous, privacy-first usage analytics (opt-out respected, no PII).
+  // Fires once per app launch → powers DAU / retention. No-ops until a key is set.
+  useEffect(() => {
+    initAnalytics().then(() => track('app_open'));
   }, []);
 
   if (onboarded === null) return null; // splash still showing
