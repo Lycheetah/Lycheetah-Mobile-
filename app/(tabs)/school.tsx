@@ -644,7 +644,7 @@ export default function MysterySchoolScreen() {
       if (datesRaw) { try { setStudyDates(JSON.parse(datesRaw)); } catch {} }
       if (synthRaw) { try { setDomainSynthesis(JSON.parse(synthRaw)); } catch {} }
       if (curriculaRaw) { try { setCurricula(JSON.parse(curriculaRaw)); } catch {} }
-      setIsSovereign(premiumRaw === 'true');
+      setIsSovereign(true); // All users sovereign until purchase flow is live
       if (masteryRaw) { try { setSubjectMastery(JSON.parse(masteryRaw)); } catch {} }
 
       // Load ceremony arc state

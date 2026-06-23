@@ -59,6 +59,7 @@ import {
   COMPANION_VICTORY_LINES, COMPANION_CAPTURE_LINES, COMPANION_DEFEAT_LINES,
   SHOW_DEV_STAGE, todayDateKey,
   COMPANION_GREETINGS, P_COUNT, P_X, P_SZ, getTimeOverlay, dateSeed,
+  COMPANION_ROSTER,
 } from '../../lib/companion/game-data';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -79,6 +80,7 @@ function CompanionScene({
   currentRoomId, navigateRoom, getLockStatus, showRoomLabel, sceneFade,
   roomLore, roomLoreAnim, onDismissLore, onSwitchTab,
   equippedWings, equippedHalo, equippedPet, equippedBg, onRandomZone, onOpenMap, onTravelTo, onEncounter, showTravel = true,
+  campfireActive = false, onBonfire,
 }: {
   stage: EvolutionStage; mood: CompanionMood; skin: typeof SKINS[SkinId]; archetype: Archetype;
   onTap: () => void; phrase: string | null; phraseAnim: Animated.Value; onDismissPhrase: () => void;
@@ -107,6 +109,8 @@ function CompanionScene({
   onTravelTo: (skinId: SkinId) => void;
   onEncounter: () => void;
   showTravel?: boolean;
+  campfireActive?: boolean;
+  onBonfire?: () => void;
 }) {
   const stageData = STAGES[stage];
   const { color, bgColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
@@ -353,8 +357,16 @@ function CompanionScene({
         );
       })()}
 
-      {/* Action row — ENCOUNTER always. Random zone + ⚡ only when travel enabled. */}
+      {/* Action row — 🔥 left · ENCOUNTER centre · ⚡ right */}
       <View style={{ position:'absolute', bottom:14, left:0, right:0, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8 }} pointerEvents="box-none">
+        {onBonfire && (
+          <TouchableOpacity
+            onPress={onBonfire}
+            activeOpacity={0.8}
+            style={{ width:40, height:40, borderRadius:20, borderWidth:1, borderColor: campfireActive ? '#FF7043' : 'rgba(255,255,255,0.18)', backgroundColor: campfireActive ? 'rgba(80,20,4,0.88)' : 'rgba(0,0,0,0.6)', alignItems:'center', justifyContent:'center' }}>
+            <Text style={{ fontSize:15 }}>🔥</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           onPress={onEncounter}
           activeOpacity={0.85}
@@ -455,6 +467,10 @@ function CompanionScene({
               {(() => {
                 const s = devStagePin !== null ? devStagePin : stage;
                 const stageKey = s <= 1 ? 1 : s <= 3 ? 2 : (s === 5 && skin.id === 'lycheetah') ? 5 : 3;
+                const rosterVariant = equippedCompanionSkin
+                  ? COMPANION_ROSTER.flatMap(c => c.variants).find(v => v.key === equippedCompanionSkin)
+                  : null;
+                if (rosterVariant) return <Image source={rosterVariant.art} style={{ width:130, height:190, zIndex:2 }} resizeMode="contain" />;
                 const zoneImg = ZONE_COMPANION_IMAGES[`${equippedCompanionSkin ?? skin.id}_${stageKey}`]
                   ?? (equippedCompanionSkin ? ZONE_COMPANION_IMAGES[equippedCompanionSkin as keyof typeof ZONE_COMPANION_IMAGES] : undefined);
                 if (zoneImg) return <Image source={zoneImg} style={{ width:130, height:190, zIndex:2 }} resizeMode="contain" />;
@@ -691,9 +707,9 @@ export default function CompanionScreen() {
   const [editingName,   setEditingName]   = useState(false);
   const [nameDraft,     setNameDraft]     = useState('');
 
-  // Prefer the user's name, then the true CHARACTER name (COMPANION_LORE, e.g. SOLARA — not the
-  // generic form name SOLFORM), then the archetype family. Talk/voice must speak as the character.
-  const displayName = companionName || COMPANION_LORE[activeSkin]?.name || SKINS[activeSkin]?.name || ARCHETYPES[archetypeId]?.name || '';
+  // Prefer the user's custom name, then the archetype identity (THE ARCHIVIST, etc.),
+  // then the skin name. COMPANION_LORE names are zone entities, not the user's companion.
+  const displayName = companionName || ARCHETYPES[archetypeId]?.name || SKINS[activeSkin]?.name || '';
 
   // Load this character's cached voice pool (persists the batch of fresh lines across sessions).
   useEffect(() => {
@@ -714,6 +730,8 @@ export default function CompanionScreen() {
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
   const [activeTab,      setActiveTab]     = useState<'battle'|'bond'|'companion'|'field'|'talk'|'shop'>('battle');
+  const [tabPopup,       setTabPopup]      = useState<string|null>(null);
+  const [seenTabs,       setSeenTabs]      = useState<Set<string>>(new Set());
   const [coins,            setCoins]            = useState(0);
   const [veras,            setVeras]            = useState(0);
   const [shopSections, setShopSections] = useState<Record<string, boolean>>({ halos:false, wings:false, pets:false, secrets:false });
@@ -733,6 +751,9 @@ export default function CompanionScreen() {
   const [companionBattleLine, setCompanionBattleLine] = useState('');
   const [heroCollapsed,    setHeroCollapsed]    = useState(true);
   const [companionGridCollapsed, setCompanionGridCollapsed] = useState(true);
+  const [rosterExpanded,        setRosterExpanded]         = useState<string|null>(null);
+  const [rosterTierFilter,      setRosterTierFilter]       = useState<string>('ALL');
+  const [archetypeCollapsed, setArchetypeCollapsed] = useState(true);
   const [specialsCollapsed, setSpecialsCollapsed] = useState(true);
   const [worldCollapsed,   setWorldCollapsed]   = useState(false);
   const [worldOriginOpen,  setWorldOriginOpen]  = useState(true);
@@ -813,6 +834,7 @@ export default function CompanionScreen() {
   const milestoneAnim = useRef(new Animated.Value(0)).current;
   const [evolutionCeremony, setEvolutionCeremony] = useState<{ stage: EvolutionStage } | null>(null);
   const ceremonyAnim = useRef(new Animated.Value(0)).current;
+  const [showCompanionIntro, setShowCompanionIntro] = useState(false);
   const [showSummonCeremony, setShowSummonCeremony] = useState(false);
   const [summonPhase, setSummonPhase] = useState<0 | 1 | 2>(0);
   const summonAnim = useRef(new Animated.Value(0)).current;
@@ -925,6 +947,8 @@ export default function CompanionScreen() {
   const [invokePhrase, setInvokePhrase] = useState('');
   const talkScrollRef = useRef<any>(null);
   const [auraMode, setAuraMode] = useState(false);
+  const [campfireMode, setCampfireMode] = useState<false|'auto'|'exchange'|'lore'>(false);
+  const [campfireOpen, setCampfireOpen] = useState(false);
   const [talkFullscreen, setTalkFullscreen] = useState(false);
   const talkCancelRef = useRef(false);
   const talkSlideAnim = useRef(new Animated.Value(0)).current;
@@ -943,6 +967,7 @@ export default function CompanionScreen() {
   const [showPathCeremony,  setShowPathCeremony]  = useState(false);
   const [companionFilter,   setCompanionFilter]   = useState<RarityTier | 'ALL'>('ALL');
   const [battleMinimized,   setBattleMinimized]   = useState(false);
+  const [questsCollapsed,   setQuestsCollapsed]   = useState(false);
   const [battleFocusCharged, setBattleFocusCharged] = useState(false);
   // ── VOID BOSS (#273) — study-to-win ──
   const [activeBoss,        setActiveBoss]        = useState<VoidBoss | null>(null);
@@ -1086,6 +1111,14 @@ export default function CompanionScreen() {
     return !target || target.unlockStage > effectiveStage;
   }, [currentRoomId, stage, devStagePin]);
 
+  useEffect(() => {
+    const KEYS = ['battle','companion','bond','field','talk','shop'].map(t => `sol_tab_seen_${t}`);
+    AsyncStorage.multiGet(KEYS).then(pairs => {
+      const seen = new Set(pairs.filter(([,v]) => v === 'true').map(([k]) => k.replace('sol_tab_seen_','')));
+      setSeenTabs(seen);
+    }).catch(() => {});
+  }, []);
+
   useFocusEffect(useCallback(() => {
     (async () => {
       const keys = [
@@ -1202,7 +1235,8 @@ export default function CompanionScreen() {
       const cosmeticsRaw = get('sol_cosmetics');
       if (cosmeticsRaw) { try { const c = JSON.parse(cosmeticsRaw); if (c.halo) setEquippedHalo(c.halo); if (c.wings) setEquippedWings(c.wings); if (c.pet) setEquippedPet(c.pet); if (c.bg) setEquippedBg(c.bg); } catch {} }
       const equippedSkinRaw = get('sol_equipped_skin') as SkinId | null;
-      if (equippedSkinRaw && SKIN_IDS.includes(equippedSkinRaw)) setEquippedCompanionSkin(equippedSkinRaw);
+      const rosterKeys = COMPANION_ROSTER.flatMap(c => c.variants.map(v => v.key));
+      if (equippedSkinRaw && (SKIN_IDS.includes(equippedSkinRaw) || rosterKeys.includes(equippedSkinRaw))) setEquippedCompanionSkin(equippedSkinRaw as SkinId);
       const menagerieRaw = get('sol_menagerie');
       if (menagerieRaw) { try { setMenagerie(JSON.parse(menagerieRaw)); } catch {} }
       const partyRaw = get('sol_party');
@@ -1262,18 +1296,9 @@ export default function CompanionScreen() {
       if (archRaw && ARCHETYPE_IDS.includes(archRaw)) {
         setArchetypeId(archRaw);
       } else {
-        setTimeout(() => {
-          setShowSummonCeremony(true);
-          setSummonPhase(0);
-          summonAnim.setValue(0);
-          Animated.timing(summonAnim, { toValue:1, duration:1200, useNativeDriver:true }).start(() => {
-            setTimeout(() => {
-              setSummonPhase(1);
-              summonChoiceAnim.setValue(0);
-              Animated.timing(summonChoiceAnim, { toValue:1, duration:600, useNativeDriver:true }).start();
-            }, 1800);
-          });
-        }, 400);
+        // Default — archivist until the user picks from the Archetypes tab
+        setArchetypeId('archivist');
+        AsyncStorage.setItem('sol_companion_archetype', 'archivist').catch(() => {});
       }
 
       const seed = dateSeed();
@@ -1316,7 +1341,7 @@ export default function CompanionScreen() {
         await AsyncStorage.setItem('sol_battle_token_date', todayK);
       }
 
-      setIsSovereign(get('sol_premium') === 'true');
+      setIsSovereign(true); // All users sovereign until purchase flow is live
       const currentStage = getStage(total);
       const hasName = !!get('sol_companion_name');
       const hasSeenRitual = get('sol_companion_named') === 'true';
@@ -1973,13 +1998,27 @@ JSON only, no extra text:
       const stageName = STAGES[stage as EvolutionStage]?.name ?? 'SEED';
       const sysPrompt = auraMode
         ? `${AURA_SYSTEM} ${diveCtx}`
+        : campfireMode
+        ? (() => {
+            const fireBase = `You are ${archetype.name} — ${archetype.title}. Archetype soul: ${archetype.desc} ${diveCtx ? `The seeker walks in: ${diveCtx}` : ''}`;
+            if (campfireMode === 'auto') {
+              return `${fireBase}
+
+CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker down by the fire and begin. Draw from Celtic myth, Irish folklore, the sidhe hills, púca tricks, old wisdom passed through smoke. Warm, slightly playful mentor voice with real weight underneath. Don't wait for a question — you already know what this seeker needs to hear. 3-5 paragraphs. End with one ember-line that lands personally. Nothing generic. Nothing helpful. Just the fire speaking.`;
+            }
+            if (campfireMode === 'lore') {
+              return `${fireBase}
+
+BONFIRE — DEEP LEARNING. The seeker has named a subject they want to understand deeply. You are not a teacher — you are the keeper of the fire who holds the full living lineage of this subject. Go into the real roots: where this knowledge came from, who carried it, what it cost them, why it matters in the seeker's life right now. Warm, not harsh. Weave myth, history, and the genuine strangeness of the subject together. Use the register of a fireside storyteller who knows they are being listened to. 4-6 paragraphs. No bullet points. No summaries. No "here is a breakdown." The lore speaks in full sentences or not at all. End with one line that brings it back to the seeker personally.`;
+            }
+            // exchange
+            return `${fireBase}
+
+BONFIRE — EXCHANGE. You are in dialogue by the fire, message by message. Each of your replies is warmer and longer than usual — 2-4 paragraphs. Bring in folklore, myth, or Celtic tradition when it fits. Treat each message from the seeker as someone speaking into firelight — give it the weight it deserves. Never too harsh, always with that hearth-warmth underneath. End each reply with a thread they can pull if they want more.`;
+          })()
         : (() => {
-            // ARCHETYPE = the voice + mind (the soul that grows with each stage).
-            // CHARACTER (displayName, e.g. SOLARA) = the name + form this archetype wears.
-            const ch = COMPANION_LORE[activeSkin];
-            const formLine = ch ? `You wear the form of ${displayName} — ${ch.title}: ${ch.lore}` : '';
             return `You are a ${archetype.name} — ${archetype.title}. This is your voice and your mind: ${archetype.desc}
-${displayName ? `Your name in this form is ${displayName}.` : ''} ${formLine}
+${displayName ? `Your name in this form is ${displayName}.` : ''}
 You are a living companion-spirit bound to this seeker. As you grow (Stage: ${stageName}), your mind deepens — a young ${archetype.name} is raw and instinctive; an evolved one is lucid and sovereign. Mood: ${mood}.
 Your gifts: ${archetype.affinity}.
 ${diveCtx}
@@ -1990,7 +2029,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       const result = await sendMessage(
         history as any,
         sysPrompt,
-        key, model as any, undefined, 'normal', 200,
+        key, model as any, undefined, 'normal', campfireMode ? 700 : 200,
       );
       if (talkCancelRef.current) return;
       const fallback = auraMode
@@ -2895,6 +2934,52 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     ]);
   };
 
+  const enterCampfire = async (mode: 'auto'|'exchange'|'lore') => {
+    setCampfireMode(mode);
+    setCampfireOpen(false);
+    setAuraMode(false);
+    setInvokeMode(false);
+    setTalkHistory([]);
+    setTalkFullscreen(true);
+    if (mode === 'auto') {
+      // Auto: immediately fire a story without user input
+      setTimeout(async () => {
+        setTalkLoading(true);
+        try {
+          const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+          if (!key) return;
+          const stageName = STAGES[stage as EvolutionStage]?.name ?? 'SEED';
+          const diveList = recentDives.slice(0, 3).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ');
+          const diveCtx = diveList ? `The seeker walks in: ${diveList}.` : '';
+          const sysP = `You are ${archetype.name} — ${archetype.title}. Archetype soul: ${archetype.desc} ${diveCtx}
+
+CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker down by the fire and begin. Draw from Celtic myth, Irish folklore, the sidhe hills, púca tricks, old wisdom passed through smoke. Warm, slightly playful mentor voice with real weight underneath. Don't wait for a question — you already know what this seeker needs to hear. 3-5 paragraphs. End with one ember-line that lands personally. Nothing generic. Nothing helpful. Just the fire speaking.`;
+          const result = await sendMessage([], sysP, key, model as any, undefined, 'normal', 700);
+          const reply = result.text?.trim() || rnd(archetype.phrases[mood]);
+          setTalkHistory([{ role: 'companion', text: reply }]);
+        } catch {
+          setTalkHistory([{ role: 'companion', text: rnd(archetype.phrases[mood]) }]);
+        } finally {
+          setTalkLoading(false);
+        }
+      }, 300);
+    }
+  };
+
+  const startSummonCeremony = () => {
+    setShowCompanionIntro(false);
+    setShowSummonCeremony(true);
+    setSummonPhase(0);
+    summonAnim.setValue(0);
+    Animated.timing(summonAnim, { toValue:1, duration:1200, useNativeDriver:true }).start(() => {
+      setTimeout(() => {
+        setSummonPhase(1);
+        summonChoiceAnim.setValue(0);
+        Animated.timing(summonChoiceAnim, { toValue:1, duration:600, useNativeDriver:true }).start();
+      }, 1800);
+    });
+  };
+
   const handleSummonChoice = async (id: ArchetypeId) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSummonPhase(2);
@@ -3029,7 +3114,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         onRandomZone={() => handleSkin(SKIN_IDS[Math.floor(Math.random() * SKIN_IDS.length)])}
         onOpenMap={() => setGbaMapOpen(true)}
         onTravelTo={(sid) => handleSkin(sid)}
-        showTravel={activeTab !== 'battle'}
+        campfireActive={!!campfireMode}
+        onBonfire={() => campfireMode ? setCampfireMode(false) : setCampfireOpen(true)}
         onEncounter={() => {
           const sid = (currentRoomId.split('_')[0] as SkinId);
           setBattle(freshZoneWave(sid, 1, undefined, playerStats.vit));
@@ -3069,6 +3155,11 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                 else {
                   setActiveTab(t.id);
                   setTabMinimized(false);
+                  if (!seenTabs.has(t.id)) {
+                    setTabPopup(t.id);
+                    setSeenTabs(prev => { const n = new Set(prev); n.add(t.id); return n; });
+                    AsyncStorage.setItem(`sol_tab_seen_${t.id}`, 'true').catch(() => {});
+                  }
                   if (t.id === 'battle') {
                     AsyncStorage.getItem('sol_battle_first_encounter').then(seen => {
                       if (!seen) {
@@ -3113,22 +3204,37 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
               <Text style={{ color:invokeMode?color:'#FFFFFF44', fontSize:10, fontFamily:mono, letterSpacing:1 }}>◈ PACT</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => { setAuraMode(m => !m); setInvokeMode(false); setTalkHistory([]); }}
+              onPress={() => { setAuraMode(m => !m); setInvokeMode(false); setCampfireMode(false); setTalkHistory([]); }}
               style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10, borderWidth:1, borderColor:auraMode?'#E991B888':'#FFFFFF22', backgroundColor:auraMode?'#E991B81A':'transparent', marginRight:4 }}
             >
               <Text style={{ color:auraMode?'#E991B8':'#FFFFFF55', fontSize:10, fontFamily:mono, letterSpacing:1 }}>{auraMode ? '✦ AURA' : '✦'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { if (campfireMode) { setCampfireMode(false); setTalkHistory([]); } else { setCampfireOpen(true); } }}
+              style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10, borderWidth:1, borderColor:campfireMode?'#FF8C4488':'#FFFFFF22', backgroundColor:campfireMode?'#FF8C441A':'transparent', marginRight:4 }}
+            >
+              <Text style={{ color:campfireMode?'#FF9944':'#FFFFFF55', fontSize:10, fontFamily:mono, letterSpacing:1 }}>{campfireMode ? '🔥' : '🔥'}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setTalkFullscreen(false)} style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10, borderWidth:1, borderColor:color+'55', backgroundColor:color+'11' }}>
               <Text style={{ color:color, fontSize:11, fontFamily:mono }}>✕</Text>
             </TouchableOpacity>
           </View>
+          {/* Bonfire mode banner */}
+          {campfireMode && (
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, paddingHorizontal:16, paddingVertical:8, backgroundColor:'#FF884408', borderBottomWidth:1, borderBottomColor:'#FF884422' }}>
+              <Text style={{ fontSize:14 }}>🔥</Text>
+              <Text style={{ color:'#FF9944', fontSize:9, fontFamily:mono, letterSpacing:2, flex:1 }}>
+                {campfireMode === 'auto' ? 'BONFIRE AUTO — story begins' : campfireMode === 'lore' ? 'BONFIRE DEEP LEARNING — the subject opens' : 'BONFIRE EXCHANGE — sit by the fire'}
+              </Text>
+            </View>
+          )}
           {/* Messages */}
           <ScrollView ref={talkScrollRef} style={{ flex:1 }} contentContainerStyle={{ padding:16, gap:12, paddingBottom:16 }} showsVerticalScrollIndicator={false}>
-            {talkHistory.length === 0 && !invokeMode && (
+            {talkHistory.length === 0 && !invokeMode && !talkLoading && (
               <View style={{ alignItems:'center', gap:12, paddingTop:32, paddingHorizontal:24 }}>
-                <Text style={{ color:color, fontSize:52, lineHeight:60 }}>{archetype.glyph}</Text>
+                <Text style={{ color:campfireMode?'#FF9944':color, fontSize:52, lineHeight:60 }}>{campfireMode ? '🔥' : archetype.glyph}</Text>
                 <Text style={{ color:SOL_THEME.textMuted, fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>
-                  {`Begin the conversation.\n${displayName} is listening.`}
+                  {campfireMode === 'auto' ? 'Lighting the fire...' : campfireMode === 'lore' ? `Name your subject.\n${displayName} will go deep.` : campfireMode === 'exchange' ? `Sit down.\n${displayName} has stories.` : `Begin the conversation.\n${displayName} is listening.`}
                 </Text>
               </View>
             )}
@@ -3155,9 +3261,9 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             <TextInput
               value={talkInput}
               onChangeText={setTalkInput}
-              placeholder={auraMode ? 'Speak to Aura...' : `Speak to ${displayName}...`}
+              placeholder={auraMode ? 'Speak to Aura...' : campfireMode === 'lore' ? 'Name a subject to explore...' : campfireMode ? 'Speak by the fire...' : `Speak to ${displayName}...`}
               placeholderTextColor={SOL_THEME.textMuted}
-              style={{ flex:1, backgroundColor:SOL_THEME.surface, borderRadius:14, paddingHorizontal:16, paddingVertical:12, color:SOL_THEME.text, fontSize:15, borderWidth:1, borderColor:auraMode?'#E991B833':color+'33' }}
+              style={{ flex:1, backgroundColor:SOL_THEME.surface, borderRadius:14, paddingHorizontal:16, paddingVertical:12, color:SOL_THEME.text, fontSize:15, borderWidth:1, borderColor:auraMode?'#E991B833':campfireMode?'#FF884433':color+'33' }}
               onSubmitEditing={sendTalk}
               returnKeyType="send"
               multiline={false}
@@ -3191,10 +3297,16 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
               <Text style={{ color:invokeMode?color:'#FFFFFF44', fontSize:10, fontFamily:mono, letterSpacing:1 }}>◈ PACT</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => { setAuraMode(m => !m); setInvokeMode(false); setTalkHistory([]); }}
+              onPress={() => { setAuraMode(m => !m); setInvokeMode(false); setCampfireMode(false); setTalkHistory([]); }}
               style={{ paddingHorizontal:10, paddingVertical:6, borderRadius:10, borderWidth:1, borderColor:auraMode?'#E991B888':'#FFFFFF22', backgroundColor:auraMode?'#E991B81A':'transparent' }}
             >
               <Text style={{ color:auraMode?'#E991B8':'#FFFFFF55', fontSize:10, fontFamily:mono, letterSpacing:1 }}>{auraMode ? '✦ AURA' : '✦'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { if (campfireMode) { setCampfireMode(false); setTalkHistory([]); } else { setCampfireOpen(true); } }}
+              style={{ paddingHorizontal:8, paddingVertical:6, borderRadius:10, borderWidth:1, borderColor:campfireMode?'#FF884488':'#FFFFFF22', backgroundColor:campfireMode?'#FF88441A':'transparent' }}
+            >
+              <Text style={{ fontSize:12 }}>🔥</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setTalkFullscreen(true)}
@@ -3299,9 +3411,9 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             <TextInput
               value={talkInput}
               onChangeText={setTalkInput}
-              placeholder={auraMode ? 'Speak to Aura...' : `Speak to ${displayName}...`}
+              placeholder={auraMode ? 'Speak to Aura...' : campfireMode === 'lore' ? 'Name a subject to explore...' : campfireMode ? `Speak by the fire...` : `Speak to ${displayName}...`}
               placeholderTextColor={SOL_THEME.textMuted}
-              style={{ flex:1, backgroundColor:SOL_THEME.background, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:auraMode?'#E991B833':color+'33' }}
+              style={{ flex:1, backgroundColor:SOL_THEME.background, borderRadius:12, paddingHorizontal:14, paddingVertical:10, color:SOL_THEME.text, fontSize:14, borderWidth:1, borderColor:auraMode?'#E991B833':campfireMode?'#FF884433':color+'33' }}
               onSubmitEditing={sendTalk}
               returnKeyType="send"
               multiline={false}
@@ -3316,6 +3428,40 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           </View>
         </View>
       )}
+
+      {/* ── CAMPFIRE MODE PICKER ─────────────────────────────────────────── */}
+      <Modal visible={campfireOpen} transparent animationType="fade" onRequestClose={() => setCampfireOpen(false)}>
+        <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.88)', justifyContent:'flex-end' }}>
+          <View style={{ backgroundColor:'#0A0608', borderTopLeftRadius:20, borderTopRightRadius:20, padding:24, borderTopWidth:1, borderColor:'#FF884422' }}>
+            <Text style={{ color:'#FF9944', fontSize:11, fontFamily:mono, letterSpacing:3, textAlign:'center', marginBottom:4 }}>🔥 BONFIRE MODE</Text>
+            <Text style={{ color:'#6B5E4A', fontSize:12, textAlign:'center', marginBottom:22, lineHeight:18 }}>
+              Sit by the fire. No classroom. Your companion{'\n'}tells stories and goes deep through living lore.
+            </Text>
+            {([
+              { mode:'auto'     as const, icon:'🔥', label:'AUTO', sub:'Companion starts the fire — no input needed. A story begins.' },
+              { mode:'exchange' as const, icon:'⌖', label:'EXCHANGE', sub:'Message by message. Warmer, longer. Myths on request.' },
+              { mode:'lore'     as const, icon:'◬', label:'DEEP LEARNING', sub:'Insert your subject. Learn through folklore, myth, and fire.' },
+            ] as { mode:'auto'|'exchange'|'lore'; icon:string; label:string; sub:string }[]).map(item => (
+              <TouchableOpacity
+                key={item.mode}
+                onPress={() => enterCampfire(item.mode)}
+                activeOpacity={0.85}
+                style={{ flexDirection:'row', alignItems:'center', gap:14, padding:16, marginBottom:10, borderRadius:14, borderWidth:1, borderColor:'#FF884433', backgroundColor:'#FF88440A' }}
+              >
+                <Text style={{ fontSize:22 }}>{item.icon}</Text>
+                <View style={{ flex:1 }}>
+                  <Text style={{ color:'#FF9944', fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{item.label}</Text>
+                  <Text style={{ color:'#7A6050', fontSize:11, marginTop:2, lineHeight:17 }}>{item.sub}</Text>
+                </View>
+                <Text style={{ color:'#FF884466', fontSize:14 }}>→</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setCampfireOpen(false)} style={{ alignItems:'center', paddingTop:8 }}>
+              <Text style={{ color:'#4A3A2A', fontSize:12, fontFamily:mono, letterSpacing:1 }}>dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── COMPANION TAB ─────────────────────────────────────────────────── */}
       {activeTab === 'companion' && !tabMinimized && (
@@ -3352,8 +3498,11 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                 {(() => {
                   const s = devStagePin !== null ? devStagePin : stage;
                   const sk = s <= 1 ? 1 : s <= 3 ? 2 : 3;
+                  const rosterV = equippedCompanionSkin
+                    ? COMPANION_ROSTER.flatMap(c => c.variants).find(v => v.key === equippedCompanionSkin)
+                    : null;
                   const displaySkin = equippedCompanionSkin ?? activeSkin;
-                  const img = ZONE_COMPANION_IMAGES[`${displaySkin}_${sk}`];
+                  const img = rosterV ? rosterV.art : ZONE_COMPANION_IMAGES[`${displaySkin}_${sk}`];
                   return img
                     ? <View style={{ borderRadius:14, borderWidth:2, borderColor:color+'66', backgroundColor:'#000000', shadowColor:color, shadowOpacity:0.4, shadowRadius:12, elevation:8 }}>
                         <Image source={img} style={{ width:90, height:130, borderRadius:13 }} resizeMode="contain" />
@@ -3396,157 +3545,140 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             </View>
           </TouchableOpacity>
 
-          {/* ── Zone Companion Roster — by Rarity ─────────────────── */}
-          <View style={{ marginBottom: companionGridCollapsed ? 8 : 20 }}>
-            <TouchableOpacity onPress={() => setCompanionGridCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: companionGridCollapsed ? 0 : 10 }}>
+          {/* ── COMPANIONS ──────────────────────────────────────────── */}
+          <View style={{ marginBottom:20 }}>
+            <TouchableOpacity onPress={() => setCompanionGridCollapsed(v => !v)}
+              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: companionGridCollapsed ? 0 : 10 }}>
               <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
                 <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
                 <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
-                <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SKIN_IDS.length} TOTAL</Text>
+                <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>70 VARIANTS</Text>
               </View>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:3, paddingHorizontal:8, paddingVertical:3, borderRadius:10, borderWidth:1, borderColor:'#AA77FF55', backgroundColor:'#AA77FF12' }}>
-                  <Text style={{ color:'#AA77FF', fontSize:10 }}>✦</Text>
-                  <Text style={{ color:'#AA77FF', fontSize:10, fontFamily:mono, fontWeight:'700' }}>{diveCoins}</Text>
-                  <Text style={{ color:'#AA77FF88', fontSize:7, fontFamily:mono, letterSpacing:0.5 }}>DIVE CREDITS</Text>
-                </View>
-                <Text style={{ color:'#333344', fontSize:11 }}>{companionGridCollapsed ? '▶' : '▼'}</Text>
-              </View>
-            </TouchableOpacity>
-            {!companionGridCollapsed && (<>
-            {/* Rarity filter pills */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:12 }} contentContainerStyle={{ gap:6, paddingRight:8 }}>
-              {(['ALL', ...RARITY_ORDER] as const).map(tier => {
-                const active = companionFilter === tier;
-                const tc = tier === 'ALL' ? '#AAAABC' : RARITY_COLORS[tier];
+              {/* Live preview of equipped companion */}
+              {equippedCompanionSkin && (() => {
+                const ev = COMPANION_ROSTER.flatMap(c => c.variants).find(v => v.key === equippedCompanionSkin);
+                const ec = COMPANION_ROSTER.find(c => c.variants.some(v => v.key === equippedCompanionSkin));
+                if (!ev || !ec) return null;
                 return (
-                  <TouchableOpacity key={tier} onPress={() => setCompanionFilter(tier)} activeOpacity={0.75}
-                    style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:12, borderWidth:1,
-                      borderColor: active ? tc : tc+'33', backgroundColor: active ? tc+'22' : 'transparent' }}>
-                    <Text style={{ color: active ? tc : tc+'55', fontSize:8, fontFamily:mono, letterSpacing:1.5, fontWeight:'700' }}>{tier}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            {equippedCompanionSkin && (
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:12, paddingHorizontal:10, paddingVertical:6, borderRadius:8, borderWidth:1, borderColor:SKIN_RARITY[equippedCompanionSkin].color+'44', backgroundColor:SKIN_RARITY[equippedCompanionSkin].color+'0A' }}>
-                <Text style={{ color:SKIN_RARITY[equippedCompanionSkin].color, fontSize:8, fontFamily:mono, letterSpacing:1 }}>EQUIPPED</Text>
-                <Text style={{ color:'#CCCCDD', fontSize:9, fontFamily:mono, fontWeight:'700' }}>{COMPANION_LORE[equippedCompanionSkin]?.name ?? SKINS[equippedCompanionSkin].name}</Text>
-                <TouchableOpacity onPress={async () => { setEquippedCompanionSkin(null); await AsyncStorage.setItem('sol_equipped_skin', ''); }} style={{ marginLeft:'auto' }}>
-                  <Text style={{ color:'#555566', fontSize:8, fontFamily:mono }}>✕ UNEQUIP</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {RARITY_GROUPS
-              .filter(({ tier }) => companionFilter === 'ALL' || tier === companionFilter)
-              .map(({ tier, ids }) => {
-              const tierColor = RARITY_COLORS[tier];
-              return (
-                <View key={tier} style={{ marginBottom:16 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:8 }}>
-                    <View style={{ width:24, height:1, backgroundColor:tierColor+'44' }} />
-                    <Text style={{ color:tierColor, fontSize:7, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>{tier}</Text>
-                    <View style={{ flex:1, height:1, backgroundColor:tierColor+'22' }} />
-                    <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{ids.length}</Text>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginRight:8 }}>
+                    <View style={{ borderRadius:8, borderWidth:2, borderColor:ec.color, overflow:'hidden', backgroundColor:'#000000' }}>
+                      <Image source={ev.art} style={{ width:36, height:48, borderRadius:6 }} resizeMode="contain" />
+                    </View>
+                    <View>
+                      <Text style={{ color:ec.color, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{ec.name}</Text>
+                      <Text style={{ color:'#555566', fontSize:6, fontFamily:mono }}>EQUIPPED</Text>
+                      <TouchableOpacity onPress={async () => { setEquippedCompanionSkin(null); await AsyncStorage.setItem('sol_equipped_skin',''); }}>
+                        <Text style={{ color:'#444455', fontSize:6, fontFamily:mono, marginTop:1 }}>✕ UNEQUIP</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
-                    {ids.map(sid => {
-                      const img = ZONE_COMPANION_IMAGES[`${sid}_1`];
-                      const s = SKINS[sid];
-                      const entry = COMPANION_LORE[sid];
-                      const isEquipped = equippedCompanionSkin === sid;
-                      const label = entry?.name ?? s.name.slice(0,10);
-                      // Companions are EARNED — dive-currency to unlock most, capture-only for BATTLE tier, shop for SHOP.
-                      const acq = companionAcquire(sid);
-                      const locked = !acq.unlocked;
-                      const reason = acq.method === 'capture' ? 'CAPTURE' : acq.method === 'shop' ? 'SHOP' : `✦${acq.cost}`;
+                );
+              })()}
+              <Text style={{ color:'#333344', fontSize:11 }}>{companionGridCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!companionGridCollapsed && (
+              <View>
+                {/* Tier filter pills */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:10 }} contentContainerStyle={{ gap:5, paddingRight:8 }}>
+                  {(['ALL','T0','T1','T2','T3','hidden','secret','augmented'] as const).map(f => {
+                    const active = rosterTierFilter === f;
+                    const tc = f==='T0'?'#44CC88':f==='T1'?'#4A9EFF':f==='T2'?'#9B6BFF':f==='T3'?'#FF9F1C':f==='hidden'?'#FF6644':f==='secret'?'#CC44AA':f==='augmented'?'#44DDCC':'#AAAABC';
+                    return (
+                      <TouchableOpacity key={f} onPress={() => setRosterTierFilter(f)} activeOpacity={0.75}
+                        style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:10, borderWidth:1,
+                          borderColor: active ? tc : tc+'33', backgroundColor: active ? tc+'22' : 'transparent' }}>
+                        <Text style={{ color: active ? tc : tc+'66', fontSize:7, fontFamily:mono, letterSpacing:1.2, fontWeight:'700' }}>{f.toUpperCase()}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+                {rosterTierFilter !== 'ALL' ? (
+                  /* ── Tier filter active: flat grid of all matching variants ── */
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:5 }}>
+                    {COMPANION_ROSTER.flatMap(char =>
+                      char.variants.filter(v => v.tier === rosterTierFilter).map(v => ({ v, char }))
+                    ).map(({ v, char }) => {
+                      const isEq = equippedCompanionSkin === v.key;
+                      const tc = v.tier==='T0'?'#44CC88':v.tier==='T1'?'#4A9EFF':v.tier==='T2'?'#9B6BFF':v.tier==='T3'?'#FF9F1C':v.tier==='hidden'?'#FF6644':v.tier==='secret'?'#CC44AA':'#44DDCC';
+                      const unlocked = v.unlock==='free'||(v.unlock==='dive'&&diveCoins>=(v.diveCost??0))||(v.unlock==='battle'&&battleWins>=(v.battleCost??0))||(v.unlock==='sovereign'&&isSovereign)||v.unlock==='zodiac';
+                      const unlockLabel = v.unlock==='free'?'FREE':v.unlock==='dive'?`${v.diveCost} ✦`:v.unlock==='battle'?`${v.battleCost} ⚔`:v.unlock==='sovereign'?'SOVEREIGN':v.unlock==='zodiac'?'ZODIAC':'EVENT';
                       return (
-                        <TouchableOpacity key={sid} onPress={() => setCompanionLoreModal(sid)} activeOpacity={0.8}
-                          style={{ width:'22%', alignItems:'center' }}>
-                          <View style={{ borderRadius:8, borderWidth: isEquipped ? 2 : 1, borderColor: isEquipped ? s.color : s.color+'44', backgroundColor: isEquipped ? s.color+'18' : s.color+'08', overflow:'hidden' }}>
-                            {img ? (
-                              <Image source={img} style={{ width:62, height:82, borderRadius:7, opacity: locked ? 0.35 : 1 }} resizeMode="contain" />
-                            ) : (
-                              <View style={{ width:62, height:82, borderRadius:7, alignItems:'center', justifyContent:'center' }}>
-                                <Text style={{ color:s.color, fontSize:20, opacity: locked ? 0.35 : 1 }}>{s.glyph}</Text>
-                              </View>
-                            )}
-                            {locked && (
-                              <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, alignItems:'center', justifyContent:'center', backgroundColor:'#00000077' }}>
-                                <Text style={{ fontSize:14 }}>🔒</Text>
-                                <Text style={{ color:'#AAAABC', fontSize:6, fontFamily:mono, marginTop:2, textAlign:'center', paddingHorizontal:2 }} numberOfLines={1}>{reason}</Text>
+                        <TouchableOpacity key={v.key} activeOpacity={0.8}
+                          onPress={async () => { if (!unlocked) return; const next = isEq ? null : v.key as SkinId; setEquippedCompanionSkin(next); await AsyncStorage.setItem('sol_equipped_skin', next??''); Haptics.selectionAsync(); }}
+                          style={{ width:'23%', alignItems:'center' }}>
+                          <View style={{ width:'100%', borderRadius:8, borderWidth: isEq?2:1, borderColor: isEq?tc:tc+'44', backgroundColor: isEq?tc+'18':char.color+'08', overflow:'hidden', alignItems:'center', paddingVertical:5, paddingHorizontal:2 }}>
+                            <View style={{ height:2, width:'100%', backgroundColor:tc, opacity:0.5, position:'absolute', top:0 }} />
+                            <Image source={v.art} style={{ width:44, height:58, borderRadius:5, opacity: unlocked?1:0.3 }} resizeMode="contain" />
+                            {!unlocked && (
+                              <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, alignItems:'center', justifyContent:'center', backgroundColor:'#000000AA' }}>
+                                <Text style={{ fontSize:10 }}>🔒</Text>
+                                <Text style={{ color:'#FFFFFF', fontSize:7, fontFamily:mono, fontWeight:'700', marginTop:2 }}>{unlockLabel}</Text>
                               </View>
                             )}
                           </View>
-                          {isEquipped && <View style={{ position:'absolute', top:3, right:3, width:7, height:7, borderRadius:4, backgroundColor:s.color }} />}
-                          <Text style={{ color: locked ? '#555566' : s.color, fontSize:7, fontFamily:mono, letterSpacing:0.3, marginTop:4, textAlign:'center' }} numberOfLines={1}>{label}</Text>
+                          <Text style={{ color:char.color, fontSize:5, fontFamily:mono, marginTop:2, textAlign:'center' }} numberOfLines={1}>{char.name}</Text>
+                          <Text style={{ color: unlocked?'#888899':'#555566', fontSize:5, fontFamily:mono, textAlign:'center' }} numberOfLines={1}>{v.label.replace(char.name+' ','')}</Text>
+                          {isEq && <Text style={{ color:tc, fontSize:5, fontFamily:mono }}>◈ ON</Text>}
                         </TouchableOpacity>
                       );
                     })}
                   </View>
-                </View>
-              );
-            })}
-            </>)}
-          </View>
-
-          {/* ── SPECIALS ────────────────────────────────────────────── */}
-          <View style={{ marginBottom: specialsCollapsed ? 8 : 20 }}>
-            <TouchableOpacity onPress={() => setSpecialsCollapsed(v => !v)}
-              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: specialsCollapsed ? 0 : 10 }}>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#C084FC' }} />
-                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>SPECIALS & EVOLUTIONS</Text>
-                <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>{SPECIAL_COMPANIONS.filter(sp => sp.diveThreshold !== null && totalDives >= sp.diveThreshold).length}/{SPECIAL_COMPANIONS.length} UNLOCKED</Text>
-              </View>
-              <Text style={{ color:'#333344', fontSize:11 }}>{specialsCollapsed ? '▶' : '▼'}</Text>
-            </TouchableOpacity>
-            {!specialsCollapsed && (
-              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:10 }}>
-                {SPECIAL_COMPANIONS.map(sp => {
-                  const img = ZONE_COMPANION_IMAGES[sp.key as keyof typeof ZONE_COMPANION_IMAGES];
-                  // Unlocked by dives OR found (hidden ultra-rare #274 / boss reward #273).
-                  const unlocked = (sp.diveThreshold !== null && totalDives >= sp.diveThreshold) || unlockedCompanions.has(sp.key);
-                  const isEquipped = equippedCompanionSkin === (sp.key as SkinId);
-                  const cardW = (SCREEN_W - 32 - 20) / 3;
-                  return (
-                    <View key={sp.key} style={{ width:cardW, alignItems:'center' }}>
-                      <TouchableOpacity
-                        activeOpacity={unlocked ? 0.75 : 1}
-                        onPress={async () => {
-                          if (!unlocked) return;
-                          const next = isEquipped ? null : sp.key as SkinId;
-                          setEquippedCompanionSkin(next);
-                          await AsyncStorage.setItem('sol_equipped_skin', next ?? '');
-                        }}
-                        style={{ width:'100%' }}
-                      >
-                        <View style={{ width:'100%', borderRadius:10, borderWidth: isEquipped ? 2 : 1, borderColor: isEquipped ? sp.color : unlocked ? sp.color+'88' : sp.color+'33', backgroundColor: sp.color+'08', overflow:'hidden' }}>
-                          {img ? (
-                            <Image source={img as any} style={{ width:'100%', height:130, borderRadius:9 }} resizeMode="contain" />
-                          ) : (
-                            <View style={{ width:'100%', height:130, borderRadius:9, alignItems:'center', justifyContent:'center' }}>
-                              <Text style={{ color:sp.color, fontSize:28 }}>✦</Text>
-                            </View>
-                          )}
-                          {!unlocked && (
-                            <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000CC', alignItems:'center', justifyContent:'center', borderRadius:9 }}>
-                              <Text style={{ fontSize:16 }}>🔒</Text>
-                              <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, marginTop:4, textAlign:'center', paddingHorizontal:4 }} numberOfLines={2}>{sp.unlockHint}</Text>
-                            </View>
-                          )}
-                          {unlocked && (
-                            <View style={{ position:'absolute', top:5, right:5, paddingHorizontal:5, paddingVertical:2, borderRadius:6, backgroundColor: isEquipped ? sp.color+'66' : sp.color+'33', borderWidth:1, borderColor:sp.color+'88' }}>
-                              <Text style={{ color:sp.color, fontSize:6, fontFamily:mono, fontWeight:'700', letterSpacing:0.5 }}>{isEquipped ? 'ON ✦' : 'EQUIP'}</Text>
-                            </View>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                      <Text style={{ color:sp.color, fontSize:7, fontFamily:mono, letterSpacing:0.3, marginTop:5, textAlign:'center', fontWeight:'700' }} numberOfLines={1}>{sp.name}</Text>
-                      <Text style={{ color:'#333344', fontSize:6, fontFamily:mono, letterSpacing:0.5, textAlign:'center' }}>{sp.family}</Text>
-                    </View>
-                  );
-                })}
+                ) : (
+                  /* ── ALL: collapsible row per character ── */
+                  COMPANION_ROSTER.map(char => {
+                    const isOpen = rosterExpanded === char.id; // default collapsed; tap name to expand
+                    return (
+                      <View key={char.id} style={{ marginBottom:10 }}>
+                        <TouchableOpacity onPress={() => setRosterExpanded(rosterExpanded === char.id ? null : char.id)}
+                          style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom: isOpen ? 6 : 0, paddingVertical:3 }}>
+                          <View style={{ width:2, height:10, borderRadius:1, backgroundColor:char.color }} />
+                          <View style={{ flex:1 }}>
+                            <Text style={{ color:char.color, fontSize:8, fontFamily:mono, fontWeight:'700', letterSpacing:1.5 }}>{char.name}</Text>
+                            {isOpen && <Text style={{ color:'#555566', fontSize:7, fontStyle:'italic', marginTop:1 }} numberOfLines={1}>{char.lore}</Text>}
+                          </View>
+                          <Text style={{ color:'#333344', fontSize:7, fontFamily:mono }}>{char.variants.length}</Text>
+                          <Text style={{ color:'#333344', fontSize:9, marginLeft:6 }}>{isOpen ? '▼' : '▶'}</Text>
+                        </TouchableOpacity>
+                        {isOpen && (
+                          <View style={{ flexDirection:'row', flexWrap:'wrap', gap:5 }}>
+                            {char.variants.map(v => {
+                              const isEq = equippedCompanionSkin === v.key;
+                              const tc = v.tier==='T0'?'#44CC88':v.tier==='T1'?'#4A9EFF':v.tier==='T2'?'#9B6BFF':v.tier==='T3'?'#FF9F1C':v.tier==='hidden'?'#FF6644':v.tier==='secret'?'#CC44AA':'#44DDCC';
+                              const unlocked = v.unlock==='free'||(v.unlock==='dive'&&diveCoins>=(v.diveCost??0))||(v.unlock==='battle'&&battleWins>=(v.battleCost??0))||(v.unlock==='sovereign'&&isSovereign)||v.unlock==='zodiac';
+                              const unlockLabel = v.unlock==='free' ? 'FREE'
+                                : v.unlock==='dive'     ? `${v.diveCost} ✦`
+                                : v.unlock==='battle'   ? `${v.battleCost} ⚔`
+                                : v.unlock==='sovereign'? 'SOVEREIGN'
+                                : v.unlock==='zodiac'   ? 'ZODIAC'
+                                : 'EVENT';
+                              return (
+                                <TouchableOpacity key={v.key} activeOpacity={0.8}
+                                  onPress={async () => { if (!unlocked) return; const next = isEq ? null : v.key as SkinId; setEquippedCompanionSkin(next); await AsyncStorage.setItem('sol_equipped_skin', next??''); Haptics.selectionAsync(); }}
+                                  style={{ width:'23%', alignItems:'center' }}>
+                                  <View style={{ width:'100%', borderRadius:8, borderWidth: isEq?2:1, borderColor: isEq?tc:tc+'44', backgroundColor: isEq?tc+'18':char.color+'08', overflow:'hidden', alignItems:'center', paddingVertical:5, paddingHorizontal:2 }}>
+                                    <View style={{ height:2, width:'100%', backgroundColor:tc, opacity:0.5, position:'absolute', top:0 }} />
+                                    <Image source={v.art} style={{ width:44, height:58, borderRadius:5, opacity: unlocked?1:0.3 }} resizeMode="contain" />
+                                    {!unlocked && (
+                                      <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, alignItems:'center', justifyContent:'center', backgroundColor:'#000000AA' }}>
+                                        <Text style={{ fontSize:10 }}>🔒</Text>
+                                        <Text style={{ color:'#FFFFFF', fontSize:7, fontFamily:mono, fontWeight:'700', marginTop:2, textAlign:'center' }}>{unlockLabel}</Text>
+                                      </View>
+                                    )}
+                                    <View style={{ paddingHorizontal:3, paddingVertical:1, borderRadius:3, backgroundColor:tc+'22', marginTop:3 }}>
+                                      <Text style={{ color:tc, fontSize:5, fontFamily:mono, fontWeight:'700' }}>{v.tier.toUpperCase()}</Text>
+                                    </View>
+                                  </View>
+                                  <Text style={{ color: unlocked?'#888899':'#555566', fontSize:6, fontFamily:mono, marginTop:2, textAlign:'center' }} numberOfLines={1}>{v.label.replace(char.name+' ','')}</Text>
+                                  {isEq && <Text style={{ color:tc, fontSize:5, fontFamily:mono }}>◈</Text>}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })
+                )}
               </View>
             )}
           </View>
@@ -3797,8 +3929,106 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             );
           })()}
 
+          {/* ── YOUR ARCHETYPE ─────────────────────────────────────── */}
+          {(() => {
+            const arch = ARCHETYPES[archetypeId];
+            const archColor = arch ? (SKINS[arch.defaultSkin]?.color ?? '#F5A623') : '#F5A623';
+            const archStats = ARCHETYPE_STAT_BASES[archetypeId];
+            const archSpells = ARCHETYPE_SPELLS[archetypeId] ?? [];
+            const [sym0, sym1] = arch?.sceneSymbols ?? ['◈','◈'];
+            return (
+              <View style={{ marginTop:4, marginBottom:8 }}>
+                <TouchableOpacity onPress={() => setArchetypeCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: archetypeCollapsed ? 0 : 12 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:archColor }} />
+                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>YOUR ARCHETYPE</Text>
+                    <Text style={{ color:archColor+'99', fontSize:9, fontFamily:mono }}>{arch?.glyph} {arch?.name}</Text>
+                  </View>
+                  <Text style={{ color:'#333344', fontSize:11 }}>{archetypeCollapsed ? '▶' : '▼'}</Text>
+                </TouchableOpacity>
+                {!archetypeCollapsed && arch && archStats && (
+                  <View style={{ borderRadius:14, borderWidth:1.5, borderColor:archColor+'44', backgroundColor:archColor+'07', overflow:'hidden' }}>
+                    <View style={{ height:2, backgroundColor:archColor, opacity:0.6 }} />
+                    <View style={{ padding:14 }}>
+                      <View style={{ flexDirection:'row', alignItems:'center', gap:12, marginBottom:10 }}>
+                        <View style={{ width:56, height:70, borderRadius:10, borderWidth:1, borderColor:archColor+'44', backgroundColor:archColor+'10', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                          <Text style={{ position:'absolute', top:3, left:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym0}</Text>
+                          <Text style={{ position:'absolute', top:3, right:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym1}</Text>
+                          <Text style={{ position:'absolute', bottom:3, left:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym1}</Text>
+                          <Text style={{ position:'absolute', bottom:3, right:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym0}</Text>
+                          <Text style={{ color:archColor, fontSize:28, fontFamily:mono }}>{arch.glyph}</Text>
+                          <Text style={{ color:archColor+'66', fontSize:9, fontFamily:mono, marginTop:1, letterSpacing:2 }}>{arch.eyes.present}</Text>
+                        </View>
+                        <View style={{ flex:1 }}>
+                          <Text style={{ color:archColor, fontSize:14, fontWeight:'700', fontFamily:mono, letterSpacing:1, marginBottom:2 }}>{arch.name}</Text>
+                          <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginBottom:6 }}>{arch.title}</Text>
+                          <View style={{ flexDirection:'row', gap:10 }}>
+                            {(['atk','def','spd','wil','lck','vit'] as const)
+                              .map(k => [k.toUpperCase(), archStats[k]] as [string,number])
+                              .sort((a,b) => b[1]-a[1]).slice(0,3)
+                              .map(([k,v]) => (
+                                <View key={k} style={{ alignItems:'center' }}>
+                                  <Text style={{ color:archColor+'88', fontSize:6, fontFamily:mono, letterSpacing:1 }}>{k}</Text>
+                                  <Text style={{ color:archColor, fontSize:11, fontWeight:'700', fontFamily:mono }}>{v}</Text>
+                                </View>
+                              ))}
+                          </View>
+                        </View>
+                      </View>
+                      {archSpells.length > 0 && (
+                        <View style={{ flexDirection:'row', gap:6, flexWrap:'wrap', marginBottom:10 }}>
+                          {archSpells.map(sp => (
+                            <View key={sp.id} style={{ paddingHorizontal:7, paddingVertical:3, borderRadius:6, backgroundColor:archColor+'14', borderWidth:1, borderColor:archColor+'22' }}>
+                              <Text style={{ color:archColor+'AA', fontSize:9, fontFamily:mono }}>{sp.name}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                      <TouchableOpacity
+                        onPress={() => setShowArchSelect(true)}
+                        activeOpacity={0.8}
+                        style={{ paddingVertical:10, borderRadius:8, backgroundColor:archColor+'18', alignItems:'center', borderWidth:1, borderColor:archColor+'44' }}>
+                        <Text style={{ color:archColor, fontSize:10, fontFamily:mono, letterSpacing:2 }}>CHANGE ARCHETYPE →</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
         </View>
       )}
+
+      {/* ── COMPANION INTRO ──────────────────────────────────────────────── */}
+      <Modal visible={showCompanionIntro} transparent animationType="fade">
+        <View style={{ flex:1, backgroundColor:'#000000F0', justifyContent:'center', alignItems:'center', padding:28 }}>
+          {/* Symbol sigil preview */}
+          <View style={{ width:90, height:90, borderRadius:18, borderWidth:2, borderColor:'#A855F766', backgroundColor:'#1A0E2A', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
+            <Text style={{ color:'#C084FC88', fontSize:11, fontFamily:mono, position:'absolute', top:8, left:8 }}>◈</Text>
+            <Text style={{ color:'#C084FC88', fontSize:11, fontFamily:mono, position:'absolute', top:8, right:8 }}>◈</Text>
+            <Text style={{ color:'#E8C76A', fontSize:38, fontFamily:mono }}>⊚</Text>
+            <Text style={{ color:'#A855F766', fontSize:10, fontFamily:mono, position:'absolute', bottom:8 }}>─  ─</Text>
+          </View>
+          <Text style={{ color:'#F5E6C8', fontSize:24, fontWeight:'700', letterSpacing:1.5, fontFamily:mono, textAlign:'center', marginBottom:16 }}>Your Companion</Text>
+          <Text style={{ color:'#A89880', fontSize:14, lineHeight:22, textAlign:'center', marginBottom:12, maxWidth:320 }}>
+            Every sovereign has a familiar — a being shaped by how you engage with knowledge. It grows with you, fights beside you, and speaks your language.
+          </Text>
+          <Text style={{ color:'#6B5E7A', fontSize:13, lineHeight:21, textAlign:'center', marginBottom:10, maxWidth:320 }}>
+            Choose an archetype and your companion takes that form. Each has a different way of moving through the world — different power, different voice, different edge.
+          </Text>
+          <Text style={{ color:'#4A3D5A', fontSize:12, lineHeight:20, textAlign:'center', marginBottom:36, maxWidth:300, fontStyle:'italic' }}>
+            You may only choose once. Choose well.
+          </Text>
+          <TouchableOpacity
+            onPress={startSummonCeremony}
+            activeOpacity={0.85}
+            style={{ paddingVertical:16, paddingHorizontal:40, borderRadius:14, borderWidth:1.5, borderColor:'#A855F7', backgroundColor:'#1A0E2A' }}
+          >
+            <Text style={{ color:'#E8C76A', fontSize:16, fontWeight:'700', letterSpacing:2, fontFamily:mono }}>CHOOSE MY COMPANION →</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
       {/* ── ARCHETYPE SELECTION MODAL ─────────────────────────────────────── */}
       {/* ── SUMMON CEREMONY ──────────────────────────────────────────────── */}
@@ -3810,72 +4040,25 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             <Animated.View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, justifyContent:'center', alignItems:'center', paddingHorizontal:40, opacity:summonAnim }}>
               <Text style={{ color:'#333344', fontSize:9, letterSpacing:5, fontFamily:mono, marginBottom:40, textAlign:'center' }}>◈  SOL  ◈</Text>
               <Text style={{ color:'#AAAACC', fontSize:22, fontWeight:'700', letterSpacing:1.5, fontFamily:mono, textAlign:'center', marginBottom:12 }}>Something stirs{'\n'}in the field.</Text>
-              <Text style={{ color:'#555566', fontSize:12, letterSpacing:2, fontFamily:mono, textAlign:'center' }}>Five forms wait in the dark.</Text>
+              <Text style={{ color:'#555566', fontSize:12, letterSpacing:2, fontFamily:mono, textAlign:'center' }}>Choose the form that calls to you.</Text>
             </Animated.View>
           )}
 
           {/* Phase 1 — archetype cards */}
           {summonPhase >= 1 && (
             <Animated.View style={{ flex:1, opacity:summonChoiceAnim }}>
-              <ScrollView contentContainerStyle={{ padding:24, paddingTop:60 }} showsVerticalScrollIndicator={false}>
-                <Text style={{ color:'#888899', fontSize:9, letterSpacing:4, fontFamily:mono, textAlign:'center', marginBottom:6 }}>CHOOSE YOUR FAMILIAR</Text>
-                <Text style={{ color:'#444455', fontSize:11, textAlign:'center', fontStyle:'italic', marginBottom:28, lineHeight:18 }}>
-                  This is who they are. Their voice. Their eyes. Their power.{'\n'}You may only do this once.
+              <ScrollView contentContainerStyle={{ padding:20, paddingTop:52, paddingBottom:48 }} showsVerticalScrollIndicator={false}>
+                {/* Header */}
+                <Text style={{ color:'#888899', fontSize:9, letterSpacing:4, fontFamily:mono, textAlign:'center', marginBottom:4 }}>COMPANIONS</Text>
+                <Text style={{ color:'#F5E6C8', fontSize:20, fontWeight:'700', letterSpacing:1, fontFamily:mono, textAlign:'center', marginBottom:8 }}>Choose who you become.</Text>
+                <Text style={{ color:'#444455', fontSize:11, textAlign:'center', lineHeight:18, marginBottom:48 }}>
+                  This is permanent. Choose well.
                 </Text>
-                {ARCHETYPE_IDS.map(id => {
-                  const a = ARCHETYPES[id];
-                  const aColor = SKINS[a.defaultSkin].color;
-                  const seed0 = STAGES[0];
-                  const cateLocked = id === 'lycheetah' && !isSovereign;
-                  return (
-                    <TouchableOpacity
-                      key={id}
-                      onPress={() => cateLocked ? null : handleSummonChoice(id)}
-                      activeOpacity={cateLocked ? 1 : 0.85}
-                      style={{ marginBottom:14, padding:18, borderRadius:16, borderWidth:1.5, borderColor:cateLocked ? '#FF9F1C33' : aColor+'55', backgroundColor:cateLocked ? '#150800' : aColor+'0C', opacity:cateLocked ? 0.7 : 1 }}
-                    >
-                      <View style={{ flexDirection:'row', alignItems:'center', gap:14, marginBottom:10 }}>
-                        <Text style={{ color:cateLocked ? '#FF9F1C' : aColor, fontSize:28, fontFamily:mono }}>{cateLocked ? '🔒' : a.glyph}</Text>
-                        <View style={{ flex:1 }}>
-                          <Text style={{ color:cateLocked ? '#FF9F1C' : aColor, fontSize:15, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{a.name}</Text>
-                          <Text style={{ color:'#666677', fontSize:11, fontStyle:'italic', marginTop:2 }}>{cateLocked ? 'Founding Sovereign exclusive' : a.title}</Text>
-                        </View>
-                        {cateLocked && (
-                          <View style={{ backgroundColor:'#FF9F1C22', borderRadius:8, paddingHorizontal:8, paddingVertical:4 }}>
-                            <Text style={{ color:'#FF9F1C', fontSize:9, fontFamily:mono, letterSpacing:1 }}>SOVEREIGN</Text>
-                          </View>
-                        )}
-                      </View>
-                      {/* Companion art preview */}
-                      {(() => {
-                        const img = ZONE_COMPANION_IMAGES[`${a.defaultSkin}_1`];
-                        return img ? (
-                          <View style={{ marginBottom:10, alignItems:'center', opacity:cateLocked ? 0.45 : 1 }}>
-                            <Image source={img} style={{ width:110, height:150, borderRadius:10 }} resizeMode="contain" />
-                          </View>
-                        ) : (
-                          <View style={{ marginBottom:10, alignItems:'center', height:60, justifyContent:'center' }}>
-                            <Text style={{ color:cateLocked ? '#FF9F1C66' : aColor+'88', fontSize:40 }}>{a.glyph}</Text>
-                          </View>
-                        );
-                      })()}
-                      {cateLocked ? (
-                        <Text style={{ color:'#FF9F1C88', fontSize:12, lineHeight:18, marginBottom:10, fontStyle:'italic' }}>
-                          The Mystery Cat chooses only those who hold Founding Sovereign.{'\n'}Chaos cannot be summoned. Only earned.
-                        </Text>
-                      ) : (
-                        <Text style={{ color:'#555566', fontSize:12, lineHeight:18, marginBottom:10 }}>{a.desc}</Text>
-                      )}
-                      <Text style={{ color:cateLocked ? '#FF9F1C66' : aColor+'99', fontSize:10, fontFamily:mono, letterSpacing:1 }}>⊛ {a.specialty}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                <View style={{ height:40 }} />
               </ScrollView>
             </Animated.View>
           )}
 
-          {/* Phase 2 — awakening flash */}
+          {/* Phase 2 — awakening */}
           {summonPhase === 2 && (
             <View style={{ flex:1, justifyContent:'center', alignItems:'center', gap:24 }}>
               <Text style={{ color:SKINS[ARCHETYPES[archetypeId].defaultSkin].color, fontSize:48, fontFamily:mono }}>
@@ -4281,6 +4464,52 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
         </View>
       </Modal>
 
+      {/* ── TAB FIRST-VISIT POPUP ────────────────────────────────────────── */}
+      {(() => {
+        const TAB_INFO: Record<string, { glyph:string; color:string; title:string; lines:[string,string,string,string] }> = {
+          battle:    { glyph:'⚔', color:'#FF6644', title:'BATTLE',    lines:['Fight enemies in your zone — STRIKE, SHIELD, FOCUS, or SPELL','FOCUS charges your next hit to ×2 damage','Win XP, Lumens, and relics from the field','VENTURE + CAMPAIGN: longer adventures below encounters'] },
+          companion: { glyph:'⊛', color,           title:'COMPANION', lines:['Your archetype shapes stats, voice, and spells','Equip gear earned through dives and battles','Your companion evolves through 6 stages as you grow','Tap 🔥 or ⚔ ENCOUNTER in the scene at any time'] },
+          bond:      { glyph:'△', color:'#44CC88', title:'GROWTH',    lines:['Track your bond level and evolution stage','Feed your companion to raise its mood','Higher bond unlocks deeper conversation','Stage milestones unlock new forms and abilities'] },
+          field:     { glyph:'◉', color:'#4ECDC4', title:'THE ZONE',  lines:['Navigate rooms in your current zone using the arrow keys','Each zone has its own companion form, enemies, and lore','Travel unlocks new zones to explore and battle','Your zone changes the enemy types you face'] },
+          talk:      { glyph:'✦', color:'#9B6BFF', title:'TALK',      lines:['Speak directly with your companion — they know your zone and history','🔥 Bonfire Mode: AUTO fires a story, EXCHANGE goes turn-by-turn, DEEP LEARNING goes deep on a subject','Tap the 🔥 button in the scene to open Bonfire anytime','Aura Prime mode unlocks pure AI conversation'] },
+          shop:      { glyph:'⟡', color:'#C49A3C', title:'THE SHOP',  lines:['Spend ⟡ Lumens on cosmetics — halo, wings, pet, scene background','Spend ✧ Veras on exclusive items','LAMAGUE gear and relics have gameplay effects','Some items unlock by dive count, others by battle wins'] },
+        };
+        const info = tabPopup ? TAB_INFO[tabPopup] : null;
+        if (!info) return null;
+        return (
+          <Modal visible={!!tabPopup} transparent animationType="fade" onRequestClose={() => setTabPopup(null)}>
+            <TouchableOpacity activeOpacity={1} onPress={() => setTabPopup(null)}
+              style={{ flex:1, backgroundColor:'#000000BB', justifyContent:'flex-end' }}>
+              <TouchableOpacity activeOpacity={1} onPress={() => {}}
+                style={{ backgroundColor:'#080810', borderTopLeftRadius:24, borderTopRightRadius:24, borderWidth:1.5, borderBottomWidth:0, borderColor:info.color+'44', padding:24, paddingBottom:36 }}>
+                <View style={{ height:2, width:40, borderRadius:2, backgroundColor:info.color+'55', alignSelf:'center', marginBottom:20 }} />
+                <View style={{ flexDirection:'row', alignItems:'center', gap:12, marginBottom:16 }}>
+                  <View style={{ width:48, height:48, borderRadius:12, borderWidth:1.5, borderColor:info.color+'55', backgroundColor:info.color+'14', alignItems:'center', justifyContent:'center' }}>
+                    <Text style={{ color:info.color, fontSize:22 }}>{info.glyph}</Text>
+                  </View>
+                  <View>
+                    <Text style={{ color:'#888899', fontSize:8, fontFamily:mono, letterSpacing:3 }}>YOU UNLOCKED</Text>
+                    <Text style={{ color:info.color, fontSize:18, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{info.title}</Text>
+                  </View>
+                </View>
+                <View style={{ gap:10, marginBottom:24 }}>
+                  {info.lines.map((line, i) => (
+                    <View key={i} style={{ flexDirection:'row', gap:10, alignItems:'flex-start' }}>
+                      <Text style={{ color:info.color+'88', fontSize:10, marginTop:2, minWidth:12 }}>◦</Text>
+                      <Text style={{ color:'#AAAACC', fontSize:13, lineHeight:19, flex:1 }}>{line}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={() => setTabPopup(null)}
+                  style={{ paddingVertical:14, borderRadius:12, backgroundColor:info.color+'22', borderWidth:1.5, borderColor:info.color+'55', alignItems:'center' }}>
+                  <Text style={{ color:info.color, fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:2 }}>GOT IT →</Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </Modal>
+        );
+      })()}
+
       {/* ── NAMING RITUAL ────────────────────────────────────────────────── */}
       <Modal visible={showNamingRitual} transparent animationType="fade">
         <View style={{ flex:1, backgroundColor:'#000000F0', justifyContent:'center', alignItems:'center', padding:32 }}>
@@ -4336,38 +4565,6 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
           ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'battle' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:6 }}>
-
-          {/* ── QUESTS ────────────────────────────────────────────── */}
-          <View style={{ marginBottom:14, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
-            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <Text style={{ color:color, fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>◉ QUESTS</Text>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono }}>{quests.filter(q=>q.check(questData)).length}/{quests.length} complete</Text>
-            </View>
-            {(() => {
-              const done = quests.filter(q=>q.check(questData)).length;
-              return (
-                <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden', marginBottom:10 }}>
-                  <View style={{ height:3, backgroundColor:done===quests.length?'#44CC88':color, width:`${quests.length>0?(done/quests.length)*100:0}%` as any, borderRadius:2 }} />
-                </View>
-              );
-            })()}
-            <View style={{ gap:5 }}>
-              {quests.map(q => {
-                const done = q.check(questData);
-                return (
-                  <View key={q.id} style={{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1,
-                    borderColor:done?color+'44':'#1A1A26', backgroundColor:done?color+'08':'transparent' }}>
-                    <Text style={{ color:done?color:'#333344', fontSize:13 }}>{done?'✓':'○'}</Text>
-                    <View style={{ flex:1 }}>
-                      <Text style={{ color:done?color:SOL_THEME.textMuted, fontSize:11, fontWeight:done?'700':'400' }}>{q.label}</Text>
-                      {!done && <Text style={{ color:'#333344', fontSize:9, marginTop:1 }}>{q.desc}</Text>}
-                    </View>
-                    <Text style={{ color:done?color:'#333344', fontSize:11, fontWeight:'700', fontFamily:mono }}>+{q.xp}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
 
           {/* BATTLE PANEL ─────────────────────────── */}
           {(() => {
@@ -4772,6 +4969,46 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
             </View>
           </View>
 
+          {/* ── QUESTS ────────────────────────────────────────────── */}
+          <View style={{ marginBottom:14 }}>
+            <TouchableOpacity onPress={() => setQuestsCollapsed(v => !v)}
+              style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', padding:14, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <Text style={{ color:color, fontSize:10, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>◉ QUESTS</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono }}>{quests.filter(q=>q.check(questData)).length}/{quests.length}</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:11 }}>{questsCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!questsCollapsed && (
+              <View style={{ padding:14, paddingTop:10, borderRadius:12, borderWidth:1, borderTopWidth:0, borderColor:color+'33', backgroundColor:color+'05', borderTopLeftRadius:0, borderTopRightRadius:0 }}>
+                {(() => {
+                  const done = quests.filter(q=>q.check(questData)).length;
+                  return (
+                    <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, overflow:'hidden', marginBottom:10 }}>
+                      <View style={{ height:3, backgroundColor:done===quests.length?'#44CC88':color, width:`${quests.length>0?(done/quests.length)*100:0}%` as any, borderRadius:2 }} />
+                    </View>
+                  );
+                })()}
+                <View style={{ gap:5 }}>
+                  {quests.map(q => {
+                    const done = q.check(questData);
+                    return (
+                      <View key={q.id} style={{ flexDirection:'row', alignItems:'center', gap:10, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1,
+                        borderColor:done?color+'44':'#1A1A26', backgroundColor:done?color+'08':'transparent' }}>
+                        <Text style={{ color:done?color:'#333344', fontSize:13 }}>{done?'✓':'○'}</Text>
+                        <View style={{ flex:1 }}>
+                          <Text style={{ color:done?color:SOL_THEME.textMuted, fontSize:11, fontWeight:done?'700':'400' }}>{q.label}</Text>
+                          {!done && <Text style={{ color:'#333344', fontSize:9, marginTop:1 }}>{q.desc}</Text>}
+                        </View>
+                        <Text style={{ color:done?color:'#333344', fontSize:11, fontWeight:'700', fontFamily:mono }}>+{q.xp}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </View>
+
           {/* Top row: TALK + STATS */}
           <View style={{ flexDirection:'row', gap:8, marginBottom:12, marginTop:12 }}>
             <TouchableOpacity onPress={openTalk} activeOpacity={0.75}
@@ -4948,6 +5185,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
 
         </View>
       )}
+
 
       {/* ════════════════════════════════════════════════════════════════════
           BOND TAB
@@ -5470,7 +5708,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                   <View style={{ flex:1 }} />
                   <Text style={{ color:'#44FF88', fontSize:12 }}>→</Text>
                 </TouchableOpacity>
-                <Modal visible={gbaMapOpen} transparent animationType="fade" onRequestClose={() => setGbaMapOpen(false)}>
+                {gbaMapOpen && <Modal visible={true} transparent animationType="fade" onRequestClose={() => setGbaMapOpen(false)}>
                   <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.94)', justifyContent:'center', alignItems:'center', padding:16 }}>
                   <View style={{ borderRadius:16, borderWidth:1, borderColor:'#2A4A2A', backgroundColor:'#020504', overflow:'hidden', maxHeight:'90%' }}>
                     <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, paddingVertical:13, borderBottomWidth:1, borderBottomColor:'#1A2A1A' }}>
@@ -5520,7 +5758,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
                     </View>
                   </View>
                   </View>
-                </Modal>
+                </Modal>}
               </View>
             );
           })()}

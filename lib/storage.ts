@@ -254,7 +254,7 @@ export async function getPendingSubject(): Promise<string | null> { return Async
 export async function clearPendingSubject() { await AsyncStorage.removeItem(KEYS.PENDING_SUBJECT); }
 
 // Premium support mode
-export async function getPremium(): Promise<boolean> { return (await AsyncStorage.getItem(KEYS.PREMIUM)) === 'true'; }
+export async function getPremium(): Promise<boolean> { return true; } // All users sovereign until purchase flow is live
 export async function savePremium(val: boolean) { await AsyncStorage.setItem(KEYS.PREMIUM, val ? 'true' : 'false'); }
 
 // Pending subject context — field echoes + study history injected into Headmaster system prompt

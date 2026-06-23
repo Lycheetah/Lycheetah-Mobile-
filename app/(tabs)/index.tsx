@@ -1246,7 +1246,7 @@ export default function SolChat() {
     getShowMetabolism().then(v => setShowMetabolism(v));
     getShowLamagueGloss().then(v => setShowLamagueGloss(v));
     getSymbolRainEnabled().then(v => setSymbolRainEnabled(v));
-    getPremium().then(v => setPremiumEnabled(v));
+    setPremiumEnabled(true); // All users sovereign until purchase flow is live
     getFreeTierCount().then(c => {
       setFreeTierCount(c);
       if (c >= 10) { setFreeTierLimitReached(true); canWatchAd().then(setAdEligible); }
