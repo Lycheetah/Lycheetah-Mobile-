@@ -2187,21 +2187,119 @@ type Quest     = { id: string; label: string; desc: string; xp: number; check: (
 type QuestData = { divesToday: number; journalToday: boolean; libraryToday: boolean; vigilActive: boolean; totalDives: number; divesThisWeek: number };
 
 const QUEST_POOL: Quest[] = [
-  { id: 'dive_today',  label: 'Enter the School',   desc: 'Complete at least one dive today.',          xp: 20, check: d => d.divesToday >= 1 },
-  { id: 'dive_two',    label: 'Double Session',     desc: 'Complete two dives today.',                  xp: 35, check: d => d.divesToday >= 2 },
-  { id: 'dive_three',  label: 'Triad of Study',     desc: 'Complete three dives today.',                xp: 50, check: d => d.divesToday >= 3 },
-  { id: 'journal',     label: 'Write in the Field', desc: 'Add a journal entry in the Sanctum today.',  xp: 20, check: d => d.journalToday },
-  { id: 'library',     label: 'Run the Forge',      desc: 'Score something in the Library today.',      xp: 25, check: d => d.libraryToday },
-  { id: 'deep_week',   label: 'Five This Week',     desc: 'Reach 5 dives in the past 7 days.',          xp: 40, check: d => d.divesThisWeek >= 5 },
-  { id: 'century',     label: 'Century Seeker',     desc: 'Reach 100 total dives.',                     xp: 100, check: d => d.totalDives >= 100 },
-  { id: 'open',        label: 'Open the Dialogue',  desc: 'Study or talk with Sol today.',              xp: 15, check: d => d.divesToday >= 1 },
+  // ── Single dive ──────────────────────────────────────────────────────────
+  { id:'q_first_light',   label:'First Light',         desc:'Complete one dive. Open the day.',               xp:20, check:d=>d.divesToday>=1 },
+  { id:'q_open_gate',     label:'Open the Gate',       desc:'Enter the School once today.',                   xp:20, check:d=>d.divesToday>=1 },
+  { id:'q_light_the_fire',label:'Light the Fire',      desc:'One dive. The furnace needs feeding.',           xp:20, check:d=>d.divesToday>=1 },
+  { id:'q_step_in',       label:'Step In',             desc:'Cross the threshold. One dive.',                 xp:20, check:d=>d.divesToday>=1 },
+  { id:'q_begin',         label:'The Work Begins',     desc:'Any dive. Start.',                               xp:15, check:d=>d.divesToday>=1 },
+  { id:'q_spark',         label:'The Spark',           desc:'Strike the first match. One session.',           xp:15, check:d=>d.divesToday>=1 },
+  // ── Two dives ─────────────────────────────────────────────────────────────
+  { id:'q_double',        label:'Double Session',      desc:'Two dives today. Depth compounds.',              xp:35, check:d=>d.divesToday>=2 },
+  { id:'q_two_doors',     label:'Two Doors',           desc:'Open two different domains today.',              xp:35, check:d=>d.divesToday>=2 },
+  { id:'q_the_pair',      label:'The Pair',            desc:'Complete two dives. The second is the real one.',xp:35, check:d=>d.divesToday>=2 },
+  { id:'q_coagulate',     label:'Coagulate',           desc:'Two sessions. Let the knowledge set.',           xp:35, check:d=>d.divesToday>=2 },
+  // ── Three dives ───────────────────────────────────────────────────────────
+  { id:'q_triad',         label:'Triad of Study',      desc:'Three dives. The triangle is complete.',         xp:50, check:d=>d.divesToday>=3 },
+  { id:'q_trinity',       label:'The Trinity',         desc:'Three sessions. Body, mind, field.',             xp:50, check:d=>d.divesToday>=3 },
+  { id:'q_three_fires',   label:'Three Fires',         desc:'Three dives. The Work is heating up.',           xp:50, check:d=>d.divesToday>=3 },
+  { id:'q_threshold_3',   label:'Third Threshold',     desc:'Three dives completed today.',                   xp:50, check:d=>d.divesToday>=3 },
+  // ── Four dives ────────────────────────────────────────────────────────────
+  { id:'q_four_elements', label:'Four Elements',       desc:'Four dives. Earth, water, fire, air — done.',   xp:65, check:d=>d.divesToday>=4 },
+  { id:'q_quadrant',      label:'The Quadrant',        desc:'Four sessions today. The map fills in.',         xp:65, check:d=>d.divesToday>=4 },
+  // ── Five dives today ─────────────────────────────────────────────────────
+  { id:'q_pentagram',     label:'The Pentagram',       desc:'Five dives in one day.',                         xp:80, check:d=>d.divesToday>=5 },
+  { id:'q_blitz',         label:'Knowledge Blitz',     desc:'Five sessions. This is a siege.',               xp:80, check:d=>d.divesToday>=5 },
+  // ── Journal ───────────────────────────────────────────────────────────────
+  { id:'q_journal',       label:'Write in the Field',  desc:'Add a journal entry in the Sanctum today.',      xp:20, check:d=>d.journalToday },
+  { id:'q_ink',           label:'Ink It',              desc:'Journal today. The record is the practice.',     xp:20, check:d=>d.journalToday },
+  { id:'q_the_witness',   label:'The Witness',         desc:'One journal entry. You observed. Now record.',   xp:20, check:d=>d.journalToday },
+  { id:'q_set_it',        label:'Set It in Stone',     desc:'Write in the Sanctum today.',                    xp:20, check:d=>d.journalToday },
+  { id:'q_sanctum_pen',   label:'Sanctum Pen',         desc:'Journal once. The Sanctum remembers everything.',xp:20, check:d=>d.journalToday },
+  { id:'q_chronicle',     label:'Chronicle Entry',     desc:'Record today in the Sanctum journal.',           xp:20, check:d=>d.journalToday },
+  // ── Library ───────────────────────────────────────────────────────────────
+  { id:'q_library',       label:'Run the Forge',       desc:'Score something in the Library today.',          xp:25, check:d=>d.libraryToday },
+  { id:'q_score_it',      label:'Score It',            desc:'Use the Library. Test what you know.',           xp:25, check:d=>d.libraryToday },
+  { id:'q_the_crucible',  label:'The Crucible',        desc:'Library today. Pressure tests the gold.',        xp:25, check:d=>d.libraryToday },
+  { id:'q_forge_run',     label:'Forge Run',           desc:'Score a Library session today.',                 xp:25, check:d=>d.libraryToday },
+  { id:'q_pressure',      label:'Truth Pressure',      desc:'Apply pressure to your knowledge. Library now.', xp:25, check:d=>d.libraryToday },
+  // ── Vigil ─────────────────────────────────────────────────────────────────
+  { id:'q_hold_the_vigil',label:'Hold the Vigil',      desc:'Have an active Vigil running.',                  xp:30, check:d=>d.vigilActive },
+  { id:'q_keep_watch',    label:'Keep Watch',          desc:'The Vigil must be lit. Keep it burning.',        xp:30, check:d=>d.vigilActive },
+  { id:'q_sentinel_eye',  label:'The Sentinel Eye',    desc:'Vigil active. The field stays hot.',             xp:30, check:d=>d.vigilActive },
+  { id:'q_the_flame',     label:'The Flame',           desc:'Light a Vigil and hold it.',                     xp:30, check:d=>d.vigilActive },
+  // ── Combos ────────────────────────────────────────────────────────────────
+  { id:'q_dive_journal',  label:'Study & Record',      desc:'One dive + one journal entry today.',            xp:40, check:d=>d.divesToday>=1 && d.journalToday },
+  { id:'q_full_session',  label:'The Full Session',    desc:'Dive + journal + library. All three.',           xp:65, check:d=>d.divesToday>=1 && d.journalToday && d.libraryToday },
+  { id:'q_the_method',    label:'The Method',          desc:'Study, write, test. The complete cycle.',        xp:65, check:d=>d.divesToday>=1 && d.journalToday && d.libraryToday },
+  { id:'q_dive_library',  label:'Study & Test',        desc:'One dive + Library session today.',              xp:45, check:d=>d.divesToday>=1 && d.libraryToday },
+  { id:'q_two_plus_j',    label:'Two and a Word',      desc:'Two dives and a journal entry.',                 xp:55, check:d=>d.divesToday>=2 && d.journalToday },
+  { id:'q_vigil_dive',    label:'Vigil and Study',     desc:'Active vigil + at least one dive.',              xp:50, check:d=>d.vigilActive && d.divesToday>=1 },
+  { id:'q_vigil_full',    label:'Vigil Full Circle',   desc:'Vigil + dive + journal. Total commitment.',      xp:75, check:d=>d.vigilActive && d.divesToday>=1 && d.journalToday },
+  // ── Weekly targets ────────────────────────────────────────────────────────
+  { id:'q_week1',         label:'First of the Week',   desc:'One dive this week.',                            xp:15, check:d=>d.divesThisWeek>=1 },
+  { id:'q_week2',         label:'Two This Week',       desc:'Two dives in the past 7 days.',                  xp:25, check:d=>d.divesThisWeek>=2 },
+  { id:'q_week3',         label:'Three This Week',     desc:'Three dives in the past 7 days.',                xp:30, check:d=>d.divesThisWeek>=3 },
+  { id:'q_week5',         label:'Five This Week',      desc:'Five dives in the past 7 days.',                 xp:40, check:d=>d.divesThisWeek>=5 },
+  { id:'q_week7',         label:'Seven This Week',     desc:'Seven dives this week. Full spectrum.',          xp:55, check:d=>d.divesThisWeek>=7 },
+  { id:'q_week10',        label:'Ten This Week',       desc:'Ten dives in seven days. Serious.',              xp:70, check:d=>d.divesThisWeek>=10 },
+  { id:'q_week14',        label:'Fourteen Sessions',   desc:'Two a day all week. That is the Work.',          xp:90, check:d=>d.divesThisWeek>=14 },
+  { id:'q_week20',        label:'Twenty This Week',    desc:'Twenty dives in seven days. Rare air.',          xp:120, check:d=>d.divesThisWeek>=20 },
+  { id:'q_week_journal',  label:'Weekly Record',       desc:'At least one journal entry this week.',          xp:20, check:d=>d.journalToday }, // proxy
+  // ── Total dive milestones ─────────────────────────────────────────────────
+  { id:'q_m5',            label:'First Five',          desc:'Reach 5 total dives.',                           xp:30, check:d=>d.totalDives>=5 },
+  { id:'q_m10',           label:'Ten Deep',            desc:'Ten total dives completed.',                     xp:40, check:d=>d.totalDives>=10 },
+  { id:'q_m25',           label:'Quarter Century',     desc:'25 total dives. The foundation is laid.',        xp:50, check:d=>d.totalDives>=25 },
+  { id:'q_m50',           label:'Fifty Sessions',      desc:'50 total dives. Halfway to one hundred.',        xp:60, check:d=>d.totalDives>=50 },
+  { id:'q_m75',           label:'Seventy-Five',        desc:'75 dives. The pattern is undeniable.',           xp:75, check:d=>d.totalDives>=75 },
+  { id:'q_m100',          label:'Century Seeker',      desc:'100 total dives. Legendary.',                    xp:100, check:d=>d.totalDives>=100 },
+  { id:'q_m150',          label:'Sesquicentennial',    desc:'150 total dives. Deep in the Work.',             xp:120, check:d=>d.totalDives>=150 },
+  { id:'q_m200',          label:'Two Hundred',         desc:'200 dives. The record speaks for itself.',       xp:150, check:d=>d.totalDives>=200 },
+  { id:'q_m300',          label:'The Three Hundreds',  desc:'300 total dives. The archive is vast.',          xp:175, check:d=>d.totalDives>=300 },
+  { id:'q_m500',          label:'The Five Hundred',    desc:'500 dives. Half a thousand. Sovereign.',         xp:250, check:d=>d.totalDives>=500 },
+  { id:'q_m750',          label:'Three Quarters',      desc:'750 total dives. Rare.',                         xp:300, check:d=>d.totalDives>=750 },
+  { id:'q_m1000',         label:'The Thousand',        desc:'1000 dives. The Work is real.',                  xp:500, check:d=>d.totalDives>=1000 },
+  // ── Sol-flavoured specifics ───────────────────────────────────────────────
+  { id:'q_dialogue',      label:'Open the Dialogue',   desc:'Study or talk with Sol today.',                  xp:15, check:d=>d.divesToday>=1 },
+  { id:'q_prove_it',      label:'Prove It',            desc:'Score the Library. Show it wasn\'t just talk.',  xp:25, check:d=>d.libraryToday },
+  { id:'q_no_excuses',    label:'No Excuses',          desc:'One dive. Today. That\'s it.',                   xp:20, check:d=>d.divesToday>=1 },
+  { id:'q_still_here',    label:'Still Here',          desc:'Open the app and dive. That\'s the whole quest.',xp:15, check:d=>d.divesToday>=1 },
+  { id:'q_momentum',      label:'Momentum',            desc:'Three dives in one day. Keep the wave moving.',  xp:50, check:d=>d.divesToday>=3 },
+  { id:'q_the_arc',       label:'The Arc',             desc:'Five dives this week — you are building an arc.',xp:40, check:d=>d.divesThisWeek>=5 },
+  { id:'q_grind',         label:'The Grind',           desc:'Four dives today. No philosophy. Just reps.',    xp:65, check:d=>d.divesToday>=4 },
+  { id:'q_all_in',        label:'All In',              desc:'Five dives + journal + library today.',          xp:90, check:d=>d.divesToday>=5 && d.journalToday && d.libraryToday },
+  { id:'q_whisper',       label:'The Whisper',         desc:'One quiet dive. Not for the record — for you.',  xp:15, check:d=>d.divesToday>=1 },
+  { id:'q_signal',        label:'Clear Signal',        desc:'Two dives, no noise. Quality over speed.',       xp:35, check:d=>d.divesToday>=2 },
+  { id:'q_the_return',    label:'The Return',          desc:'You\'re back. One dive. That\'s the whole thing.',xp:20, check:d=>d.divesToday>=1 },
+  { id:'q_the_record',    label:'The Record',          desc:'Journal + library. Leave evidence of the work.',  xp:40, check:d=>d.journalToday && d.libraryToday },
+  { id:'q_ten_and_j',     label:'Ten Sessions + Notes',desc:'10 total dives and a journal entry today.',      xp:45, check:d=>d.totalDives>=10 && d.journalToday },
+  { id:'q_fifty_fire',    label:'Fifty and Burning',   desc:'50 total dives and active vigil.',               xp:80, check:d=>d.totalDives>=50 && d.vigilActive },
+  { id:'q_accumulate',    label:'Accumulate',          desc:'Twenty-five total dives. Slow and sure.',        xp:50, check:d=>d.totalDives>=25 },
+  { id:'q_obsidian',      label:'Obsidian Threshold',  desc:'50 total dives. Past the point of return.',      xp:60, check:d=>d.totalDives>=50 },
+  { id:'q_sovereign',     label:'Sovereign Record',    desc:'100 total dives. Sovereign-tier.',               xp:100, check:d=>d.totalDives>=100 },
+  { id:'q_deep_week2',    label:'Deep Week',           desc:'Seven dives in the last 7 days.',                xp:55, check:d=>d.divesThisWeek>=7 },
+  { id:'q_week_grind',    label:'Week Grind',          desc:'Ten dives this week. Committed.',                xp:70, check:d=>d.divesThisWeek>=10 },
+  { id:'q_week_fire',     label:'Fire Week',           desc:'Five dives + vigil active this week.',           xp:60, check:d=>d.divesThisWeek>=5 && d.vigilActive },
+  { id:'q_library_dive',  label:'Test What You Learned',desc:'Dive then hit the Library. Same day.',          xp:45, check:d=>d.divesToday>=1 && d.libraryToday },
+  { id:'q_witness',       label:'The Witness',         desc:'Journal + one dive. Observe and record.',        xp:40, check:d=>d.divesToday>=1 && d.journalToday },
+  { id:'q_complete_cycle',label:'The Complete Cycle',  desc:'Dive → journal → library. In one day.',          xp:65, check:d=>d.divesToday>=1 && d.journalToday && d.libraryToday },
+  { id:'q_triple_three',  label:'Triple Three',        desc:'Three dives + journal + library.',               xp:75, check:d=>d.divesToday>=3 && d.journalToday && d.libraryToday },
+  { id:'q_vigil_burn',    label:'Vigil Burn',          desc:'Keep the vigil lit. Just keep it lit.',          xp:30, check:d=>d.vigilActive },
+  { id:'q_the_forge',     label:'The Forge',           desc:'Library session. You tested yourself today.',    xp:25, check:d=>d.libraryToday },
+  { id:'q_the_pen',       label:'The Pen',             desc:'Write something in the Sanctum.',                xp:20, check:d=>d.journalToday },
+  { id:'q_show_up',       label:'Show Up',             desc:'One dive. Showing up is the practice.',          xp:15, check:d=>d.divesToday>=1 },
+  { id:'q_the_heat',      label:'The Heat',            desc:'Vigil active. The work stays warm.',             xp:30, check:d=>d.vigilActive },
+  { id:'q_ink_fire',      label:'Ink and Fire',        desc:'Journal today while vigil burns.',               xp:45, check:d=>d.journalToday && d.vigilActive },
+  { id:'q_clean_sweep',   label:'Clean Sweep',         desc:'Dive + journal + library + vigil. All four.',    xp:85, check:d=>d.divesToday>=1 && d.journalToday && d.libraryToday && d.vigilActive },
+  { id:'q_two_week',      label:'Two Sessions Weekly', desc:'Two dives in the past 7 days.',                  xp:25, check:d=>d.divesThisWeek>=2 },
+  { id:'q_three_week',    label:'Three Sessions Weekly',desc:'Three dives this week.',                        xp:30, check:d=>d.divesThisWeek>=3 },
 ];
 
 function getDailyQuests(seed: number): Quest[] {
   return [...QUEST_POOL]
     .map((q, i) => ({ q, h: Math.abs((seed * (i + 1) * 9301 + 49297) % 233280) }))
     .sort((a, b) => a.h - b.h)
-    .slice(0, 3)
+    .slice(0, 5)
     .map(x => x.q);
 }
 
