@@ -1,8 +1,8 @@
-// COMMITTED FALLBACK — keep BLANK. Never put real keys here (this file is public).
-// Real keys live ONLY in lib/dev-keys.local.ts (gitignored). storage.ts loads
-// .local first and falls back to this. The real fix is the #22 Cloudflare proxy
-// so a key never ships at all (preserves free-Sol covenant without exposure).
+// Build-time keys injected via EAS Secrets as EXPO_PUBLIC_ env vars.
+// Set via: eas secret:create --scope project --name EXPO_PUBLIC_GEMINI_KEY --value "..."
+// Local override: lib/dev-keys.local.ts (gitignored).
 export const DEV_KEYS: Record<string, string> = {
-  nvidia: '',
-  deepseek: '',
+  gemini:   process.env.EXPO_PUBLIC_GEMINI_KEY   || '',
+  nvidia:   process.env.EXPO_PUBLIC_NVIDIA_KEY   || '',
+  deepseek: process.env.EXPO_PUBLIC_DEEPSEEK_KEY || '',
 };
