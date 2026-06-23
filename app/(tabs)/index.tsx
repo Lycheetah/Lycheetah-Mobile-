@@ -27,6 +27,7 @@ import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { buildMagisterSystemPrompt } from '../data/task4_magister_context';
 import { CareEvents } from '../../lib/care-events';
+import { openEmergencyBeacon } from '../../components/EmergencyBeacon';
 import { REPLY_STYLES, ReplyStyleId, DEFAULT_STYLE_ID, getStyle } from '../../lib/reply-styles';
 import { saveReplyStyle, getReplyStyle } from '../../lib/storage';
 import ConversationDrawer from '../../components/ConversationDrawer';
@@ -1080,6 +1081,9 @@ export default function SolChat() {
               <Text style={{ color: accent + 'AA', fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>↑</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity onPress={openEmergencyBeacon} activeOpacity={0.7} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={{ color: accent + '88', fontSize: 15 }}>⊕</Text>
+          </TouchableOpacity>
         </View>
       ),
     });

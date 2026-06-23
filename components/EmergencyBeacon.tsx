@@ -29,11 +29,20 @@ const CRISIS_LINES = [
   { label: 'UK — 116 123', number: '116123' },
 ];
 
+// Module-level opener — call openEmergencyBeacon() from anywhere to show the beacon
+let _beaconOpen: (() => void) | null = null;
+export function openEmergencyBeacon() { _beaconOpen?.(); }
+
 export function EmergencyBeacon() {
   const [visible, setVisible] = useState(false);
   const [phaseIdx, setPhaseIdx] = useState(0);
 
-  // Subscribe to care events — auto-open crisis modal on CRISIS level
+  // Register module-level opener + subscribe to care events
+  useEffect(() => {
+    _beaconOpen = () => setVisible(true);
+    return () => { _beaconOpen = null; };
+  }, []);
+
   useEffect(() => {
     return CareEvents.subscribe(level => {
       if (level === 'CRISIS') setVisible(true);
