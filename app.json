@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sovereign Sol",
     "slug": "lycheetah-mobile",
-    "version": "5.5.5",
+    "version": "5.5.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -26,7 +26,7 @@
         "backgroundColor": "#0A0A0A"
       },
       "package": "com.lycheetah.sol",
-      "versionCode": 10,
+      "versionCode": 11,
       "permissions": []
     },
     "web": {
@@ -44,9 +44,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "55350e14-5cdc-4a5f-8a0e-735bca572dd3"
+        "projectId": "cf2e44a8-7e1c-4c47-b87e-dfd1151ae822"
       }
     },
-    "owner": "solveyra"
+    "owner": "lychetaahsol"
   }
 }
