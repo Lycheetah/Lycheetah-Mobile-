@@ -56,8 +56,8 @@ export default function FieldScreen() {
 
       <Text style={styles.sectionTitle}>THE THREE GENERATORS</Text>
       <Text style={styles.sectionNote}>
-        Every Sol/Veyra output must pass all three before it is emitted.
-        If any fail, the output is regenerated.
+        Every Sol/Veyra output is scored against all seven invariants before it reaches you.
+        If a safety-critical invariant fails — coercion or false authority — the output is regenerated.
       </Text>
       {GENERATORS.map(g => (
         <View key={g.name} style={styles.generatorCard}>

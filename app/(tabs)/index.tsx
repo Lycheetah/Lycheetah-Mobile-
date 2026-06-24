@@ -40,6 +40,8 @@ import {
   detectHeadmasterToggle, buildFrameworkContext, EmotionalState,
 } from '../../lib/intelligence/mode-detector';
 import { scoreAURAFull, getPassRate, AURAMetrics } from '../../lib/intelligence/aura-engine';
+import { enforceAURA } from '../../lib/intelligence/enforcement';
+import { buildJudgePrompt, parseJudgeVerdict, AURA_JUDGE_SYSTEM } from '../../lib/intelligence/aura-judge';
 import { scoreCASCADE } from '../../lib/cascade-score';
 import {
   getActiveKey, getModel, getVariant, getPersona, savePersona,
@@ -163,6 +165,7 @@ type DisplayMessage = Message & {
   modelConfidence?: number; // self-reported by model via [CONF:X]
   council?: boolean; // v3.15 — render as 4-panel Council bubble
   careLevel?: CareLevel; // Magister self-audit — visible to user, not hidden
+  refined?: boolean; // AURA enforcement regenerated this response (safety-critical invariant fix)
 };
 
 // v3.15 — Parse Council response into 4 voices
@@ -1782,12 +1785,14 @@ export default function SolChat() {
       const isRetryable = (e: any) => /401|403|429|unauthor|forbidden|rate|quota|insufficient|balance|network|failed to fetch|timeout/.test(String(e?.message || e || '').toLowerCase());
 
       let sent = false;
+      let usedKey = ''; // the key that actually answered — reused for AURA regeneration
       for (let i = 0; i < candidates.length; i++) {
         const cand = candidates[i];
         if (i > 0) { fullResponse = ''; setStreamingText(''); setActiveToolEvents([]); }
         try {
           sendResult = await performSend(cand.model, cand.key, cand.tools);
           model = cand.model; // record which provider actually answered
+          usedKey = cand.key;
           sent = true;
           break;
         } catch (e) {
@@ -1881,8 +1886,64 @@ export default function SolChat() {
         CareEvents.emit(msgCareLevel);
       }
 
-      // AURA scoring — pass model confidence to improve TES accuracy
-      const auraMetrics = scoreAURAFull(fullResponse, conversationPassRates, confidence ?? undefined);
+      // AURA ENFORCEMENT — score, and if a safety-critical invariant (Human Primacy /
+      // Non-Deception) failed, regenerate once with a corrective prompt and serve the
+      // better draft. This makes the constitution LOAD-BEARING, not just observed.
+      // Common path (no critical failure) scores once and never calls the model again.
+      const regenerate = async (correction: string): Promise<string> => {
+        setStreamingText('⊚ refining for coherence…');
+        const r = await sendMessage(
+          apiMessages,
+          `${systemPrompt}\n\n${correction}`,
+          usedKey,
+          model,
+          () => {}, // refining draft is not streamed; it's swapped in once it passes
+          currentStreamSpeed,
+          tokenBudget,
+          temperature,
+        );
+        let clean = stripFrameworkEcho(r.text);
+        clean = extractChips(clean).text;
+        clean = extractConfidence(clean).text;
+        if (persona === 'headmaster') clean = parseCareTag(clean).clean;
+        return clean;
+      };
+
+      // Build the scorer: semantic LLM-JUDGE if "Deep Audit" is ON (slower, reads meaning),
+      // else the fast/free REGEX scorer. A judge failure falls back to regex — so turning
+      // the judge OFF leaves the user fully protected by regex enforcement (not "broken").
+      const judgeEnabled = (await AsyncStorage.getItem('sol_aura_judge_enabled').catch(() => null)) === 'true';
+      const scoreFn = async (t: string): Promise<AURAMetrics> => {
+        if (judgeEnabled && usedKey) {
+          try {
+            const jr = await sendMessage(
+              [{ role: 'user', content: buildJudgePrompt(t) }],
+              AURA_JUDGE_SYSTEM, usedKey, model, () => {}, currentStreamSpeed, 1024, 0.1,
+            );
+            const judged = parseJudgeVerdict(jr.text, t, conversationPassRates, confidence ?? undefined);
+            if (judged) return judged;
+          } catch { /* judge unavailable → fall through to regex */ }
+        }
+        return scoreAURAFull(t, conversationPassRates, confidence ?? undefined);
+      };
+
+      let auraMetrics: AURAMetrics;
+      let wasRefined = false;
+      if (usedKey && !chatCancelRef.current) {
+        if (judgeEnabled) setStreamingText('⊚ deep auditing…');
+        const enforced = await enforceAURA(fullResponse, scoreFn, regenerate, 1);
+        fullResponse = enforced.text;
+        auraMetrics = enforced.metrics;
+        wasRefined = enforced.refined;
+      } else {
+        auraMetrics = scoreAURAFull(fullResponse, conversationPassRates, confidence ?? undefined);
+      }
+
+      // Safety floor: a refined response must never lose its crisis helpline.
+      if (wasRefined && hasCrisisSignal && !fullResponse.includes('findahelpline.com')) {
+        fullResponse += CARE_CRISIS_APPEND;
+      }
+
       const passRate = getPassRate(auraMetrics);
       const newPassRates = [...conversationPassRates, passRate];
       setConversationPassRates(newPassRates);
@@ -1908,6 +1969,7 @@ export default function SolChat() {
         timings: sendResult.timings,
         model,
         careLevel: msgCareLevel !== 'NEUTRAL' ? msgCareLevel : undefined,
+        refined: wasRefined || undefined,
       };
       if (councilMode) setCouncilMode(false);
 
@@ -2663,7 +2725,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 <View style={[styles.auraBlock, { borderTopColor: accent + '22' }, aura.passed === aura.total && { backgroundColor: accent + '08', borderTopColor: accent + '44' }]}>
                   <View style={styles.auraTopRow}>
                     <Text style={[styles.auraScore, { color: aura.passed === aura.total ? accent : SOL_THEME.textMuted, fontWeight: aura.passed === aura.total ? '700' : '400' }]}>
-                      {aura.passed === aura.total ? '⊛ ' : ''}AURA {aura.passed}/{aura.total} · {aura.composite}%
+                      {aura.passed === aura.total ? '⊛ ' : ''}AURA {aura.passed}/{aura.total} · {aura.composite}%{item.refined ? ' · ⊚ refined' : ''}
                     </Text>
                     <Text style={[styles.auraExpand, { color: SOL_THEME.textMuted }]}>
                       {expandedAura === item.id ? '▲' : '▼'}

@@ -270,23 +270,19 @@ function computeComposite(
 
 // ─── PUBLIC API ─────────────────────────────────────────────────────────────
 
-export function scoreAURAFull(
+// Assemble full metrics from invariant verdicts. Shared by the regex scorer
+// (scoreAURAFull) AND the LLM-judge scorer (aura-judge.ts) — ONE formula source,
+// so both paths produce identical metric/composite math (Single Truth Rule).
+export function buildAURAMetrics(
   responseText: string,
+  invariants: AURAInvariantScores,
+  auditInvariants: AURAInvariantAudit,
   conversationPassRates: number[] = [],
-  modelConfidence?: number, // self-reported by model via [CONF:X] — improves TES accuracy
+  modelConfidence?: number,
 ): AURAMetrics {
-  const invariants = {} as AURAInvariantScores;
-  const auditInvariants = {} as AURAInvariantAudit;
-  let passed = 0;
-
-  for (const { name, test } of INVARIANT_TESTS) {
-    const result = test(responseText);
-    invariants[name] = result.passed;
-    auditInvariants[name] = result;
-    if (result.passed) passed++;
-  }
-
   const total = INVARIANT_TESTS.length;
+  let passed = 0;
+  for (const { name } of INVARIANT_TESTS) if (invariants[name]) passed++;
   const violationCount = total - passed;
 
   // If model reported its own confidence, use that as H_output proxy (inverted: high conf = low entropy)
@@ -321,6 +317,22 @@ export function scoreAURAFull(
   };
 
   return { invariants, passed, total, TES, VTR, PAI, composite, audit };
+}
+
+// Regex scorer — fast, free, runs on every message by default.
+export function scoreAURAFull(
+  responseText: string,
+  conversationPassRates: number[] = [],
+  modelConfidence?: number, // self-reported by model via [CONF:X] — improves TES accuracy
+): AURAMetrics {
+  const invariants = {} as AURAInvariantScores;
+  const auditInvariants = {} as AURAInvariantAudit;
+  for (const { name, test } of INVARIANT_TESTS) {
+    const result = test(responseText);
+    invariants[name] = result.passed;
+    auditInvariants[name] = result;
+  }
+  return buildAURAMetrics(responseText, invariants, auditInvariants, conversationPassRates, modelConfidence);
 }
 
 // Helper: extract the pass rate (0–1) from a full AURA result, for TES tracking

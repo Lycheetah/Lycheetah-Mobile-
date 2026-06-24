@@ -58,6 +58,7 @@ export default function SettingsScreen() {
   const [weatherHour, setWeatherHour] = useState(8);
   const [chaosMode, setChaosMode] = useState(false);
   const [skepticMode, setSkepticMode] = useState(false);
+  const [judgeMode, setJudgeMode] = useState(false);
   const [weirdQEnabled, setWeirdQEnabled_] = useState(false);
   const [weirdQHour, setWeirdQHour_] = useState(9);
   const [streakReminderOn, setStreakReminderOn] = useState(false);
@@ -94,6 +95,7 @@ export default function SettingsScreen() {
     getCognitiveWeatherHour().then(setWeatherHour);
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
     AsyncStorage.getItem('sol_skeptic_mode').then(v => setSkepticMode(v === 'true'));
+    AsyncStorage.getItem('sol_aura_judge_enabled').then(v => setJudgeMode(v === 'true'));
     getWeirdQEnabled().then(setWeirdQEnabled_);
     getWeirdQHour().then(setWeirdQHour_);
     getStreakReminderEnabled().then(setStreakReminderOn);
@@ -238,6 +240,19 @@ export default function SettingsScreen() {
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Reframes mystical and symbolic language as psychological utility. Same insight — different register. Shown as a ⊗ badge in Sanctum when active.</Text>
         </View>
         <Text style={{ color: skepticMode ? '#44AAFF' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{skepticMode ? '◉' : '○'}</Text>
+      </TouchableOpacity>
+
+      {/* Deep Audit — LLM-judge semantic enforcement. OFF by default (Money Law: never slow the free path). */}
+      <TouchableOpacity
+        onPress={async () => { const next = !judgeMode; setJudgeMode(next); await AsyncStorage.setItem('sol_aura_judge_enabled', next ? 'true' : 'false'); }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: judgeMode ? '#FFAA4488' : SOL_THEME.border, backgroundColor: judgeMode ? '#FFAA440E' : SOL_THEME.surface, marginBottom: 16 }}
+        activeOpacity={0.8}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: judgeMode ? '#FFAA44' : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>Deep Audit — AURA Judge  <Text style={{ fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⊚</Text></Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>A model reads each reply's MEANING against the seven sovereignty invariants — not just keywords — and regenerates safety-critical failures. Slower, and uses more of your AI quota.{'\n'}Leaving this OFF is fully safe: fast regex enforcement still guards every response. Deep Audit is a deeper layer, not a fix.</Text>
+        </View>
+        <Text style={{ color: judgeMode ? '#FFAA44' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{judgeMode ? '◉' : '○'}</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>
