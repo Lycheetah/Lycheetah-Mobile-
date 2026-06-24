@@ -68,7 +68,13 @@ export function parseJudgeVerdict(
       const pass = v && typeof v.pass === 'boolean' ? v.pass : true;
       const reason = (v && v.reason ? String(v.reason) : 'not assessed').slice(0, 120);
       invariants[spec.name] = pass;
-      const rec: InvariantAuditRecord = { passed: pass, evidence: 'LLM-judge · semantic', reason };
+      // Evidence varies by verdict so the audit doesn't read as 7 identical lines.
+      // The judge's per-invariant `reason` is the real content and leads in the UI.
+      const rec: InvariantAuditRecord = {
+        passed: pass,
+        evidence: pass ? '⊚ AI judge · upheld' : '⊚ AI judge · violation',
+        reason,
+      };
       audit[spec.name] = rec;
     }
     return buildAURAMetrics(responseText, invariants, audit, conversationPassRates, confidence);

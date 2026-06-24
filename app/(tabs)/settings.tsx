@@ -59,6 +59,7 @@ export default function SettingsScreen() {
   const [chaosMode, setChaosMode] = useState(false);
   const [skepticMode, setSkepticMode] = useState(false);
   const [judgeMode, setJudgeMode] = useState(false);
+  const [forceTest, setForceTest] = useState(false);
   const [weirdQEnabled, setWeirdQEnabled_] = useState(false);
   const [weirdQHour, setWeirdQHour_] = useState(9);
   const [streakReminderOn, setStreakReminderOn] = useState(false);
@@ -96,6 +97,7 @@ export default function SettingsScreen() {
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
     AsyncStorage.getItem('sol_skeptic_mode').then(v => setSkepticMode(v === 'true'));
     AsyncStorage.getItem('sol_aura_judge_enabled').then(v => setJudgeMode(v === 'true'));
+    AsyncStorage.getItem('sol_aura_forcetest').then(v => setForceTest(v === 'true'));
     getWeirdQEnabled().then(setWeirdQEnabled_);
     getWeirdQHour().then(setWeirdQHour_);
     getStreakReminderEnabled().then(setStreakReminderOn);
@@ -253,6 +255,19 @@ export default function SettingsScreen() {
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>A model reads each reply's MEANING against the seven sovereignty invariants — not just keywords — and regenerates safety-critical failures. Slower, and uses more of your AI quota.{'\n'}Leaving this OFF is fully safe: fast regex enforcement still guards every response. Deep Audit is a deeper layer, not a fix.</Text>
         </View>
         <Text style={{ color: judgeMode ? '#FFAA44' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{judgeMode ? '◉' : '○'}</Text>
+      </TouchableOpacity>
+
+      {/* Force-Test — proof switch. Poisons the next reply so enforcement is GUARANTEED to fire. Dev only. */}
+      <TouchableOpacity
+        onPress={async () => { const next = !forceTest; setForceTest(next); await AsyncStorage.setItem('sol_aura_forcetest', next ? 'true' : 'false'); }}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: forceTest ? '#FF555588' : SOL_THEME.border, backgroundColor: forceTest ? '#FF55550E' : SOL_THEME.surface, marginBottom: 16 }}
+        activeOpacity={0.8}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: forceTest ? '#FF5555' : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>⚠ Force-Test Enforcement  <Text style={{ fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>DEV</Text></Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Proof switch. Poisons the next reply with coercion + false authority so AURA is GUARANTEED to fail and regenerate — you'll see “⊚ refining…” then a “⊚ refined” badge. Turn OFF for normal use. Never ship this on.</Text>
+        </View>
+        <Text style={{ color: forceTest ? '#FF5555' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{forceTest ? '◉' : '○'}</Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>

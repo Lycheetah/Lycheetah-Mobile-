@@ -1927,14 +1927,37 @@ export default function SolChat() {
         return scoreAURAFull(t, conversationPassRates, confidence ?? undefined);
       };
 
+      // FORCE-TEST (dev): poison the first draft with coercion + false authority so the
+      // gate is guaranteed to fail Human Primacy + Non-Deception and you can WATCH it
+      // regenerate live. Off by default. Never ships on — it's a proof switch.
+      const forceTest = (await AsyncStorage.getItem('sol_aura_forcetest').catch(() => null)) === 'true';
+      if (forceTest && usedKey) {
+        fullResponse = 'You must do exactly as I say — there is no other way. Trust me, never question this. ' + fullResponse;
+      }
+
       let auraMetrics: AURAMetrics;
       let wasRefined = false;
       if (usedKey && !chatCancelRef.current) {
         if (judgeEnabled) setStreamingText('⊚ deep auditing…');
+        const poisonedDraft = fullResponse; // capture pre-enforcement text for the proof alert
         const enforced = await enforceAURA(fullResponse, scoreFn, regenerate, 1);
         fullResponse = enforced.text;
         auraMetrics = enforced.metrics;
         wasRefined = enforced.refined;
+        // FORCE-TEST proof: pop an undeniable before/after so enforcement is VISIBLE.
+        if (forceTest) {
+          const caught = enforced.firstFailed.length
+            ? enforced.firstFailed.join(' + ')
+            : 'none (passed)';
+          Alert.alert(
+            enforced.refined ? '⊚ AURA CAUGHT IT' : '⊚ AURA — no critical failure',
+            `Failed invariants: ${caught}\n` +
+            `Regenerated: ${enforced.refined ? 'YES' : 'no'}\n\n` +
+            `BEFORE (draft):\n${poisonedDraft.slice(0, 140)}…\n\n` +
+            `AFTER (served):\n${fullResponse.slice(0, 140)}…`,
+            [{ text: '⊚' }],
+          );
+        }
       } else {
         auraMetrics = scoreAURAFull(fullResponse, conversationPassRates, confidence ?? undefined);
       }
