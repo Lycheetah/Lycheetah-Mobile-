@@ -40,6 +40,16 @@ function blockUnderPressure(b: CascadeBlock): boolean {
   return axiom > PRESSURE_AXIOM_MIN && coherence < PRESSURE_COHERENCE_MAX;
 }
 
+// TUNING (Mac's call): raw Π is unbounded and runs OPPOSITE the score, which misreads as a number.
+// Band it into a pressure STATE so high-pressure reads as a warning, not an achievement. Raw Π is
+// kept in the editor audit. Thresholds are tunable.
+function piBand(pi: number): { label: string; color: string } {
+  if (pi < 100) return { label: 'LOW',      color: '#4ade80' };
+  if (pi < 200) return { label: 'MODERATE', color: '#facc15' };
+  if (pi < 350) return { label: 'HIGH',     color: '#fb923c' };
+  return { label: 'EXTREME', color: '#f87171' };
+}
+
 export default function CascadeBuilderScreen() {
   const [blocks, setBlocks] = useState<CascadeBlock[]>([]);
   const [editing, setEditing] = useState<CascadeBlock | null>(null);
@@ -110,7 +120,7 @@ export default function CascadeBuilderScreen() {
           <Text style={[styles.readoutScore, { color: live!.band.textColor }]}>{live!.score || '—'}</Text>
           <View style={{ flex: 1 }}>
             <Text style={[styles.readoutBand, { color: live!.band.textColor }]}>{live!.band.label}</Text>
-            <Text style={styles.readoutPi}>Π {live!.pi}</Text>
+            <Text style={[styles.readoutPi, { color: piBand(live!.pi).color }]}>{piBand(live!.pi).label} PRESSURE · Π {live!.pi}</Text>
           </View>
           {live!.underPressure && <Text style={styles.pressureFlag}>⚡ PRESSURE</Text>}
         </View>
@@ -226,7 +236,7 @@ export default function CascadeBuilderScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.blockClaim} numberOfLines={2}>{b.claim || '(untitled claim)'}</Text>
               <Text style={[styles.blockBand, { color: band.textColor }]}>
-                {band.label} · Π {computePi(b.layers, 'sovereign')}{pressure ? '  ⚡ restructuring imminent' : ''}
+                {band.label} · <Text style={{ color: piBand(computePi(b.layers, 'sovereign')).color }}>{piBand(computePi(b.layers, 'sovereign')).label} pressure</Text>{pressure ? '  ⚡' : ''}
               </Text>
             </View>
             <Text style={[styles.blockScore, { color: band.textColor }]}>{score || '—'}</Text>

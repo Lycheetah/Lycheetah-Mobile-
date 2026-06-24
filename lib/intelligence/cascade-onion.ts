@@ -188,7 +188,11 @@ export function computeBlockScore(layers: LayerData[], mode: ScoreMode = 'framew
   });
   const raw = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
-  const coherenceMultiplier = coherence > 0 ? Math.max(0.3, effectiveS / 100) : 1.0;
+  // Coherence floor raised 0.3 → 0.5 (Mac's calibration call, June 24). At 0.3 the multiplier
+  // crushed every low-coherence claim into a ~15 mush — contested claims were indistinguishable.
+  // 0.5 widens the contested band (~20–45) while keeping the hierarchy (contested still < solid).
+  // Deliberate fork from the Cicada source's 0.3. Post-hoc/tunable, like S₀.
+  const coherenceMultiplier = coherence > 0 ? Math.max(0.5, effectiveS / 100) : 1.0;
   const afterCoherence = raw * coherenceMultiplier;
 
   const resonance = effectiveScores[4] || 0;
