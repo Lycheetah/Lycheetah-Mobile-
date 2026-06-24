@@ -3,8 +3,10 @@
 // v1: sovereign-only (you write + score your own layers). href:null — launched from School later.
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../../constants/theme';
+import { makeSeedBlocks, CASCADE_SEED_FLAG } from '../../lib/intelligence/cascade-seed';
 import {
   ONION_LAYERS,
   computeBlockScore,
@@ -15,6 +17,7 @@ import {
 import {
   createEmptyBlock,
   loadNetwork,
+  saveNetwork,
   upsertBlock,
   deleteBlock,
   networkPi,
@@ -22,21 +25,38 @@ import {
   type CascadeBlock,
 } from '../../lib/intelligence/cascade-store';
 
-const STEP = 5;
+const STEP = 5; // sovereign-score increment per tap
 
-// A block is "under pressure" when a strong claim's coherence is being eaten — restructuring
-// imminent. The truth-pressure made visible (same rule as the editor readout).
+// TUNING (Mac's call): a block is "under pressure" when a strong claim's coherence is being
+// eaten — restructuring imminent. These two thresholds decide when the ⚡ glow fires. Surfaced
+// as named constants so they're easy to tune deliberately rather than buried as magic numbers.
+const PRESSURE_AXIOM_MIN = 50;     // claim must be at least this strong to count as "load-bearing"
+const PRESSURE_COHERENCE_MAX = 40; // …and its coherence this low to count as "under pressure"
+
+// The truth-pressure made visible. Single source of truth for both the list glow and editor flag.
 function blockUnderPressure(b: CascadeBlock): boolean {
   const axiom = b.layers[0]?.sovereign_score || 0;
   const coherence = b.layers[3]?.sovereign_score || 0;
-  return axiom > 50 && coherence < 40;
+  return axiom > PRESSURE_AXIOM_MIN && coherence < PRESSURE_COHERENCE_MAX;
 }
 
 export default function CascadeBuilderScreen() {
   const [blocks, setBlocks] = useState<CascadeBlock[]>([]);
   const [editing, setEditing] = useState<CascadeBlock | null>(null);
 
-  useEffect(() => { loadNetwork().then(setBlocks); }, []);
+  // First open: seed the example AI-knowledge pyramid once (then it's the user's to edit/delete).
+  useEffect(() => {
+    (async () => {
+      const net = await loadNetwork();
+      if (net.length > 0) { setBlocks(net); return; }
+      const seeded = await AsyncStorage.getItem(CASCADE_SEED_FLAG);
+      if (seeded) { setBlocks([]); return; } // user cleared it — respect that
+      const seed = makeSeedBlocks();
+      await saveNetwork(seed);
+      await AsyncStorage.setItem(CASCADE_SEED_FLAG, 'true');
+      setBlocks(seed);
+    })();
+  }, []);
 
   // ── Live computed readouts for the block being edited (sovereign track) ──
   const live = useMemo(() => {
@@ -44,10 +64,7 @@ export default function CascadeBuilderScreen() {
     const score = computeBlockScore(editing.layers, 'sovereign');
     const pi = computePi(editing.layers, 'sovereign');
     const band = getScoreBand(score);
-    const axiom = editing.layers[0]?.sovereign_score || 0;
-    const coherence = editing.layers[3]?.sovereign_score || 0;
-    // Pressure warning: a strong claim whose coherence is being eaten = restructuring imminent.
-    const underPressure = axiom > 50 && coherence < 40;
+    const underPressure = blockUnderPressure(editing); // single source of truth
     return { score, pi, band, underPressure };
   }, [editing]);
 
