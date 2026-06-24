@@ -229,6 +229,7 @@ export default function TabLayout() {
         <Tabs.Screen name="customize" options={{ href: null, title: 'CUSTOMIZE' }} />
         <Tabs.Screen name="modes" options={{ href: null, title: 'FIELD' }} />
         <Tabs.Screen name="workshop" options={{ href: null, title: 'WORKSHOP' }} />
+        <Tabs.Screen name="cascade" options={{ href: null, title: 'CASCADE' }} />
       </Tabs>
 
       {/* ── WELCOME TOUR — first-open guided walkthrough (re-openable via ? help) ── */}

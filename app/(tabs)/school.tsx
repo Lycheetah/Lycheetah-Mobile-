@@ -4940,7 +4940,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
                 { glyph: '◈', label: 'RANDOM',   color: SOL_THEME.headmaster, onPress: randomDive },
                 { glyph: '◬', label: 'LIBRARY',  color: '#4A9EFF',            onPress: () => router.push('/library') },
                 { glyph: '𝔏', label: 'CODEX',    color: '#C8A96E',            onPress: async () => { await AsyncStorage.setItem('codex_open_domains', 'true'); router.push('/(tabs)/codex'); } },
-                { glyph: '⌘', label: 'MYCELIUM', color: '#2ECC71',            onPress: () => setSchoolView('mycelium') },
+                { glyph: '△', label: 'CASCADE',  color: '#C084FC',            onPress: () => router.push('/(tabs)/cascade') },
                 { glyph: '◈', label: 'TIME BRAID', color: '#4ECDC4',          onPress: () => { setTimeBraidView('list'); setSchoolView('time-braiding'); }, badge: timeBraidDue.length > 0 ? String(timeBraidDue.length) : undefined },
                 { glyph: '⟟', label: 'LAMAGUE',  color: '#E8D4A0',            onPress: () => { setGlyphSearch(''); setGlyphExpandedId(null); setLamagueSection('glyphs'); setSchoolView('lamague'); } },
                 { glyph: '✦', label: 'SCRIPTORIUM', color: '#B06BE0',        onPress: () => setSchoolView('scriptorium') },
