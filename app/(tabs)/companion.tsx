@@ -4051,9 +4051,41 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                 {/* Header */}
                 <Text style={{ color:'#888899', fontSize:9, letterSpacing:4, fontFamily:mono, textAlign:'center', marginBottom:4 }}>COMPANIONS</Text>
                 <Text style={{ color:'#F5E6C8', fontSize:20, fontWeight:'700', letterSpacing:1, fontFamily:mono, textAlign:'center', marginBottom:8 }}>Choose who you become.</Text>
-                <Text style={{ color:'#444455', fontSize:11, textAlign:'center', lineHeight:18, marginBottom:48 }}>
+                <Text style={{ color:'#444455', fontSize:11, textAlign:'center', lineHeight:18, marginBottom:32 }}>
                   This is permanent. Choose well.
                 </Text>
+                {/* Archetype cards — same data as the change-archetype picker */}
+                {ARCHETYPE_IDS.filter(id => id !== 'lycheetah').map(id => {
+                  const a = ARCHETYPES[id];
+                  const aColor = SKINS[a.defaultSkin].color;
+                  return (
+                    <TouchableOpacity key={id}
+                      onPress={() => handleSummonChoice(id)}
+                      activeOpacity={0.75}
+                      style={{ marginBottom:12, padding:16, borderRadius:14, borderWidth:1, borderColor:aColor+'55', backgroundColor:aColor+'0A' }}>
+                      <View style={{ flexDirection:'row', alignItems:'center', gap:14, marginBottom:8 }}>
+                        <View style={{ width:56, height:56, borderRadius:12, borderWidth:1.5, borderColor:aColor+'55', backgroundColor:aColor+'18', alignItems:'center', justifyContent:'center' }}>
+                          <Text style={{ fontSize:26 }}>{a.glyph}</Text>
+                        </View>
+                        <View style={{ flex:1 }}>
+                          <Text style={{ color:aColor, fontSize:14, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{a.name}</Text>
+                          <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginTop:2 }}>{a.title}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ color:'#888899', fontSize:12, lineHeight:18 }}>{a.desc}</Text>
+                      <View style={{ flexDirection:'row', gap:8, marginTop:10 }}>
+                        <View style={{ flex:1, padding:7, borderRadius:7, backgroundColor:aColor+'12', borderWidth:1, borderColor:aColor+'33' }}>
+                          <Text style={{ color:'#555566', fontSize:7, letterSpacing:2, fontFamily:mono, marginBottom:2 }}>SPECIALTY</Text>
+                          <Text style={{ color:aColor, fontSize:11 }}>{a.specialty}</Text>
+                        </View>
+                        <View style={{ flex:1, padding:7, borderRadius:7, backgroundColor:'#111122', borderWidth:1, borderColor:'#222233' }}>
+                          <Text style={{ color:'#555566', fontSize:7, letterSpacing:2, fontFamily:mono, marginBottom:2 }}>AFFINITY</Text>
+                          <Text style={{ color:'#666677', fontSize:11 }}>{a.affinity}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             </Animated.View>
           )}
