@@ -2,21 +2,28 @@
 
 ## [5.8.0] — 2026-06-25 — THE LIVING ARCHITECTURE
 
-### CASCADE — Truth Pressure, Live
-- **Auto-scorer** — write a claim + 9 layer contents, tap ⊚, the engine reads every layer and fills `framework_score` using Π = E·P/(S+S₀). One model call, all nine layers in one structured pass.
-- **Sovereign override** — your manual score is now explicitly your *disagreement* with the engine, not the primary input. "YOUR CALL" label makes this clear.
-- **Depth Audit ⚔** — Nigredo adversarial mode: same scores + the weakest layer identified + the single sharpest objection. Displayed as a dark audit card below the layer editor.
-- **Register line** — every scored block shows `ENGINE: MEASURED (model as instrument) · SOVEREIGN: YOUR CALL`. The truth-pressure tool must pass its own truth-pressure test.
-- **CASCADE Mystery School curriculum** — 10 subjects added: "The Method" overview + one subject per layer (AXIOM → FRONTIER). Each names the layer's epistemic role and what it means to fill it well.
+### CASCADE — Truth Pressure, Live + Knowledge Pyramid
+- **Visual knowledge pyramid** — 15 blocks displayed as a 1/2/3/4/5 triangle. Strongest (BEDROCK) at apex; most speculative (FRONTIER) at base. Each block tinted by score band. Tier labels: BEDROCK · STRONG · MIDDLE · CONTESTED · FRONTIER. Tap any block to open and edit.
+- **15 seed blocks** — full AI-knowledge pyramid pre-loaded: LLM prediction, scaling laws, emergence, understanding, AGI timelines, alignment, compute, interpretability, synthetic data collapse, AI welfare, RLHF, open weights, prompt engineering, consciousness, agentic systems. Every major contested claim in the field, scored and visible.
+- **Auto-scorer ⊚** — write a claim + 9 layer contents, tap ⊚, the engine scores all layers using Π = E·P/(S+S₀). One model call, one structured pass.
+- **Sovereign override** — "YOUR CALL" controls let you disagree with any engine score. Human judgment always wins.
+- **Depth Audit ⚔** — Nigredo adversarial mode: weakest layer identified + sharpest objection surfaced.
+- **Register line** — `ENGINE: MEASURED · SOVEREIGN: YOUR CALL`. The tool passes its own truth-pressure test.
+- **Tensions panel** — blocks diverging >25 points flagged as contradictions in the pyramid.
+- **Editor polish** — ← PYRAMID back button, fill progress bar (X/9 layers), layer group headers (CORE / MIDDLE / EDGE), cleaner controls.
+- **CASCADE Mystery School curriculum** — 10 subjects: The Method overview + one per layer (AXIOM → FRONTIER).
 
 ### Sanctum — Sanctuary, Not Dashboard
-- **TODAY breathes** — all stat cards, vigil, dive log, LQ sparkline fold behind "⌄ TODAY'S FIELD" (default: quiet). Engine-as-one-breath line above: a single calm sentence from AURA trend instead of a readout.
-- **FIELD breathes** — all charts, sparklines, heatmap, journey timeline, weekly journal, trajectory charts, export, and paradox journal fold behind "⌄ YOUR FIELD DATA". AWARENESS PHASE + AURA self-rating stay always visible (the interactive core).
-- **Sovereign Chain removed** — the Solana blockchain preview block was tonally wrong for an inner sanctum. The Living Chronicle does the same job better. All dead wallet state and functions cleaned out.
+- **TODAY breathes** — all stat cards fold behind "⌄ TODAY'S FIELD" (default: quiet). Engine speaks in one calm sentence above the fold.
+- **FIELD breathes** — all charts, sparklines, heatmap, timeline, weekly journal, export fold behind "⌄ YOUR FIELD DATA". AWARENESS PHASE + AURA self-rating always visible.
+- **Sovereign Chain removed** — wallet state and functions cleaned out entirely.
 
 ### Companion — Ceremony Fixed
-- **Summon ceremony** — first-time companion selection was blank (header only, no cards). Archetype cards now render in the ceremony with the dark ceremony aesthetic. LYCA filtered correctly (Founding Sovereign only).
+- **Summon ceremony** — first-time companion selection was blank. Fixed: archetype cards now render in the ceremony. LYCA filtered correctly (Founding Sovereign path only).
 - **Art audit** — all 70 companion art files and 220 zone scene files verified present. Zero missing assets.
+
+### Help
+- **Global ? updated** — Sanctum entry reflects fold structure; CASCADE gets its own full entry covering the 9 layers, auto-score, depth audit, pyramid, and all 15 seed blocks.
 
 ## [5.5.6] — 2026-06-23 — COMPANION ROSTER + TIER SYSTEM
 
