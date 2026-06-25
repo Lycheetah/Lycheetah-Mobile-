@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.8.0] — 2026-06-25 — THE LIVING ARCHITECTURE
+
+### CASCADE — Truth Pressure, Live
+- **Auto-scorer** — write a claim + 9 layer contents, tap ⊚, the engine reads every layer and fills `framework_score` using Π = E·P/(S+S₀). One model call, all nine layers in one structured pass.
+- **Sovereign override** — your manual score is now explicitly your *disagreement* with the engine, not the primary input. "YOUR CALL" label makes this clear.
+- **Depth Audit ⚔** — Nigredo adversarial mode: same scores + the weakest layer identified + the single sharpest objection. Displayed as a dark audit card below the layer editor.
+- **Register line** — every scored block shows `ENGINE: MEASURED (model as instrument) · SOVEREIGN: YOUR CALL`. The truth-pressure tool must pass its own truth-pressure test.
+- **CASCADE Mystery School curriculum** — 10 subjects added: "The Method" overview + one subject per layer (AXIOM → FRONTIER). Each names the layer's epistemic role and what it means to fill it well.
+
+### Sanctum — Sanctuary, Not Dashboard
+- **TODAY breathes** — all stat cards, vigil, dive log, LQ sparkline fold behind "⌄ TODAY'S FIELD" (default: quiet). Engine-as-one-breath line above: a single calm sentence from AURA trend instead of a readout.
+- **FIELD breathes** — all charts, sparklines, heatmap, journey timeline, weekly journal, trajectory charts, export, and paradox journal fold behind "⌄ YOUR FIELD DATA". AWARENESS PHASE + AURA self-rating stay always visible (the interactive core).
+- **Sovereign Chain removed** — the Solana blockchain preview block was tonally wrong for an inner sanctum. The Living Chronicle does the same job better. All dead wallet state and functions cleaned out.
+
+### Companion — Ceremony Fixed
+- **Summon ceremony** — first-time companion selection was blank (header only, no cards). Archetype cards now render in the ceremony with the dark ceremony aesthetic. LYCA filtered correctly (Founding Sovereign only).
+- **Art audit** — all 70 companion art files and 220 zone scene files verified present. Zero missing assets.
+
 ## [5.5.6] — 2026-06-23 — COMPANION ROSTER + TIER SYSTEM
 
 - **COMPANION ROSTER** — 17 named companion characters (SOLARA · AUGURUM · PYTHIA · CORDIA · NIMUE · LYCA · FRACTUR · ANOTH · AKASHA · RAGNA · HAVIZ · BASALT · BOREAL · VORKATH · NOCTIS · SYGL · QUOL) now live in COMPANION tab.
