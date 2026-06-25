@@ -162,6 +162,7 @@ export default function SanctumScreen() {
   const [vault, setVault] = useState<VaultEntry[]>([]);
   const [toolHistory, setToolHistory] = useState<Array<{ tool: string; query: string; result: string; timestamp: string }>>([]);
   const [section, setSection] = useState<'today' | 'journal' | 'vault' | 'field' | 'chain'>('today');
+  const [todayFieldOpen, setTodayFieldOpen] = useState(false); // TODAY data folds away — a sanctum, not a dashboard
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [walletInput, setWalletInput] = useState('');
@@ -804,6 +805,26 @@ export default function SanctumScreen() {
             );
           })()}
 
+          {/* The engine in one breath — the field's trajectory as a single calm line, not a chart.
+              AURA/Truth-Pressure made legible as a feeling, not a readout. */}
+          {(() => {
+            let line: string | null = null;
+            if (auraHistory.length >= 2) {
+              const a = auraHistory[auraHistory.length - 1], b = auraHistory[auraHistory.length - 2];
+              line = a.composite >= b.composite
+                ? 'Your field is sharpening.'
+                : 'Your field is softening — rest is part of the work.';
+            } else if (lqHistory.length >= 3) {
+              line = `${lqHistory.length} days here. The pattern is forming.`;
+            }
+            if (!line) return null;
+            return (
+              <Text style={{ color: accentColor + 'AA', fontSize: 12, lineHeight: 18, fontStyle: 'italic', textAlign: 'center', marginBottom: 16 }}>
+                {line}
+              </Text>
+            );
+          })()}
+
           {/* Archetype identity badge */}
           {archetype && (
             <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08' }}>
@@ -852,6 +873,18 @@ export default function SanctumScreen() {
             </View>
           ) : null}
 
+          {/* ── Today's field — folded by default. Present, not flung on arrival. ── */}
+          <TouchableOpacity
+            onPress={() => setTodayFieldOpen(o => !o)}
+            activeOpacity={0.7}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 20, marginBottom: todayFieldOpen ? 14 : 4, paddingVertical: 8 }}
+          >
+            <Text style={{ color: accentColor + '88', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2.5, fontWeight: '700' }}>
+              {todayFieldOpen ? '⌃  FOLD AWAY' : "⌄  TODAY'S FIELD"}
+            </Text>
+          </TouchableOpacity>
+
+          {todayFieldOpen && (<>
           {/* Field State Today card */}
           {(fieldProfile || lqHistory.some(p => p.date === todayKey())) && (() => {
             const todayLQ = lqHistory.find(p => p.date === todayKey());
@@ -1039,6 +1072,7 @@ export default function SanctumScreen() {
               </View>
             </View>
           )}
+          </>)}
 
           <View style={styles.divider} />
 
