@@ -11,8 +11,11 @@ import {
   ONION_LAYERS,
   computeBlockScore,
   computePi,
+  computePyramidPi,
+  computePyramidScore,
   getScoreBand,
   detectTensions,
+  type ScoreMode,
 } from '../../lib/intelligence/cascade-onion';
 import {
   createEmptyBlock,
@@ -20,10 +23,13 @@ import {
   saveNetwork,
   upsertBlock,
   deleteBlock,
-  networkPi,
-  networkScore,
   type CascadeBlock,
 } from '../../lib/intelligence/cascade-store';
+import { auditCascadeBlock, applyVerdict, type CascadeVerdict } from '../../lib/intelligence/cascade-judge';
+
+// Editor display track: the engine's verdict (framework) blended with the human's override
+// (sovereign) when both exist. 'composite' returns whichever is present if only one is.
+const DISPLAY_MODE = 'composite' as const;
 
 const STEP = 5; // sovereign-score increment per tap
 
@@ -34,10 +40,23 @@ const PRESSURE_AXIOM_MIN = 50;     // claim must be at least this strong to coun
 const PRESSURE_COHERENCE_MAX = 40; // …and its coherence this low to count as "under pressure"
 
 // The truth-pressure made visible. Single source of truth for both the list glow and editor flag.
+// Prefers the engine's verdict (framework_score); falls back to the human's score if unscored.
+function layerVal(l: CascadeBlock['layers'][number] | undefined): number {
+  return l?.framework_score || l?.sovereign_score || 0;
+}
 function blockUnderPressure(b: CascadeBlock): boolean {
-  const axiom = b.layers[0]?.sovereign_score || 0;
-  const coherence = b.layers[3]?.sovereign_score || 0;
+  const axiom = layerVal(b.layers[0]);
+  const coherence = layerVal(b.layers[3]);
   return axiom > PRESSURE_AXIOM_MIN && coherence < PRESSURE_COHERENCE_MAX;
+}
+
+// Effective aggregate / mode for a block: prefer the engine's verdict (framework); fall back to
+// the human's score for blocks not yet auto-scored (e.g. the seed pyramid).
+function effAgg(b: CascadeBlock): number {
+  return b.score_aggregate || b.sovereign_score_aggregate || 0;
+}
+function effMode(b: CascadeBlock): ScoreMode {
+  return b.layers.some(l => (l.framework_score || 0) > 0) ? 'composite' : 'sovereign';
 }
 
 // TUNING (Mac's call): raw Π is unbounded and runs OPPOSITE the score, which misreads as a number.
@@ -53,6 +72,10 @@ function piBand(pi: number): { label: string; color: string } {
 export default function CascadeBuilderScreen() {
   const [blocks, setBlocks] = useState<CascadeBlock[]>([]);
   const [editing, setEditing] = useState<CascadeBlock | null>(null);
+  const [scoring, setScoring] = useState(false);                 // auto-score / depth-audit in flight
+  const [audit, setAudit] = useState<{ weakest?: string; objection?: string } | null>(null);
+  const [scoreErr, setScoreErr] = useState<string | null>(null);
+  const [reasons, setReasons] = useState<string[]>([]);          // engine's per-layer reason (transient)
 
   // First open: seed the example AI-knowledge pyramid once (then it's the user's to edit/delete).
   useEffect(() => {
@@ -68,14 +91,15 @@ export default function CascadeBuilderScreen() {
     })();
   }, []);
 
-  // ── Live computed readouts for the block being edited (sovereign track) ──
+  // ── Live computed readouts for the block being edited (engine verdict + human override) ──
   const live = useMemo(() => {
     if (!editing) return null;
-    const score = computeBlockScore(editing.layers, 'sovereign');
-    const pi = computePi(editing.layers, 'sovereign');
+    const score = computeBlockScore(editing.layers, DISPLAY_MODE);
+    const pi = computePi(editing.layers, DISPLAY_MODE);
     const band = getScoreBand(score);
     const underPressure = blockUnderPressure(editing); // single source of truth
-    return { score, pi, band, underPressure };
+    const scored = editing.layers.some(l => (l.framework_score || 0) > 0);
+    return { score, pi, band, underPressure, scored };
   }, [editing]);
 
   const setLayer = (i: number, patch: Partial<CascadeBlock['layers'][number]>) => {
@@ -83,6 +107,25 @@ export default function CascadeBuilderScreen() {
     const layers = editing.layers.map((l, idx) => (idx === i ? { ...l, ...patch } : l));
     setEditing({ ...editing, layers });
   };
+
+  // KEYSTONE — Truth Pressure, live. The engine reads the claim + each layer's content and
+  // scores all 9 in one pass (framework_score), leaving the human's sovereign override intact.
+  const runScore = async (mode: 'score' | 'audit') => {
+    if (!editing || scoring) return;
+    setScoring(true); setScoreErr(null); setAudit(null);
+    try {
+      const verdict: CascadeVerdict | null = await auditCascadeBlock(editing.claim, editing.layers, mode);
+      if (!verdict) { setScoreErr('Could not reach the engine — your scores are untouched.'); return; }
+      setEditing(prev => (prev ? { ...prev, layers: applyVerdict(prev.layers, verdict) } : prev));
+      setReasons(verdict.layers.map(l => l.reason));
+      if (mode === 'audit') setAudit({ weakest: verdict.weakestLayer, objection: verdict.objection });
+    } finally {
+      setScoring(false);
+    }
+  };
+
+  // Switching to a different block clears the last audit's adversarial note + reasons.
+  useEffect(() => { setAudit(null); setScoreErr(null); setReasons([]); }, [editing?.id]);
 
   const onSave = async () => {
     if (!editing) return;
@@ -125,15 +168,52 @@ export default function CascadeBuilderScreen() {
           {live!.underPressure && <Text style={styles.pressureFlag}>⚡ PRESSURE</Text>}
         </View>
 
+        {/* KEYSTONE — auto-score the layers with the engine. Truth Pressure, live. */}
+        <View style={styles.scoreRow}>
+          <TouchableOpacity
+            style={[styles.scoreBtn, scoring && styles.scoreBtnBusy]}
+            onPress={() => runScore('score')}
+            disabled={scoring}
+          >
+            <Text style={styles.scoreBtnText}>{scoring ? '⊚ measuring…' : live!.scored ? '⊚ Re-score' : '⊚ Auto-score'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.auditBtn, scoring && styles.scoreBtnBusy]}
+            onPress={() => runScore('audit')}
+            disabled={scoring}
+          >
+            <Text style={styles.auditBtnText}>⚔ Depth Audit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Reflexive Π — the register. The score is measured, not gospel; the human overrides. */}
+        <Text style={styles.registerLine}>
+          Scored by the engine (Π = E·P/(S+S₀)) — measured, not gospel. Your call overrides any layer.
+        </Text>
+        {scoreErr && <Text style={styles.scoreErr}>{scoreErr}</Text>}
+
+        {/* Depth Audit — the Nigredo verdict: weakest layer + the single sharpest objection. */}
+        {audit && (audit.weakest || audit.objection) && (
+          <View style={styles.auditCard}>
+            <Text style={styles.auditCardTitle}>⚔ DEPTH AUDIT</Text>
+            {audit.weakest ? <Text style={styles.auditWeak}>Weakest layer: <Text style={{ color: '#f87171' }}>{audit.weakest}</Text></Text> : null}
+            {audit.objection ? <Text style={styles.auditObjection}>“{audit.objection}”</Text> : null}
+          </View>
+        )}
+
         {/* 9 onion layers */}
         {ONION_LAYERS.map((layer, i) => {
           const ld = editing.layers[i];
-          const val = ld?.sovereign_score || 0;
+          const verdict = ld?.framework_score || 0;      // the engine's measured score
+          const override = ld?.sovereign_score || 0;      // the human's call
+          const reason = reasons[i];
           return (
             <View key={layer.name} style={styles.layerCard}>
               <View style={styles.layerHead}>
                 <Text style={styles.layerName}>{i}. {layer.name}</Text>
-                <Text style={styles.layerVal}>{val}</Text>
+                {verdict > 0
+                  ? <Text style={[styles.layerVal, { color: getScoreBand(verdict).textColor }]}>{verdict}</Text>
+                  : <Text style={[styles.layerVal, { color: SOL_THEME.textMuted }]}>—</Text>}
               </View>
               <Text style={styles.layerDesc}>{layer.description}</Text>
               <TextInput
@@ -144,18 +224,26 @@ export default function CascadeBuilderScreen() {
                 onChangeText={t => setLayer(i, { content: t })}
                 multiline
               />
+              {/* Engine's reason for its score, when audited */}
+              {reason ? <Text style={styles.layerReason}>⊚ {reason}</Text> : null}
+
+              {/* The human's override — disagree with the engine. Optional. */}
+              <View style={styles.overrideHead}>
+                <Text style={styles.overrideLabel}>YOUR CALL</Text>
+                <Text style={styles.overrideVal}>{override > 0 ? override : '—'}</Text>
+              </View>
               <View style={styles.stepRow}>
-                <TouchableOpacity style={styles.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.max(0, val - STEP) })}>
+                <TouchableOpacity style={styles.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.max(0, override - STEP) })}>
                   <Text style={styles.stepBtnText}>−</Text>
                 </TouchableOpacity>
                 <View style={styles.stepTrack}>
-                  <View style={[styles.stepFill, { width: `${val}%`, backgroundColor: getScoreBand(val).textColor }]} />
+                  <View style={[styles.stepFill, { width: `${override}%`, backgroundColor: getScoreBand(override).textColor }]} />
                 </View>
-                <TouchableOpacity style={styles.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.min(100, val + STEP) })}>
+                <TouchableOpacity style={styles.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.min(100, override + STEP) })}>
                   <Text style={styles.stepBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
-              {/* AXIOM falsifiability gate */}
+              {/* AXIOM falsifiability gate — the engine sets this; the human can still flip it. */}
               {i === 0 && (
                 <TouchableOpacity
                   style={styles.falsifiableRow}
@@ -191,8 +279,9 @@ export default function CascadeBuilderScreen() {
   // ─────────────────────────────────────────────────────────────────────────
   // NETWORK LIST VIEW
   // ─────────────────────────────────────────────────────────────────────────
-  const pyramidPi = networkPi(blocks, 'sovereign');
-  const pyramidScore = networkScore(blocks, 'sovereign');
+  const effFiles = blocks.map(b => ({ id: b.id, score_aggregate: effAgg(b) }));
+  const pyramidPi = computePyramidPi(effFiles);
+  const pyramidScore = computePyramidScore(effFiles);
   const pyramidBand = getScoreBand(pyramidScore);
 
   return (
@@ -220,9 +309,10 @@ export default function CascadeBuilderScreen() {
       )}
 
       {blocks.map(b => {
-        const score = b.sovereign_score_aggregate || 0;
+        const score = effAgg(b);
         const band = getScoreBand(score);
         const pressure = blockUnderPressure(b);
+        const bPi = computePi(b.layers, effMode(b));
         return (
           <TouchableOpacity
             key={b.id}
@@ -236,7 +326,7 @@ export default function CascadeBuilderScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.blockClaim} numberOfLines={2}>{b.claim || '(untitled claim)'}</Text>
               <Text style={[styles.blockBand, { color: band.textColor }]}>
-                {band.label} · <Text style={{ color: piBand(computePi(b.layers, 'sovereign')).color }}>{piBand(computePi(b.layers, 'sovereign')).label} pressure</Text>{pressure ? '  ⚡' : ''}
+                {band.label} · <Text style={{ color: piBand(bPi).color }}>{piBand(bPi).label} pressure</Text>{pressure ? '  ⚡' : ''}
               </Text>
             </View>
             <Text style={[styles.blockScore, { color: band.textColor }]}>{score || '—'}</Text>
@@ -246,7 +336,7 @@ export default function CascadeBuilderScreen() {
 
       {/* Tensions — blocks whose scores diverge > 25. The pyramid arguing with itself. */}
       {(() => {
-        const shadow = blocks.map(b => ({ ...b, score_aggregate: b.sovereign_score_aggregate || 0 }));
+        const shadow = blocks.map(b => ({ ...b, score_aggregate: effAgg(b) }));
         const tensions = detectTensions(shadow);
         if (tensions.length === 0) return null;
         const claimOf = (blk: { id: string }) => blocks.find(x => x.id === blk.id)?.claim || 'untitled';
@@ -315,6 +405,26 @@ const styles = StyleSheet.create({
 
   falsifiableRow: { marginTop: 10 },
   falsifiableText: { fontSize: 12, fontWeight: '600' },
+
+  // Auto-score / Depth Audit
+  scoreRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  scoreBtn: { flex: 1, padding: 13, borderRadius: 10, alignItems: 'center', backgroundColor: '#2a1800', borderWidth: 1, borderColor: '#fb923c88' },
+  scoreBtnBusy: { opacity: 0.5 },
+  scoreBtnText: { color: '#fb923c', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+  auditBtn: { paddingHorizontal: 16, paddingVertical: 13, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#f8717188', backgroundColor: '#2a0a0a' },
+  auditBtnText: { color: '#f87171', fontSize: 13, fontWeight: '800', letterSpacing: 0.5 },
+  registerLine: { color: SOL_THEME.textMuted, fontSize: 10.5, lineHeight: 15, fontStyle: 'italic', marginBottom: 14 },
+  scoreErr: { color: '#f87171', fontSize: 12, marginBottom: 12 },
+  auditCard: { padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#f8717155', backgroundColor: '#f871710A', marginBottom: 14 },
+  auditCardTitle: { color: '#f87171', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
+  auditWeak: { color: SOL_THEME.text, fontSize: 13, marginBottom: 4 },
+  auditObjection: { color: SOL_THEME.textMuted, fontSize: 13, lineHeight: 19, fontStyle: 'italic' },
+
+  // Per-layer engine reason + human override
+  layerReason: { color: '#fb923c', fontSize: 11, lineHeight: 15, fontStyle: 'italic', marginBottom: 8 },
+  overrideHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  overrideLabel: { color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
+  overrideVal: { color: SOL_THEME.textMuted, fontSize: 13, fontWeight: '700' },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
   actionBtn: { flex: 1, padding: 14, borderRadius: 10, alignItems: 'center' },
