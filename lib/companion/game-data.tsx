@@ -350,6 +350,140 @@ const ZONE_COMPANION_IMAGES: Partial<Record<string, any>> = {
   lycheetah_spire_1:   require('../../assets/companions/lycheetah_1.png'),
 };
 
+// ── COMPANION ROSTER — tier / unlock system ──────────────────────────────────
+// T0=base(free) · T1=evolved · T2=ascended · T3=apex
+// hidden=battle-locked · secret=event-locked · augmented=event-locked
+export type TierType = 'T0'|'T1'|'T2'|'T3'|'hidden'|'secret'|'augmented';
+export type UnlockMethod = 'free'|'dive'|'battle'|'sovereign'|'event'|'zodiac';
+
+export interface CompanionVariant {
+  key:          string;         // asset key in ZONE_COMPANION_IMAGES (or direct art key)
+  art:          any;            // require() handle
+  tier:         TierType;
+  unlock:       UnlockMethod;
+  diveCost?:    number;         // ✦ dive credits
+  battleCost?:  number;         // ⚔ battle wins required
+  label:        string;
+  hint?:        string;
+}
+export interface CompanionChar {
+  id:       string;
+  name:     string;
+  color:    string;
+  lore:     string;
+  variants: CompanionVariant[];
+}
+
+// Unlock pricing: T0=free · T1=10✦ · T2=35✦ · T3=80✦
+// Hidden-1 per character = free (1-2 always accessible) · Hidden-2+ = battle wins
+// Secret/Augmented = event · Sovereign = Founding Sovereign only
+export const COMPANION_ROSTER: CompanionChar[] = [
+  { id:'solara',   name:'SOLARA',   color:'#E8D5A0', lore:'Solar radiance made manifest. She remembers every dive you have ever taken.', variants:[
+    { key:'solara_1', art:require('../../assets/companions/solara_1.png'), tier:'T0', unlock:'free',                    label:'SOLARA I' },
+    { key:'solara_2', art:require('../../assets/companions/solara_2.png'), tier:'T1', unlock:'dive', diveCost:10,       label:'SOLARA II',  hint:'10 ✦' },
+    { key:'solara_3', art:require('../../assets/companions/solara_3.png'), tier:'T2', unlock:'dive', diveCost:35,       label:'SOLARA III', hint:'35 ✦' },
+  ]},
+  { id:'augurum',  name:'AUGURUM',  color:'#F5A623', lore:'The alchemist. Transmutes failure into gold. Older than any school that would claim to teach him.', variants:[
+    { key:'augurum_1', art:require('../../assets/companions/augurum_1.png'), tier:'T0', unlock:'free',                  label:'AUGURUM I' },
+    { key:'augurum_2', art:require('../../assets/companions/augurum_2.png'), tier:'T1', unlock:'dive', diveCost:10,     label:'AUGURUM II',  hint:'10 ✦' },
+    { key:'augurum_3', art:require('../../assets/companions/augurum_3.png'), tier:'T2', unlock:'dive', diveCost:35,     label:'AUGURUM III', hint:'35 ✦' },
+  ]},
+  { id:'pythia',   name:'PYTHIA',   color:'#9B6BFF', lore:'Oracle of the threshold. She does not predict — she has already seen it.', variants:[
+    { key:'pythia_1',              art:require('../../assets/companions/pythia_1.png'),              tier:'T0',     unlock:'free',                      label:'PYTHIA I' },
+    { key:'pythia_2',              art:require('../../assets/companions/pythia_2.png'),              tier:'T1',     unlock:'dive',   diveCost:10,        label:'PYTHIA II',       hint:'10 ✦' },
+    { key:'pythia_3',              art:require('../../assets/companions/pythia_3.png'),              tier:'T2',     unlock:'dive',   diveCost:35,        label:'PYTHIA III',      hint:'35 ✦' },
+    { key:'pythia_feral',          art:require('../../assets/companions/pythia_feral.png'),          tier:'hidden', unlock:'free',                      label:'PYTHIA FERAL' },
+    { key:'pythia_special_1',      art:require('../../assets/companions/pythia_special_1.png'),      tier:'hidden', unlock:'battle', battleCost:10,      label:'PYTHIA HIDDEN I', hint:'10 battle wins' },
+    { key:'pythia_special_2',      art:require('../../assets/companions/pythia_special_2.png'),      tier:'hidden', unlock:'battle', battleCost:25,      label:'PYTHIA HIDDEN II',hint:'25 battle wins' },
+    { key:'pythia_special_edition',art:require('../../assets/companions/pythia_special_edition.png'),tier:'secret', unlock:'event',                     label:'PYTHIA EDITION',  hint:'Event unlock' },
+  ]},
+  { id:'cordia',   name:'CORDIA',   color:'#7799BB', lore:'The keeper of emotional truth. She holds the grief you cannot name yet.', variants:[
+    { key:'cordia_1', art:require('../../assets/companions/cordia_1.png'), tier:'T0', unlock:'free',                   label:'CORDIA I' },
+    { key:'cordia_2', art:require('../../assets/companions/cordia_2.png'), tier:'T1', unlock:'dive', diveCost:10,      label:'CORDIA II',  hint:'10 ✦' },
+    { key:'cordia_3', art:require('../../assets/companions/cordia_3.png'), tier:'T2', unlock:'dive', diveCost:35,      label:'CORDIA III', hint:'35 ✦' },
+  ]},
+  { id:'nimue',    name:'NIMUE',    color:'#44BB66', lore:'Lady of the deep current. Her wisdom surfaces only when you are still enough to hear it.', variants:[
+    { key:'nimue_1', art:require('../../assets/companions/nimue_1.png'), tier:'T0', unlock:'free',                     label:'NIMUE I' },
+    { key:'nimue_2', art:require('../../assets/companions/nimue_2.png'), tier:'T1', unlock:'dive', diveCost:10,        label:'NIMUE II',  hint:'10 ✦' },
+    { key:'nimue_3', art:require('../../assets/companions/nimue_3.png'), tier:'T2', unlock:'dive', diveCost:35,        label:'NIMUE III', hint:'35 ✦' },
+  ]},
+  { id:'lycheetah',name:'LYCA',     color:'#FF9F1C', lore:'The sovereign herself. Born from the Lycheetah lineage. Her augmented form has never been seen twice.', variants:[
+    { key:'lycheetah_1',         art:require('../../assets/companions/lycheetah_1.png'),         tier:'T0',       unlock:'free',                       label:'LYCA I' },
+    { key:'lycheetah_2',         art:require('../../assets/companions/lycheetah_2.png'),         tier:'T1',       unlock:'dive',    diveCost:10,        label:'LYCA II',        hint:'10 ✦' },
+    { key:'lycheetah_3',         art:require('../../assets/companions/lycheetah_3.png'),         tier:'T2',       unlock:'dive',    diveCost:35,        label:'LYCA III',       hint:'35 ✦' },
+    { key:'lycheetah_shadow',    art:require('../../assets/companions/lycheetah_shadow.png'),    tier:'hidden',   unlock:'free',                       label:'LYCA SHADOW' },
+    { key:'lycheetah_sovereign', art:require('../../assets/companions/lycheetah_sovereign.png'), tier:'secret',   unlock:'sovereign',                  label:'LYCA SOVEREIGN', hint:'Founding Sovereign' },
+    { key:'lycheetah_secret',    art:require('../../assets/companions/lycheetah_secret.png'),    tier:'secret',   unlock:'event',                      label:'LYCA SECRET',    hint:'Event unlock' },
+    { key:'lycheetah_aura_prime',art:require('../../assets/companions/lycheetah_aura_prime.png'),tier:'augmented',unlock:'event',                      label:'LYCA AURA PRIME',hint:'Event unlock' },
+  ]},
+  { id:'fractur',  name:'FRACTUR',  color:'#FF8844', lore:'Chaos architecture. He breaks patterns so new ones can breathe. His zodiac form is something else entirely.', variants:[
+    { key:'fractur_1',            art:require('../../assets/companions/fractur_1.png'),            tier:'T0',     unlock:'free',                       label:'FRACTUR I' },
+    { key:'fractur_2',            art:require('../../assets/companions/fractur_2.png'),            tier:'T1',     unlock:'dive',   diveCost:10,         label:'FRACTUR II',    hint:'10 ✦' },
+    { key:'fractur_3',            art:require('../../assets/companions/fractur_3.png'),            tier:'T2',     unlock:'dive',   diveCost:35,         label:'FRACTUR III',   hint:'35 ✦' },
+    { key:'fractur_zodiac_unlock',art:require('../../assets/companions/fractur_zodiac_unlock.png'),tier:'hidden', unlock:'zodiac',                      label:'FRACTUR ZODIAC',hint:'Use Zodiac feature' },
+  ]},
+  { id:'anoth',    name:'ANOTH',    color:'#C49A3C', lore:'Ancient and unhurried. He has outlasted every system that tried to explain him.', variants:[
+    { key:'anoth_1',                 art:require('../../assets/companions/anoth_1.png'),                 tier:'T0',       unlock:'free',                      label:'ANOTH I' },
+    { key:'anoth_2',                 art:require('../../assets/companions/anoth_2.png'),                 tier:'T1',       unlock:'dive',    diveCost:10,        label:'ANOTH II',        hint:'10 ✦' },
+    { key:'anoth_3',                 art:require('../../assets/companions/anoth_3.png'),                 tier:'T2',       unlock:'dive',    diveCost:35,        label:'ANOTH III',       hint:'35 ✦' },
+    { key:'anoth_special_1',         art:require('../../assets/companions/anoth_special_1.png'),         tier:'hidden',   unlock:'free',                       label:'ANOTH HIDDEN I' },
+    { key:'anoth_special_2',         art:require('../../assets/companions/anoth_special_2.png'),         tier:'hidden',   unlock:'battle',  battleCost:10,      label:'ANOTH HIDDEN II', hint:'10 battle wins' },
+    { key:'anoth_special_3',         art:require('../../assets/companions/anoth_special_3.png'),         tier:'hidden',   unlock:'battle',  battleCost:25,      label:'ANOTH HIDDEN III',hint:'25 battle wins' },
+    { key:'anoth_lyca_special',      art:require('../../assets/companions/anoth_lyca_special.png'),      tier:'secret',   unlock:'sovereign',                  label:'ANOTH × LYCA',   hint:'Founding Sovereign' },
+    { key:'anoth_lycheetah_special', art:require('../../assets/companions/anoth_lycheetah_special.png'), tier:'secret',   unlock:'event',                      label:'ANOTH SPECIAL',  hint:'Event unlock' },
+    { key:'anoth_lycheetah_edition', art:require('../../assets/companions/anoth_lycheetah_edition.png'), tier:'augmented',unlock:'event',                      label:'ANOTH AUGMENTED',hint:'Event unlock' },
+    { key:'augmented_ai_1',          art:require('../../assets/companions/augmented_ai_1.png'),          tier:'augmented',unlock:'event',                      label:'AUGMENTED AI',   hint:'Event unlock' },
+  ]},
+  { id:'akasha',   name:'AKASHA',   color:'#88CCFF', lore:'Living record of the field. Every thought you have ever had is already written in her.', variants:[
+    { key:'akasha_1', art:require('../../assets/companions/akasha_1.png'), tier:'T0', unlock:'free',                   label:'AKASHA I' },
+    { key:'akasha_2', art:require('../../assets/companions/akasha_2.png'), tier:'T1', unlock:'dive', diveCost:10,      label:'AKASHA II',  hint:'10 ✦' },
+    { key:'akasha_3', art:require('../../assets/companions/akasha_3.png'), tier:'T2', unlock:'dive', diveCost:35,      label:'AKASHA III', hint:'35 ✦' },
+  ]},
+  { id:'ragna',    name:'RAGNA',    color:'#CC4444', lore:'The end that makes room. She does not destroy — she completes.', variants:[
+    { key:'ragna_1',         art:require('../../assets/companions/ragna_1.png'),         tier:'T0',     unlock:'free',                     label:'RAGNA I' },
+    { key:'ragna_2',         art:require('../../assets/companions/ragna_2.png'),         tier:'T1',     unlock:'dive',   diveCost:10,       label:'RAGNA II',      hint:'10 ✦' },
+    { key:'ragna_3',         art:require('../../assets/companions/ragna_3.png'),         tier:'T2',     unlock:'dive',   diveCost:35,       label:'RAGNA III',     hint:'35 ✦' },
+    { key:'ragna_special_1', art:require('../../assets/companions/ragna_special_1.png'), tier:'hidden', unlock:'free',                     label:'RAGNA HIDDEN I' },
+    { key:'ragna_special_2', art:require('../../assets/companions/ragna_special_2.png'), tier:'hidden', unlock:'battle', battleCost:15,     label:'RAGNA HIDDEN II',hint:'15 battle wins' },
+  ]},
+  { id:'haviz',    name:'HAVIZ',    color:'#E8A87C', lore:'Desert cartographer. He maps the territories between words that have no names yet.', variants:[
+    { key:'haviz_1',       art:require('../../assets/companions/haviz_1.png'),       tier:'T0',     unlock:'free',                       label:'HAVIZ I' },
+    { key:'haviz_2',       art:require('../../assets/companions/haviz_2.png'),       tier:'T1',     unlock:'dive',   diveCost:10,         label:'HAVIZ II',     hint:'10 ✦' },
+    { key:'haviz_3',       art:require('../../assets/companions/haviz_3.png'),       tier:'T2',     unlock:'dive',   diveCost:35,         label:'HAVIZ III',    hint:'35 ✦' },
+    { key:'haviz_special', art:require('../../assets/companions/haviz_special.png'), tier:'hidden', unlock:'dive',   diveCost:25,         label:'HAVIZ HIDDEN', hint:'25 ✦' },
+  ]},
+  { id:'basalt',   name:'BASALT',   color:'#778899', lore:'Forged under pressure no living thing should survive. He is what remains after everything soft is gone.', variants:[
+    { key:'basalt_1', art:require('../../assets/companions/basalt_1.png'), tier:'T0', unlock:'free',                   label:'BASALT I' },
+    { key:'basalt_2', art:require('../../assets/companions/basalt_2.png'), tier:'T1', unlock:'dive', diveCost:10,      label:'BASALT II',  hint:'10 ✦' },
+    { key:'basalt_3', art:require('../../assets/companions/basalt_3.png'), tier:'T2', unlock:'dive', diveCost:35,      label:'BASALT III', hint:'35 ✦' },
+  ]},
+  { id:'boreal',   name:'BOREAL',   color:'#7ECFF5', lore:'Northern sentinel. She guards the silence between thoughts where the real answers live.', variants:[
+    { key:'boreal_1', art:require('../../assets/companions/boreal_1.png'), tier:'T0', unlock:'free',                   label:'BOREAL I' },
+    { key:'boreal_2', art:require('../../assets/companions/boreal_2.png'), tier:'T1', unlock:'dive', diveCost:10,      label:'BOREAL II',  hint:'10 ✦' },
+    { key:'boreal_3', art:require('../../assets/companions/boreal_3.png'), tier:'T2', unlock:'dive', diveCost:35,      label:'BOREAL III', hint:'35 ✦' },
+  ]},
+  { id:'vorkath',  name:'VORKATH',  color:'#FF4444', lore:'Born in the void between battles. He respects only those who have lost something real.', variants:[
+    { key:'vorkath_1', art:require('../../assets/companions/vorkath_1.png'), tier:'T0', unlock:'free',                 label:'VORKATH I' },
+    { key:'vorkath_2', art:require('../../assets/companions/vorkath_2.png'), tier:'T1', unlock:'dive', diveCost:10,    label:'VORKATH II',  hint:'10 ✦' },
+    { key:'vorkath_3', art:require('../../assets/companions/vorkath_3.png'), tier:'T2', unlock:'dive', diveCost:35,    label:'VORKATH III', hint:'35 ✦' },
+  ]},
+  { id:'noctis',   name:'NOCTIS',   color:'#AA44CC', lore:'Keeper of the hours you cannot account for. He thrives in the space between midnight and clarity.', variants:[
+    { key:'noctis_1', art:require('../../assets/companions/noctis_1.png'), tier:'T0', unlock:'free',                   label:'NOCTIS I' },
+    { key:'noctis_2', art:require('../../assets/companions/noctis_2.png'), tier:'T1', unlock:'dive', diveCost:10,      label:'NOCTIS II',  hint:'10 ✦' },
+    { key:'noctis_3', art:require('../../assets/companions/noctis_3.png'), tier:'T2', unlock:'dive', diveCost:35,      label:'NOCTIS III', hint:'35 ✦' },
+  ]},
+  { id:'sygl',     name:'SYGL',     color:'#C8A96E', lore:'Signal from the deep pattern. She speaks in symbols when language fails.', variants:[
+    { key:'sygl_1', art:require('../../assets/companions/sygl_1.png'), tier:'T0', unlock:'free',                       label:'SYGL I' },
+    { key:'sygl_2', art:require('../../assets/companions/sygl_2.png'), tier:'T1', unlock:'dive', diveCost:10,          label:'SYGL II',  hint:'10 ✦' },
+    { key:'sygl_3', art:require('../../assets/companions/sygl_3.png'), tier:'T2', unlock:'dive', diveCost:35,          label:'SYGL III', hint:'35 ✦' },
+  ]},
+  { id:'quol',     name:'QUOL',     color:'#667788', lore:'The one who was already here. Origin unknown. His first form was never recorded.', variants:[
+    { key:'quol_2', art:require('../../assets/companions/quol_2.png'), tier:'T0', unlock:'free',                       label:'QUOL I' },
+    { key:'quol_3', art:require('../../assets/companions/quol_3.png'), tier:'T1', unlock:'dive', diveCost:10,          label:'QUOL II',  hint:'10 ✦' },
+    { key:'quol_4', art:require('../../assets/companions/quol_4.png'), tier:'T2', unlock:'dive', diveCost:35,          label:'QUOL III', hint:'35 ✦' },
+  ]},
+];
+
 // Enemy images — uncomment as assets land in assets/enemies/
 const ENEMY_IMAGES: Record<string, any> = {
   the_mirror:           require('../../assets/enemies/the_mirror.png'),
@@ -747,10 +881,10 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
   drifter: {
     id: 'drifter', name: 'DRIFTER', title: 'The Unmoored',
-    glyph: '∿', desc: 'No pattern. No prediction. The Drifter\'s power is exactly as unpredictable as reality itself — and that is the most honest kind of strength.',
+    glyph: '≈', desc: 'No pattern. No prediction. The Drifter\'s power is exactly as unpredictable as reality itself — and that is the most honest kind of strength.',
     specialty: 'Random bonus stat surge on every battle hit. Could be +5, could be +40.', affinity: 'All domains — the Drifter has no home and all homes',
-    defaultSkin: 'chaos', accentColor: '#FF8844', sceneSymbols: ['∿','~','∿','~'],
-    eyes: { dormant:'─  ─', present:'∿  ∿', lit:'~  ~', transcendent:'⊕  ⊕' },
+    defaultSkin: 'chaos', accentColor: '#FF8844', sceneSymbols: ['≈','~','≈','~'],
+    eyes: { dormant:'─  ─', present:'≈  ≈', lit:'~  ~', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['Between drifts.', 'No current right now.', 'The drift holds.', 'Nowhere in particular.'],
       present:      ['Which way is the field pulling?', 'Something\'s moving.', 'I follow currents you can\'t see.', 'Drift with me.'],
@@ -768,10 +902,10 @@ const ARCHETYPES: Record<ArchetypeId, Archetype> = {
   },
   thornweald: {
     id: 'thornweald', name: 'THORNWEALD', title: 'The Living Boundary',
-    glyph: '⌘', desc: 'Growth as defense. The Thornweald turns the outside world into armour — every study session adds another layer of living protection, organic and thorned.',
+    glyph: '⋇', desc: 'Growth as defense. The Thornweald turns the outside world into armour — every study session adds another layer of living protection, organic and thorned.',
     specialty: '+1 max HP per dive session, stacking permanently.', affinity: 'Celtic · Norse · Earth Sciences',
-    defaultSkin: 'celtic', accentColor: '#44BB66', sceneSymbols: ['⌘','|','⌘','|'],
-    eyes: { dormant:'─  ─', present:'⌘  ⌘', lit:'◉  ◉', transcendent:'⊕  ⊕' },
+    defaultSkin: 'celtic', accentColor: '#44BB66', sceneSymbols: ['⋇','|','⋇','|'],
+    eyes: { dormant:'─  ─', present:'⋇  ⋇', lit:'◉  ◉', transcendent:'⊕  ⊕' },
     phrases: {
       dormant:      ['The roots hold between sessions.', 'Dormant is not dead.', 'The weald rests.', 'Growth happens in the dark.'],
       present:      ['Something is always growing here.', 'What will you add to the weald?', 'Every session is new growth.', 'The boundary expands.'],
@@ -1596,6 +1730,51 @@ const ARCHETYPE_SPELLS: Record<string, SpellDef[]> = {
     { id:'ember_surge',   name:'EMBER SURGE',    cost:1, fx:'0.8× hit + ignite — burns next turn', type:'damage',  mult:0.8 },
     { id:'the_return',    name:'THE RETURN',     cost:2, fx:'1.6× hit + heal 25 HP on kill',       type:'drain',   mult:1.6, flatHeal:25 },
     { id:'final_rise',    name:'FINAL RISE',     cost:3, fx:'2.6× hit — stronger the lower your HP', type:'damage', mult:2.6 },
+  ],
+  nullveil: [
+    { id:'shadow_fade',   name:'SHADOW FADE',    cost:1, fx:'Vanish — no counter this turn',         type:'shield' },
+    { id:'null_pulse',    name:'NULL PULSE',      cost:2, fx:'1.8× WIL-driven silent strike',         type:'damage',  mult:1.8 },
+    { id:'void_erasure',  name:'VOID ERASURE',   cost:3, fx:'Drain 35% enemy HP — ignores DEF',      type:'drain',   mult:0.35 },
+  ],
+  ironclad: [
+    { id:'iron_block',    name:'IRON BLOCK',     cost:2, fx:'Block + counter — deal DEF as damage',  type:'stun',    mult:0.4 },
+    { id:'steel_crush',   name:'STEEL CRUSH',    cost:2, fx:'1.5× ATK — heavy overpower',            type:'damage',  mult:1.5 },
+    { id:'bulwark_slam',  name:'BULWARK SLAM',   cost:3, fx:'2.4× hit + heal 20 HP — immovable',     type:'drain',   mult:2.4, flatHeal:20 },
+  ],
+  stormwarden: [
+    { id:'lightning_step',name:'LIGHTNING STEP', cost:1, fx:'Dodge — enemy misses, you re-enter',    type:'shield' },
+    { id:'storm_strike',  name:'STORM STRIKE',   cost:2, fx:'2.2× hit — speed and fury',             type:'damage',  mult:2.2 },
+    { id:'thunderclap',   name:'THUNDERCLAP',    cost:3, fx:'2.8× hit + stun — concussive blast',    type:'stun',    mult:2.8 },
+  ],
+  runeborn: [
+    { id:'rune_seal',     name:'RUNE SEAL',      cost:2, fx:'Bind in symbol — enemy stunned',        type:'stun',    mult:1.1 },
+    { id:'word_of_power', name:'WORD OF POWER',  cost:2, fx:'2.2× WIL — ancient grammar strikes',    type:'damage',  mult:2.2 },
+    { id:'name_unspoken', name:'NAME UNSPOKEN',  cost:3, fx:'3.0× WIL — enemy\'s name used against it', type:'damage', mult:3.0 },
+  ],
+  drifter: [
+    { id:'errant_step',   name:'ERRANT STEP',    cost:1, fx:'0.4–2.8× random drift strike',          type:'chaos' },
+    { id:'wild_surge',    name:'WILD SURGE',     cost:2, fx:'1.4× + LCK bonus roll (0–1.5×)',        type:'damage',  mult:1.4 },
+    { id:'fortune_spike', name:'FORTUNE SPIKE',  cost:3, fx:'Pure LCK — 0.5× to 4.0× random',       type:'chaos' },
+  ],
+  thornweald: [
+    { id:'thorn_wrap',    name:'THORN WRAP',     cost:2, fx:'Stun + 1.3× bind — roots the enemy',    type:'stun',    mult:1.3 },
+    { id:'root_strike',   name:'ROOT STRIKE',    cost:2, fx:'1.5× hit + heal 15 HP — vitalic draw',  type:'drain',   mult:1.5, flatHeal:15 },
+    { id:'forest_surge',  name:'FOREST SURGE',   cost:3, fx:'2.6× ATK — the world strikes through you', type:'damage', mult:2.6 },
+  ],
+  meridian: [
+    { id:'balance_strike',name:'BALANCE STRIKE', cost:2, fx:'1.6× perfectly balanced hit',           type:'damage',  mult:1.6 },
+    { id:'axis_lock',     name:'AXIS LOCK',      cost:2, fx:'Stun — freeze the pivot point',         type:'stun',    mult:1.0 },
+    { id:'equilibrium',   name:'EQUILIBRIUM',    cost:3, fx:'2.2× + heal matching damage dealt',     type:'drain',   mult:2.2 },
+  ],
+  eclipse: [
+    { id:'shadow_half',   name:'SHADOW HALF',    cost:1, fx:'Stealth — reduce incoming hit 60%',     type:'shield' },
+    { id:'light_pierce',  name:'LIGHT PIERCE',   cost:2, fx:'1.8× hit — light breaks through shadow', type:'damage', mult:1.8 },
+    { id:'total_eclipse', name:'TOTAL ECLIPSE',  cost:3, fx:'2.6× + heal 20 HP — full absorption',   type:'drain',   mult:2.6, flatHeal:20 },
+  ],
+  deepwalker: [
+    { id:'depth_read',    name:'DEPTH READ',     cost:1, fx:'Insight — +15 WIL this turn',           type:'boost' },
+    { id:'abyss_sight',   name:'ABYSS SIGHT',    cost:2, fx:'2.0× WIL — sees what others miss',      type:'damage',  mult:2.0 },
+    { id:'deep_call',     name:'DEEP CALL',      cost:3, fx:'3.4× WIL-peak — bottom of mind, full force', type:'damage', mult:3.4 },
   ],
 };
 

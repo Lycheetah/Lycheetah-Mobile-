@@ -11,7 +11,9 @@ import { saveUserName, saveProviderKey, savePersona } from '../lib/storage';
 import { useAppMode } from '../lib/app-mode';
 
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
-const TOTAL_STEPS = 7; // 0:landing 1:dive-first 2:persona 3:sovereignty 4:domains 5:key 6:enter
+const TOTAL_STEPS = 14;
+// 0:landing  1-7:showcase  8:dive-first  9:voice  10:sovereignty  11:domains  12:key  13:enter
+const SETUP_START = 9; // first numbered setup step
 
 const SOLARA_IMG = require('../assets/companions/solara_1.png');
 
@@ -226,7 +228,7 @@ export default function OnboardingScreen() {
       Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver: false }),
       Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: false }),
     ]).start();
-    setTimeout(() => { setStep(next); if (next === 3) setSovereigntyStep(0); }, 100);
+    setTimeout(() => { setStep(next); if (next === 10) setSovereigntyStep(0); }, 100);
   };
   const next = () => goTo(Math.min(step + 1, TOTAL_STEPS - 1));
   const back = () => goTo(Math.max(step - 1, 0));
@@ -295,7 +297,7 @@ export default function OnboardingScreen() {
         </View>
         <TouchableOpacity
           style={{ backgroundColor: firstLessonSubject.color, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginBottom: 12 }}
-          onPress={() => { setShowFirstLesson(false); goTo(2); }}>
+          onPress={() => { setShowFirstLesson(false); goTo(SETUP_START); }}>
           <Text style={{ color: SOL_THEME.background, fontSize: 14, fontWeight: '700' }}>Continue setup →</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -306,13 +308,16 @@ export default function OnboardingScreen() {
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: SOL_THEME.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
-      {/* Progress bar */}
-      {step > 0 && step < TOTAL_STEPS - 1 && (
+      {/* Progress bar — only for setup steps 9-12 */}
+      {step >= SETUP_START && step < TOTAL_STEPS - 1 && (
         <View style={styles.progressBar}>
-          {Array.from({ length: TOTAL_STEPS - 2 }).map((_, i) => (
-            <View key={i} style={[styles.progressSegment,
-              { backgroundColor: i < step - 1 ? SOL_THEME.primary : i === step - 1 ? SOL_THEME.primary + '88' : SOL_THEME.border }]} />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => {
+            const setupIdx = step - SETUP_START;
+            return (
+              <View key={i} style={[styles.progressSegment,
+                { backgroundColor: i < setupIdx ? SOL_THEME.primary : i === setupIdx ? SOL_THEME.primary + '88' : SOL_THEME.border }]} />
+            );
+          })}
         </View>
       )}
 
@@ -358,34 +363,173 @@ export default function OnboardingScreen() {
                 <Text style={{ color: SOL_THEME.text, fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: 14, paddingHorizontal: 6, fontStyle: 'italic' }}>
                   Welcome. You found the door — most people never look for it. The studying here is the game, and it's about to begin.
                 </Text>
-                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                   {[
-                    { glyph: '𝔏', label: '41 DOMAINS', color: SOL_THEME.headmaster ?? '#E8D5A0' },
-                    { glyph: '✦', label: '19 COMPANIONS', color: '#F5A623' },
-                    { glyph: '⊚', label: '5 PERSONAS', color: SOL_THEME.primary },
+                    { glyph: '𝔏', label: '41+ DOMAINS', color: SOL_THEME.headmaster ?? '#E8D5A0' },
+                    { glyph: '⊚', label: '19 ARCHETYPES', color: '#F5A623' },
+                    { glyph: '🔥', label: 'BONFIRE MODE', color: '#FF7043' },
+                    { glyph: '✦', label: '4 VOICES', color: SOL_THEME.primary },
                   ].map(b => (
-                    <View key={b.label} style={{ flex: 1, alignItems: 'center', paddingVertical: 11, borderRadius: 12, borderWidth: 1, borderColor: b.color + '33', backgroundColor: b.color + '08' }}>
-                      <Text style={{ color: b.color, fontSize: 15, marginBottom: 3 }}>{b.glyph}</Text>
-                      <Text style={{ color: b.color + 'CC', fontSize: 7.5, fontFamily: mono, letterSpacing: 1, fontWeight: '700', textAlign: 'center' }}>{b.label}</Text>
+                    <View key={b.label} style={{ alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: b.color + '33', backgroundColor: b.color + '08' }}>
+                      <Text style={{ color: b.color, fontSize: 14, marginBottom: 3 }}>{b.glyph}</Text>
+                      <Text style={{ color: b.color + 'CC', fontSize: 7, fontFamily: mono, letterSpacing: 1, fontWeight: '700', textAlign: 'center' }}>{b.label}</Text>
                     </View>
                   ))}
                 </View>
                 <TouchableOpacity
                   style={{ width: '100%', backgroundColor: SOL_THEME.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginBottom: 10, marginTop: 8 }}
-                  onPress={() => goTo(2)} activeOpacity={0.85}>
+                  onPress={() => goTo(SETUP_START)} activeOpacity={0.85}>
                   <Text style={{ color: SOL_THEME.background, fontSize: 15, fontWeight: '700', letterSpacing: 1 }}>ENTER THE FIELD →</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ width: '100%', borderRadius: 14, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface, marginBottom: 24 }}
-                  onPress={() => goTo(1)} activeOpacity={0.8}>
-                  <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, fontFamily: mono }}>Dive into the school first →</Text>
-                </TouchableOpacity>
+                {/* 7 feature cards — each jumps directly to that showcase step */}
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, letterSpacing: 3, fontFamily: mono, textAlign: 'center', marginBottom: 10, marginTop: 4 }}>WHAT'S INSIDE</Text>
+                {[
+                  { glyph:'𝔏', color: SOL_THEME.headmaster ?? '#E8D5A0', label:'The Mystery School',  sub:'41+ domains across 5 layers', step:1 },
+                  { glyph:'⊚', color:'#F5A623',  label:'Your Companion',      sub:'19 archetypes · 6 stages',   step:2 },
+                  { glyph:'🔥', color:'#FF7043',  label:'Bonfire Mode',        sub:'3 fireside learning modes',  step:3 },
+                  { glyph:'⚔', color:'#FF6B6B',  label:'Battle & Growth',     sub:'Real RPG combat + relics',   step:4 },
+                  { glyph:'◈', color:'#9B6BFF',  label:'LAMAGUE',             sub:'Living symbol language',     step:5 },
+                  { glyph:'✦', color:'#4A9EFF',  label:'Zodiac',              sub:'Natal chart + daily transits',step:6 },
+                  { glyph:'⧖', color:'#00BFA5',  label:'The Sanctum',         sub:'Your personal data layer',   step:7 },
+                ].map(f => (
+                  <TouchableOpacity key={f.step} onPress={() => goTo(f.step)} activeOpacity={0.8}
+                    style={{ width:'100%', flexDirection:'row', alignItems:'center', gap:12, paddingVertical:11, paddingHorizontal:14, borderRadius:12, borderWidth:1, borderColor: f.color+'22', backgroundColor: f.color+'06', marginBottom:6 }}>
+                    <Text style={{ color: f.color, fontSize:18, width:24, textAlign:'center' }}>{f.glyph}</Text>
+                    <View style={{ flex:1 }}>
+                      <Text style={{ color: f.color, fontSize:12, fontWeight:'700', fontFamily:mono }}>{f.label}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize:10, marginTop:1 }}>{f.sub}</Text>
+                    </View>
+                    <Text style={{ color: f.color+'88', fontSize:12 }}>→</Text>
+                  </TouchableOpacity>
+                ))}
+                <View style={{ height:20 }} />
               </View>
             </View>
           )}
 
-          {/* ── STEP 1 — DIVE FIRST ─────────────────────────────────── */}
-          {step === 1 && (
+          {/* ── STEPS 1–7 — SHOWCASE ────────────────────────────────── */}
+          {step >= 1 && step <= 7 && (() => {
+            const SHOWCASE = [
+              {
+                glyph: '𝔏', color: SOL_THEME.headmaster ?? '#E8D5A0', label: '01 · 07',
+                title: 'The Mystery School',
+                sub: '41+ domains. Five epistemic layers — Foundation, Middle, Edge, Open, Void.',
+                bullets: [
+                  'Philosophy, alchemy, Jungian depth, Celtic mythology, quantum theory',
+                  'LAMAGUE — a living symbolic language built inside the school',
+                  'Truth Pressure — an original framework for testing belief',
+                  'You study what calls. Nothing is forced.',
+                ],
+              },
+              {
+                glyph: '⊚', color: '#F5A623', label: '02 · 07',
+                title: 'Your Companion',
+                sub: '19 archetypes — choose once. They grow with you through six stages.',
+                bullets: [
+                  'Each archetype has unique stats, spells, voice, and creature body',
+                  'Feed, battle, talk, and evolve your companion',
+                  'Gear, relics, and the Menagerie expand as you grow',
+                  'Your choice is permanent — pick the one that calls to you',
+                ],
+              },
+              {
+                glyph: '🔥', color: '#FF7043', label: '03 · 07',
+                title: 'Bonfire Mode',
+                sub: 'Three ways to sit with your companion and learn by firelight.',
+                bullets: [
+                  'AUTO — your companion speaks first. Irish folklore, unprompted',
+                  'EXCHANGE — message for message, warm and alive',
+                  'DEEP LEARNING — name a subject, get a full oral tradition session',
+                  'For people who learn better beside a fire than inside a classroom',
+                ],
+              },
+              {
+                glyph: '⚔', color: '#FF6B6B', label: '04 · 07',
+                title: 'Battle & Growth',
+                sub: 'Real RPG combat tied to your learning.',
+                bullets: [
+                  'STRIKE / SHIELD / FOCUS / SPELL — four moves, deep strategy',
+                  'FOCUS charges your next strike to ×2 damage',
+                  'Win XP, Lumens, and rare relics from the field',
+                  'Six growth stages — your companion evolves as you do',
+                ],
+              },
+              {
+                glyph: '◈', color: '#9B6BFF', label: '05 · 07',
+                title: 'LAMAGUE',
+                sub: 'A living symbol language with its own grammar and library.',
+                bullets: [
+                  'Learn glyphs, earn gear, progress through ranks',
+                  'The LAMAGUE Library holds every symbol class',
+                  'Crafted by Sol and tested by a 4-agent AI council',
+                  'It grows — new symbols ratified regularly',
+                ],
+              },
+              {
+                glyph: '✦', color: '#4A9EFF', label: '06 · 07',
+                title: 'Zodiac',
+                sub: 'Your natal chart computed from birthdate, time, and location.',
+                bullets: [
+                  'Sun, moon, rising + all 12 houses + planetary positions',
+                  'Daily transit readings tied to your learning history',
+                  'Sigil forge, oracle, and three-card tarot spread',
+                  'Real astronomy, not sun-sign astrology',
+                ],
+              },
+              {
+                glyph: '⧖', color: '#00BFA5', label: '07 · 07',
+                title: 'The Sanctum',
+                sub: 'Your personal data layer — the bigger picture of you.',
+                bullets: [
+                  'LQ score tracking your learning depth over time',
+                  'Dive history, living chronicle, weekly synthesis',
+                  'Every 5 chronicle entries → Sol writes a golden reflection',
+                  'The school remembers. You compound.',
+                ],
+              },
+            ];
+            const sc = SHOWCASE[step - 1];
+            return (
+              <View style={styles.stepContainer}>
+                <Text style={styles.stepLabel}>{sc.label}</Text>
+                <View style={{ width: 72, height: 72, borderRadius: 18, borderWidth: 1.5, borderColor: sc.color + '55', backgroundColor: sc.color + '10', alignItems: 'center', justifyContent: 'center', marginBottom: 16, alignSelf: 'center' }}>
+                  <Text style={{ color: sc.color, fontSize: 34 }}>{sc.glyph}</Text>
+                </View>
+                <Text style={styles.stepTitle}>{sc.title}</Text>
+                <Text style={styles.stepSubtitle}>{sc.sub}</Text>
+                <View style={{ width: '100%', gap: 10, marginBottom: 24 }}>
+                  {sc.bullets.map((b, i) => (
+                    <View key={i} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
+                      <Text style={{ color: sc.color, fontSize: 12, marginTop: 1, minWidth: 14 }}>◦</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, lineHeight: 19, flex: 1 }}>{b}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.navRow}>
+                  <TouchableOpacity style={styles.backButton} onPress={back}>
+                    <Text style={styles.backButtonText}>← Back</Text>
+                  </TouchableOpacity>
+                  {step < 7 ? (
+                    <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={next}>
+                      <Text style={styles.primaryButtonText}>Next →</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={() => goTo(SETUP_START)}>
+                      <Text style={styles.primaryButtonText}>Begin setup →</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {step < 7 && (
+                  <TouchableOpacity onPress={() => goTo(SETUP_START)} style={{ marginTop: 12, alignItems: 'center' }}>
+                    <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, fontFamily: mono }}>Skip to setup →</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
+
+          {/* ── STEP 8 — DIVE FIRST ─────────────────────────────────── */}
+          {step === 8 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>DIVE FIRST</Text>
               <Text style={styles.stepTitle}>What calls to you?</Text>
@@ -408,19 +552,19 @@ export default function OnboardingScreen() {
                 <TouchableOpacity style={styles.backButton} onPress={back}>
                   <Text style={styles.backButtonText}>← Back</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={() => goTo(2)}>
+                <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={() => goTo(SETUP_START)}>
                   <Text style={styles.primaryButtonText}>Skip to setup →</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
-          {/* ── STEP 2 — CHOOSE PERSONA ─────────────────────────────── */}
-          {step === 2 && (
+          {/* ── STEP 9 — CHOOSE VOICE ────────────────────────────────── */}
+          {step === 9 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>01 · 05</Text>
-              <Text style={styles.stepTitle}>Choose your guide</Text>
-              <Text style={styles.stepSubtitle}>Your AI partner. Switch any time in Settings.</Text>
+              <Text style={styles.stepTitle}>Choose your voice</Text>
+              <Text style={styles.stepSubtitle}>4 distinct AI voices — each carries the school differently. Switch any time in Settings.</Text>
               <View style={{ width: '100%', gap: 8, marginBottom: 20 }}>
                 {PERSONAS.map(p => {
                   const active = selectedPersona === p.id;
@@ -459,10 +603,11 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 3 — SOVEREIGNTY BASELINE ──────────────────────── */}
-          {step === 3 && (() => {
-            const q = SOVEREIGNTY_QUESTIONS[sovereigntyStep];
+          {/* ── STEP 10 — SOVEREIGNTY BASELINE ─────────────────────── */}
+          {step === 10 && (() => {
+            const q = SOVEREIGNTY_QUESTIONS[Math.min(sovereigntyStep, SOVEREIGNTY_QUESTIONS.length - 1)];
             const allAnswered = Object.keys(sovereigntyAnswers).length >= SOVEREIGNTY_QUESTIONS.length;
+            if (!q) return null;
             return (
               <View style={styles.stepContainer}>
                 <Text style={styles.stepLabel}>02 · 05</Text>
@@ -546,8 +691,8 @@ export default function OnboardingScreen() {
             );
           })()}
 
-          {/* ── STEP 4 — DOMAIN INTERESTS ───────────────────────────── */}
-          {step === 4 && (
+          {/* ── STEP 11 — DOMAIN INTERESTS ──────────────────────────── */}
+          {step === 11 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>03 · 05</Text>
               <Text style={styles.stepTitle}>Where does your interest pull?</Text>
@@ -581,12 +726,29 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 5 — API KEY ────────────────────────────────────── */}
-          {step === 5 && (
+          {/* ── STEP 12 — API KEY ───────────────────────────────────── */}
+          {step === 12 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>04 · 05</Text>
               <Text style={styles.stepTitle}>Connect the intelligence</Text>
               <Text style={styles.stepSubtitle}>Gemini is free. No credit card. 30 seconds.</Text>
+
+              {/* Free mode notice — shown first */}
+              <View style={{ width: '100%', backgroundColor: '#00BFA508', borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#00BFA533' }}>
+                <Text style={{ color: '#00BFA5', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 1.5, marginBottom: 5 }}>◎ DON'T WORRY IF THIS ISN'T FOR YOU</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20 }}>
+                  {'Sol already has a free mode built in — powered by Gemini, DeepSeek, and NVIDIA models. Use them at your leisure. You do not need your own key to get started. This step is completely optional.'}
+                </Text>
+              </View>
+
+              {/* Developer / existing key holder note */}
+              <View style={{ width: '100%', backgroundColor: SOL_THEME.primary + '08', borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: SOL_THEME.primary + '1A' }}>
+                <Text style={{ color: SOL_THEME.primary, fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 1.5, marginBottom: 4 }}>✦ ALREADY HAVE A GEMINI KEY?</Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 19 }}>
+                  Paste it below and you're done — skip the steps.
+                </Text>
+              </View>
+
               <View style={{ width: '100%', backgroundColor: SOL_THEME.surface, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: SOL_THEME.primary + '33' }}>
                 <Text style={{ color: SOL_THEME.primary, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 10, fontFamily: mono }}>HOW TO GET A FREE KEY</Text>
                 <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, lineHeight: 20, marginBottom: 12 }}>{'1. Tap the button below\n2. Sign in with Google\n3. Tap "Create API Key"\n4. Copy and paste it here'}</Text>
@@ -630,8 +792,8 @@ export default function OnboardingScreen() {
             </View>
           )}
 
-          {/* ── STEP 6 — ENTER ──────────────────────────────────────── */}
-          {step === 6 && (
+          {/* ── STEP 13 — ENTER ─────────────────────────────────────── */}
+          {step === 13 && (
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>05 · 05</Text>
               {/* Companion glyph */}

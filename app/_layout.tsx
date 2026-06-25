@@ -16,8 +16,7 @@ const ONBOARDING_KEY = 'lycheetah_onboarded';
 // Let the device's font-size accessibility setting scale ALL text in the app, so
 // users with glasses / low vision can size everything to their own eyes. Capped at
 // 1.6× so layouts bend without breaking. Applies app-wide, no per-component changes.
-;(Text as any).defaultProps = { ...(Text as any).defaultProps, allowFontScaling: true, maxFontSizeMultiplier: 1.6 };
-;(TextInput as any).defaultProps = { ...(TextInput as any).defaultProps, allowFontScaling: true, maxFontSizeMultiplier: 1.6 };
+// allowFontScaling / maxFontSizeMultiplier applied per-component in the app
 
 const ANALYTICS_ASKED_KEY = 'sol_analytics_asked';
 

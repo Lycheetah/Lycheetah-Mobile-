@@ -529,6 +529,8 @@ export default function ZodiacScreen() {
   const [psiDraft, setPsiDraft]       = useState<{ type: PsiEntryType; target: string; impression: string; outcome: string; result: PsiResult }>({ type: 'RV', target: '', impression: '', outcome: '', result: 'pending' });
   const [selectedWheelSign, setSelectedWheelSign] = useState<number | null>(null);
 
+  const [zodiacWelcomed, setZodiacWelcomed] = useState(true); // default true to avoid flash; set false after load if needed
+
   // ── Fullscreen section overlay ──
   const [fullscreenSection, setFullscreenSection] = useState<string | null>(null);
   const [tarotViewerOpen, setTarotViewerOpen] = useState(false);
@@ -673,7 +675,7 @@ export default function ZodiacScreen() {
   useFocusEffect(useCallback(() => {
     (async () => {
       const today = todayKey();
-      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw, transitRaw, deckRaw] = await Promise.all([
+      const [birthRaw, readingRaw, auraRaw, psiRaw, zonkRaw, historyRaw, gemRaw, transitRaw, deckRaw, welcomedRaw] = await Promise.all([
         AsyncStorage.getItem('zodiac_birth_v1'),
         AsyncStorage.getItem('zodiac_reading_v1'),
         AsyncStorage.getItem(`sanctum_aura_${today}`),
@@ -683,8 +685,10 @@ export default function ZodiacScreen() {
         AsyncStorage.getItem('zodiac_gem_collection_v1'),
         AsyncStorage.getItem('sol_daily_transit_v1'),
         AsyncStorage.getItem('sol_tarot_deck'),
+        AsyncStorage.getItem('zodiac_welcomed_v1'),
       ]);
       if (deckRaw === 'vv' || deckRaw === 'classic') setDeckMode(deckRaw);
+      setZodiacWelcomed(welcomedRaw === 'true');
       if (birthRaw) setBirthData(JSON.parse(birthRaw));
       if (readingRaw) setZodiacReading(JSON.parse(readingRaw));
       if (transitRaw) {
@@ -1704,6 +1708,41 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
           </TouchableOpacity>
         </View>
       </Animated.View>
+
+      {/* ── ZODIAC ONBOARDING BANNER ── */}
+      {!fullscreenSection && !zodiacWelcomed && !birthData && (
+        <View style={{ marginBottom: 16, borderRadius: 16, borderWidth: 1.5, borderColor: '#7B68EE55', backgroundColor: '#04000F', padding: 22, alignItems: 'center' }}>
+          <Text style={{ color: ZODIAC_INDIGO, fontSize: 36, marginBottom: 12 }}>✦</Text>
+          <Text style={{ color: '#F5E6C8', fontSize: 20, fontWeight: '700', letterSpacing: 1, fontFamily: mono, textAlign: 'center', marginBottom: 10 }}>Welcome to Zodiac</Text>
+          <Text style={{ color: '#A89880', fontSize: 13, lineHeight: 21, textAlign: 'center', marginBottom: 8, maxWidth: 300 }}>
+            Real astronomical readings — your natal chart, daily transits, and planetary positions calculated from the actual sky.
+          </Text>
+          <Text style={{ color: '#6B5E7A', fontSize: 12, lineHeight: 20, textAlign: 'center', marginBottom: 20, maxWidth: 300 }}>
+            Enter your birth date to unlock personalized readings. Or explore Tarot, Oracle, Sigil Forge, and more — no data needed.
+          </Text>
+          <TouchableOpacity
+            onPress={async () => {
+              await AsyncStorage.setItem('zodiac_welcomed_v1', 'true');
+              setZodiacWelcomed(true);
+              setFullscreenSection('natal');
+              setEditingBirth(true);
+            }}
+            activeOpacity={0.85}
+            style={{ paddingVertical: 13, paddingHorizontal: 32, borderRadius: 12, backgroundColor: ZODIAC_INDIGO, marginBottom: 12 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, letterSpacing: 1 }}>Reveal My Chart ✦</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={async () => {
+              await AsyncStorage.setItem('zodiac_welcomed_v1', 'true');
+              setZodiacWelcomed(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: '#4A3D6A', fontSize: 12, letterSpacing: 1, fontFamily: mono }}>Explore first →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── SECTION TILE GRID ── */}
       {!fullscreenSection && (

@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.5.6] — 2026-06-23 — COMPANION ROSTER + TIER SYSTEM
+
+- **COMPANION ROSTER** — 17 named companion characters (SOLARA · AUGURUM · PYTHIA · CORDIA · NIMUE · LYCA · FRACTUR · ANOTH · AKASHA · RAGNA · HAVIZ · BASALT · BOREAL · VORKATH · NOCTIS · SYGL · QUOL) now live in COMPANION tab.
+- **7-tier unlock system** — T0 (free) · T1 (50✦) · T2 (150✦) · T3 (300✦) · hidden (battle wins) · secret (event) · augmented (event). At least ⅓ of all variants free at all times.
+- **Per-character grid** — tap any character card to expand tier variants inline. Tier badges (colour-coded), lock hints, equip/unequip with haptics.
+- **Tier filter pills** — ALL · T0 · T1 · T2 · T3 · HIDDEN · SECRET · AUGMENTED.
+- **Special variants wired** — PYTHIA FERAL (25 battle wins) · FRACTUR ZODIAC (zodiac unlock) · ANOTH × LYCA (sovereign) · LYCA AURA PRIME (augmented, event) · RAGNA SPECIAL · and more.
+- **Tab first-visit popups** — bottom-sheet intro fires once per tab on first entry. GOT IT → persists to AsyncStorage.
+- **Companion selection screen** — cleared to clean slate (rebuild next pass with new art).
+- **🔥 Bonfire HUD button** — in scene action row, opposite ⚡. Toggles campfire mode.
+- **QUESTS collapsible** — below ENCOUNTERS in BATTLE tab.
+- **BATTLE tab order** — ENCOUNTERS → VOID ENTITIES → QUESTS.
+
 ## [5.54.0] — 2026-06-22 — ⚔ DECISION COMBAT + ◈ Sonny attribution
 
 - **#232 Decision Combat** — battle actions renamed STRIKE / SHIELD / FOCUS / SPELL.
