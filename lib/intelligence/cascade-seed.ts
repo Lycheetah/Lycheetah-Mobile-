@@ -210,6 +210,18 @@ export function makeSeedBlocks(): CascadeBlock[] {
       ['Wildly generative: machine rights, uploading, moral patienthood.', 80],
       ['The deepest edge: we cannot yet define the test that would decide it.', 85],
     ], false)),
+
+    build('seed_agents', 'Agentic AI systems can autonomously achieve open-ended goals', L([
+      ['An agent orchestrating tools, memory, and planning can complete complex multi-step tasks without continuous human guidance.', 60],
+      ['Real wins: coding agents (SWE-bench 50%+), research agents, retrieval-augmented multi-step reasoning.', 52],
+      ['Bridges planning + tool use + memory to autonomous goal completion — the causal chain is long and each link can fail.', 50],
+      ['Coherence strained: agents fail brittly at novel sub-goals; error compounds across steps; recovery is unsolved.', 40],
+      ['Resonates with OODA loops, cognitive architectures, classical AI planning, BDI agents.', 45],
+      ['Friction: hallucination compounds across steps; one bad tool call can cascade to task failure.', 65],
+      ['Contested whether current autonomy is genuine goal-direction or tightly scaffolded mimicry.', 68],
+      ['If robust at scale: labour market transformation, oversight crisis, principal–agent problems at civilisational scope.', 72],
+      ['Unknown: how autonomy degrades in genuinely novel environments — the generalisation cliff has not been mapped.', 65],
+    ], true)),
   ];
 }
 
