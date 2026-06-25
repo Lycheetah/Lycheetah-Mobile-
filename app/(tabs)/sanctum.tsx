@@ -163,10 +163,7 @@ export default function SanctumScreen() {
   const [toolHistory, setToolHistory] = useState<Array<{ tool: string; query: string; result: string; timestamp: string }>>([]);
   const [section, setSection] = useState<'today' | 'journal' | 'vault' | 'field' | 'chain'>('today');
   const [todayFieldOpen, setTodayFieldOpen] = useState(false); // TODAY data folds away — a sanctum, not a dashboard
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [walletBalance, setWalletBalance] = useState<number | null>(null);
-  const [walletInput, setWalletInput] = useState('');
-  const [walletLoading, setWalletLoading] = useState(false);
+  const [fieldStatsOpen, setFieldStatsOpen] = useState(false); // FIELD charts/stats fold — calm arrival
   const [phase, setPhase] = useState<string>('CENTER');
   const [tes, setTes] = useState(0);
   const [vtr, setVtr] = useState(0);
@@ -499,49 +496,10 @@ export default function SanctumScreen() {
       setAuraHistory(aggregated);
     }
 
-    // Wallet — load persisted address
-    const walletRaw = await AsyncStorage.getItem('sol_wallet_address');
-    if (walletRaw) {
-      setWalletAddress(walletRaw);
-      fetchWalletBalanceFor(walletRaw);
-    }
-
   }, []);
 
   useEffect(() => { load(); }, []);
   useFocusEffect(useCallback(() => { load(); loadFieldVerse(); }, [loadFieldVerse]));
-
-  const fetchWalletBalanceFor = async (addr: string) => {
-    setWalletLoading(true);
-    try {
-      const res = await fetch('https://api.mainnet-beta.solana.com', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [addr] }),
-      });
-      const data = await res.json();
-      if (data?.result?.value !== undefined) setWalletBalance(data.result.value / 1e9);
-    } catch {}
-    setWalletLoading(false);
-  };
-
-  const connectWallet = async () => {
-    const addr = walletInput.trim();
-    if (addr.length < 32 || addr.length > 44) {
-      Alert.alert('Invalid Address', 'Enter a valid Solana public key (32-44 characters)');
-      return;
-    }
-    await AsyncStorage.setItem('sol_wallet_address', addr);
-    setWalletAddress(addr);
-    setWalletInput('');
-    fetchWalletBalanceFor(addr);
-  };
-
-  const disconnectWallet = async () => {
-    await AsyncStorage.removeItem('sol_wallet_address');
-    setWalletAddress(null);
-    setWalletBalance(null);
-  };
 
   const saveIntention = async () => {
     if (!intention.trim()) return;
@@ -769,7 +727,7 @@ export default function SanctumScreen() {
       <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: SOL_THEME.background, borderBottomWidth: 1, borderBottomColor: accentColor + '15' }}>
         {(['today', 'journal', 'vault', 'field', 'chain'] as const).map(s => {
           const active = section === s;
-          const tabColor = s === 'chain' ? '#9945FF' : accentColor;
+          const tabColor = accentColor;
           const GLYPHS = { today: '◉', journal: '§', vault: '⊛', field: 'Ψ', chain: '◎' };
           const LABELS = { today: 'TODAY', journal: journal.length > 0 ? `JOURNAL·${journal.length}` : 'JOURNAL', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', field: 'FIELD', chain: chronicle.length > 0 ? `SCROLL·${chronicle.length}` : 'SCROLL' };
           return (
@@ -1422,6 +1380,19 @@ export default function SanctumScreen() {
               )}
             </View>
 
+            {/* Field data fold — calm arrival */}
+            <TouchableOpacity
+              onPress={() => setFieldStatsOpen(o => !o)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, marginBottom: fieldStatsOpen ? 12 : 4 }}
+            >
+              <Text style={{ color: accentColor + '88', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 1.5 }}>
+                {fieldStatsOpen ? '⌃ FOLD AWAY' : '⌄ YOUR FIELD DATA'}
+              </Text>
+            </TouchableOpacity>
+
+            {fieldStatsOpen && (
+              <>
+
             {/* #44 Memory Health Indicator */}
             <View style={{ padding: 12, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08', marginBottom: 16 }}>
               <Text style={{ color: accentColor, fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 }}>{'WHAT YOU\'VE GATHERED'}</Text>
@@ -1640,6 +1611,9 @@ export default function SanctumScreen() {
               </>
             )}
 
+              </>
+            )}
+
             {/* Phase selector */}
             <Text style={[styles.label, { color: accentColor }]}>{'AWARENESS PHASE'}</Text>
             <Text style={styles.note}>Which phase are you currently in?</Text>
@@ -1842,6 +1816,8 @@ export default function SanctumScreen() {
               </View>
             )}
 
+            {fieldStatsOpen && (
+              <>
             {(weeklyJournalLoading || weeklyJournalSummaries.length > 0) && (
               <View style={{ marginTop: 16, padding: 14, borderRadius: 10, backgroundColor: '#C8A06010', borderWidth: 1, borderColor: '#C8A06044' }}>
                 <Text style={{ color: '#C8A060', fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 1, marginBottom: 8 }}>📜 WEEKLY FIELD JOURNAL</Text>
@@ -1969,6 +1945,8 @@ export default function SanctumScreen() {
                 )}
               </>
             )}
+              </>
+            )}
           </>
         );
       })()}
@@ -2046,47 +2024,6 @@ export default function SanctumScreen() {
             </>
           )}
 
-          {/* Sovereign Chain */}
-          <View style={{ marginTop: 24, borderRadius: 16, borderWidth: 1.5, borderColor: '#9945FF44', backgroundColor: '#06060E', overflow: 'hidden' }}>
-            <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#9945FF22' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <Text style={{ color: '#9945FF', fontSize: 22 }}>◎</Text>
-                <View>
-                  <Text style={{ color: '#9945FF', fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 3 }}>SOVEREIGN CHAIN</Text>
-                  <Text style={{ color: '#CC88FF', fontSize: 12, fontWeight: '700', marginTop: 1 }}>On-chain proof of the path walked</Text>
-                </View>
-              </View>
-              <Text style={{ color: '#CC88FFAA', fontSize: 12, lineHeight: 19 }}>
-                {'Your Chronicle records what you\'ve done. Sovereign Chain makes it yours — permanently and verifiably — on Solana. Knowledge earned here becomes a public, unfakeable record that no platform can revoke.'}
-              </Text>
-            </View>
-
-            {[
-              { glyph: '◌', title: 'SOULBOUND TOKENS', status: 'DEPLOYING', desc: 'Non-transferable NFTs that mark your sovereignty milestones: SEEKER (10 dives) · ADEPT (25) · SOVEREIGN (75 + LAMAGUE) · ASCENDANT (150 + mastery). Earned by walking the path. Cannot be bought, transferred, or faked.' },
-              { glyph: '✧', title: 'VERAS ON-CHAIN', status: 'PLANNED', desc: 'Veras (✧) is the knowledge token. You accumulate it now by studying and journaling. When Sovereign Chain launches, Veras converts on-chain. If people genuinely study what you contributed to the School, your subject\'s Veras bucket fills — and at a proven-benefit threshold, you earn at full parity with established subjects.' },
-              { glyph: '⊚', title: 'LYCHEETAH DAO', status: 'PLANNED', desc: 'SBT holders govern the School. Vote on new domains, companions, and protocols. The knowledge architecture becomes collectively sovereign — not owned by a company, governed by the people who built their understanding here.' },
-              { glyph: '✦', title: 'EARNED LIGHT ARTIFACTS', status: 'PLANNED', desc: 'Rare visual artifacts minted at threshold moments — milestones the chain witnessed when you crossed them. Not generated retroactively. Not purchasable. The chain remembers exactly when.' },
-            ].map(item => (
-              <View key={item.title} style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#9945FF11' }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ color: '#9945FF88', fontSize: 14 }}>{item.glyph}</Text>
-                    <Text style={{ color: '#CC88FF', fontSize: 10, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{item.title}</Text>
-                  </View>
-                  <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: item.status === 'DEPLOYING' ? '#9945FF22' : '#1A1A2A' }}>
-                    <Text style={{ color: item.status === 'DEPLOYING' ? '#9945FF' : '#555577', fontSize: 8, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{item.status}</Text>
-                  </View>
-                </View>
-                <Text style={{ color: '#9945FF55', fontSize: 11, lineHeight: 17 }}>{item.desc}</Text>
-              </View>
-            ))}
-
-            <View style={{ padding: 12, alignItems: 'center' }}>
-              <Text style={{ color: '#9945FF33', fontSize: 9, fontFamily: mono, letterSpacing: 1, textAlign: 'center' }}>
-                {'YOUR MILESTONES ARE ALREADY BEING TRACKED · KEEP WALKING THE PATH'}
-              </Text>
-            </View>
-          </View>
         </View>
       )}
 
