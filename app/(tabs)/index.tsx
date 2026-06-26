@@ -2010,12 +2010,7 @@ export default function SolChat() {
         const cs = scoreCASCADE(fullResponse);
         setLastCascade({ layer: cs.dominantLayer, pi: cs.truthPressure, paradox: cs.paradoxical });
       } catch {}
-      // #83 AURA Explainer — show once on first ever score
-      if (!auraExplainerShown) {
-        setAuraExplainerShown(true);
-        AsyncStorage.setItem('sol_aura_explained', 'true');
-        setTimeout(() => setShowAuraExplainer(true), 800);
-      }
+      // AURA explainer lives in help/settings — no auto-interrupt on first score
       setCoherenceStreak(prev => {
         const next = isPerfect ? prev + 1 : 0;
         if (next > 0 && next % 5 === 0) {
@@ -3493,7 +3488,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                 </Text>
               </View>
             )}
-            {fieldCard ? (
+            {fieldCard && (
               <View style={[styles.fieldCardBox, { borderColor: accent + '44', backgroundColor: accent + '08' }]}>
                 <View style={styles.fieldCardHeader}>
                   <Text style={[styles.fieldCardLabel, { color: accent }]}>⊚ FIELD STATUS</Text>
@@ -3517,20 +3512,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                     <Text style={[styles.fieldCardMetricVal, { color: accent }]}>{fieldCard.lq.toFixed(3)}</Text>
                   </View>
                 </View>
-              </View>
-            ) : (
-              <View style={[styles.fieldCardBox, { borderColor: accent + '22', backgroundColor: 'transparent' }]}>
-                <Text style={[styles.fieldCardLabel, { color: accent }]}>⊚ SOL IS DIFFERENT</Text>
-                <View style={[styles.fieldCardDivider, { backgroundColor: accent + '22' }]} />
-                <Text style={[styles.fieldCardPhase, { color: SOL_THEME.text, marginBottom: 10 }]}>
-                  Every response is scored against 7 constitutional rules and shows you exactly how it thinks — not just what it says.
-                </Text>
-                <Text style={[styles.fieldCardPhase, { color: SOL_THEME.textMuted, marginBottom: 10 }]}>
-                  The symbols you'll see — <Text style={{ color: accent }}>◈ CITRINITAS</Text>, <Text style={{ color: accent }}>AURA 7/7</Text>, <Text style={{ color: accent }}>Π 0.847</Text> — are all explainable. Nothing is decoration.
-                </Text>
-                <Text style={[styles.fieldCardPhase, { color: SOL_THEME.textMuted }]}>
-                  <Text style={{ color: accent }}>Codex → Help Me</Text> to ask anything.{'\n'}<Text style={{ color: accent }}>The Sanctum</Text> to let Sol respond to where you actually are.
-                </Text>
               </View>
             )}
             <TouchableOpacity onPress={() => setShowFrameworkCards(true)} activeOpacity={0.7}>

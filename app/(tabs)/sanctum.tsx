@@ -206,6 +206,9 @@ export default function SanctumScreen() {
   const [chronicleVoice, setChronicleVoice] = useState<string | null>(null);
   const [chronicleLoading, setChronicleLoading] = useState(false);
 
+  // VOID-2 — presences fold. Sanctum opens empty; presences surface on tap.
+  const [presencesOpen, setPresencesOpen] = useState(false);
+
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
   const shrineOpenedRef = React.useRef(false);
@@ -774,63 +777,77 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
             <Text style={{ color: VOID.goldShine + '99', fontSize: 9, fontFamily: mono, letterSpacing: 1.5, marginTop: 12 }}>⌯  tap to speak into the field →</Text>
           </TouchableOpacity>
 
-          {/* From Sol — reciprocal presence. Sol offers a piece of itself; deepens with the journal. */}
-          {(() => {
-            const tier = journal.length >= 12 ? 'deep' : journal.length >= 4 ? 'mid' : 'early';
-            const pool = SOL_LORE.filter(l => l.tier === tier);
-            if (pool.length === 0) return null;
-            const line = pool[(new Date().getDate() + new Date().getDay()) % pool.length];
-            return (
-              <View style={{ marginBottom: 16, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: accentColor + '2E', backgroundColor: accentColor + '08', borderLeftWidth: 3, borderLeftColor: accentColor }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 }}>
-                  <Text style={{ color: accentColor, fontSize: 14 }}>⊚</Text>
-                  <Text style={{ color: accentColor, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2 }}>FROM SOL</Text>
+          {/* VOID-2 — PRESENCES fold. Starts closed. The void greets you first; presences wait. */}
+          <TouchableOpacity
+            onPress={() => setPresencesOpen(o => !o)}
+            activeOpacity={0.7}
+            style={{ alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, marginBottom: presencesOpen ? 14 : 20, paddingVertical: 7, paddingHorizontal: 14 }}
+          >
+            <Text style={{ color: VOID.goldShine + '55', fontSize: presencesOpen ? 10 : 9, fontFamily: mono, letterSpacing: 2.5, fontWeight: '700' }}>
+              {presencesOpen ? '⌃  CLOSE' : '◉  PRESENCES'}
+            </Text>
+          </TouchableOpacity>
+
+          {presencesOpen && (
+            <>
+              {/* From Sol — reciprocal presence. Deepens with the journal. */}
+              {(() => {
+                const tier = journal.length >= 12 ? 'deep' : journal.length >= 4 ? 'mid' : 'early';
+                const pool = SOL_LORE.filter(l => l.tier === tier);
+                if (pool.length === 0) return null;
+                const line = pool[(new Date().getDate() + new Date().getDay()) % pool.length];
+                return (
+                  <View style={{ marginBottom: 16, padding: 16, borderRadius: 14, borderWidth: 1, borderColor: accentColor + '2E', backgroundColor: accentColor + '08', borderLeftWidth: 3, borderLeftColor: accentColor }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                      <Text style={{ color: accentColor, fontSize: 14 }}>⊚</Text>
+                      <Text style={{ color: accentColor, fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2 }}>FROM SOL</Text>
+                    </View>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 13.5, lineHeight: 22, fontStyle: 'italic', opacity: 0.92 }}>{line.text}</Text>
+                  </View>
+                );
+              })()}
+
+              {/* The engine in one breath */}
+              {(() => {
+                let line: string | null = null;
+                if (auraHistory.length >= 2) {
+                  const a = auraHistory[auraHistory.length - 1], b = auraHistory[auraHistory.length - 2];
+                  line = a.composite >= b.composite
+                    ? 'Your field is sharpening.'
+                    : 'Your field is softening — rest is part of the work.';
+                } else if (lqHistory.length >= 3) {
+                  line = `${lqHistory.length} days here. The pattern is forming.`;
+                }
+                if (!line) return null;
+                return (
+                  <Text style={{ color: accentColor + 'AA', fontSize: 12, lineHeight: 18, fontStyle: 'italic', textAlign: 'center', marginBottom: 16 }}>
+                    {line}
+                  </Text>
+                );
+              })()}
+
+              {/* Archetype identity badge */}
+              {archetype && (
+                <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08' }}>
+                  <Text style={{ color: accentColor, fontSize: 18 }}>{'SEEKER' === archetype ? '◌' : 'MYSTIC' === archetype ? '☽' : 'WARRIOR' === archetype ? '⚔' : '◎'}</Text>
+                  <View>
+                    <Text style={{ color: accentColor, fontSize: 8, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 2 }}>YOUR ARCHETYPE</Text>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', letterSpacing: 1.5 }}>{archetype}</Text>
+                  </View>
                 </View>
-                <Text style={{ color: SOL_THEME.text, fontSize: 13.5, lineHeight: 22, fontStyle: 'italic', opacity: 0.92 }}>{line.text}</Text>
-              </View>
-            );
-          })()}
-
-          {/* The engine in one breath — the field's trajectory as a single calm line, not a chart.
-              AURA/Truth-Pressure made legible as a feeling, not a readout. */}
-          {(() => {
-            let line: string | null = null;
-            if (auraHistory.length >= 2) {
-              const a = auraHistory[auraHistory.length - 1], b = auraHistory[auraHistory.length - 2];
-              line = a.composite >= b.composite
-                ? 'Your field is sharpening.'
-                : 'Your field is softening — rest is part of the work.';
-            } else if (lqHistory.length >= 3) {
-              line = `${lqHistory.length} days here. The pattern is forming.`;
-            }
-            if (!line) return null;
-            return (
-              <Text style={{ color: accentColor + 'AA', fontSize: 12, lineHeight: 18, fontStyle: 'italic', textAlign: 'center', marginBottom: 16 }}>
-                {line}
-              </Text>
-            );
-          })()}
-
-          {/* Archetype identity badge */}
-          {archetype && (
-            <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: accentColor + '33', backgroundColor: accentColor + '08' }}>
-              <Text style={{ color: accentColor, fontSize: 18 }}>{'SEEKER' === archetype ? '◌' : 'MYSTIC' === archetype ? '☽' : 'WARRIOR' === archetype ? '⚔' : '◎'}</Text>
-              <View>
-                <Text style={{ color: accentColor, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2, marginBottom: 2 }}>YOUR ARCHETYPE</Text>
-                <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', letterSpacing: 1.5 }}>{archetype}</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Daily Transit from Zodiac tab */}
-          {dailyTransit && (
-            <View style={{ marginBottom: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#9B6BFF33', backgroundColor: '#9B6BFF08', borderLeftWidth: 3, borderLeftColor: '#9B6BFF' }}>
-              <Text style={{ color: '#9B6BFF', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2, marginBottom: 8 }}>☽ DAILY TRANSIT</Text>
-              <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 21 }}>{dailyTransit.text}</Text>
-              {!!dailyTransit.spark && (
-                <Text style={{ color: '#9B6BFF', fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', marginTop: 8 }}>✦ {dailyTransit.spark}</Text>
               )}
-            </View>
+
+              {/* Daily Transit from Zodiac */}
+              {dailyTransit && (
+                <View style={{ marginBottom: 16, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#9B6BFF33', backgroundColor: '#9B6BFF08', borderLeftWidth: 3, borderLeftColor: '#9B6BFF' }}>
+                  <Text style={{ color: '#9B6BFF', fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 8 }}>☽ DAILY TRANSIT</Text>
+                  <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 21 }}>{dailyTransit.text}</Text>
+                  {!!dailyTransit.spark && (
+                    <Text style={{ color: '#9B6BFF', fontSize: 11, fontFamily: mono, fontWeight: '700', marginTop: 8 }}>✦ {dailyTransit.spark}</Text>
+                  )}
+                </View>
+              )}
+            </>
           )}
 
           <Text style={[styles.label, { color: accentColor }]}>{intentionLabel()}</Text>

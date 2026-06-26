@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.10.0] — 2026-06-26 — VOID-2: Sanctum as the Alive Void
+
+### Sanctum — Presences Fold (VOID-2)
+- **Empty arrival** — Sanctum TODAY opens with only THE WITNESS + the intention input. The void receives you before it speaks to you.
+- **◉ PRESENCES toggle** — FROM SOL lore, field trajectory, archetype badge, and daily transit all fold behind a single quiet tap. Presences are waiting; they don't rush.
+- The fold starts closed every session. The sanctum is a vessel, not a dashboard.
+
+---
+
 ## [5.9.0] — 2026-06-26 — VOID ERA BEGINS
 
 ### VOID-1 — Color Rehaul
