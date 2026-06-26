@@ -63,7 +63,7 @@ import {
 } from '../../lib/companion/game-data';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SCENE_H = 520;
+const SCENE_H = 300;
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 // ─── SceneBg — tintColor-sealed wrapper ──────────────────────────────────────
@@ -332,26 +332,23 @@ function CompanionScene({
         const here = (hereRoom?.skinId ?? currentRoomId.split('_')[0]) as SkinId;
         const neighbours = (GBA_ADJ[here] ?? []).filter(n => SKINS[n]).slice(0, 5);
         return (
-          <View pointerEvents="box-none" style={{ position:'absolute', top:42, alignSelf:'center', alignItems:'center', gap:6 }}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:5, paddingHorizontal:11, paddingVertical:4, borderRadius:12, borderWidth:1, borderColor: skin.color + '66', backgroundColor:'rgba(0,0,0,0.65)' }}>
-              <Text style={{ fontSize:11, color: skin.color }}>{skin.glyph}</Text>
-              <Text style={{ color: skin.color, fontSize:9, fontWeight:'700', letterSpacing:1.5, fontFamily:mono }}>{skin.name}</Text>
-            </View>
+          <View pointerEvents="box-none" style={{ position:'absolute', top:8, alignSelf:'center', alignItems:'center', gap:4, zIndex:20 }}>
             {neighbours.length > 0 && (
-              <>
-                <Text style={{ color:'rgba(255,255,255,0.4)', fontSize:7, fontFamily:mono, letterSpacing:2 }}>◂ TAP TO TRAVEL ▸</Text>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:7 }}>
-                  {neighbours.map(n => {
-                    const ns = SKINS[n];
-                    return (
-                      <TouchableOpacity key={n} onPress={() => onTravelTo(n)} activeOpacity={0.7}
-                        style={{ width:38, height:38, borderRadius:19, borderWidth:1.5, borderColor: ns.color + '88', backgroundColor:'rgba(0,0,0,0.6)', alignItems:'center', justifyContent:'center' }}>
-                        <Text style={{ fontSize:16, color: ns.color }}>{ns.glyph}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+              <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:4, paddingHorizontal:8, paddingVertical:3, borderRadius:10, borderWidth:1, borderColor: skin.color + '55', backgroundColor:'rgba(0,0,0,0.55)' }}>
+                  <Text style={{ fontSize:10, color: skin.color }}>{skin.glyph}</Text>
+                  <Text style={{ color: skin.color, fontSize:8, fontWeight:'700', letterSpacing:1.2, fontFamily:mono }}>{skin.name}</Text>
                 </View>
-              </>
+                {neighbours.map(n => {
+                  const ns = SKINS[n];
+                  return (
+                    <TouchableOpacity key={n} onPress={() => onTravelTo(n)} activeOpacity={0.7}
+                      style={{ width:26, height:26, borderRadius:13, borderWidth:1.5, borderColor: ns.color + '88', backgroundColor:'rgba(0,0,0,0.6)', alignItems:'center', justifyContent:'center' }}>
+                      <Text style={{ fontSize:12, color: ns.color }}>{ns.glyph}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             )}
           </View>
         );
@@ -405,7 +402,7 @@ function CompanionScene({
 
 
       {/* Companion — always centred */}
-      <Animated.View style={{ position:'absolute', top: SCENE_H * 0.32, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
+      <Animated.View style={{ position:'absolute', top: SCENE_H * 0.20, left: 0, right: 0, alignItems:'center', transform:[{translateY:bobY},{translateX:driftX}] }}>
         {/* Stage evolution glow — behind creature, bobs with it, invisible at stage 0, radiant at stage 5 */}
         {effectiveStage > 0 && (
           <Animated.View pointerEvents="none" style={{
@@ -536,19 +533,11 @@ function CompanionScene({
 
       <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:color, opacity:victoryFlash }} />
 
-      <View style={{ position:'absolute', bottom:12, right:16, flexDirection:'row', alignItems:'center', gap:5 }}>
-        <Text style={{ color:{ dormant:'#888899', present:color, lit:'#FFD966', transcendent:'#FFFFFF' }[mood], fontSize:11, fontWeight:'700' }}>
-          {{ dormant:'◌', present:'◉', lit:'✦', transcendent:'⊕' }[mood]}
-        </Text>
-        <Text style={{ color:{ dormant:'#777788', present:color+'DD', lit:'#FFD966CC', transcendent:'#FFFFFFCC' }[mood], fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>
-          {{ dormant:'RESTING', present:'PRESENT', lit:'LIT', transcendent:'TRANSCENDENT' }[mood]}
-        </Text>
-      </View>
 
       <RoomLore lore={roomLore} loreAnim={roomLoreAnim} color={color} onPress={onDismissLore} />
 
       {phrase && (
-        <TouchableOpacity activeOpacity={0.85} onPress={onDismissPhrase} style={{ position:'absolute', bottom:165, left:20, right:20 }}>
+        <TouchableOpacity activeOpacity={0.85} onPress={onDismissPhrase} style={{ position:'absolute', bottom:72, left:20, right:20 }}>
           <Animated.View style={{ opacity:phraseAnim, padding:14, borderRadius:14, borderWidth:1, borderTopWidth:2, borderColor:archetype.accentColor+'44', borderTopColor:archetype.accentColor+'99', backgroundColor:'#000000DD', alignItems:'center' }}>
             <Text style={{ color:'#FFFFFF', fontSize:14, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>{phrase}</Text>
             <Text style={{ color:archetype.accentColor, fontSize:8, fontFamily:mono, letterSpacing:2, marginTop:6, opacity:0.7 }}>{archetype.name} · tap to dismiss</Text>
@@ -629,7 +618,7 @@ function WaveDots({ wave, color }: { wave: number; color: string }) {
   const pos = ((wave - 1) % 5) + 1;
   return (
     <View style={{ flexDirection:'row', alignItems:'center', marginBottom:8 }}>
-      <Text style={{ fontSize:10, fontWeight:'700', letterSpacing:1.5, color:'#888', marginRight:6, fontFamily:'monospace' }}>WAVE </Text>
+      <Text style={{ fontSize:10, fontWeight:'700', letterSpacing:1.5, color:'#8A86A0', marginRight:6, fontFamily:'monospace' }}>WAVE </Text>
       {[1,2,3,4,5].map(i => (
         <Text key={i} style={{ fontSize:14, marginRight:3, color: i <= pos ? color : color+'44' }}>
           {i <= pos ? '◉' : '○'}
@@ -1480,6 +1469,9 @@ export default function CompanionScreen() {
 
   useEffect(() => {
     if (activeTab === 'field' && !fieldNote && !fieldNoteLoading) generateFieldNote();
+    if (activeTab === 'companion') {
+      setTimeout(() => scrollRef.current?.scrollTo({ y: SCENE_H + 20, animated: true }), 160);
+    }
   }, [activeTab]);
 
   useEffect(() => {
@@ -3047,7 +3039,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
     <ScrollView ref={scrollRef} style={{ flex:1 }} contentContainerStyle={{ paddingBottom:60 }} showsVerticalScrollIndicator={false}>
 
       {/* ── COMPANION HEADER ─────────────────────────────────────────────── */}
-      <View style={{ paddingHorizontal:16, paddingTop:12, paddingBottom:4, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
+      <View style={{ paddingHorizontal:16, paddingTop:6, paddingBottom:2, flexDirection:'row', alignItems:'center', justifyContent:'space-between' }}>
         <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
           <Text style={{ color, fontSize:18 }}>{archetype.glyph}</Text>
           <View>
@@ -3465,36 +3457,13 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
 
       {/* ── COMPANION TAB ─────────────────────────────────────────────────── */}
       {activeTab === 'companion' && !tabMinimized && (
-        <View style={{ paddingHorizontal:16, paddingBottom:16, marginTop:8 }}>
+        <View style={{ paddingHorizontal:16, paddingBottom:16, marginTop:4 }}>
 
           {/* ── COMPANION HERO ─────────────────────────────────────── */}
-          <View style={{ marginBottom: heroCollapsed ? 8 : 24 }}>
-            <TouchableOpacity onPress={() => setHeroCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: heroCollapsed ? 0 : 10 }}>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>ACTIVE COMPANION</Text>
-              </View>
-              <Text style={{ color:'#333344', fontSize:11 }}>{heroCollapsed ? '▶' : '▼'}</Text>
-            </TouchableOpacity>
-            {!heroCollapsed && (
+          <View style={{ marginBottom: 16 }}>
             <View style={{ borderRadius:18, borderWidth:1, borderColor:color+'44', backgroundColor:'#08080F', overflow:'hidden' }}>
-              {/* Zone art as full-bleed header */}
-              {SCENE_IMAGES[activeSkin]?.[0] && (
-                <View style={{ height:110, overflow:'hidden' }}>
-                  <Image source={SCENE_IMAGES[activeSkin]![0]} style={{ width:'100%', height:160, marginTop:-25 }} resizeMode="cover" />
-                  <View style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#000000', opacity:0.35 }} />
-                  {/* Zone name over art */}
-                  <View style={{ position:'absolute', top:12, left:16 }}>
-                    <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:3, fontWeight:'700' }}>{skin.name}</Text>
-                  </View>
-                  {/* Rarity badge */}
-                  <View style={{ position:'absolute', top:10, right:14, paddingHorizontal:8, paddingVertical:3, borderRadius:6, backgroundColor:'#000000AA', borderWidth:1, borderColor:SKIN_RARITY[activeSkin].color+'66' }}>
-                    <Text style={{ color:SKIN_RARITY[activeSkin].color, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{SKIN_RARITY[activeSkin].tier}</Text>
-                  </View>
-                </View>
-              )}
               {/* Companion art + info row */}
-              <View style={{ flexDirection:'row', alignItems:'flex-start', gap:16, padding:16, marginTop: SCENE_IMAGES[activeSkin]?.[0] ? -36 : 0 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:16, padding:16 }}>
                 {(() => {
                   const s = devStagePin !== null ? devStagePin : stage;
                   const sk = s <= 1 ? 1 : s <= 3 ? 2 : 3;
@@ -3505,21 +3474,26 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   const img = rosterV ? rosterV.art : ZONE_COMPANION_IMAGES[`${displaySkin}_${sk}`];
                   return img
                     ? <View style={{ borderRadius:14, borderWidth:2, borderColor:color+'66', backgroundColor:'#000000', shadowColor:color, shadowOpacity:0.4, shadowRadius:12, elevation:8 }}>
-                        <Image source={img} style={{ width:90, height:130, borderRadius:13 }} resizeMode="contain" />
+                        <Image source={img} style={{ width:80, height:116, borderRadius:13 }} resizeMode="contain" />
                       </View>
-                    : <View style={{ width:90, height:130, borderRadius:14, borderWidth:2, borderColor:color+'44', backgroundColor:color+'10', alignItems:'center', justifyContent:'center' }}>
+                    : <View style={{ width:80, height:116, borderRadius:14, borderWidth:2, borderColor:color+'44', backgroundColor:color+'10', alignItems:'center', justifyContent:'center' }}>
                         <Text style={{ color:color, fontSize:28 }}>{skin.glyph}</Text>
                         <Text style={{ color:'#444455', fontSize:7, fontFamily:mono, marginTop:6, textAlign:'center' }}>ART{'\n'}PENDING</Text>
                       </View>;
                 })()}
-                <View style={{ flex:1, paddingTop:40 }}>
+                <View style={{ flex:1 }}>
                   <Text style={{ color:'#FFFFFF', fontSize:18, fontWeight:'700', letterSpacing:0.5 }}>{displayName || skin.name}</Text>
                   <Text style={{ color:color, fontSize:10, fontFamily:mono, letterSpacing:1, marginTop:3 }}>{STAGES[devStagePin ?? stage]?.name ?? 'STAGE 0'}</Text>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginTop:6 }}>
+                    <View style={{ paddingHorizontal:7, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor:SKIN_RARITY[activeSkin].color+'55', backgroundColor:SKIN_RARITY[activeSkin].color+'11' }}>
+                      <Text style={{ color:SKIN_RARITY[activeSkin].color, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{SKIN_RARITY[activeSkin].tier}</Text>
+                    </View>
+                    <Text style={{ color:color+'88', fontSize:8, fontFamily:mono, letterSpacing:2 }}>{skin.name}</Text>
+                  </View>
                   <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginTop:6, lineHeight:14 }}>{skin.desc}</Text>
                 </View>
               </View>
             </View>
-            )}
           </View>
 
           {/* ── Quick action — ENCOUNTER ───────────────────────────── */}
@@ -4231,7 +4205,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             <TouchableOpacity onPress={() => setEvolutionCeremony(null)} activeOpacity={1} style={{ width:'100%', alignItems:'center', gap:20 }}>
               <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:4, fontFamily:mono }}>✦  EVOLUTION  ✦</Text>
               <Text style={{ color, fontSize:11, letterSpacing:3, fontFamily:mono, fontWeight:'700' }}>{s.name}</Text>
-              <View style={{ backgroundColor:'#0A0A0A', borderRadius:14, borderWidth:1, borderColor:color+'55', padding:20, width:'100%', alignItems:'center' }}>
+              <View style={{ backgroundColor:'#060410', borderRadius:14, borderWidth:1, borderColor:color+'55', padding:20, width:'100%', alignItems:'center' }}>
                 {s.body.map((line, i) => (
                   <Text key={i} style={{ color, fontSize:13, fontFamily:mono, lineHeight:20 }}>{line}</Text>
                 ))}
@@ -5473,8 +5447,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                                   <Text style={{ color:nodeColor, fontSize:6, fontFamily:mono, letterSpacing:0.5, marginTop:5, textAlign:'center', fontWeight:isUnlocked?'700':'400' }} numberOfLines={2}>{node.name}</Text>
                                   {/* Cost pill */}
                                   {!isUnlocked && (
-                                    <View style={{ marginTop:3, paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor: canAfford ? '#1A2A1A' : '#1A1A1A', borderWidth:1, borderColor: canAfford ? '#224422' : '#1A1A26' }}>
-                                      <Text style={{ color: canAfford ? '#44AA44' : '#333344', fontSize:6, fontFamily:mono }}>{node.cost}d</Text>
+                                    <View style={{ marginTop:3, paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor: canAfford ? '#1A2A1A' : '#0E0A1A', borderWidth:1, borderColor: canAfford ? '#224422' : '#241640' }}>
+                                      <Text style={{ color: canAfford ? '#44AA44' : '#8A86A0', fontSize:6, fontFamily:mono }}>{node.cost}d</Text>
                                     </View>
                                   )}
                                 </TouchableOpacity>
@@ -5819,9 +5793,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                         <TouchableOpacity
                           onPress={e => { e.stopPropagation?.(); unlockZoneWithDives(id, diveCost); }}
                           style={{ marginTop:4, paddingHorizontal:6, paddingVertical:2, borderRadius:4,
-                            backgroundColor: canBuy ? '#C8A96E33' : '#22222244',
-                            borderWidth:1, borderColor: canBuy ? '#C8A96E88' : '#33333366' }}>
-                          <Text style={{ color: canBuy ? '#C8A96E' : '#444455', fontSize:6, fontFamily:mono, fontWeight:'700' }}>{diveCost} ✦</Text>
+                            backgroundColor: canBuy ? '#C8A96E33' : '#1B0B3344',
+                            borderWidth:1, borderColor: canBuy ? '#C8A96E88' : '#24164066' }}>
+                          <Text style={{ color: canBuy ? '#C8A96E' : '#8A86A0', fontSize:6, fontFamily:mono, fontWeight:'700' }}>{diveCost} ✦</Text>
                         </TouchableOpacity>
                       )}
                     </View>

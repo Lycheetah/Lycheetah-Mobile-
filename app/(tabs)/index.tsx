@@ -394,7 +394,7 @@ export default function SolChat() {
   const [replyStyle, setReplyStyle] = useState<ReplyStyleId>(DEFAULT_STYLE_ID);
   const [stylePickerOpen, setStylePickerOpen] = useState(false);
   const [toastPersona, setToastPersona] = useState<Persona | null>(null);
-  const [bgColor, setBgColor] = useState('#0A0A0A');
+  const [bgColor, setBgColor] = useState('#060410');
   const [accentColor, setAccentColor] = useState('#F5A623');
   const accent = getPersonaAccent(persona, accentColor);
   const [fontSize, setFontSize] = useState<'small' | 'medium' | 'large'>('medium');
@@ -3597,9 +3597,9 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
             {(schoolStreak && schoolStreak.count > 0 || lastDive) && (
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 14, marginBottom: 2 }}>
                 {schoolStreak && schoolStreak.count > 0 && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: divedToday ? accent + '55' : '#33333355', backgroundColor: divedToday ? accent + '12' : 'transparent' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: divedToday ? accent + '55' : '#24164055', backgroundColor: divedToday ? accent + '12' : 'transparent' }}>
                     <Text style={{ fontSize: 13 }}>{divedToday ? '🔥' : '◌'}</Text>
-                    <Text style={{ color: divedToday ? accent : '#555566', fontSize: 12, fontWeight: '700' }}>{schoolStreak.count}</Text>
+                    <Text style={{ color: divedToday ? accent : '#8A86A0', fontSize: 12, fontWeight: '700' }}>{schoolStreak.count}</Text>
                     <Text style={{ color: '#555566', fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>STREAK</Text>
                   </View>
                 )}
@@ -4925,13 +4925,13 @@ const markdownStyles = {
     borderRadius: 3,
   },
   fence: {
-    backgroundColor: '#0F0F0F',
+    backgroundColor: '#0E0A1A',
     borderRadius: 6,
     padding: 10,
     marginVertical: 6,
   },
   code_block: {
-    backgroundColor: '#0F0F0F',
+    backgroundColor: '#0E0A1A',
     borderRadius: 6,
     padding: 10,
     fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',

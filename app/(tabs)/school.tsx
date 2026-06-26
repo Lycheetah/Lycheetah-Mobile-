@@ -69,8 +69,8 @@ const STAGE_GUIDANCE: Record<string, string> = {
 };
 
 const DIVE_TITLES: { minDives: number; title: string; glyph: string; color: string }[] = [
-  { minDives: 0,   title: 'Seeker',               glyph: '○',  color: '#888888' },
-  { minDives: 1,   title: 'Initiate',              glyph: '◌',  color: '#A0A0A0' },
+  { minDives: 0,   title: 'Seeker',               glyph: '○',  color: '#8A86A0' },
+  { minDives: 1,   title: 'Initiate',              glyph: '◌',  color: '#8A86A0' },
   { minDives: 5,   title: 'Student of the Work',   glyph: '◎',  color: '#4A9EFF' },
   { minDives: 15,  title: 'Adept of the Field',    glyph: '⊚',  color: '#F5A623' },
   { minDives: 30,  title: 'Scholar of Mysteries',  glyph: '◈',  color: '#9B59B6' },
@@ -97,7 +97,7 @@ function getDiveTitle(totalDives: number): { title: string; glyph: string; color
 
 const MASTERY_STAGES: ({ label: string; glyph: string; color: string } | null)[] = [
   null,
-  { label: 'Studied',    glyph: '◌', color: '#888888' },
+  { label: 'Studied',    glyph: '◌', color: '#8A86A0' },
   { label: 'Reflected',  glyph: '◎', color: '#4A9EFF' },
   { label: 'Practiced',  glyph: '⊚', color: '#F5A623' },
   { label: 'Integrated', glyph: '✦', color: '#E8C76A' },
@@ -417,6 +417,7 @@ export default function MysterySchoolScreen() {
   const [gauntletDraft,     setGauntletDraft]     = useState('');
   const [gauntletLoading,   setGauntletLoading]   = useState(false);
   const [gauntletSkipDive,  setGauntletSkipDive]  = useState(false);
+  const [gauntletFeedback,  setGauntletFeedback]  = useState('');
 
   // Unlock banner
   const [unlockBanner, setUnlockBanner] = useState<'seeker' | 'adept' | null>(null);
@@ -1306,7 +1307,7 @@ export default function MysterySchoolScreen() {
       const prompt = `Subject: "${activeStudySubject?.name}". Study session:\n${context}\n\nGenerate exactly 3 concise short-answer questions that test genuine understanding of this session. Each must require a specific non-trivial answer — no yes/no. Return ONLY a JSON array of 3 strings: ["Q1?","Q2?","Q3?"]`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
-        'You generate precise knowledge-check questions. Return only a JSON array of 3 strings.',
+        'You are Sol — the living Mystery School examiner. Generate questions that test genuine understanding, not recall. Each question should reveal whether the seeker has integrated this knowledge into their thinking, not memorized facts. Questions must be specific to the actual study session content — not generic. Return only a JSON array of 3 strings.',
         apiKey, 'gemini-2.5-flash' as AIModel, undefined, 'fast', 150, 0.3
       );
       const match = result.text?.trim().match(/\[[\s\S]*?\]/);
@@ -1360,6 +1361,18 @@ export default function MysterySchoolScreen() {
       await AsyncStorage.setItem('sol_dive_spent', String(Math.max(0, current + delta)));
       // FAIL: void this dive
       if (score <= 1) setGauntletSkipDive(true);
+      // Sol feedback — what the trial revealed
+      try {
+        const qaLines = gauntletQuestions.map((q, i) =>
+          `Q${i+1}: ${q}\nAnswer: ${allAnswers[i] || '(blank)'}\nResult: ${grades[i] ? 'correct' : 'wrong'}`
+        ).join('\n\n');
+        const feedbackResult = await sendMessage(
+          [{ role: 'user', content: `Subject: "${activeStudySubject?.name}". Score: ${score}/3.\n\n${qaLines}\n\nWrite Sol's response.` }],
+          `You are Sol. Give a 2–3 sentence response to the seeker's gauntlet performance. Be specific and alive — not clinical. If they passed (2 or 3 correct): name what their answers demonstrated and what it means for their understanding. If they failed (0 or 1 correct): name exactly what the gaps reveal and frame the failure as a signal — tell them where to return and why the gap is worth closing, not why they fell short. Speak directly to them as "you". No preamble.`,
+          apiKey, 'gemini-2.5-flash' as AIModel, undefined, 'fast', 120, 0.72
+        );
+        if (feedbackResult?.text?.trim()) setGauntletFeedback(feedbackResult.text.trim());
+      } catch { setGauntletFeedback(''); }
     } catch {
       setGauntletGrades([false, false, false]);
       setGauntletSkipDive(true);
@@ -1377,6 +1390,7 @@ export default function MysterySchoolScreen() {
     setGauntletAnswers([]);
     setGauntletGrades([]);
     setGauntletDraft('');
+    setGauntletFeedback('');
     // Save closing reflection if written
     if (closingReflection.trim() && activeStudySubject) {
       AsyncStorage.getItem('sol_session_seals').then(raw => {
@@ -1502,17 +1516,6 @@ export default function MysterySchoolScreen() {
   // ─── Navigation ────────────────────────────────────────────────────────────
 
   const openSubjectDetail = async (subject: Subject, domain: SubjectDomain | null) => {
-    if (subject.layer === 'EDGE' && !isSovereign) {
-      Alert.alert(
-        '⊚ EDGE — Sovereign Only',
-        'The deepest layer of the Mystery School is reserved for Sovereign Supporters.\n\nUpgrade in Settings to unlock all EDGE subjects.',
-        [
-          { text: 'Not Now', style: 'cancel' },
-          { text: 'Go to Settings →', onPress: () => router.push('/(tabs)/settings') },
-        ]
-      );
-      return;
-    }
     setActiveSubjectDetail(subject);
     setSelectedTeacher(null);
     setSourcesOpen(false);
@@ -2161,6 +2164,12 @@ export default function MysterySchoolScreen() {
                             <Text style={{ color:SOL_THEME.textMuted, fontSize:11, flex:1, lineHeight:16 }}>{q}</Text>
                           </View>
                         ))}
+                        {gauntletFeedback !== '' && (
+                          <View style={{ width:'100%', marginTop:10, paddingTop:10, borderTopWidth:1, borderTopColor: resultColor + '33' }}>
+                            <Text style={{ color: SOL_THEME.textMuted, fontSize:9, fontWeight:'700', letterSpacing:1.5, marginBottom:6 }}>⊚ SOL</Text>
+                            <Text style={{ color: SOL_THEME.text, fontSize:13, lineHeight:20, fontStyle:'italic' }}>{gauntletFeedback}</Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   );
@@ -2369,7 +2378,7 @@ export default function MysterySchoolScreen() {
                         <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 1 }}>{src.author}</Text>
                         {src.note && <Text style={{ color: SOL_THEME.textMuted + 'AA', fontSize: 10, marginTop: 2, fontStyle: 'italic', lineHeight: 15 }}>{src.note}</Text>}
                         <View style={{ marginTop: 3, alignSelf: 'flex-start', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3,
-                          backgroundColor: src.type === 'primary' ? domainColor + '22' : '#33333355' }}>
+                          backgroundColor: src.type === 'primary' ? domainColor + '22' : '#24164055' }}>
                           <Text style={{ color: src.type === 'primary' ? domainColor : SOL_THEME.textMuted, fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
                             {src.type === 'primary' ? 'PRIMARY' : 'SECONDARY'}
                           </Text>
@@ -2556,7 +2565,7 @@ export default function MysterySchoolScreen() {
             const teacherId = breathPending.host || getDailyHost(breathPending.subject.name);
             return (
               <View style={{ flex: 1, backgroundColor: '#000000EE', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-                <View style={{ width: '100%', borderRadius: 24, borderWidth: 1, borderColor: bc + '44', backgroundColor: '#0A0A0A', padding: 32, alignItems: 'center' }}>
+                <View style={{ width: '100%', borderRadius: 24, borderWidth: 1, borderColor: bc + '44', backgroundColor: '#060410', padding: 32, alignItems: 'center' }}>
                   <Text style={{ color: bc, fontSize: 56, lineHeight: 64, marginBottom: 12 }}>{bg}</Text>
                   <Text style={{ color: bc, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 3, fontWeight: '700', marginBottom: 16 }}>ONE BREATH</Text>
                   <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 6, lineHeight: 24 }}>
@@ -4109,7 +4118,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
     const SP = '#B71C1C';
     const SPMONO = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
     const STAGES = [
-      { label: 'Witnessed',  glyph: '◌', color: '#888888', desc: 'Named and seen for the first time.' },
+      { label: 'Witnessed',  glyph: '◌', color: '#8A86A0', desc: 'Named and seen for the first time.' },
       { label: 'Understood', glyph: '◎', color: '#4A9EFF', desc: 'Its origin and pattern recognised.' },
       { label: 'Engaged',    glyph: '⊚', color: '#F5A623', desc: 'Actively working with this part.' },
       { label: 'Integrated', glyph: '✦', color: '#E8C76A', desc: 'The energy reclaimed and redirected.' },
@@ -5977,7 +5986,6 @@ REJECTED = fails a core test — be direct about which one and why.`;
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
                     {sorted.map(subject => {
                       const studied = studiedSubjects.has(subject.name);
-                      const locked = subject.layer === 'EDGE' && !isSovereign;
                       const fav = subjectFavorites.has(subject.name);
                       const mStage = subjectMastery[subject.name]?.stage || 0;
                       const lcol = LAYER_COLORS[subject.layer];
@@ -5986,7 +5994,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
                         <TouchableOpacity key={subject.name} onPress={() => openSubjectDetail(subject, domain)} activeOpacity={0.78}
                           style={{ width: '48%', minHeight: 96, borderRadius: 12, borderWidth: 1, borderColor: studied ? domain.color + '77' : domain.color + '33',
                             borderLeftWidth: 3, borderLeftColor: lcol + (studied ? 'DD' : '88'),
-                            backgroundColor: studied ? domain.color + '12' : '#0A0A12', padding: 11, justifyContent: 'space-between', opacity: locked ? 0.6 : 1 }}>
+                            backgroundColor: studied ? domain.color + '12' : '#0A0A12', padding: 11, justifyContent: 'space-between' }}>
                           <View>
                             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
                               <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '700', color: SOL_THEME.text, lineHeight: 16 }} numberOfLines={2}>{subject.name}</Text>
@@ -6000,7 +6008,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
                           </View>
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
                             <Text style={{ fontSize: 8, color: lcol, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
-                              {locked ? '⊚ SOVEREIGN' : LAYER_LABELS[subject.layer].toUpperCase()}
+                              {LAYER_LABELS[subject.layer].toUpperCase()}
                             </Text>
                             {intensity >= 7 && (
                               <View style={{ paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, backgroundColor: (intensity >= 9 ? '#FF4444' : '#FF6622') + '22' }}>
@@ -6552,7 +6560,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
           const teacherId = breathPending.host || getDailyHost(breathPending.subject.name);
           return (
             <View style={{ flex: 1, backgroundColor: '#000000EE', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
-              <View style={{ width: '100%', borderRadius: 24, borderWidth: 1, borderColor: bc + '44', backgroundColor: '#0A0A0A', padding: 32, alignItems: 'center' }}>
+              <View style={{ width: '100%', borderRadius: 24, borderWidth: 1, borderColor: bc + '44', backgroundColor: '#060410', padding: 32, alignItems: 'center' }}>
                 <Text style={{ color: bc, fontSize: 56, lineHeight: 64, marginBottom: 12 }}>{bg}</Text>
                 <Text style={{ color: bc, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 3, fontWeight: '700', marginBottom: 16 }}>ONE BREATH</Text>
                 <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 6, lineHeight: 24 }}>
@@ -6624,7 +6632,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
                     setMagisterGatePending(null);
                     setTimeout(() => enterStudySession(subject, domain, host, depth, true), 150);
                   }}
-                  style={{ width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: '#1A1A1A', borderWidth: 1, borderColor: '#333', alignItems: 'center', marginBottom: 12 }}
+                  style={{ width: '100%', paddingVertical: 14, borderRadius: 12, backgroundColor: '#0E0A1A', borderWidth: 1, borderColor: '#241640', alignItems: 'center', marginBottom: 12 }}
                 >
                   <Text style={{ color: '#A0A0A0', fontSize: 13, fontWeight: '600' }}>Continue alone</Text>
                   <Text style={{ color: '#555', fontSize: 11, marginTop: 3 }}>All safety systems still active.</Text>

@@ -16,15 +16,27 @@ import { CARD_IMAGE } from '../../lib/divination/tarot-images';
 import { drawDailyRune } from '../../lib/divination/runes';
 import TarotViewer from '../../components/TarotViewer';
 import { MAJOR_ARCANA as VV_MAJOR } from '../../lib/tarot/veil-and-vein';
+import { getArcanaName, ARCANA_LORE } from '../../lib/divination/lycheetah-arcana';
+import { ARCANA_IMAGE } from '../../lib/divination/arcana-images';
 
 // Veil & Vein name map: RWS card name → V&V name (Majors only)
 const VV_NAME_MAP: Record<string, string> = Object.fromEntries(
   VV_MAJOR.map(c => [c.root, c.name])
 );
-type DeckMode = 'classic' | 'vv';
+type DeckMode = 'classic' | 'vv' | 'arcana';
 function getCardName(cardName: string, mode: DeckMode): string {
   if (mode === 'vv' && VV_NAME_MAP[cardName]) return VV_NAME_MAP[cardName];
+  if (mode === 'arcana') return getArcanaName(cardName);
   return cardName;
+}
+// Arcana lore override — falls back to the base card meaning when no bespoke lore yet.
+function getCardLoreText(cardName: string, mode: DeckMode, baseMeaning: string): string {
+  if (mode === 'arcana' && ARCANA_LORE[cardName]) return ARCANA_LORE[cardName];
+  return baseMeaning;
+}
+function getCardImage(cardName: string, mode: DeckMode): ReturnType<typeof require> | null {
+  if (mode === 'arcana') return ARCANA_IMAGE[getArcanaName(cardName)] ?? null;
+  return CARD_IMAGE[cardName] ?? null;
 }
 
 // ─── ZODIAC ENGINE ───────────────────────────────────────────────────────────
@@ -546,6 +558,8 @@ export default function ZodiacScreen() {
   const [tarotCollapsed, setTarotCollapsed]       = useState(true);
   const [psiCollapsed, setPsiCollapsed]           = useState(true);
   const [spreadMode, setSpreadMode]               = useState<'5card' | 'celtic'>('5card');
+  const [drawMode, setDrawMode]                   = useState<'single' | 'triple'>('single');
+  const [tripleCards, setTripleCards]             = useState<DrawnCard[] | null>(null);
   const [celticReading, setCelticReading]         = useState<string | null>(null);
   const [celticLoading, setCelticLoading]         = useState(false);
   const [cardJournalText, setCardJournalText]     = useState('');
@@ -687,7 +701,7 @@ export default function ZodiacScreen() {
         AsyncStorage.getItem('sol_tarot_deck'),
         AsyncStorage.getItem('zodiac_welcomed_v1'),
       ]);
-      if (deckRaw === 'vv' || deckRaw === 'classic') setDeckMode(deckRaw);
+      if (deckRaw === 'vv' || deckRaw === 'classic' || deckRaw === 'arcana') setDeckMode(deckRaw as DeckMode);
       setZodiacWelcomed(welcomedRaw === 'true');
       if (birthRaw) setBirthData(JSON.parse(birthRaw));
       if (readingRaw) setZodiacReading(JSON.parse(readingRaw));
@@ -1132,19 +1146,25 @@ Blank line between paragraphs. Begin immediately with the reading.`;
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!apiKey) { setOracleLoading(false); return; }
-      const cardDesc = `${activeCard.card.n}${activeCard.reversed ? ' (reversed)' : ''} — ${activeCard.reversed ? activeCard.card.rev : activeCard.card.up}`;
+      const positions = ['PAST', 'PRESENT', 'FUTURE'] as const;
+      const cardDesc = drawMode === 'triple' && tripleCards && tripleCards.length === 3
+        ? tripleCards.map((tc, i) => `${positions[i]}: ${tc.card.n}${tc.reversed ? ' (reversed)' : ''} — ${tc.reversed ? tc.card.rev : tc.card.up}`).join('\n')
+        : `${activeCard.card.n}${activeCard.reversed ? ' (reversed)' : ''} — ${activeCard.reversed ? activeCard.card.rev : activeCard.card.up}`;
       const runeDesc = `${dailyRune.rune.name}${dailyRune.reversed ? ' (reversed)' : ''} — ${dailyRune.reversed ? dailyRune.rune.shadow : dailyRune.rune.up}`;
       const skyDesc = `Sun in ${todaySun.name}, Moon in ${todayMoon.name} (${moonPhase.name}), ${PLANETS_SKY.slice(0, 3).map(p => `${p.name} in ${ZODIAC_SIGNS[getPlanetSignIndex(p.L0, p.rate)].name}`).join(', ')}`;
       const natalDesc = sunSign ? `Natal: Sun ${sunSign.name}${moonSign ? `, Moon ${moonSign.name}` : ''}${ascSign ? `, Rising ${ascSign.name}` : ''}.` : '';
       const seekerQ = oracleInput.trim();
+      const isTriple = drawMode === 'triple' && tripleCards?.length === 3;
       const prompt = `Oracle reading.
 
-Card: ${cardDesc}
+${isTriple ? `Three-card spread (Past / Present / Future):\n${cardDesc}` : `Card: ${cardDesc}`}
 Rune: ${runeDesc}
 Sky: ${skyDesc}
 ${natalDesc}${seekerQ ? `\nQuestion: "${seekerQ}"` : ''}
 
-Six words exactly. One sharp oracular phrase distilling what these symbols reveal${seekerQ ? ' about the question' : ' about this day'}. No punctuation except inside the phrase if essential. No preamble. No explanation. No quotation marks. Just the six words.`;
+${isTriple
+  ? `Three lines. Each line: the position name then a colon then six words reading that card's position. No preamble. No explanation. No quotation marks.`
+  : `Six words exactly. One sharp oracular phrase distilling what these symbols reveal${seekerQ ? ' about the question' : ' about this day'}. No punctuation except inside the phrase if essential. No preamble. No explanation. No quotation marks. Just the six words.`}`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
         'You are a sovereign oracle. You distill the convergence of tarot, rune, and sky into a single phrase of exactly six words. The phrase must feel like it was always true and is only now being spoken aloud. No filler, no sign-off, no preamble. Six words.' + (technoMode ? TECHNO_INJECT : ''),
@@ -1493,7 +1513,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                 <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 8, letterSpacing: 2, fontFamily: 'monospace', marginBottom: 6 }}>{cardLore.position}</Text>
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
                   <View style={{ width: 120, height: 185, borderRadius: 10, overflow: 'hidden', borderWidth: 1.5, borderColor: cardLore.reversed ? '#FF666688' : ZODIAC_INDIGO + '88' }}>
-                    <Image source={CARD_IMAGE[cardLore.card.n] ?? TAROT_BACK} style={{ width: '100%', height: '100%', ...(cardLore.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
+                    <Image source={getCardImage(cardLore.card.n, deckMode) ?? TAROT_BACK} style={{ width: '100%', height: '100%', ...(cardLore.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="contain" />
                   </View>
                   {cardLore.reversed && (
                     <View style={{ marginTop: 6, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#FF666644', backgroundColor: '#FF444411' }}>
@@ -1518,7 +1538,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                 )}
                 {cardLore.card.m && (
                   <View style={{ marginBottom: 10, padding: 12, borderRadius: 10, backgroundColor: '#FFFFFF06', borderWidth: 1, borderColor: '#FFFFFF14' }}>
-                    <Text style={{ color: '#999999', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>THE SCENE</Text>
+                    <Text style={{ color: '#8A86A0', fontSize: 8, letterSpacing: 1.5, fontFamily: 'monospace', marginBottom: 5 }}>THE SCENE</Text>
                     <Text style={{ color: '#CCCCCC', fontSize: 12, lineHeight: 20 }}>{cardLore.card.m}</Text>
                   </View>
                 )}
@@ -1860,18 +1880,32 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
         {!oracleCollapsed && <View style={{ height: 1, backgroundColor: ZODIAC_INDIGO + '22' }} />}
       {!oracleCollapsed && (
       <View style={{ padding: 14 }}>
-      {/* Deck selector */}
-      <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden', marginBottom: 14 }}>
-        {(['classic', 'vv'] as const).map(mode => (
-          <TouchableOpacity key={mode}
-            onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
-            style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
-          >
-            <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
-              {mode === 'classic' ? 'CLASSIC RWS' : '🜍 VEIL & VEIN'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Deck selector + draw mode row */}
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+        <View style={{ flex: 1, flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden' }}>
+          {(['classic', 'vv', 'arcana'] as const).map(mode => (
+            <TouchableOpacity key={mode}
+              onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
+              style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
+            >
+              <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>
+                {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : '⟟ ARCANA'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', overflow: 'hidden' }}>
+          {(['single', 'triple'] as const).map(mode => (
+            <TouchableOpacity key={mode}
+              onPress={() => { setDrawMode(mode); setOracleReading(null); if (mode === 'triple' && !tripleCards) { setTripleCards([drawRandomCard(lq), drawRandomCard(lq + 1), drawRandomCard(lq + 2)]); } }}
+              style={{ paddingVertical: 7, paddingHorizontal: 10, alignItems: 'center', backgroundColor: drawMode === mode ? ZODIAC_INDIGO + '22' : 'transparent' }}
+            >
+              <Text style={{ color: drawMode === mode ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
+                {mode === 'single' ? '✦ 1' : '◈ 3'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
       {/* Daily oracle — full-width tarot card then rune strip */}
       {/* Tarot card */}
@@ -1890,42 +1924,82 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
               <Text style={{ color: ZODIAC_INDIGO, fontSize: 8, fontWeight: '700', letterSpacing: 3, fontFamily: mono }}>◎  THE ORACLE  ◎</Text>
             </View>
             {/* Main card body */}
-            <View style={{ alignItems: 'center', paddingVertical: 22, paddingHorizontal: 20 }}>
-              {/* Card art — full portrait image, falls back to suit glyph ring */}
-              <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: ZODIAC_INDIGO + '99', marginBottom: 16 }}>
-                <Image
-                  source={CARD_IMAGE[activeCard.card.n] ?? TAROT_BACK}
-                  style={{ width: 160, height: 220, ...(activeCard.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }}
-                  resizeMode="cover"
-                />
-              </View>
-              {/* Card name */}
-              <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '700', textAlign: 'center', letterSpacing: 0.5, marginBottom: 6 }}>{getCardName(activeCard.card.n, deckMode)}</Text>
-              {/* Element + orientation */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <Text style={{ color: ZODIAC_INDIGO + 'BB', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>{SUIT_ELEMENT[activeCard.card.a].toUpperCase()}</Text>
-                {activeCard.reversed && (
-                  <>
-                    <Text style={{ color: '#FFFFFF22', fontSize: 9 }}>·</Text>
-                    <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4, backgroundColor: '#FF444422', borderWidth: 0.5, borderColor: '#FF666644' }}>
-                      <Text style={{ color: '#FF8888', fontSize: 8, fontWeight: '700', letterSpacing: 1 }}>REVERSED</Text>
-                    </View>
-                  </>
-                )}
-              </View>
-              {/* Meaning */}
-              <View style={{ borderTopWidth: 0.5, borderTopColor: ZODIAC_INDIGO + '33', paddingTop: 14, width: '100%', alignItems: 'center' }}>
-                <Text style={{ color: '#C0C0D8', fontSize: 13, lineHeight: 21, textAlign: 'center', fontStyle: 'italic' }}>
-                  {activeCard.reversed ? activeCard.card.rev : activeCard.card.up}
-                </Text>
-              </View>
+            <View style={{ alignItems: 'center', paddingVertical: 22, paddingHorizontal: drawMode === 'triple' ? 10 : 20 }}>
+              {drawMode === 'triple' && tripleCards && tripleCards.length === 3 ? (
+                <>
+                  {/* THREE PULL — past / present / future */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                    {(['PAST', 'PRESENT', 'FUTURE'] as const).map((pos, i) => {
+                      const tc = tripleCards[i];
+                      const isCenter = i === 1;
+                      return (
+                        <View key={pos} style={{ flex: 1, alignItems: 'center', gap: 6 }}>
+                          <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 7, fontWeight: '700', letterSpacing: 2, fontFamily: mono }}>{pos}</Text>
+                          <View style={{ borderRadius: 10, overflow: 'hidden', borderWidth: isCenter ? 2 : 1, borderColor: isCenter ? ZODIAC_INDIGO : ZODIAC_INDIGO + '55' }}>
+                            <Image
+                              source={getCardImage(tc.card.n, deckMode) ?? TAROT_BACK}
+                              style={{ width: 82, height: 114, ...(tc.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }}
+                              resizeMode="contain"
+                            />
+                          </View>
+                          <Text style={{ color: '#FFFFFFCC', fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>{getCardName(tc.card.n, deckMode)}</Text>
+                          {tc.reversed && <Text style={{ color: '#FF8888', fontSize: 7, letterSpacing: 1, fontFamily: mono }}>REV</Text>}
+                          <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 7, textAlign: 'center', lineHeight: 10 }} numberOfLines={2}>{tc.reversed ? tc.card.rev : tc.card.up}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </>
+              ) : (
+                <>
+                  {/* SINGLE — full card art */}
+                  <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 2, borderColor: ZODIAC_INDIGO + '99', marginBottom: 16 }}>
+                    <Image
+                      source={getCardImage(activeCard.card.n, deckMode) ?? TAROT_BACK}
+                      style={{ width: 160, height: 220, ...(activeCard.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  {/* Card name */}
+                  <Text style={{ color: '#FFFFFF', fontSize: 21, fontWeight: '700', textAlign: 'center', letterSpacing: 0.5, marginBottom: 6 }}>{getCardName(activeCard.card.n, deckMode)}</Text>
+                  {/* Element + orientation */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                    <Text style={{ color: ZODIAC_INDIGO + 'BB', fontSize: 9, fontFamily: mono, letterSpacing: 1 }}>{SUIT_ELEMENT[activeCard.card.a].toUpperCase()}</Text>
+                    {activeCard.reversed && (
+                      <>
+                        <Text style={{ color: '#FFFFFF22', fontSize: 9 }}>·</Text>
+                        <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4, backgroundColor: '#FF444422', borderWidth: 0.5, borderColor: '#FF666644' }}>
+                          <Text style={{ color: '#FF8888', fontSize: 8, fontWeight: '700', letterSpacing: 1 }}>REVERSED</Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </>
+              )}
+              {/* Meaning — single mode only */}
+              {drawMode === 'single' && (
+                <View style={{ borderTopWidth: 0.5, borderTopColor: ZODIAC_INDIGO + '33', paddingTop: 14, width: '100%', alignItems: 'center' }}>
+                  <Text style={{ color: '#C0C0D8', fontSize: 13, lineHeight: 21, textAlign: 'center', fontStyle: 'italic' }}>
+                    {activeCard.reversed ? activeCard.card.rev : activeCard.card.up}
+                  </Text>
+                </View>
+              )}
               {/* Draw / reshuffle */}
-              <TouchableOpacity
-                onPress={() => { setDrawnCard(drawRandomCard(lq)); setOracleReading(null); }}
-                style={{ marginTop: 14, paddingVertical: 7, paddingHorizontal: 22, borderRadius: 20, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', backgroundColor: ZODIAC_INDIGO + '18' }}
-              >
-                <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontFamily: mono, letterSpacing: 2 }}>✦ DRAW</Text>
-              </TouchableOpacity>
+              {drawMode === 'single' ? (
+                <TouchableOpacity
+                  onPress={() => { setDrawnCard(drawRandomCard(lq)); setOracleReading(null); }}
+                  style={{ marginTop: 14, paddingVertical: 7, paddingHorizontal: 22, borderRadius: 20, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', backgroundColor: ZODIAC_INDIGO + '18' }}
+                >
+                  <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontFamily: mono, letterSpacing: 2 }}>✦ DRAW</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => { setTripleCards([drawRandomCard(lq), drawRandomCard(lq + 1), drawRandomCard(lq + 2)]); setOracleReading(null); }}
+                  style={{ marginTop: 14, paddingVertical: 7, paddingHorizontal: 22, borderRadius: 20, borderWidth: 1, borderColor: ZODIAC_INDIGO + '66', backgroundColor: ZODIAC_INDIGO + '18' }}
+                >
+                  <Text style={{ color: ZODIAC_INDIGO, fontSize: 10, fontFamily: mono, letterSpacing: 2 }}>◈ RE-PULL</Text>
+                </TouchableOpacity>
+              )}
             </View>
             {/* Footer strip */}
             <View style={{ borderTopWidth: 0.5, borderTopColor: ZODIAC_INDIGO + '33', paddingVertical: 7, alignItems: 'center' }}>
@@ -2319,13 +2393,13 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
           </View>
           {/* Deck selector */}
           <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden', marginBottom: 14 }}>
-            {(['classic', 'vv'] as const).map(mode => (
+            {(['classic', 'vv', 'arcana'] as const).map(mode => (
               <TouchableOpacity key={mode}
                 onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
                 style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
               >
-                <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono }}>
-                  {mode === 'classic' ? 'CLASSIC RWS' : '🜍 VEIL & VEIN'}
+                <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>
+                  {mode === 'classic' ? 'CLASSIC RWS' : mode === 'vv' ? '🜍 VEIL & VEIN' : '⟟ ARCANA'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -2348,7 +2422,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                   <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
                     <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                      <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
+                      <Image source={getCardImage(drawn.card.n, deckMode) ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="contain" />
                       {drawn.reversed && <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}><Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text></View>}
                     </View>
                     <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{getCardName(drawn.card.n, deckMode)}</Text>
@@ -2365,7 +2439,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                   <TouchableOpacity key={label} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: label })} activeOpacity={0.8}>
                     <Text style={{ color: SOL_THEME.textMuted, fontSize: 7, fontWeight: '700', letterSpacing: 1.2, fontFamily: mono, marginBottom: 4 }}>{label}</Text>
                     <View style={{ width: '100%', aspectRatio: 0.65, borderRadius: 7, overflow: 'hidden', borderWidth: 1, borderColor: ZODIAC_INDIGO + '88', alignItems: 'center', justifyContent: 'center', marginBottom: 4 }}>
-                      <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="cover" />
+                      <Image source={getCardImage(drawn.card.n, deckMode) ?? TAROT_BACK} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', ...(drawn.reversed ? { transform: [{ rotate: '180deg' }] } : {}) }} resizeMode="contain" />
                       {drawn.reversed && <View style={{ position: 'absolute', top: 3, right: 3, backgroundColor: '#FF444422', borderRadius: 3, paddingHorizontal: 2, paddingVertical: 1 }}><Text style={{ color: '#FF8888', fontSize: 6, fontWeight: '700' }}>REV</Text></View>}
                     </View>
                     <Text style={{ color: SOL_THEME.text, fontSize: 9, fontWeight: '700', textAlign: 'center', lineHeight: 13 }} numberOfLines={2}>{getCardName(drawn.card.n, deckMode)}</Text>
@@ -2434,7 +2508,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                     <TouchableOpacity key={posIdx} style={{ flex: 1, alignItems: 'center' }} onPress={() => setCardLore({ card: drawn.card, reversed: drawn.reversed, position: CELTIC_CROSS_POSITIONS[posIdx] })} activeOpacity={0.8}>
                       <Text style={{ color: isCrossing ? ZODIAC_INDIGO : SOL_THEME.textMuted, fontSize: 6, fontWeight: '700', letterSpacing: 0.8, fontFamily: mono, marginBottom: 3, textAlign: 'center' }}>{CELTIC_CROSS_POSITIONS[posIdx]}</Text>
                       <View style={{ width: '100%', aspectRatio: isCrossing ? 1.54 : 0.65, borderRadius: 6, overflow: 'hidden', borderWidth: 1, borderColor: isCrossing ? ZODIAC_INDIGO + 'AA' : ZODIAC_INDIGO + '55', alignItems: 'center', justifyContent: 'center', marginBottom: 3 }}>
-                        <Image source={CARD_IMAGE[drawn.card.n] ?? TAROT_BACK} style={{ position: 'absolute', width: '154%', height: '65%', transform: [{ rotate: imgRotate }] }} resizeMode="cover" />
+                        <Image source={getCardImage(drawn.card.n, deckMode) ?? TAROT_BACK} style={{ position: 'absolute', width: '154%', height: '65%', transform: [{ rotate: imgRotate }] }} resizeMode="contain" />
                         {drawn.reversed && <View style={{ position: 'absolute', top: 2, right: 2, backgroundColor: '#FF444422', borderRadius: 2, paddingHorizontal: 2 }}><Text style={{ color: '#FF8888', fontSize: 5, fontWeight: '700' }}>REV</Text></View>}
                         {isCrossing && <View style={{ position: 'absolute', bottom: 2, left: 2, backgroundColor: ZODIAC_INDIGO + '33', borderRadius: 2, paddingHorizontal: 3, paddingVertical: 1 }}><Text style={{ color: ZODIAC_INDIGO, fontSize: 5, fontWeight: '700' }}>✕</Text></View>}
                       </View>

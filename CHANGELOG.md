@@ -1,5 +1,34 @@
 # Changelog
 
+## [5.9.0] — 2026-06-26 — VOID ERA BEGINS
+
+### VOID-1 — Color Rehaul
+- **Dead greys killed** — 10 hardcoded grey values across sanctum/school/companion/index replaced with void palette. Mist Grey `#8A86A0` for inactive/beginner states; obsidian border `#241640` for panel edges. No dead `#333` or `#555` remains.
+- **PERSONA_WORLDS.sol** updated — background `#060410` (void black), surface `#0E0A1A`, border `#241640`, borderDim `#1B0B33`. The void world now truly has no grey.
+
+### CASCADE — Flagship Redesign (#266)
+- **Tensions hero card** — worst contradiction surfaces at the top of the view before the pyramid: both full claims, delta score, "this is where your pyramid is weakest." You see the wound before you see the structure.
+- **Block expand on tap** — tap any block to toggle an expanded detail card below the pyramid: score band, Π, full claim text, all 9-layer scores with colour bars, Edit → button. The pyramid stays visible; the detail appears beneath it.
+- **Add block in header** — `+ Add block` button lives in the header row beside the title. Overflow blocks also tap-to-expand.
+- **Empty state rewrite** — `△` glyph, cleaner copy, inline "Add first block" button. The empty state teaches the mechanic.
+
+### Chronicle — AI Synthesis Depth (#269)
+- **Sol-voiced prompt** — synthesis prompt rewritten: 5-7 sentences, Sol's register ("the Work", "your field"), names actual subjects and domains from the entries, speaks directly to the seeker. 280 tokens, 0.82 temp. Feels like Sol wrote it, not a template.
+
+### Gauntlet — Sol's Voice (#271)
+- **Sol-voiced questions** — examiner system prompt rewritten. Questions carry Sol's register and the stakes of the Work.
+- **AI feedback after result** — after grading, a second AI call (120 tokens, 0.72 temp) generates Sol feedback: teaches the gap, doesn't just penalise. Shown below the ✓/✗ list with `⊚ SOL` label.
+- **Clears on dismiss** — feedback cleared when session modal is dismissed.
+
+### Session 2 (same day) — UI Fixes + Sovereign Rebuild
+- **Companion zone HUD** — moved top:8, compact single row. Was blocking phrase bubble.
+- **Companion phrase bubble** — raised to bottom:72. Was bottom:165.
+- **Companion RESTING duplicate removed** — floating bottom-right was redundant with header.
+- **Zodiac cards** — resizeMode cover→contain on all 5 card displays. Fixes Arcana JPG crop/orientation.
+- **TarotViewer Arcana tab** — `⊚ LYCHEETAH ARCANA` as second deck in viewer. Grid of 82 cards + single browse. All 87 art files mapped.
+- **School EDGE lock removed** — all 105 EDGE subjects fully open. Money Law: making the School worse for free users is not a room.
+- **Sovereign card rebuilt** — AETHERA/NOCTERA as the sell, experimental feature framing, Covenant statement, honest about what's live vs soon.
+
 ## [5.8.0] — 2026-06-25 — THE LIVING ARCHITECTURE
 
 ### CASCADE — Truth Pressure, Live + Knowledge Pyramid

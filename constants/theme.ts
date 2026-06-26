@@ -1,6 +1,26 @@
+// ─── THE VOID SPECTRUM ───────────────────────────────────────────────────────
+// Spec: VOID_SPECTRUM.md. The mystery shines BECAUSE the dark is deep enough.
+// Law: colour never sits on grey — accents EMERGE from obsidian void. Greys die.
+export const VOID = {
+  // The ground — deep deep void
+  black:      '#060410',   // true ground; a breath of violet in the black
+  obsidian:   '#1B0B33',   // spiritual purple — sits deeper than the blue
+  abyss:      '#06122E',   // deeper than ocean; the violet lives beneath even this
+  surface:    '#0E0A1A',   // raised surface — obsidian-tinted, never grey
+  border:     '#241640',   // obsidian-violet edge — never #2A2A2A grey
+  // The alluring accents — they GLOW from the void, never on grey
+  ghostJade:  '#4DFFB0',   // aethereal neon green — ghostly, low-opacity
+  chaosEmber: '#FF6A12',   // chaotic orange
+  bloodCrimson:'#B0122E',  // deep crimson pull
+  goldShine:  '#FFC64B',   // the warm light that crowns it all
+  // Neutrals (sparingly) — violet-greys, never dead grey
+  bone:       '#F2EDD7',
+  mist:       '#8A86A0',
+} as const;
+
 export const SOL_THEME = {
-  background: '#0A0A0A',
-  surface: '#141414',
+  background: '#060410',   // void black (was #0A0A0A grey — VOID_SPECTRUM rehaul)
+  surface: '#0E0A1A',      // obsidian-tinted surface (was #141414 mid-grey)
   primary: '#F5A623',      // solar gold — Sol
   primaryDim: '#A0691A',
   veyra: '#4A9EFF',        // steel blue — Veyra
@@ -14,7 +34,7 @@ export const SOL_THEME = {
   lyraGlyph: '✧',
   text: '#F2EFEA',
   textMuted: '#A2A6AE',   // raised from #888888 — that grey failed contrast on near-black; this passes WCAG AA for body text and helps everyone read
-  border: '#2A2A2A',
+  border: '#241640',      // obsidian-violet edge (was #2A2A2A grey — VOID_SPECTRUM rehaul)
   success: '#4CAF50',
   error: '#CF6679',
   nigredo: '#333333',
@@ -57,11 +77,11 @@ export type PersonaWorld = {
 
 export const PERSONA_WORLDS: Record<string, PersonaWorld> = {
   sol: {
-    background: '#0A0A0A',   // deep black — the void, solar origin
-    surface: '#141414',
+    background: '#060410',   // void black — the true ground
+    surface: '#0E0A1A',       // obsidian-tinted surface
     accent: '#F5A623',        // solar gold
-    border: '#2A2A2A',
-    borderDim: '#1A1A1A',
+    border: '#241640',        // obsidian-violet edge
+    borderDim: '#1B0B33',     // spiritual obsidian
   },
   veyra: {
     background: '#06080F',   // deep navy black — precise, cold, sharp

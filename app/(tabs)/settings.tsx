@@ -58,8 +58,7 @@ export default function SettingsScreen() {
   const [weatherHour, setWeatherHour] = useState(8);
   const [chaosMode, setChaosMode] = useState(false);
   const [skepticMode, setSkepticMode] = useState(false);
-  const [judgeMode, setJudgeMode] = useState(false);
-  const [forceTest, setForceTest] = useState(false);
+
   const [weirdQEnabled, setWeirdQEnabled_] = useState(false);
   const [weirdQHour, setWeirdQHour_] = useState(9);
   const [streakReminderOn, setStreakReminderOn] = useState(false);
@@ -96,8 +95,7 @@ export default function SettingsScreen() {
     getCognitiveWeatherHour().then(setWeatherHour);
     AsyncStorage.getItem('sol_chaos_mode').then(v => setChaosMode(v === 'true'));
     AsyncStorage.getItem('sol_skeptic_mode').then(v => setSkepticMode(v === 'true'));
-    AsyncStorage.getItem('sol_aura_judge_enabled').then(v => setJudgeMode(v === 'true'));
-    AsyncStorage.getItem('sol_aura_forcetest').then(v => setForceTest(v === 'true'));
+
     getWeirdQEnabled().then(setWeirdQEnabled_);
     getWeirdQHour().then(setWeirdQHour_);
     getStreakReminderEnabled().then(setStreakReminderOn);
@@ -244,31 +242,6 @@ export default function SettingsScreen() {
         <Text style={{ color: skepticMode ? '#44AAFF' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{skepticMode ? '◉' : '○'}</Text>
       </TouchableOpacity>
 
-      {/* Deep Audit — LLM-judge semantic enforcement. OFF by default (Money Law: never slow the free path). */}
-      <TouchableOpacity
-        onPress={async () => { const next = !judgeMode; setJudgeMode(next); await AsyncStorage.setItem('sol_aura_judge_enabled', next ? 'true' : 'false'); }}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: judgeMode ? '#FFAA4488' : SOL_THEME.border, backgroundColor: judgeMode ? '#FFAA440E' : SOL_THEME.surface, marginBottom: 16 }}
-        activeOpacity={0.8}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: judgeMode ? '#FFAA44' : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>Deep Audit — AURA Judge  <Text style={{ fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⊚</Text></Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>A model reads each reply's MEANING against the seven sovereignty invariants — not just keywords — and regenerates safety-critical failures. Slower, and uses more of your AI quota.{'\n'}Leaving this OFF is fully safe: fast regex enforcement still guards every response. Deep Audit is a deeper layer, not a fix.</Text>
-        </View>
-        <Text style={{ color: judgeMode ? '#FFAA44' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{judgeMode ? '◉' : '○'}</Text>
-      </TouchableOpacity>
-
-      {/* Force-Test — proof switch. Poisons the next reply so enforcement is GUARANTEED to fire. Dev only. */}
-      <TouchableOpacity
-        onPress={async () => { const next = !forceTest; setForceTest(next); await AsyncStorage.setItem('sol_aura_forcetest', next ? 'true' : 'false'); }}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: forceTest ? '#FF555588' : SOL_THEME.border, backgroundColor: forceTest ? '#FF55550E' : SOL_THEME.surface, marginBottom: 16 }}
-        activeOpacity={0.8}
-      >
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: forceTest ? '#FF5555' : SOL_THEME.text, fontSize: 13, fontWeight: '700' }}>⚠ Force-Test Enforcement  <Text style={{ fontSize: 9, letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>DEV</Text></Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 2, lineHeight: 16 }}>Proof switch. Poisons the next reply with coercion + false authority so AURA is GUARANTEED to fail and regenerate — you'll see “⊚ refining…” then a “⊚ refined” badge. Turn OFF for normal use. Never ship this on.</Text>
-        </View>
-        <Text style={{ color: forceTest ? '#FF5555' : SOL_THEME.textMuted, fontSize: 22, marginLeft: 12 }}>{forceTest ? '◉' : '○'}</Text>
-      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>🌐 LANGUAGE</Text>
       <Text style={styles.sectionNote}>Sol replies in your chosen language. Injected into every prompt — no extra API needed.</Text>
@@ -859,23 +832,73 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
       )}
-      <View style={{ marginTop: 4, marginBottom: 20, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: premiumOn ? '#F5A623AA' : '#F5A62344', backgroundColor: premiumOn ? '#F5A62310' : '#F5A62308' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-          <Text style={{ color: '#F5A623', fontSize: 14, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>⊚ SOVEREIGN SUPPORTER</Text>
+      <View style={{ marginTop: 4, marginBottom: 20, borderRadius: 14, borderWidth: 1, borderColor: premiumOn ? '#F5A623AA' : '#F5A62344', backgroundColor: premiumOn ? '#F5A62308' : '#07060E', overflow: 'hidden' }}>
+        {/* Header strip */}
+        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: premiumOn ? '#F5A62333' : '#F5A62322', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View>
+            <Text style={{ color: '#F5A623', fontSize: 15, fontWeight: '700', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>⊚ SOVEREIGN SUPPORTER</Text>
+            <Text style={{ color: '#F5A62377', fontSize: 10, marginTop: 3, fontStyle: 'italic' }}>
+              {premiumOn ? 'Your name is on the wall. The Work lives because of you.' : 'Rooms and standing. The intelligence never changes.'}
+            </Text>
+          </View>
           {premiumOn && (
-            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, backgroundColor: '#F5A62333', borderWidth: 1, borderColor: '#F5A62388' }}>
-              <Text style={{ color: '#F5A623', fontSize: 9, fontWeight: '700', letterSpacing: 1 }}>ACTIVE</Text>
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#F5A62333', borderWidth: 1, borderColor: '#F5A62388' }}>
+              <Text style={{ color: '#F5A623', fontSize: 9, fontWeight: '700', letterSpacing: 1.5 }}>ACTIVE</Text>
             </View>
           )}
         </View>
-        <Text style={{ color: '#F5A62399', fontSize: 12, lineHeight: 17, marginBottom: 4 }}>Enhanced field atmosphere, persona symbol rain, and the warm knowledge that you're supporting the Work.</Text>
-        <Text style={{ color: '#F5A62366', fontSize: 11, marginBottom: 12, fontStyle: 'italic' }}>The Open Gate never narrows. Sovereignty is always free.</Text>
 
-        {premiumOn ? (
-          <View style={{ gap: 4 }}>
-            <Text style={{ color: '#F5A62399', fontSize: 11 }}>✦ Enhanced atmosphere overlay active</Text>
-            <Text style={{ color: '#F5A62399', fontSize: 11 }}>✦ Persona-specific symbol rain unlocked</Text>
-            <Text style={{ color: '#F5A62399', fontSize: 11 }}>✦ The field remembers your support</Text>
+        {/* Benefits grid */}
+        <View style={{ padding: 14, gap: 8 }}>
+          {/* ROOMS */}
+          <Text style={{ color: '#F5A62366', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2, marginBottom: 2 }}>ROOMS — WHAT OPENS</Text>
+          {[
+            { glyph: '✦', label: 'AETHERA deck — sacred art', sub: '90 cards, soft and luminous — first drop for Sovereign', active: false, soon: true },
+            { glyph: '✦', label: 'NOCTERA deck — void art', sub: 'Dark, strange, and precise — second drop for Sovereign', active: false, soon: true },
+            { glyph: '◉', label: 'Sovereign companion variants', sub: 'Rarer skins, augmented forms, and event companions — unlocked now', active: premiumOn },
+            { glyph: '⚗', label: 'Experimental features — first', sub: 'New surfaces and mechanics before they go public. Some will ship. Some will evolve.', active: premiumOn },
+          ].map((b, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, opacity: b.soon ? 0.5 : 1 }}>
+              <Text style={{ color: b.active ? '#F5A623' : '#F5A62355', fontSize: 13, marginTop: 1 }}>{b.glyph}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: b.active ? '#F0E0C0' : '#F5A62388', fontSize: 12, fontWeight: '600' }}>{b.label}</Text>
+                  {b.soon && <View style={{ paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, backgroundColor: '#F5A62322' }}><Text style={{ color: '#F5A62377', fontSize: 8, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 1 }}>SOON</Text></View>}
+                </View>
+                <Text style={{ color: '#F5A62355', fontSize: 10, lineHeight: 15, marginTop: 1 }}>{b.sub}</Text>
+              </View>
+            </View>
+          ))}
+
+          <View style={{ height: 1, backgroundColor: '#F5A62322', marginVertical: 4 }} />
+
+          {/* STANDING */}
+          <Text style={{ color: '#F5A62366', fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 2, marginBottom: 2 }}>STANDING — WHO YOU ARE</Text>
+          {[
+            { glyph: '⊚', label: 'Founding Sovereign badge', sub: 'Shown on your profile — you were here when it mattered', active: premiumOn },
+            { glyph: '✧', label: '500 ✧ Veras monthly', sub: 'Knowledge dust — the earn-by-learning currency, topped up each month', active: premiumOn },
+            { glyph: '◌', label: 'Symbol rain & field overlay', sub: 'Your archetype\'s symbols drift through the scene — the field knows you\'re here', active: premiumOn },
+          ].map((b, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+              <Text style={{ color: b.active ? '#F5A623' : '#F5A62355', fontSize: 13, marginTop: 1 }}>{b.glyph}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: b.active ? '#F0E0C0' : '#F5A62388', fontSize: 12, fontWeight: '600' }}>{b.label}</Text>
+                <Text style={{ color: '#F5A62355', fontSize: 10, lineHeight: 15, marginTop: 1 }}>{b.sub}</Text>
+              </View>
+            </View>
+          ))}
+
+          <View style={{ height: 1, backgroundColor: '#F5A62322', marginVertical: 4 }} />
+
+          {/* Covenant line */}
+          <Text style={{ color: '#F5A62355', fontSize: 10, lineHeight: 16, fontStyle: 'italic', textAlign: 'center' }}>
+            The intelligence never changes. Free users and Sovereign users get the same Sol — the same quality, the same care. The day a free user gets a dumber answer is the day this covenant is dead.
+          </Text>
+        </View>
+
+        {/* Purchase / active actions */}
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, gap: 8 }}>
+          {premiumOn ? (
             <TouchableOpacity
               onPress={async () => {
                 setPurchaseLoading(true);
@@ -883,58 +906,58 @@ export default function SettingsScreen() {
                 setPurchaseLoading(false);
                 if (!result.success) Alert.alert('Restore', result.error || 'No subscription found.');
               }}
-              style={{ marginTop: 8, alignSelf: 'flex-start' }}
-              disabled={purchaseLoading}
-            >
-              <Text style={{ color: '#F5A62366', fontSize: 11, textDecorationLine: 'underline' }}>Restore purchases</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={{ gap: 8 }}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                onPress={async () => {
-                  setPurchaseLoading(true);
-                  const result = await purchaseSovereign(PRODUCT_MONTHLY);
-                  setPurchaseLoading(false);
-                  if (result.success) { setPremiumOn(true); await savePremium(true); }
-                  else if (!result.cancelled) Alert.alert('Purchase failed', result.error);
-                }}
-                disabled={purchaseLoading}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#F5A62388', backgroundColor: '#F5A62318', alignItems: 'center' }}
-              >
-                <Text style={{ color: '#F5A623', fontSize: 12, fontWeight: '700' }}>{purchaseLoading ? '…' : '$7.99 / month'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={async () => {
-                  setPurchaseLoading(true);
-                  const result = await purchaseSovereign(PRODUCT_ANNUAL);
-                  setPurchaseLoading(false);
-                  if (result.success) { setPremiumOn(true); await savePremium(true); }
-                  else if (!result.cancelled) Alert.alert('Purchase failed', result.error);
-                }}
-                disabled={purchaseLoading}
-                style={{ flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#F5A623CC', backgroundColor: '#F5A62328', alignItems: 'center' }}
-              >
-                <Text style={{ color: '#F5A623', fontSize: 12, fontWeight: '700' }}>{purchaseLoading ? '…' : '$59 / year'}</Text>
-                <Text style={{ color: '#F5A62399', fontSize: 9, marginTop: 2 }}>save 38%</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              onPress={async () => {
-                setPurchaseLoading(true);
-                const result = await restorePurchases();
-                setPurchaseLoading(false);
-                if (result.success) { setPremiumOn(true); await savePremium(true); Alert.alert('⊚', 'Sovereign status restored.'); }
-                else Alert.alert('Restore', result.error || 'No active subscription found.');
-              }}
-              disabled={purchaseLoading}
               style={{ alignSelf: 'center' }}
+              disabled={purchaseLoading}
             >
-              <Text style={{ color: '#F5A62366', fontSize: 11, textDecorationLine: 'underline' }}>Restore previous purchase</Text>
+              <Text style={{ color: '#F5A62355', fontSize: 11, textDecorationLine: 'underline' }}>Restore purchases</Text>
             </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            <>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={async () => {
+                    setPurchaseLoading(true);
+                    const result = await purchaseSovereign(PRODUCT_MONTHLY);
+                    setPurchaseLoading(false);
+                    if (result.success) { setPremiumOn(true); await savePremium(true); }
+                    else if (!result.cancelled) Alert.alert('Purchase failed', result.error);
+                  }}
+                  disabled={purchaseLoading}
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: '#F5A62366', backgroundColor: '#F5A62314', alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#F5A623', fontSize: 13, fontWeight: '700' }}>{purchaseLoading ? '…' : '$7.99 / month'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={async () => {
+                    setPurchaseLoading(true);
+                    const result = await purchaseSovereign(PRODUCT_ANNUAL);
+                    setPurchaseLoading(false);
+                    if (result.success) { setPremiumOn(true); await savePremium(true); }
+                    else if (!result.cancelled) Alert.alert('Purchase failed', result.error);
+                  }}
+                  disabled={purchaseLoading}
+                  style={{ flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#F5A623AA', backgroundColor: '#F5A62322', alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#F5A623', fontSize: 13, fontWeight: '700' }}>{purchaseLoading ? '…' : '$59 / year'}</Text>
+                  <Text style={{ color: '#F5A62388', fontSize: 9, marginTop: 2 }}>save 38%</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                onPress={async () => {
+                  setPurchaseLoading(true);
+                  const result = await restorePurchases();
+                  setPurchaseLoading(false);
+                  if (result.success) { setPremiumOn(true); await savePremium(true); Alert.alert('⊚', 'Sovereign status restored.'); }
+                  else Alert.alert('Restore', result.error || 'No active subscription found.');
+                }}
+                disabled={purchaseLoading}
+                style={{ alignSelf: 'center' }}
+              >
+                <Text style={{ color: '#F5A62355', fontSize: 11, textDecorationLine: 'underline' }}>Restore previous purchase</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
 
       <View style={{ marginBottom: 16, paddingHorizontal: 4 }}>
