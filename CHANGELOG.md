@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.16.0] — 2026-06-27 — SEGMENT: Tab restructure (TALK · COMPANION · WORLD · BATTLE · GEAR)
+
+### Companion Tab Restructure
+- **6 tabs → 5 tabs**, cleaner names, TALK promoted to tab 1
+- **TALK** (tab 1, ✦) — companion AI chat. Was buried at tab 5, now the first thing you see. Default landing tab.
+- **COMPANION** (tab 2, ⊛) — hero card + roster + XP/level + stat allocation. Bond (growth) content merged in — identity and growth belong together.
+- **WORLD** (tab 3, ◉) — travel map + zone navigation. Was "ZONE/FIELD".
+- **BATTLE** (tab 4, ⚔) — epic arena HUD (unchanged).
+- **GEAR** (tab 5, ⟡) — currency, forge, cosmetics. Was "SHOP".
+
 ## [5.15.0] — 2026-06-27 — VOID-3: The Record (unified note archive)
 
 ### One Vault, Many Doors

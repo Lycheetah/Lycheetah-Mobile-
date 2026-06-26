@@ -101,7 +101,7 @@ function CompanionScene({
   roomLore: string | null;
   roomLoreAnim: Animated.Value;
   onDismissLore: () => void;
-  onSwitchTab: (tab: 'battle'|'companion'|'bond'|'field'|'talk') => void;
+  onSwitchTab: (tab: 'talk'|'companion'|'world'|'battle'|'gear') => void;
   equippedWings?: string | null;
   equippedHalo?: string | null;
   equippedPet?: string | null;
@@ -720,7 +720,7 @@ export default function CompanionScreen() {
   const [battle,         setBattle]        = useState<BattleState | null>(null);
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
-  const [activeTab,      setActiveTab]     = useState<'battle'|'bond'|'companion'|'field'|'talk'|'shop'>('battle');
+  const [activeTab,      setActiveTab]     = useState<'talk'|'companion'|'world'|'battle'|'gear'>('talk');
   const [tabPopup,       setTabPopup]      = useState<string|null>(null);
   const [seenTabs,       setSeenTabs]      = useState<Set<string>>(new Set());
   const [coins,            setCoins]            = useState(0);
@@ -1477,7 +1477,7 @@ export default function CompanionScreen() {
   }, [battle?.entityName]);
 
   useEffect(() => {
-    if (activeTab === 'field' && !fieldNote && !fieldNoteLoading) generateFieldNote();
+    if (activeTab === 'world' && !fieldNote && !fieldNoteLoading) generateFieldNote();
     if (activeTab === 'companion') {
       setTimeout(() => scrollRef.current?.scrollTo({ y: SCENE_H + 20, animated: true }), 160);
     }
@@ -3222,12 +3222,11 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
       {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
       <View style={{ flexDirection:'row', gap:3, marginHorizontal:12, marginTop:0, marginBottom:6, padding:3, borderRadius:14, backgroundColor:'#0A0A14' }}>
         {([
-          { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
-          { id:'companion' as const, label:'⊛',  name:'COMPANION' },
-          { id:'bond'      as const, label:'△',  name:'GROWTH'    },
-          { id:'field'     as const, label:'◉',  name:'ZONE'      },
           { id:'talk'      as const, label:'✦',  name:'TALK'      },
-          { id:'shop'      as const, label:'⟡',  name:'SHOP'      },
+          { id:'companion' as const, label:'⊛',  name:'COMPANION' },
+          { id:'world'     as const, label:'◉',  name:'WORLD'     },
+          { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
+          { id:'gear'      as const, label:'⟡',  name:'GEAR'      },
         ]).map(t => {
           const active = activeTab === t.id;
           return (
@@ -5328,9 +5327,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
 
 
       {/* ════════════════════════════════════════════════════════════════════
-          BOND TAB
+          COMPANION TAB — GROWTH (bond content merged here)
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'bond' && !tabMinimized && (
+      {activeTab === 'companion' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:12 }}>
 
           {/* ── COMPANION LEVEL + STAT BUILD (#265) ── */}
@@ -5829,9 +5828,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
       )}
 
       {/* ════════════════════════════════════════════════════════════════════
-          FIELD TAB
+          WORLD TAB
           ════════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'field' && !tabMinimized && (
+      {activeTab === 'world' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
 
           {/* TRAVEL MAP ─────────────────────────── */}
@@ -6125,8 +6124,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         </View>
       )}
 
-      {/* ── SHOP TAB ─────────────────────────────────────────────────────── */}
-      {activeTab === 'shop' && !tabMinimized && (
+      {/* ── GEAR TAB ─────────────────────────────────────────────────────── */}
+      {activeTab === 'gear' && !tabMinimized && (
         <View style={{ paddingHorizontal:16, paddingTop:8 }}>
           {/* Currency balance */}
           <View style={{ marginBottom:16, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C49A3C44', backgroundColor:'#C49A3C0A' }}>
