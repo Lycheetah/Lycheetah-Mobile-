@@ -3273,26 +3273,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         );
       })()}
 
-      {/* Mode description strip */}
-      {!focusMode && (() => {
-        const MODE_DESC: Record<string, string> = {
-          WAYFARER: '❂ Open conversation — Sol speaks freely from your zone and persona',
-          COUNCIL:  '⚖ Many voices — Sol, Veyra, Aura and Magister converge on your question',
-          LAMAGUE:  '⬡ Symbol weave — LAMAGUE notation threaded naturally through responses',
-          SKEPTIC:  '⊘ Scientific frame — mystical language translated to psychology and utility',
-          GLYPHIC:  '✶ Emoji + symbol weave — Sol speaks in living glyphs and expressive symbols',
-        };
-        const MODE_COLOR: Record<string, string> = { WAYFARER:'#F5A623', COUNCIL:'#9B59B6', LAMAGUE:'#8855FF', SKEPTIC:'#4A9EFF', GLYPHIC:'#4ECDC4' };
-        const mc = MODE_COLOR[talkMode] ?? accent;
-        return (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: mc + '22' }}>
-            <Text style={{ color: mc + '99', fontSize: 9,
-              fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 0.5 }}>
-              {MODE_DESC[talkMode] ?? ''}
-            </Text>
-          </View>
-        );
-      })()}
 
       <FlatList
         ref={flatListRef}
@@ -3307,20 +3287,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
         maxToRenderPerBatch={6}
         updateCellsBatchingPeriod={50}
         initialNumToRender={12}
-        ListHeaderComponent={
-          <TouchableOpacity
-            onPress={() => setShowSolIdentity(true)}
-            activeOpacity={0.7}
-            style={{ flexDirection:'row', alignItems:'center', gap:6, alignSelf:'flex-start',
-              paddingHorizontal:10, paddingVertical:5, borderRadius:20, borderWidth:1,
-              borderColor: accent + '44', backgroundColor: accent + '0A', marginBottom:14, marginTop:4 }}>
-            <Text style={{ color:accent, fontSize:12 }}>⊚</Text>
-            <Text style={{ color: accent + 'CC', fontSize:10,
-              fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-              fontWeight:'700', letterSpacing:1.5 }}>WHAT IS SOL?</Text>
-            <Text style={{ color: accent + '66', fontSize:9 }}>▸</Text>
-          </TouchableOpacity>
-        }
         ListEmptyComponent={
           <View style={styles.emptyState}>
 
@@ -3616,30 +3582,6 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               </View>
             )}
 
-            {/* #75 Onboarding Checklist */}
-            {(() => {
-              const items = [
-                { label: 'Send your first message', done: messages.length > 0 || false },
-                { label: 'Rate your field in Sanctum', done: !!fieldCard },
-                { label: 'Study a Mystery School subject', done: false },
-                { label: 'Earn a 7/7 AURA response', done: auraExplainerShown },
-                { label: 'Save a memory', done: false },
-              ];
-              const allDone = items.every(i => i.done);
-              if (allDone) return null;
-              const completed = items.filter(i => i.done).length;
-              return (
-                <View style={{ marginTop: 20, padding: 14, borderRadius: 10, borderWidth: 1, borderColor: accent + '33', backgroundColor: accent + '08' }}>
-                  <Text style={{ color: accent, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom: 10 }}>GETTING STARTED · {completed}/5</Text>
-                  {items.map((item, i) => (
-                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-                      <Text style={{ fontSize: 13, color: item.done ? '#4CAF50' : SOL_THEME.textMuted }}>{item.done ? '✓' : '○'}</Text>
-                      <Text style={{ fontSize: 13, color: item.done ? SOL_THEME.textMuted : SOL_THEME.text, textDecorationLine: item.done ? 'line-through' : 'none' }}>{item.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              );
-            })()}
           </View>
         }
         ListFooterComponent={renderFooter}

@@ -2195,12 +2195,25 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     Haptics.impactAsync(action === 'attack' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
     setAttackAnim(true);
 
+    // BATTLE-2/3 — tick previous-turn DoT/regen; derive freeze/blind/weak state
+    const _eTick = tickStatuses(battle.enemyStatuses ?? []);
+    const _pTick = tickStatuses(battle.playerStatuses ?? []);
+    let curEnemyStatuses: StatusEffect[] = _eTick.remaining;
+    let curPlayerStatuses: StatusEffect[] = _pTick.remaining;
+    const _dotLog = [..._eTick.notes, ..._pTick.notes].filter(Boolean).join(' · ');
+    const playerFrozen = hasStatus(battle.playerStatuses, 'freeze');
+    let newEnemyBlind = false;
+    let stripFocus = false;
+
     let dmg = 0, healAmt = 0, logEntry = '', tokenCost = 0, chaosNote = '';
     let newEnemyHP = battle.entityHP, newPlayerHP = battle.playerHP;
     let newDefending = false, enemyAttacksBack = true;
     let newStunned = false, newShielded = false;
 
-    if (action === 'attack') {
+    if (playerFrozen) {
+      // BATTLE-3 — freeze skips offensive action; enemy still retaliates
+      logEntry = `❄ FROZEN — cannot act.${_dotLog ? ' · ' + _dotLog : ''}`;
+    } else if (action === 'attack') {
       const variance = Math.floor(Math.random() * 20);
       const chaosRoll = archetype.id === 'lycheetah' && Math.random() < 0.3;
       const chaosMult = chaosRoll ? 1.5 + Math.random() * 1.5 : 1;
@@ -2209,19 +2222,24 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       const critMult = critRoll ? 1.5 : 1;
       const focusMult = battleFocusCharged ? 2 : 1;
       if (battleFocusCharged) setBattleFocusCharged(false);
-      dmg = Math.round((attackPower + variance) * chaosMult * critMult * focusMult);
-      // Party auto-assist (#260) — each fielded creature chips in bonus damage.
-      const assist = partyAssistTotal();
-      dmg += assist;
-      chaosNote = chaosRoll ? ` ✧CHAOS×${chaosMult.toFixed(1)}` : critRoll ? ' ✦CRIT' : '';
-      newEnemyHP = Math.max(0, battle.entityHP - dmg);
-      const _af = ['bites deep','connects','tears through','lands clean','strikes home'];
-      const assistNote = assist > 0 ? ` ↳ party +${assist}` : '';
-      if (focusMult === 2 && critRoll) logEntry = `⚔ ◎FOCUS ✦CRIT — ${dmg} damage.${assistNote}`;
-      else if (focusMult === 2) logEntry = `⚔ ◎ FOCUSED STRIKE — ${dmg} damage.${assistNote}`;
-      else if (critRoll) logEntry = `⚔ ✦ CRIT — ${dmg} damage.${assistNote}`;
-      else if (chaosRoll) logEntry = `⚔ ✧ CHAOS ×${chaosMult.toFixed(1)} — ${dmg} damage.${assistNote}`;
-      else logEntry = `⚔ Strike ${_af[Math.floor(Math.random()*_af.length)]}. ${dmg} damage.${assistNote}`;
+      // BATTLE-3 — blind from enemy special: 35% miss chance
+      if (battle.enemyBlind && Math.random() < 0.35) {
+        logEntry = `⚔ BLINDED — attack missed.${_dotLog ? ' · ' + _dotLog : ''}`;
+      } else {
+        dmg = Math.round((attackPower + variance) * chaosMult * critMult * focusMult);
+        const assist = partyAssistTotal();
+        dmg += assist;
+        chaosNote = chaosRoll ? ` ✧CHAOS×${chaosMult.toFixed(1)}` : critRoll ? ' ✦CRIT' : '';
+        newEnemyHP = Math.max(0, battle.entityHP - dmg);
+        const _af = ['bites deep','connects','tears through','lands clean','strikes home'];
+        const assistNote = assist > 0 ? ` ↳ party +${assist}` : '';
+        if (focusMult === 2 && critRoll) logEntry = `⚔ ◎FOCUS ✦CRIT — ${dmg} damage.${assistNote}`;
+        else if (focusMult === 2) logEntry = `⚔ ◎ FOCUSED STRIKE — ${dmg} damage.${assistNote}`;
+        else if (critRoll) logEntry = `⚔ ✦ CRIT — ${dmg} damage.${assistNote}`;
+        else if (chaosRoll) logEntry = `⚔ ✧ CHAOS ×${chaosMult.toFixed(1)} — ${dmg} damage.${assistNote}`;
+        else logEntry = `⚔ Strike ${_af[Math.floor(Math.random()*_af.length)]}. ${dmg} damage.${assistNote}`;
+        if (_dotLog) logEntry += ' · ' + _dotLog;
+      }
     } else if (action === 'defend') {
       newDefending = true;
       newShielded = true;
@@ -2250,14 +2268,26 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       if (intent?.kind === 'special' && def.behavior?.special?.kind === 'big_hit') {
         intentMult = def.behavior.special.power ?? 2;          // AVALANCHE — eat it or SHIELD it
         intentNote = ` ${def.behavior.special.name}!`;
+      } else if (intent?.kind === 'special' && def.behavior?.special?.kind === 'blind') {
+        newEnemyBlind = true;                                   // BLIND — player misses next turn
+        intentNote = ` ${def.behavior.special.name}!`;
+        enemyLine = `${def.name} clouds your sight.`;
+      } else if (intent?.kind === 'special' && def.behavior?.special?.kind === 'strip_focus') {
+        stripFocus = true;                                      // UNMAKE — wipe focus tokens
+        intentNote = ` ${def.behavior.special.name}!`;
+      } else if (intent?.kind === 'special' && def.behavior?.special?.kind === 'inflict' && def.behavior.special.inflict) {
+        curPlayerStatuses = applyStatus(curPlayerStatuses, { kind: def.behavior.special.inflict, turns: 2, power: def.behavior.special.power ?? 3 });
+        intentNote = ` ${def.behavior.special.name}!`;         // STILL → freeze player next turn
       } else if (intent?.kind === 'guard') {
         intentMult = 0.4;                                       // it braced — weak counter
       }
+      // BATTLE-2 — WEAK status reduces enemy's outgoing damage
+      const weakMult = hasStatus(curEnemyStatuses, 'weak') ? 0.7 : 1;
       // SPD dodge: spd >= 18 grants 25% full dodge chance
       const spdDodge = playerStats.spd >= 18 && Math.random() < 0.25;
       // DEF flat reduction: up to 30% of enemy's base atk
       const defReduction = spdDodge ? 0 : Math.min(Math.floor(def.atk * 0.3), Math.floor(playerStats.def / 3));
-      const rawEnemyDmg = spdDodge ? 0 : Math.round(def.atk * (0.8 + Math.random() * 0.4) * shieldMult * intentMult);
+      const rawEnemyDmg = spdDodge ? 0 : Math.round(def.atk * (0.8 + Math.random() * 0.4) * shieldMult * intentMult * weakMult);
       const enemyDmg = Math.max(0, rawEnemyDmg - defReduction);
       newPlayerHP = Math.max(0, newPlayerHP - enemyDmg);
       const _ctr = ['retaliates','answers','pushes back','strikes'];
@@ -2313,7 +2343,11 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       ]).start();
     }
 
-    await _commitBattleResult({ def, dmg, healAmt, logEntry, tokenCost, chaosNote, newEnemyHP, newPlayerHP, newDefending, newStunned, newShielded });
+    // BATTLE-2 — apply DoT/regen tick deltas accumulated at start of this turn
+    if (_eTick.hpDelta !== 0) newEnemyHP = Math.max(0, newEnemyHP + _eTick.hpDelta);
+    if (_pTick.hpDelta !== 0) newPlayerHP = Math.max(0, newPlayerHP + _pTick.hpDelta);
+
+    await _commitBattleResult({ def, dmg, healAmt, logEntry, tokenCost, chaosNote, newEnemyHP, newPlayerHP, newDefending, newStunned, newShielded, newEnemyStatuses: curEnemyStatuses, newPlayerStatuses: curPlayerStatuses, stripFocus, newEnemyBlind });
     setTimeout(() => setAttackAnim(false), 350);
   };
 
@@ -2323,6 +2357,13 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setAttackAnim(true);
+
+    // BATTLE-2 — tick previous-turn DoT before spell resolves
+    const _seTick = tickStatuses(battle.enemyStatuses ?? []);
+    const _spTick = tickStatuses(battle.playerStatuses ?? []);
+    let curEnemyStatuses: StatusEffect[] = _seTick.remaining;
+    let curPlayerStatuses: StatusEffect[] = _spTick.remaining;
+    const _spDotLog = [..._seTick.notes, ..._spTick.notes].filter(Boolean).join(' · ');
 
     let dmg = 0, healAmt = 0, chaosNote = '';
     let newEnemyHP = battle.entityHP, newPlayerHP = battle.playerHP;
@@ -2369,15 +2410,30 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       newEnemyHP = Math.max(0, battle.entityHP - dmg);
     }
 
-    // Enemy counter (unless stunned/shielded)
+    // BATTLE-2 — apply spell status effect to enemy statuses
+    const _SPELL_STATUS: Record<string, StatusEffect> = {
+      ember_surge: { kind: 'burn', turns: 2, power: 5  },
+      forge_heat:  { kind: 'burn', turns: 3, power: 10 },
+      acid_flask:  { kind: 'weak', turns: 3, power: 3  },
+    };
+    if (_SPELL_STATUS[spell.id]) {
+      curEnemyStatuses = applyStatus(curEnemyStatuses, _SPELL_STATUS[spell.id]);
+    }
+
+    // Enemy counter (unless stunned/shielded or enemy frozen)
     let enemyLine = battle.enemyLine;
-    if (enemyAttacksBack && newEnemyHP > 0 && !battle.enemyStunned) {
+    if (enemyAttacksBack && newEnemyHP > 0 && !battle.enemyStunned && !hasStatus(curEnemyStatuses, 'freeze')) {
       const atkLines = def.lines.attack;
       enemyLine = atkLines[Math.floor(Math.random() * atkLines.length)];
+      const weakMultS = hasStatus(curEnemyStatuses, 'weak') ? 0.7 : 1;
       const shieldMult = newShielded ? 0.0 : 1;
-      const enemyDmg = Math.round(def.atk * (0.8 + Math.random() * 0.4) * shieldMult);
+      const enemyDmg = Math.round(def.atk * (0.8 + Math.random() * 0.4) * shieldMult * weakMultS);
       newPlayerHP = Math.max(0, newPlayerHP - enemyDmg);
     }
+
+    // BATTLE-2 — apply DoT/regen tick deltas
+    if (_seTick.hpDelta !== 0) newEnemyHP = Math.max(0, newEnemyHP + _seTick.hpDelta);
+    if (_spTick.hpDelta !== 0) newPlayerHP = Math.max(0, newPlayerHP + _spTick.hpDelta);
 
     if (dmg > 0) {
       Animated.parallel([
@@ -2402,16 +2458,20 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     }
 
     const _spFx: Record<string,string> = { damage:'tears through', stun:'locks the field', shield:'seals the gap', drain:'draws life', chaos:'erupts', reflect:'turns the blow', boost:'echoes' };
-    const logEntry = `✦ ${spell.name} — ${_spFx[spell.type] ?? 'fires'}.${dmg > 0 ? ` ${dmg}${chaosNote}.` : ''}${healAmt > 0 ? ` +${healAmt} HP.` : ''}`;
-    await _commitBattleResult({ def, dmg, healAmt, logEntry, tokenCost: spell.cost, chaosNote, newEnemyHP, newPlayerHP, newDefending: false, newStunned, newShielded });
+    const logEntry = `✦ ${spell.name} — ${_spFx[spell.type] ?? 'fires'}.${dmg > 0 ? ` ${dmg}${chaosNote}.` : ''}${healAmt > 0 ? ` +${healAmt} HP.` : ''}${_spDotLog ? ' · ' + _spDotLog : ''}`;
+    await _commitBattleResult({ def, dmg, healAmt, logEntry, tokenCost: spell.cost, chaosNote, newEnemyHP, newPlayerHP, newDefending: false, newStunned, newShielded, newEnemyStatuses: curEnemyStatuses, newPlayerStatuses: curPlayerStatuses });
     setTimeout(() => setAttackAnim(false), 350);
   };
 
   const _commitBattleResult = async (p: {
     def: EnemyDef; dmg: number; healAmt: number; logEntry: string; tokenCost: number; chaosNote: string;
     newEnemyHP: number; newPlayerHP: number; newDefending: boolean; newStunned: boolean; newShielded: boolean;
+    newEnemyStatuses?: StatusEffect[]; newPlayerStatuses?: StatusEffect[];
+    stripFocus?: boolean; newEnemyBlind?: boolean;
   }) => {
     const { def, dmg, healAmt, logEntry, tokenCost, chaosNote, newEnemyHP, newPlayerHP, newDefending, newStunned, newShielded } = p;
+    const finalEnemyStatuses = p.newEnemyStatuses ?? (battle!.enemyStatuses ?? []);
+    const finalPlayerStatuses = p.newPlayerStatuses ?? (battle!.playerStatuses ?? []);
     const won = newEnemyHP === 0;
     const newTokens = Math.max(0, tokensLeft - tokenCost);
     const loot = won ? rollLoot(battle!.wave) : null;
@@ -2433,7 +2493,7 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     const updated: BattleState = {
       ...battle!,
       entityHP: newEnemyHP, playerHP: newPlayerHP,
-      tokens: newTokens, won, defending: newDefending,
+      tokens: p.stripFocus ? 0 : newTokens, won, defending: newDefending,
       enemyLine: won ? def.lines.death : (p as any).enemyLine ?? battle!.enemyLine,
       loot: loot?.name ?? null,
       log: [logEntry, ...battle!.log].slice(0, 4),
@@ -2443,9 +2503,12 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       lastPlayerDmg: dmg > 0 ? dmg : battle!.lastPlayerDmg,
       enemyIntent: nextIntent,
       turnCount: nextTurn,
+      enemyStatuses: finalEnemyStatuses,
+      playerStatuses: finalPlayerStatuses,
+      enemyBlind: p.newEnemyBlind ?? false,
     };
     setBattle(updated);
-    setTokensLeft(newTokens);
+    setTokensLeft(p.stripFocus ? 0 : newTokens);
     await AsyncStorage.setItem('sol_companion_battle', JSON.stringify(updated));
 
     if (won) {
@@ -6879,6 +6942,21 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                 </View>
               </View>
 
+              {/* BATTLE-4 — Enemy status chips */}
+              {(battle.enemyStatuses?.length ?? 0) > 0 && (
+                <View style={{ flexDirection:'row', flexWrap:'wrap', gap:4, marginBottom:6 }}>
+                  {(battle.enemyStatuses ?? []).map((s, i) => (
+                    <View key={i} style={{ flexDirection:'row', alignItems:'center', gap:3, paddingHorizontal:6, paddingVertical:2,
+                      borderRadius:6, backgroundColor: STATUS_META[s.kind].colour + '22', borderWidth:1, borderColor: STATUS_META[s.kind].colour + '66' }}>
+                      <Text style={{ fontSize:10 }}>{STATUS_META[s.kind].glyph}</Text>
+                      <Text style={{ color: STATUS_META[s.kind].colour, fontSize:8, fontFamily:mono, fontWeight:'700' }}>
+                        {STATUS_META[s.kind].label} {s.turns}t
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
               {/* Enemy quote */}
               <View style={{ borderLeftWidth:2, borderLeftColor:rc+'66', paddingLeft:8, width:'100%', marginBottom:6 }}>
                 <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', lineHeight:15 }} numberOfLines={2}>
@@ -6935,6 +7013,20 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                     backgroundColor:'#FFFFFF', opacity:hpShimmerAnim, borderRadius:9 }} pointerEvents="none" />
                 </View>
                 {pDanger && <Text style={{ color:'#FF4444AA', fontSize:7, fontFamily:mono, marginTop:4, letterSpacing:1 }}>▼ CRITICAL · HEAL OR RETREAT</Text>}
+                {/* BATTLE-4 — Player status chips */}
+                {(battle.playerStatuses?.length ?? 0) > 0 && (
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:4, marginTop:5 }}>
+                    {(battle.playerStatuses ?? []).map((s, i) => (
+                      <View key={i} style={{ flexDirection:'row', alignItems:'center', gap:3, paddingHorizontal:6, paddingVertical:2,
+                        borderRadius:6, backgroundColor: STATUS_META[s.kind].colour + '22', borderWidth:1, borderColor: STATUS_META[s.kind].colour + '66' }}>
+                        <Text style={{ fontSize:10 }}>{STATUS_META[s.kind].glyph}</Text>
+                        <Text style={{ color: STATUS_META[s.kind].colour, fontSize:8, fontFamily:mono, fontWeight:'700' }}>
+                          {STATUS_META[s.kind].label} {s.turns}t
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
 
               {/* Battle log */}

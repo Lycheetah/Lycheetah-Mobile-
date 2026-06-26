@@ -1,5 +1,30 @@
 # Changelog
 
+## [5.12.0] — 2026-06-27 — Battle Engine Complete + Sol Tab Declutter
+
+### Battle Engine — BATTLE-2/3/4 (Status System Live)
+- **DoT/regen mechanics real** — burn/poison tick damage and regen now apply each turn in both `handleBattleAction` and `handleSpell`. Previously they were display-only.
+- **Spell status effects wired** — `ember_surge` inflicts burn (2t/5dmg), `forge_heat` inflicts burn (3t/10dmg), `acid_flask` inflicts weak (3t, −30% enemy damage). Spell descriptions are now mechanically true.
+- **BATTLE-3 enemy specials** — all 4 inner-demon signatures live:
+  - **Fog → BLIND**: player attacks have 35% miss chance next turn
+  - **Forgetting → UNMAKE**: wipes all player focus tokens
+  - **Stasis → STILL**: inflicts freeze on player — cannot act for 2 turns
+  - **Inertia → AVALANCHE**: already live (v5.11.0), confirmed working
+- **WEAK multiplier** — enemy with weak status deals 30% less damage on counter-attacks
+- **Freeze check** — frozen enemies cannot counter-attack; frozen player skips offensive action
+- **Enemy blind resets** — blind flag clears automatically after each turn (one-shot effect)
+- **Focus strip** — UNMAKE resets `tokensLeft` to 0 and saves to `BattleState.tokens`
+
+### Status HUD (BATTLE-4)
+- **Enemy status chips** — compact row below enemy HP bar: 🔥 BURN 2t, ▽ WEAK 3t, etc.
+- **Player status chips** — row inside player HP card: ❄ FREEZE 1t, etc.
+- Chips show glyph + label + remaining turns, color-coded per `STATUS_META`
+
+### Sol Tab Declutter
+- **Mode description strip removed** — the text strip beneath talk mode chips duplicated chip labels; cut.
+- **GETTING STARTED checklist removed** — two of five items were permanently `false` (never completable). Cut entirely rather than leave a perpetually-stuck onboarding widget.
+- **"WHAT IS SOL?" header removed** — always-visible button above every conversation added museum weight. Sol Identity modal still accessible via settings/help.
+
 ## [5.11.0] — 2026-06-27 — BATTLE-1: The Enemy Thinks Now
 
 ### Enemy Intent / Telegraph (BATTLE-1)
