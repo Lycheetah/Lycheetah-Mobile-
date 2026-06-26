@@ -1,5 +1,28 @@
 # Changelog
 
+## [5.14.0] — 2026-06-27 — BATTLE-5: Epic Arena HUD
+
+### Two-Sprite Arena
+- Companion sprite now appears LEFT in battle for the first time — facing the enemy RIGHT
+- Both sprites same size (78×96) with colored border glow matching their theme
+- Companion hit-flash (red), heal-flash (green) and enemy white-flash on sprite directly
+- VS slot between sprites shows enemy intent badge (⚔ strike / 🛡 guard / ⚡ special) + wave counter
+
+### Dual HP Bars
+- Companion HP bar top-left, enemy HP bar top-right — bars drain away from each other (Pokémon layout)
+- Danger coloring at <30% HP: both bars switch to red
+- Status chips (🔥×3 ❄×2 etc.) appear inline beneath each bar
+
+### Full-Width Insight Box
+- GB-style scanline RPG text box replaces the old side-by-side speech bubbles
+- Enemy taunt above the divider, companion wisdom below — 3 full lines of breathing room
+- Text 12px on cream background (`#E8F0D8`) inside a `#0F380F` GB panel with 2px `#306230` border
+
+### GB Action Buttons
+- A STRIKE / B SPELL / ↑ FOCUS / ↓ ITEM — same layout, tightened GB style
+- Token count displayed on SPELL button
+- Focus-charged state: gold border + "◎ READY"
+
 ## [5.13.0] — 2026-06-27 — Battle UI: No Scroll + Live Dialogue
 
 ### Battle Scene Collapse

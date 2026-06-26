@@ -4798,142 +4798,181 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   </View>
                 )}
 
-                {/* Enemy row */}
-                <View style={{ flexDirection:'row', alignItems:'flex-start', gap:14, marginBottom:12 }}>
-                  <Animated.View style={{ transform:[{translateX:entityShakeAnim}] }}>
-                    {enemyImg ? (
-                      <View style={{ borderRadius:10, borderWidth:1.5, borderColor:rc+'55', overflow:'hidden', shadowColor:rc, shadowOpacity:0.5, shadowRadius:10, elevation:6 }}>
-                        <Image source={enemyImg} style={{ width:90, height:110 }} resizeMode="contain" />
-                        <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#FFFFFF', opacity:enemyHitFlash, borderRadius:10 }} />
-                      </View>
-                    ) : (
-                      <View style={{ width:90, height:110, borderRadius:10, borderWidth:1.5, borderColor:rc+'44', backgroundColor:rc+'08', alignItems:'center', justifyContent:'center' }}>
-                        <EnemyGlyphArt glyph={def.rarity==='legendary'?'⊛':def.rarity==='epic'?'✦':def.rarity==='rare'?'⊚':def.rarity==='uncommon'?'◈':'◌'} color={rc} />
-                      </View>
-                    )}
-                  </Animated.View>
-                  <View style={{ flex:1, gap:6, paddingTop:4 }}>
-                    <Text style={{ color:GB.hi, fontSize:14, fontWeight:'700', letterSpacing:2, fontFamily:mono }}>{battle.entityName.toUpperCase()}</Text>
-                    <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
-                      <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor:rc+'55', backgroundColor:rc+'14' }}>
-                        <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{def.rarity.toUpperCase()}</Text>
-                      </View>
-                      {battle.enemyStunned && (
-                        <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:5, backgroundColor:'#FFBB0022', borderWidth:1, borderColor:'#FFBB0066' }}>
-                          <Text style={{ color:'#FFBB00', fontSize:7, fontFamily:mono, fontWeight:'700' }}>STUNNED</Text>
-                        </View>
-                      )}
-                    </View>
-                    {/* HP bar */}
-                    {(() => {
-                      const hp = battle.entityHP; const maxHp = battle.maxHP;
-                      const pct = Math.max(0, Math.min(1, hp / maxHp));
-                      const danger = pct < 0.3;
-                      const blocks = 16;
-                      const filled = Math.round(pct * blocks);
-                      return (
-                        <View>
-                          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:4 }}>
-                            <Text style={{ color:GB.text, fontSize:7, fontFamily:mono, letterSpacing:1 }}>HP</Text>
-                            <Text style={{ color:GB.hi, fontSize:7, fontFamily:mono }}>{hp}/{maxHp}</Text>
-                          </View>
-                          <Text style={{ color: danger ? GB.text : GB.hi, fontSize:10, fontFamily:mono, letterSpacing:2 }}>
-                            {'▓'.repeat(filled)}{'░'.repeat(blocks - filled)}
-                          </Text>
-                        </View>
-                      );
-                    })()}
-                    {/* Enemy dialogue */}
-                  </View>
-                </View>
-
-                {/* ── DIALOGUE EXCHANGE ── */}
-                <View style={{ marginBottom:10, gap:7 }}>
-                  {/* Enemy bubble */}
-                  <View style={{ flexDirection:'row', alignItems:'flex-end', gap:8 }}>
-                    <View style={{ flex:1, backgroundColor:rc+'22', borderRadius:10, borderTopLeftRadius:3, borderWidth:1.5, borderColor:rc+'66', paddingHorizontal:12, paddingVertical:9 }}>
-                      <Text style={{ color:rc, fontSize:9, fontFamily:mono, fontWeight:'700', marginBottom:3, letterSpacing:1 }}>{def.name.toUpperCase()}</Text>
-                      <Text style={{ color:'#EEEEF4', fontSize:13, fontStyle:'italic', lineHeight:19 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
-                    </View>
-                  </View>
-                  {/* Companion bubble */}
-                  {companionBattleLine !== '' && (
-                    <View style={{ flexDirection:'row', alignItems:'flex-end', gap:8 }}>
-                      <View style={{ flex:1, backgroundColor:color+'1A', borderRadius:10, borderTopRightRadius:3, borderWidth:1.5, borderColor:color+'66', paddingHorizontal:12, paddingVertical:9 }}>
-                        <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700', marginBottom:3, letterSpacing:1 }}>{skin.glyph} {displayName.toUpperCase()}</Text>
-                        <Text style={{ color:'#EEEEF4', fontSize:13, lineHeight:19 }} numberOfLines={2}>{companionBattleLine}</Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-
-                {/* Player HP — cinematic bar / GB block bar */}
+                {/* ══ ARENA ══ companion LEFT · enemy RIGHT ══════════════════ */}
                 {(() => {
-                  const php = battle.playerHP; const maxPhp = battle.maxPlayerHP;
-                  const ppct = Math.max(0, Math.min(1, php / maxPhp));
-                  const pdanger = ppct < 0.3;
-                  const pbarColor = pdanger ? '#FF4444' : ppct < 0.55 ? '#FFAA22' : '#44FF88';
-                  const pblocks = 16; const pfilled = Math.round(ppct * pblocks);
+                  const hp  = battle.entityHP;  const maxHp  = battle.maxHP;
+                  const php = battle.playerHP;  const maxPhp = battle.maxPlayerHP;
+                  const ePct = Math.max(0, Math.min(1, hp  / maxHp));
+                  const pPct = Math.max(0, Math.min(1, php / maxPhp));
+                  const eBlocks = 14; const eFilled = Math.round(ePct * eBlocks);
+                  const pBlocks = 14; const pFilled = Math.round(pPct * pBlocks);
+                  const pDanger = pPct < 0.3;
+                  const eDanger = ePct < 0.3;
+                  const companionImg = equippedCompanionSkin
+                    ? (ZONE_COMPANION_IMAGES[`${equippedCompanionSkin}_1` as keyof typeof ZONE_COMPANION_IMAGES] ?? null)
+                    : (ZONE_COMPANION_IMAGES[`${skin.id}_1` as keyof typeof ZONE_COMPANION_IMAGES] ?? null);
                   return (
-                    <View style={{ marginBottom:12, padding:10, borderRadius:4, backgroundColor:GB.dk, borderWidth:2, borderColor:GB.md, overflow:'hidden' }}>
-                      {/* Hit flash overlay */}
-                      <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#FF2222', opacity:playerHitFlash.interpolate({ inputRange:[0,1], outputRange:[0, 0.22] }) }} />
-                      {/* Heal flash overlay */}
-                      <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#44FF88', opacity:playerHealFlash.interpolate({ inputRange:[0,1], outputRange:[0, 0.18] }) }} />
-                      <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                        <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
-                          <Text style={{ color:GB.hi, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>YOU</Text>
-                          {battle.playerShielded && <Text style={{ color:GB.text, fontSize:7, fontFamily:mono }}>SHLD</Text>}
-                          {battle.defending && !battle.playerShielded && <Text style={{ color:GB.text, fontSize:7, fontFamily:mono }}>DEF</Text>}
+                    <View style={{ marginBottom:10 }}>
+                      {/* Dual HP bars */}
+                      <View style={{ flexDirection:'row', gap:10, marginBottom:8 }}>
+                        {/* Player bar */}
+                        <View style={{ flex:1 }}>
+                          <View style={{ flexDirection:'row', justifyContent:'space-between', marginBottom:2 }}>
+                            <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{displayName.toUpperCase()}</Text>
+                            <View style={{ flexDirection:'row', gap:4 }}>
+                              {battle.playerShielded && <Text style={{ color:GB.text, fontSize:7, fontFamily:mono }}>SHLD</Text>}
+                              {battle.defending && !battle.playerShielded && <Text style={{ color:GB.text, fontSize:7, fontFamily:mono }}>DEF</Text>}
+                              <Text style={{ color:pDanger?'#FF4444':GB.hi, fontSize:9, fontFamily:mono }}>{php}/{maxPhp}</Text>
+                            </View>
+                          </View>
+                          <Text style={{ color:pDanger?'#FF4444':GB.hi, fontSize:9, fontFamily:mono, letterSpacing:1 }}>
+                            {'▓'.repeat(pFilled)}{'░'.repeat(pBlocks-pFilled)}
+                          </Text>
+                          {(battle.playerStatuses?.length ?? 0) > 0 && (
+                            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:3, marginTop:3 }}>
+                              {(battle.playerStatuses??[]).map((s,i) => (
+                                <Text key={i} style={{ color:STATUS_META[s.kind].colour, fontSize:8, fontFamily:mono }}>{STATUS_META[s.kind].glyph}{s.turns}</Text>
+                              ))}
+                            </View>
+                          )}
                         </View>
-                        <Text style={{ color:GB.hi, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{php}/{maxPhp}</Text>
+                        {/* Enemy bar */}
+                        <View style={{ flex:1, alignItems:'flex-end' }}>
+                          <View style={{ flexDirection:'row', justifyContent:'space-between', width:'100%', marginBottom:2 }}>
+                            <Text style={{ color:eDanger?'#FF4444':GB.hi, fontSize:9, fontFamily:mono }}>{hp}/{maxHp}</Text>
+                            <View style={{ flexDirection:'row', gap:4 }}>
+                              {battle.enemyStunned && <Text style={{ color:'#FFBB00', fontSize:7, fontFamily:mono }}>STUN</Text>}
+                              <Text style={{ color:rc, fontSize:9, fontFamily:mono, fontWeight:'700' }}>{def.name.toUpperCase()}</Text>
+                            </View>
+                          </View>
+                          <Text style={{ color:eDanger?'#FF4444':rc, fontSize:9, fontFamily:mono, letterSpacing:1, textAlign:'right' }}>
+                            {'░'.repeat(eBlocks-eFilled)}{'▓'.repeat(eFilled)}
+                          </Text>
+                          {(battle.enemyStatuses?.length ?? 0) > 0 && (
+                            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:3, marginTop:3, justifyContent:'flex-end' }}>
+                              {(battle.enemyStatuses??[]).map((s,i) => (
+                                <Text key={i} style={{ color:STATUS_META[s.kind].colour, fontSize:8, fontFamily:mono }}>{STATUS_META[s.kind].glyph}{s.turns}</Text>
+                              ))}
+                            </View>
+                          )}
+                        </View>
                       </View>
-                      <Text style={{ color: pdanger ? GB.text : GB.hi, fontSize:10, fontFamily:mono, letterSpacing:2 }}>
-                        {'▓'.repeat(pfilled)}{'░'.repeat(pblocks - pfilled)}
-                      </Text>
-                      {pdanger && <Text style={{ color:GB.text, fontSize:7, fontFamily:mono, marginTop:4, letterSpacing:1 }}>!! LOW HP !!</Text>}
+
+                      {/* Sprite row */}
+                      <View style={{ flexDirection:'row', alignItems:'flex-end', justifyContent:'space-between', marginBottom:10 }}>
+                        {/* Companion sprite */}
+                        <Animated.View style={{ opacity:playerHitFlash.interpolate({inputRange:[0,1],outputRange:[1,0.3]}) }}>
+                          {companionImg ? (
+                            <View style={{ borderRadius:8, borderWidth:1.5, borderColor:color+'55', overflow:'hidden' }}>
+                              <Image source={companionImg} style={{ width:78, height:96 }} resizeMode="contain" />
+                              <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#FF2222', opacity:playerHitFlash.interpolate({inputRange:[0,1],outputRange:[0,0.3]}) }} />
+                              <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#44FF88', opacity:playerHealFlash.interpolate({inputRange:[0,1],outputRange:[0,0.25]}) }} />
+                            </View>
+                          ) : (
+                            <View style={{ width:78, height:96, borderRadius:8, borderWidth:1.5, borderColor:color+'44', backgroundColor:color+'0A', alignItems:'center', justifyContent:'center' }}>
+                              <Text style={{ fontSize:32 }}>{skin.glyph}</Text>
+                            </View>
+                          )}
+                        </Animated.View>
+
+                        {/* VS centre */}
+                        <View style={{ alignItems:'center', gap:4 }}>
+                          <Text style={{ color:GB.md, fontSize:8, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>VS</Text>
+                          {battle.enemyIntent && (
+                            <View style={{ paddingHorizontal:6, paddingVertical:3, borderRadius:4, borderWidth:1,
+                              borderColor: battle.enemyIntent.kind==='special'?rc+'88':'#33334488',
+                              backgroundColor: battle.enemyIntent.kind==='special'?rc+'14':'transparent' }}>
+                              <Text style={{ color:battle.enemyIntent.kind==='special'?rc:GB.text, fontSize:7, fontFamily:mono, fontWeight:'700', textAlign:'center' }}>
+                                {battle.enemyIntent.kind==='guard'?'🛡':battle.enemyIntent.kind==='special'?'⚡':'⚔'} {battle.enemyIntent.label?.toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={{ color:GB.text, fontSize:9, fontFamily:mono, fontWeight:'700' }}>W{battle.wave}</Text>
+                        </View>
+
+                        {/* Enemy sprite */}
+                        <Animated.View style={{ transform:[{translateX:entityShakeAnim}] }}>
+                          {enemyImg ? (
+                            <View style={{ borderRadius:8, borderWidth:1.5, borderColor:rc+'55', overflow:'hidden' }}>
+                              <Image source={enemyImg} style={{ width:78, height:96 }} resizeMode="contain" />
+                              <Animated.View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, backgroundColor:'#FFFFFF', opacity:enemyHitFlash, borderRadius:8 }} />
+                            </View>
+                          ) : (
+                            <View style={{ width:78, height:96, borderRadius:8, borderWidth:1.5, borderColor:rc+'44', backgroundColor:rc+'08', alignItems:'center', justifyContent:'center' }}>
+                              <EnemyGlyphArt glyph={def.rarity==='legendary'?'⊛':def.rarity==='epic'?'✦':def.rarity==='rare'?'⊚':def.rarity==='uncommon'?'◈':'◌'} color={rc} />
+                            </View>
+                          )}
+                        </Animated.View>
+                      </View>
+
+                      {/* ── INSIGHT BOX — full-width RPG text box ── */}
+                      <View style={{ borderWidth:2, borderColor:GB.md, borderRadius:4, backgroundColor:GB.dk, padding:12, marginBottom:10, overflow:'hidden' }}>
+                        {/* scanlines */}
+                        <View pointerEvents="none" style={{ position:'absolute', top:0, left:0, right:0, bottom:0, zIndex:0 }}>
+                          {Array.from({length:20}).map((_,i) => (
+                            <View key={i} style={{ position:'absolute', left:0, right:0, top:i*9, height:1, backgroundColor:'#000', opacity:0.10 }} />
+                          ))}
+                        </View>
+                        {/* Enemy taunt */}
+                        <View style={{ flexDirection:'row', gap:6, marginBottom:8, zIndex:1 }}>
+                          <Text style={{ color:rc, fontSize:10, fontFamily:mono, fontWeight:'700', minWidth:10 }}>▸</Text>
+                          <View style={{ flex:1 }}>
+                            <Text style={{ color:rc, fontSize:8, fontFamily:mono, fontWeight:'700', marginBottom:2, letterSpacing:1 }}>{def.name.toUpperCase()}</Text>
+                            <Text style={{ color:'#C8D8A8', fontSize:12, fontStyle:'italic', lineHeight:18 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
+                          </View>
+                        </View>
+                        {/* Divider */}
+                        <View style={{ height:1, backgroundColor:GB.md+'55', marginBottom:8 }} />
+                        {/* Companion insight */}
+                        {companionBattleLine !== '' && (
+                          <View style={{ flexDirection:'row', gap:6, zIndex:1 }}>
+                            <Text style={{ color:color, fontSize:12 }}>{skin.glyph}</Text>
+                            <View style={{ flex:1 }}>
+                              <Text style={{ color:color, fontSize:8, fontFamily:mono, fontWeight:'700', marginBottom:2, letterSpacing:1 }}>{displayName.toUpperCase()}</Text>
+                              <Text style={{ color:'#E8F0D8', fontSize:12, lineHeight:18 }} numberOfLines={3}>{companionBattleLine}</Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   );
                 })()}
 
-                {/* GB action grid */}
-                <View style={{ marginBottom:8 }}>
-                  <View style={{ flexDirection:'row', gap:6, marginBottom:6 }}>
-                    {([
-                      { id:'attack' as const, name: battleFocusCharged ? 'A ◎STRIKE' : 'A  STRIKE' },
-                      { id:'spell'  as const, name:'B  SPELL' },
-                    ]).map(btn => {
-                      const spellDis = btn.id==='spell' && (disabled || tokensLeft < Math.min(...spells.map(s=>s.cost)));
-                      const dis2 = btn.id==='spell' ? spellDis : disabled;
-                      const charged = btn.id === 'attack' && battleFocusCharged;
-                      return (
-                        <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={dis2}
-                          style={{ flex:1, paddingVertical:13, borderRadius:4, borderWidth:2,
-                            borderColor: dis2 ? GB.md+'66' : charged ? '#FFD700' : GB.md,
-                            backgroundColor: dis2 ? GB.dk : charged ? '#332200' : GB.md+'44', alignItems:'center' }}>
-                          <Text style={{ color: dis2 ? GB.md : charged ? '#FFD700' : GB.hi, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
-                            {attackAnim && btn.id==='attack' ? '· · ·' : btn.name}
+                {/* ── GB ACTION BUTTONS ─────────────────────────── */}
+                {(() => {
+                  const spellDis = disabled || tokensLeft < Math.min(...spells.map(s=>s.cost));
+                  const charged  = battleFocusCharged;
+                  const btnBase  = { flex:1, paddingVertical:14, borderRadius:4, borderWidth:2, alignItems:'center' as const };
+                  return (
+                    <View style={{ marginBottom:8 }}>
+                      <View style={{ flexDirection:'row', gap:6, marginBottom:6 }}>
+                        <TouchableOpacity onPress={() => handleBattleAction('attack')} disabled={disabled}
+                          style={{ ...btnBase, borderColor:disabled?GB.md+'44':charged?'#FFD700':GB.md, backgroundColor:disabled?GB.dk:charged?'#2A1A00':GB.md+'55' }}>
+                          <Text style={{ color:disabled?GB.md+'66':charged?'#FFD700':GB.hi, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
+                            {attackAnim?'· · ·':charged?'A ◎STRIKE':'A  STRIKE'}
                           </Text>
                         </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                  <View style={{ flexDirection:'row', gap:6 }}>
-                    {([
-                      { id:'focus'  as const, name:'↑  FOCUS' },
-                      { id:'item'   as const, name:'↓  ITEM'  },
-                    ]).map(btn => (
-                      <TouchableOpacity key={btn.id} onPress={() => handleBattleAction(btn.id)} disabled={disabled}
-                        style={{ flex:1, paddingVertical:13, borderRadius:4, borderWidth:2,
-                          borderColor: disabled ? GB.md+'44' : btn.id === 'focus' && battleFocusCharged ? '#FFD70066' : GB.md+'88',
-                          backgroundColor: btn.id === 'focus' && battleFocusCharged ? '#1A1200' : GB.dk, alignItems:'center' }}>
-                        <Text style={{ color: disabled ? GB.md+'66' : btn.id === 'focus' && battleFocusCharged ? '#FFD70088' : GB.text, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
-                          {btn.id === 'focus' && battleFocusCharged ? '◎ READY' : btn.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
+                        <TouchableOpacity onPress={() => setSpellMenuOpen(true)} disabled={spellDis}
+                          style={{ ...btnBase, borderColor:spellDis?GB.md+'44':GB.md, backgroundColor:spellDis?GB.dk:GB.md+'33' }}>
+                          <Text style={{ color:spellDis?GB.md+'55':GB.hi, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>B  SPELL</Text>
+                          {tokensLeft > 0 && <Text style={{ color:color, fontSize:7, fontFamily:mono, marginTop:2 }}>{tokensLeft}T</Text>}
+                        </TouchableOpacity>
+                      </View>
+                      <View style={{ flexDirection:'row', gap:6 }}>
+                        <TouchableOpacity onPress={() => handleBattleAction('focus')} disabled={disabled}
+                          style={{ ...btnBase, borderColor:disabled?GB.md+'33':charged?'#FFD70044':GB.md+'77', backgroundColor:charged?'#1A1000':GB.dk }}>
+                          <Text style={{ color:disabled?GB.md+'44':charged?'#FFD70077':GB.text, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>
+                            {charged?'↑ ◎READY':'↑  FOCUS'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleBattleAction('item')} disabled={disabled}
+                          style={{ ...btnBase, borderColor:disabled?GB.md+'33':GB.md+'77', backgroundColor:GB.dk }}>
+                          <Text style={{ color:disabled?GB.md+'44':GB.text, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>↓  ITEM</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })()}
 
                 {/* CAPTURE button — full width */}
                 {!battle.won && (
