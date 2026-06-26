@@ -3155,8 +3155,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         </View>
       </View>
 
-      {/* ── SCENE ─────────────────────────────────────────────────────────── */}
-      <CompanionScene
+      {/* ── SCENE — hidden during active battle so fight is immediately visible ── */}
+      {!(activeTab === 'battle' && battle && !battle.won) && <CompanionScene
         stage={stage} mood={mood} skin={skin} archetype={archetype}
         onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim} onDismissPhrase={dismissPhrase}
         companionName={displayName}
@@ -3202,7 +3202,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
           // Jump straight to the fight — no scrolling to find it.
           setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 120);
         }}
-      />
+      />}
 
       {xpPop && (
         <Animated.Text style={{ position:'absolute', top:SCENE_H-55, alignSelf:'center', color, fontSize:13, fontFamily:mono, fontWeight:'700', transform:[{translateY:xpPopY}], opacity:xpPopOp }}>
