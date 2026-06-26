@@ -66,6 +66,7 @@ type EnemyDef = {
   colour: string;
   atk: number;          // base damage per turn
   lines: { enter: string; attack: string[]; death: string };
+  behavior?: EnemyBehavior;  // intent + signature move (BATTLE-1/3). Optional → plain striker.
 };
 
 const RARITY_COLOUR: Record<EnemyRarity, string> = {
@@ -80,13 +81,17 @@ const ENEMY_ROSTER: EnemyDef[] = [
   { name:'Dissolution',    rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
     lines:{ enter:'You are already coming apart.', attack:['Unravelling…','Your form weakens.','Nothing holds here.'], death:'I was always you.' }},
   { name:'The Fog',        rarity:'common',    weight:10, hpMult:0.9, xpMult:0.9,  atk:6,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'You cannot see what you cannot name.', attack:['The mist thickens.','Where were you going?','Lost again.'], death:'The fog lifts. For now.' }},
+    lines:{ enter:'You cannot see what you cannot name.', attack:['The mist thickens.','Where were you going?','Lost again.'], death:'The fog lifts. For now.' },
+    behavior:{ special:{ name:'BLIND', tell:'The fog thickens — it will cloud your sight.', kind:'blind', everyN:3 } } },
   { name:'Forgetting',     rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:7,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'What were you working on?', attack:['Slipping away…','Gone already.','What was its name?'], death:'You remembered me.' }},
+    lines:{ enter:'What were you working on?', attack:['Slipping away…','Gone already.','What was its name?'], death:'You remembered me.' },
+    behavior:{ special:{ name:'UNMAKE', tell:'Forgetting reaches for your focus — it will strip your charge.', kind:'strip_focus', everyN:3 } } },
   { name:'Stasis',         rarity:'common',    weight:10, hpMult:1.1, xpMult:1.0,  atk:9,  colour:RARITY_COLOUR.common,
-    lines:{ enter:'Stay. It is easier here.', attack:['No need to move.','Rest a while.','Tomorrow is fine.'], death:'Movement returns.' }},
+    lines:{ enter:'Stay. It is easier here.', attack:['No need to move.','Rest a while.','Tomorrow is fine.'], death:'Movement returns.' },
+    behavior:{ special:{ name:'STILL', tell:'Stasis is about to freeze you in place.', kind:'inflict', inflict:'freeze', power:1, everyN:4 } } },
   { name:'Inertia',        rarity:'common',    weight:10, hpMult:1.2, xpMult:1.1,  atk:10, colour:RARITY_COLOUR.common,
-    lines:{ enter:'Starting is the hardest part.', attack:['The weight grows.','One more day.','Too heavy to lift.'], death:'The first step is taken.' }},
+    lines:{ enter:'Starting is the hardest part.', attack:['The weight grows.','One more day.','Too heavy to lift.'], death:'The first step is taken.' },
+    behavior:{ special:{ name:'AVALANCHE', tell:'Inertia is gathering weight — a crushing blow is coming. SHIELD.', kind:'big_hit', power:2.4, everyN:3 } } },
   { name:'Drift',          rarity:'common',    weight:10, hpMult:0.8, xpMult:0.9,  atk:5,  colour:RARITY_COLOUR.common,
     lines:{ enter:'No direction. That is fine.', attack:['Carried away…','Which way?','Adrift.'], death:'Direction found.' }},
   { name:'Static',         rarity:'common',    weight:10, hpMult:1.0, xpMult:1.0,  atk:8,  colour:RARITY_COLOUR.common,
@@ -1535,6 +1540,73 @@ function nextGearTier(slot: GearSlot, dives: number): GearTier | null {
 
 // ─── Battle ───────────────────────────────────────────────────────────────────
 
+// ─── Status-effect engine (BATTLE-2) ─────────────────────────────────────────
+// Makes the spell descriptions TRUE: burn/poison tick damage, freeze skips turns,
+// bind blocks the counter, weak halves output. Pure data + pure tick function so
+// it is testable and reused for both combatants.
+type StatusKind = 'burn' | 'poison' | 'freeze' | 'bind' | 'weak' | 'regen';
+type StatusEffect = { kind: StatusKind; turns: number; power: number };
+
+const STATUS_META: Record<StatusKind, { glyph: string; colour: string; label: string; dot: boolean }> = {
+  burn:   { glyph: '🔥', colour: '#FF6644', label: 'BURN',   dot: true  },
+  poison: { glyph: '☠', colour: '#7FCF4D', label: 'POISON', dot: true  },
+  freeze: { glyph: '❄', colour: '#5AC8FF', label: 'FREEZE', dot: false },
+  bind:   { glyph: '⛓', colour: '#B08AD9', label: 'BIND',   dot: false },
+  weak:   { glyph: '▽', colour: '#C49A3C', label: 'WEAK',   dot: false },
+  regen:  { glyph: '✚', colour: '#4ECDC4', label: 'REGEN',  dot: true  },
+};
+
+// Tick all damage/heal-over-time at the start of a combatant's turn. Returns the
+// net HP delta (negative = damage) plus the surviving effects (decremented) and a
+// short log fragment. Freeze/bind/weak are read by the combat loop, not here.
+function tickStatuses(effects: StatusEffect[]): { hpDelta: number; remaining: StatusEffect[]; notes: string[] } {
+  let hpDelta = 0;
+  const notes: string[] = [];
+  const remaining: StatusEffect[] = [];
+  for (const e of effects) {
+    if (e.kind === 'burn' || e.kind === 'poison') { hpDelta -= e.power; notes.push(`${STATUS_META[e.kind].glyph}${e.power}`); }
+    else if (e.kind === 'regen')                   { hpDelta += e.power; notes.push(`${STATUS_META.regen.glyph}${e.power}`); }
+    const turns = e.turns - 1;
+    if (turns > 0) remaining.push({ ...e, turns });
+  }
+  return { hpDelta, remaining, notes };
+}
+
+const hasStatus = (effects: StatusEffect[] | undefined, kind: StatusKind): boolean =>
+  !!effects?.some(e => e.kind === kind);
+
+// Add or refresh a status (refresh extends turns, stacks power up to a cap).
+function applyStatus(effects: StatusEffect[], add: StatusEffect): StatusEffect[] {
+  const existing = effects.find(e => e.kind === add.kind);
+  if (existing) {
+    existing.turns = Math.max(existing.turns, add.turns);
+    existing.power = Math.min(existing.power + add.power, add.power * 3);
+    return [...effects];
+  }
+  return [...effects, { ...add }];
+}
+
+// ─── Enemy intent / telegraph (BATTLE-1) ─────────────────────────────────────
+// The enemy declares its NEXT move so the player can answer it. This is what
+// turns STRIKE-spam into tactics: a telegraphed CHARGE must be SHIELDed.
+type IntentKind = 'strike' | 'charge' | 'guard' | 'drain' | 'special';
+type EnemyIntent = { kind: IntentKind; label: string; tell: string };
+
+// Per-enemy behaviour. `special` is the signature move (BATTLE-3) that fires on a
+// cadence and demands a specific answer. Everything optional → enemies without a
+// behaviour fall back to plain strikes, preserving old foes.
+type EnemyBehavior = {
+  special?: {
+    name: string;
+    tell: string;                  // telegraph shown the turn before
+    kind: 'big_hit' | 'strip_focus' | 'blind' | 'inflict';
+    inflict?: StatusKind;          // for kind:'inflict'
+    power?: number;                // status power or hit multiplier
+    everyN: number;                // fires every N turns
+  };
+  guardChance?: number;            // 0..1 chance to telegraph GUARD instead of strike
+};
+
 type BattleState = {
   wave: number; entityName: string;
   entityHP: number; maxHP: number;
@@ -1550,7 +1622,34 @@ type BattleState = {
   captured: boolean;
   captureAttempted: boolean;
   entitySkinId?: SkinId;
+  // ── rehaul additions (all optional → backward-compatible) ──
+  enemyStatuses?: StatusEffect[];  // burn/freeze/etc on the foe
+  playerStatuses?: StatusEffect[]; // burn/freeze/etc on the player
+  enemyIntent?: EnemyIntent;       // telegraphed next move
+  turnCount?: number;              // for special-move cadence
+  enemyBlind?: boolean;            // from a blind special — player accuracy hit
 };
+
+// Choose what the enemy will do NEXT turn, given its behaviour and the turn count.
+// Called after each player action so the telegraph is always one move ahead.
+function pickEnemyIntent(def: EnemyDef, nextTurn: number): EnemyIntent {
+  const b = def.behavior;
+  // Signature special fires on cadence and takes priority.
+  if (b?.special && nextTurn > 0 && nextTurn % b.special.everyN === 0) {
+    return { kind: 'special', label: b.special.name, tell: b.special.tell };
+  }
+  // Occasional GUARD — a turn where striking it is reduced, rewarding patience.
+  if (b?.guardChance && Math.random() < b.guardChance) {
+    return { kind: 'guard', label: 'GUARD', tell: `${def.name} draws inward, bracing.` };
+  }
+  // Default: a plain strike, lightly varied so it does not read as scripted.
+  const tells = [
+    `${def.name} coils to strike.`,
+    `${def.name} gathers to lash out.`,
+    `${def.name} fixes on you.`,
+  ];
+  return { kind: 'strike', label: 'STRIKE', tell: tells[Math.floor(Math.random() * tells.length)] };
+}
 
 // ─── Player stat model ───────────────────────────────────────────────────────
 type PlayerStats = { atk:number; def:number; spd:number; wil:number; lck:number; vit:number; res:number };
@@ -2602,6 +2701,7 @@ export type {
   BattleState, PlayerStats, AlchemicalMode, SkillNode, SpellDef,
   BattleItem, LootItem, CosmeticRarity, CosmeticItem, FoodItem,
   Quest, QuestData, GearTier, RelicDef, CreatureBody,
+  StatusKind, StatusEffect, EnemyIntent, IntentKind, EnemyBehavior,
 };
 
 export {
@@ -2627,6 +2727,7 @@ export {
   freshWave, rollLoot, waveTokens,
   COMPANION_VICTORY_LINES, COMPANION_CAPTURE_LINES, COMPANION_DEFEAT_LINES,
   SHOW_DEV_STAGE, todayDateKey,
+  STATUS_META, tickStatuses, hasStatus, applyStatus, pickEnemyIntent,
 };
 
 export {

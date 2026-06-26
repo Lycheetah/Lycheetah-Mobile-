@@ -34,6 +34,7 @@ import type {
   BattleState, PlayerStats, AlchemicalMode, SkillNode, SpellDef,
   BattleItem, LootItem, CosmeticRarity, CosmeticItem, FoodItem,
   Quest, QuestData, GearTier, RelicDef, CreatureBody,
+  StatusKind, StatusEffect, EnemyIntent, IntentKind, EnemyBehavior,
 } from '../../lib/companion/game-data';
 import {
   SPECIAL_COMPANIONS, getItemEffect, getRoomById, getRoomInSkin, getSkinIndex, showToast,
@@ -58,6 +59,7 @@ import {
   freshWave, rollLoot, waveTokens,
   COMPANION_VICTORY_LINES, COMPANION_CAPTURE_LINES, COMPANION_DEFEAT_LINES,
   SHOW_DEV_STAGE, todayDateKey,
+  STATUS_META, tickStatuses, hasStatus, applyStatus, pickEnemyIntent,
   COMPANION_GREETINGS, P_COUNT, P_X, P_SZ, getTimeOverlay, dateSeed,
   COMPANION_ROSTER,
 } from '../../lib/companion/game-data';
@@ -2242,17 +2244,30 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       const atkLines = def.lines.attack;
       enemyLine = atkLines[Math.floor(Math.random() * atkLines.length)];
       const shieldMult = (battle.defending || battle.playerShielded) ? 0.3 : 1;
+      // BATTLE-1/3 — resolve the TELEGRAPHED intent shown last turn.
+      const intent = battle.enemyIntent;
+      let intentMult = 1; let intentNote = '';
+      if (intent?.kind === 'special' && def.behavior?.special?.kind === 'big_hit') {
+        intentMult = def.behavior.special.power ?? 2;          // AVALANCHE — eat it or SHIELD it
+        intentNote = ` ${def.behavior.special.name}!`;
+      } else if (intent?.kind === 'guard') {
+        intentMult = 0.4;                                       // it braced — weak counter
+      }
       // SPD dodge: spd >= 18 grants 25% full dodge chance
       const spdDodge = playerStats.spd >= 18 && Math.random() < 0.25;
       // DEF flat reduction: up to 30% of enemy's base atk
       const defReduction = spdDodge ? 0 : Math.min(Math.floor(def.atk * 0.3), Math.floor(playerStats.def / 3));
-      const rawEnemyDmg = spdDodge ? 0 : Math.round(def.atk * (0.8 + Math.random() * 0.4) * shieldMult);
+      const rawEnemyDmg = spdDodge ? 0 : Math.round(def.atk * (0.8 + Math.random() * 0.4) * shieldMult * intentMult);
       const enemyDmg = Math.max(0, rawEnemyDmg - defReduction);
       newPlayerHP = Math.max(0, newPlayerHP - enemyDmg);
       const _ctr = ['retaliates','answers','pushes back','strikes'];
       const _cf = _ctr[Math.floor(Math.random()*_ctr.length)];
       if (spdDodge) {
         logEntry += ` · ▼ ${battle.entityName} ${_cf} — evaded.`;
+      } else if (intentNote && shieldMult < 1) {
+        logEntry += ` · ▼${intentNote} ${enemyDmg} crashes through — SHIELD held.`;
+      } else if (intentNote) {
+        logEntry += ` · ▼${intentNote} ${enemyDmg} damage — you should have shielded.`;
       } else if (shieldMult < 1) {
         logEntry += ` · ▼ ${battle.entityName} ${_cf}. ${enemyDmg > 0 ? `${enemyDmg} bleeds through.` : `Blocked.`}`;
       } else if (defReduction > 0) {
@@ -2401,6 +2416,10 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
     const newTokens = Math.max(0, tokensLeft - tokenCost);
     const loot = won ? rollLoot(battle!.wave) : null;
 
+    // BATTLE-1 — telegraph the enemy's NEXT move so the player can answer it.
+    const nextTurn = (battle!.turnCount ?? 0) + 1;
+    const nextIntent: EnemyIntent | undefined = won ? undefined : pickEnemyIntent(def, nextTurn);
+
     // Daily XP cap — first 10 wins full XP, after that 1XP per win
     let earnedXP = 0;
     if (won) {
@@ -2422,6 +2441,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       enemyStunned: newStunned,
       playerShielded: newShielded,
       lastPlayerDmg: dmg > 0 ? dmg : battle!.lastPlayerDmg,
+      enemyIntent: nextIntent,
+      turnCount: nextTurn,
     };
     setBattle(updated);
     setTokensLeft(newTokens);
@@ -6801,6 +6822,27 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   <Text style={{ color:rc, fontSize:8, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>{def?.rarity.toUpperCase() ?? 'COMMON'}</Text>
                 </View>
               </View>
+
+              {/* BATTLE-1 — INTENT telegraph: what the foe will do next. Read it, answer it. */}
+              {battle.enemyIntent && !battle.enemyStunned && battle.entityHP > 0 && (() => {
+                const it = battle.enemyIntent;
+                const danger = it.kind === 'special';
+                const ic = danger ? '#FF5544' : it.kind === 'guard' ? '#4488FF' : '#C49A3C';
+                const glyph = danger ? '⚠' : it.kind === 'guard' ? '◈' : '⚔';
+                return (
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:7, alignSelf:'stretch', marginBottom:12,
+                    paddingHorizontal:10, paddingVertical:7, borderRadius:9, borderWidth:1, borderColor:ic+'55',
+                    backgroundColor:ic+'12', borderLeftWidth:3, borderLeftColor:ic }}>
+                    <Text style={{ color:ic, fontSize:13 }}>{glyph}</Text>
+                    <View style={{ flex:1 }}>
+                      <Text style={{ color:ic, fontSize:8, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>
+                        INTENT · {it.label}
+                      </Text>
+                      <Text style={{ color:'#AAAABB', fontSize:11, lineHeight:15, marginTop:1 }}>{it.tell}</Text>
+                    </View>
+                  </View>
+                );
+              })()}
 
               {/* Large enemy art */}
               <Animated.View style={{ transform:[{translateX:entityShakeAnim}], marginBottom:14 }}>

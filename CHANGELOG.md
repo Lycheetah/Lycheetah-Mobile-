@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.11.0] — 2026-06-27 — BATTLE-1: The Enemy Thinks Now
+
+### Enemy Intent / Telegraph (BATTLE-1)
+- **Foes telegraph their next move.** An INTENT banner shows above the enemy each turn — STRIKE, GUARD, or a named SPECIAL — so combat becomes *answer the threat*, not STRIKE-spam.
+- **Signature behaviors** for the inner-demons: **Inertia → AVALANCHE** (a crushing 2.4× blow every few turns — SHIELD it or eat it), **The Fog → BLIND**, **Forgetting → UNMAKE** (strips focus), **Stasis → STILL** (freeze). Inertia's avalanche is fully live: shield on the telegraphed turn and it's absorbed; ignore it and it lands hard.
+- New status-effect + intent engine in `lib/companion/game-data.tsx` (burn/poison/freeze/bind/weak/regen) — the foundation the spell descriptions ("ignite — burns next turn") will now be wired to in BATTLE-2.
+
+---
+
 ## [5.10.0] — 2026-06-26 — VOID-2: Sanctum as the Alive Void
 
 ### Sanctum — Presences Fold (VOID-2)
