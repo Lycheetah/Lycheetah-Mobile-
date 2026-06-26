@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.17.0] — 2026-06-27 — #258: Natal chart in Sanctum TODAY
+
+### Sanctum — Natal Signature Card
+- Sun / Moon / Rising displayed as three compact cards in Sanctum TODAY section — above the daily transit
+- Reads from `sol_natal_cache` (written by zodiac.tsx when birth data is saved — no recomputation in Sanctum)
+- Each card shows: sign glyph, sign name, role label (SUN / MOON / RISING), tinted border in sign colour
+- Rising shows "Unknown" if user entered birth date but no time (expected — rising requires birth time)
+- Sun keywords line at the bottom of the trio
+- Full name displayed in header if user set it in zodiac settings
+- Zodiac tab now writes `sol_natal_cache` on every birth data save so Sanctum stays current
+
 ## [5.16.0] — 2026-06-27 — SEGMENT: Tab restructure (TALK · COMPANION · WORLD · BATTLE · GEAR)
 
 ### Companion Tab Restructure

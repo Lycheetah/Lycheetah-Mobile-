@@ -939,6 +939,18 @@ export default function ZodiacScreen() {
     const latitude = parseFloat(birthDraft.latitude) || 51.5;
     const data: BirthData = { year: y, month: mo, day: d, hour: hr, utcOffset, latitude, hasTime, fullName: birthDraft.fullName.trim() || undefined, motherName: birthDraft.motherName.trim() || undefined, cityName: birthDraft.cityName.trim() || undefined };
     await AsyncStorage.setItem('zodiac_birth_v1', JSON.stringify(data));
+    // Write natal cache so Sanctum can display without recomputing
+    try {
+      const sun = ZODIAC_SIGNS[getSunSignIndex(data.month, data.day)];
+      const moon = ZODIAC_SIGNS[getMoonSignIndex(data.year, data.month, data.day, data.hour)];
+      const asc = data.hasTime ? ZODIAC_SIGNS[getAscendantIndex(data.year, data.month, data.day, data.hour, data.utcOffset, data.latitude)] : null;
+      await AsyncStorage.setItem('sol_natal_cache', JSON.stringify({
+        sunName: sun.name, sunGlyph: sun.glyph, sunColor: sun.color, sunKeywords: sun.keywords,
+        moonName: moon.name, moonGlyph: moon.glyph, moonColor: moon.color,
+        ascName: asc?.name ?? null, ascGlyph: asc?.glyph ?? null, ascColor: asc?.color ?? null,
+        fullName: data.fullName ?? null,
+      }));
+    } catch {}
     setBirthData(data);
     setEditingBirth(false);
     setZodiacReading(null);

@@ -206,6 +206,7 @@ export default function SanctumScreen() {
   // Living Chronicle
   const [archetype, setArchetype] = useState<string | null>(null);
   const [dailyTransit, setDailyTransit] = useState<{ date: string; text: string; spark: string } | null>(null);
+  const [natalCache, setNatalCache] = useState<{ sunName: string; sunGlyph: string; sunColor: string; sunKeywords: string; moonName: string; moonGlyph: string; moonColor: string; ascName: string | null; ascGlyph: string | null; ascColor: string | null; fullName: string | null } | null>(null);
   const [chronicle, setChronicle] = useState<{ ts: number; glyph: string; text: string }[]>([]);
   const [chronicleVoice, setChronicleVoice] = useState<string | null>(null);
   const [chronicleLoading, setChronicleLoading] = useState(false);
@@ -431,13 +432,15 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
     if (dayReportRaw) { try { setDayReport(JSON.parse(dayReportRaw)); } catch {} }
 
     // Living Chronicle data
-    const [transitRaw, archetypeRaw, chronicleRaw, chronicleVoiceRaw] = await Promise.all([
+    const [transitRaw, archetypeRaw, chronicleRaw, chronicleVoiceRaw, natalRaw] = await Promise.all([
       AsyncStorage.getItem('sol_daily_transit_v1'),
       AsyncStorage.getItem('sol_archetype'),
       AsyncStorage.getItem('sol_chronicle'),
       AsyncStorage.getItem('sol_chronicle_voice_v1'),
+      AsyncStorage.getItem('sol_natal_cache'),
     ]);
     if (transitRaw) { try { setDailyTransit(JSON.parse(transitRaw)); } catch {} }
+    if (natalRaw) { try { setNatalCache(JSON.parse(natalRaw)); } catch {} }
     if (archetypeRaw) setArchetype(archetypeRaw);
     if (chronicleRaw) { try { setChronicle(JSON.parse(chronicleRaw)); } catch {} }
     if (chronicleVoiceRaw) {
@@ -841,6 +844,34 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
                     <Text style={{ color: accentColor, fontSize: 8, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 2 }}>YOUR ARCHETYPE</Text>
                     <Text style={{ color: SOL_THEME.text, fontSize: 13, fontWeight: '700', letterSpacing: 1.5 }}>{archetype}</Text>
                   </View>
+                </View>
+              )}
+
+              {/* Natal chart summary — reads from zodiac_birth_v1 via sol_natal_cache */}
+              {natalCache && (
+                <View style={{ marginBottom: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#7B68EE33', backgroundColor: '#7B68EE08', borderLeftWidth: 3, borderLeftColor: '#7B68EE' }}>
+                  <Text style={{ color: '#7B68EE', fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 10 }}>✦ NATAL SIGNATURE{natalCache.fullName ? ` · ${natalCache.fullName.toUpperCase()}` : ''}</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {/* Sun */}
+                    <View style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: natalCache.sunColor + '44', backgroundColor: natalCache.sunColor + '0C' }}>
+                      <Text style={{ color: natalCache.sunColor, fontSize: 16, marginBottom: 3 }}>{natalCache.sunGlyph}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 11, fontWeight: '700' }}>{natalCache.sunName}</Text>
+                      <Text style={{ color: '#555566', fontSize: 8, fontFamily: mono, letterSpacing: 1, marginTop: 2 }}>SUN</Text>
+                    </View>
+                    {/* Moon */}
+                    <View style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: natalCache.moonColor + '44', backgroundColor: natalCache.moonColor + '0C' }}>
+                      <Text style={{ color: natalCache.moonColor, fontSize: 16, marginBottom: 3 }}>{natalCache.moonGlyph}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 11, fontWeight: '700' }}>{natalCache.moonName}</Text>
+                      <Text style={{ color: '#555566', fontSize: 8, fontFamily: mono, letterSpacing: 1, marginTop: 2 }}>MOON</Text>
+                    </View>
+                    {/* Rising */}
+                    <View style={{ flex: 1, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: (natalCache.ascColor ?? '#555566') + '44', backgroundColor: (natalCache.ascColor ?? '#555566') + '0C', opacity: natalCache.ascName ? 1 : 0.5 }}>
+                      <Text style={{ color: natalCache.ascColor ?? '#555566', fontSize: 16, marginBottom: 3 }}>{natalCache.ascGlyph ?? '?'}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 11, fontWeight: '700' }}>{natalCache.ascName ?? 'Unknown'}</Text>
+                      <Text style={{ color: '#555566', fontSize: 8, fontFamily: mono, letterSpacing: 1, marginTop: 2 }}>RISING</Text>
+                    </View>
+                  </View>
+                  <Text style={{ color: '#555577', fontSize: 10, fontFamily: mono, marginTop: 10, letterSpacing: 0.5 }}>{natalCache.sunKeywords}</Text>
                 </View>
               )}
 
