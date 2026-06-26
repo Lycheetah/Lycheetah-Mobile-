@@ -4847,18 +4847,22 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   </View>
                 </View>
 
-                {/* ── DIALOGUE EXCHANGE ── enemy speaks / companion responds ── */}
-                <View style={{ marginBottom:10, gap:6 }}>
-                  {/* Enemy line */}
-                  <View style={{ flexDirection:'row', alignItems:'flex-start', gap:6 }}>
-                    <Text style={{ color:rc, fontSize:9, fontFamily:mono, fontWeight:'700', minWidth:14, marginTop:1 }}>▸</Text>
-                    <Text style={{ color:rc+'CC', fontSize:11, fontStyle:'italic', lineHeight:17, flex:1 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
+                {/* ── DIALOGUE EXCHANGE ── */}
+                <View style={{ marginBottom:10, gap:7 }}>
+                  {/* Enemy bubble */}
+                  <View style={{ flexDirection:'row', alignItems:'flex-end', gap:8 }}>
+                    <View style={{ flex:1, backgroundColor:rc+'22', borderRadius:10, borderTopLeftRadius:3, borderWidth:1.5, borderColor:rc+'66', paddingHorizontal:12, paddingVertical:9 }}>
+                      <Text style={{ color:rc, fontSize:9, fontFamily:mono, fontWeight:'700', marginBottom:3, letterSpacing:1 }}>{def.name.toUpperCase()}</Text>
+                      <Text style={{ color:'#EEEEF4', fontSize:13, fontStyle:'italic', lineHeight:19 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
+                    </View>
                   </View>
-                  {/* Companion response */}
+                  {/* Companion bubble */}
                   {companionBattleLine !== '' && (
-                    <View style={{ flexDirection:'row', alignItems:'flex-start', gap:6 }}>
-                      <Text style={{ color:color, fontSize:10, marginTop:1 }}>{skin.glyph}</Text>
-                      <Text style={{ color:color+'BB', fontSize:11, lineHeight:17, flex:1 }} numberOfLines={2}>{companionBattleLine}</Text>
+                    <View style={{ flexDirection:'row', alignItems:'flex-end', gap:8 }}>
+                      <View style={{ flex:1, backgroundColor:color+'1A', borderRadius:10, borderTopRightRadius:3, borderWidth:1.5, borderColor:color+'66', paddingHorizontal:12, paddingVertical:9 }}>
+                        <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700', marginBottom:3, letterSpacing:1 }}>{skin.glyph} {displayName.toUpperCase()}</Text>
+                        <Text style={{ color:'#EEEEF4', fontSize:13, lineHeight:19 }} numberOfLines={2}>{companionBattleLine}</Text>
+                      </View>
                     </View>
                   )}
                 </View>
