@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.13.0] — 2026-06-27 — Battle UI: No Scroll + Live Dialogue
+
+### Battle Scene Collapse
+- CompanionScene (300px) hides when a live fight is active — battle panel fills the screen immediately, no scrolling to reach HP bars or action buttons
+- Scene restores on wave clear, tab switch, or no active battle
+
+### Battle Dialogue Exchange
+- Enemy and companion now speak to each other every turn — proper speech bubbles with colored borders and 13px white text
+- Enemy name header in enemy color; companion glyph + name in companion color
+- Companion line seeds immediately when a new enemy appears (no longer blank until first action)
+- Companion line refreshes on every attack, spell cast, and defend — draws from 40+ mystery signals (paradoxes, laws, myths, physics edge)
+- No toggle required — dialogue is always visible
+
 ## [5.12.0] — 2026-06-27 — Battle Engine Complete + Sol Tab Declutter
 
 ### Battle Engine — BATTLE-2/3/4 (Status System Live)
