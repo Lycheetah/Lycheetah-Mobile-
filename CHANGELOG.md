@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.15.0] — 2026-06-27 — VOID-3: The Record (unified note archive)
+
+### One Vault, Many Doors
+- New **RECORD** tab in Sanctum — shows every note from across the entire app in one unified, filterable archive
+- One-time migration on mount: pulls from 7 scattered AsyncStorage stores (sol_memory_v1, sol_insights, sol_scriptorium, sol_school_intentions, sol_paradox_journal, sol_subject_notes, sol_chronicle) into unified `sol_vault_v1`
+- Filter pills: ALL / MEMORY / INSIGHT / SCRIPTORIUM / INTENTION / PARADOX / SUBJECT NOTE / CHRONICLE — each with glyph + count
+- Each entry shows kind glyph, kind label, title (where available), date, and up to 4 lines of body text
+- `lib/vault.ts` provides the shared schema (`VaultEntry`, `VaultKind`, `VAULT_META`) used by all future note-writing surfaces
+
 ## [5.14.0] — 2026-06-27 — BATTLE-5: Epic Arena HUD
 
 ### Two-Sprite Arena

@@ -4,6 +4,8 @@ import {
   StyleSheet, Alert, Platform, Share, Animated, Modal, Easing, Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { readVault, migrateToVault, VAULT_META } from '../../lib/vault';
+import type { VaultEntry as UnifiedVaultEntry, VaultKind } from '../../lib/vault';
 import { useFocusEffect, router } from 'expo-router';
 import { SOL_THEME, VOID } from '../../constants/theme';
 import { getAccentColor, getActiveKey, getModel, getFieldJournalSummaries, saveFieldJournalSummaries } from '../../lib/storage';
@@ -160,8 +162,10 @@ export default function SanctumScreen() {
   const [expandedEntry, setExpandedEntry] = useState<string | null>(null);
   const [vaultInput, setVaultInput] = useState('');
   const [vault, setVault] = useState<VaultEntry[]>([]);
+  const [unifiedVault, setUnifiedVault] = useState<UnifiedVaultEntry[]>([]);
+  const [archiveKind, setArchiveKind] = useState<VaultKind | 'all'>('all');
   const [toolHistory, setToolHistory] = useState<Array<{ tool: string; query: string; result: string; timestamp: string }>>([]);
-  const [section, setSection] = useState<'today' | 'journal' | 'vault' | 'field' | 'chain'>('today');
+  const [section, setSection] = useState<'today' | 'journal' | 'vault' | 'archive' | 'field' | 'chain'>('today');
   const [todayFieldOpen, setTodayFieldOpen] = useState(false); // TODAY data folds away — a sanctum, not a dashboard
   const [fieldStatsOpen, setFieldStatsOpen] = useState(false); // FIELD charts/stats fold — calm arrival
   const [phase, setPhase] = useState<string>('CENTER');
@@ -442,6 +446,9 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
         if (cv.date === todayKey()) setChronicleVoice(cv.text);
       } catch {}
     }
+
+    // Unified vault — one-time migration + load
+    migrateToVault().then(() => readVault().then(setUnifiedVault)).catch(() => {});
 
     const summaries = await getFieldJournalSummaries();
     setWeeklyJournalSummaries(summaries);
@@ -737,11 +744,11 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
 
       {/* Section tabs — arcane gate style */}
       <View style={{ flexDirection: 'row', gap: 4, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: SOL_THEME.background, borderBottomWidth: 1, borderBottomColor: accentColor + '15' }}>
-        {(['today', 'journal', 'vault', 'field', 'chain'] as const).map(s => {
+        {(['today', 'journal', 'vault', 'archive', 'field', 'chain'] as const).map(s => {
           const active = section === s;
           const tabColor = accentColor;
-          const GLYPHS = { today: '◉', journal: '§', vault: '⊛', field: 'Ψ', chain: '◎' };
-          const LABELS = { today: 'TODAY', journal: journal.length > 0 ? `WITNESS·${journal.length}` : 'WITNESS', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', field: 'FIELD', chain: chronicle.length > 0 ? `SCROLL·${chronicle.length}` : 'SCROLL' };
+          const GLYPHS: Record<string, string> = { today: '◉', journal: '§', vault: '⊛', archive: '⊙', field: 'Ψ', chain: '◎' };
+          const LABELS: Record<string, string> = { today: 'TODAY', journal: journal.length > 0 ? `WITNESS·${journal.length}` : 'WITNESS', vault: vault.length > 0 ? `VAULT·${vault.length}` : 'VAULT', archive: unifiedVault.length > 0 ? `RECORD·${unifiedVault.length}` : 'RECORD', field: 'FIELD', chain: chronicle.length > 0 ? `SCROLL·${chronicle.length}` : 'SCROLL' };
           return (
             <TouchableOpacity
               key={s}
@@ -1335,6 +1342,69 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
           )}
         </>
       )}
+
+      {/* ARCHIVE — unified note store */}
+      {section === 'archive' && (() => {
+        const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+        const kinds: (VaultKind | 'all')[] = ['all', 'memory', 'insight', 'scriptorium', 'intention', 'paradox', 'subject', 'chronicle'];
+        const filtered = archiveKind === 'all' ? unifiedVault : unifiedVault.filter(e => e.kind === archiveKind);
+        return (
+          <>
+            <Text style={[styles.label, { color: accentColor }]}>THE RECORD</Text>
+            <Text style={styles.note}>All notes, insights, and memories — drawn from every corner of the app into one place.</Text>
+
+            {/* Kind filter pills */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }} contentContainerStyle={{ gap: 6, paddingBottom: 2 }}>
+              {kinds.map(k => {
+                const active = archiveKind === k;
+                const meta = k !== 'all' ? VAULT_META[k] : null;
+                const col = meta?.color ?? accentColor;
+                const count = k === 'all' ? unifiedVault.length : unifiedVault.filter(e => e.kind === k).length;
+                return (
+                  <TouchableOpacity key={k} onPress={() => setArchiveKind(k)}
+                    style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1,
+                      borderColor: active ? col : col + '44',
+                      backgroundColor: active ? col + '22' : 'transparent' }}>
+                    <Text style={{ color: active ? col : col + '88', fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>
+                      {meta ? `${meta.glyph} ${meta.label}` : '⊙ ALL'}{count > 0 ? ` ·${count}` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {filtered.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingTop: 32, paddingHorizontal: 24 }}>
+                <Text style={{ color: accentColor, fontSize: 28, marginBottom: 10 }}>⊙</Text>
+                <Text style={{ color: SOL_THEME.text, fontSize: 14, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+                  {unifiedVault.length === 0 ? 'The record is empty.' : 'Nothing here yet.'}
+                </Text>
+                <Text style={{ color: SOL_THEME.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>
+                  {unifiedVault.length === 0
+                    ? 'Journal entries, insights, memories, and paradoxes from across the app will appear here.'
+                    : `No ${archiveKind} entries yet.`}
+                </Text>
+              </View>
+            ) : (
+              filtered.slice(0, 100).map(entry => {
+                const meta = VAULT_META[entry.kind];
+                const date = new Date(entry.createdAt).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: '2-digit' });
+                return (
+                  <View key={entry.id} style={{ marginBottom: 8, padding: 12, borderRadius: 10, borderLeftWidth: 3, borderLeftColor: meta.color, borderWidth: 1, borderColor: meta.color + '33', backgroundColor: meta.color + '0A' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                      <Text style={{ color: meta.color, fontSize: 11 }}>{meta.glyph}</Text>
+                      <Text style={{ color: meta.color, fontSize: 8, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>{meta.label}</Text>
+                      {entry.title && <Text style={{ color: SOL_THEME.text, fontSize: 11, fontWeight: '700', flex: 1 }} numberOfLines={1}>{entry.title}</Text>}
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>{date}</Text>
+                    </View>
+                    <Text style={{ color: SOL_THEME.text, fontSize: 12, lineHeight: 18 }} numberOfLines={4}>{entry.body}</Text>
+                  </View>
+                );
+              })
+            )}
+          </>
+        );
+      })()}
 
       {/* FIELD */}
       {section === 'field' && (() => {
