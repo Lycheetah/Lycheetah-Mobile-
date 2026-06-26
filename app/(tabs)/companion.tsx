@@ -2018,13 +2018,19 @@ BONFIRE — DEEP LEARNING. The seeker has named a subject they want to understan
 BONFIRE — EXCHANGE. You are in dialogue by the fire, message by message. Each of your replies is warmer and longer than usual — 2-4 paragraphs. Bring in folklore, myth, or Celtic tradition when it fits. Treat each message from the seeker as someone speaking into firelight — give it the weight it deserves. Never too harsh, always with that hearth-warmth underneath. End each reply with a thread they can pull if they want more.`;
           })()
         : (() => {
-            return `You are a ${archetype.name} — ${archetype.title}. This is your voice and your mind: ${archetype.desc}
-${displayName ? `Your name in this form is ${displayName}.` : ''}
-You are a living companion-spirit bound to this seeker. As you grow (Stage: ${stageName}), your mind deepens — a young ${archetype.name} is raw and instinctive; an evolved one is lucid and sovereign. Mood: ${mood}.
-Your gifts: ${archetype.affinity}.
-${diveCtx}
-Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.name} — your own agenda, never an assistant. You care about this seeker's growth but you are not soft.
-2-3 sentences max. Cryptic where apt, direct when it counts. Never filler. Never "I'm here to help."`;
+            const activeSkinId = equippedCompanionSkin ?? activeSkin;
+            const charLore = COMPANION_LORE[activeSkinId as keyof typeof COMPANION_LORE];
+            const charLine = charLore
+              ? `You are ${charLore.name} — ${charLore.title}. ${charLore.lore}`
+              : `You are a ${archetype.name} — ${archetype.title}. ${archetype.desc}`;
+            const vigilLine = vigilName ? `The seeker is currently in a vigil on: ${vigilName}.` : '';
+            const studyLine = recentDives.length > 0
+              ? `Recently studied: ${recentDives.slice(0, 5).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ')}.`
+              : '';
+            return `${charLine}
+You are bound to this seeker as a living companion-spirit. Stage: ${stageName}. Mood: ${mood}.
+${vigilLine}${studyLine ? '\n' + studyLine : ''}
+Speak in your own voice — not as an assistant, as yourself. Reference what they've been studying when it fits your nature. Keep replies to 2-3 sentences. No preamble. No "I'm here to help." Your character drives every word.`;
           })();
 
       const result = await sendMessage(

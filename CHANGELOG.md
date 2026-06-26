@@ -1,5 +1,16 @@
 # Changelog
 
+## [5.18.0] — 2026-06-27 — #267: Companion depth pass (per-character voice + study-aware)
+
+### Per-Character Voice
+- Each companion now speaks as themselves, not just their archetype. PYTHIA speaks as the Prophetess of the Unasked. FRACTUR as the Shatterbeing of the Fold. NOCTIS as the Keeper of the Between. 18 distinct voices from COMPANION_LORE injected directly into the system prompt.
+- Previously: generic archetype template (`You are a VIGIL — Keeper of the Threshold...`). Now: character-specific identity + lore + title.
+
+### Study-Aware Responses
+- Active vigil subject injected: if the seeker is mid-vigil on a subject, the companion knows and can reference it.
+- Recent dives expanded from 3 to 5 subjects in context — `${subjectName} (${domainLabel})` format.
+- Companions now naturally weave in what the seeker has been studying when it fits their character.
+
 ## [5.17.0] — 2026-06-27 — #258: Natal chart in Sanctum TODAY
 
 ### Sanctum — Natal Signature Card
