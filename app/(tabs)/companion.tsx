@@ -1469,6 +1469,13 @@ export default function CompanionScreen() {
     if (battle?.won && battle?.loot) setLootFloatVisible(true);
   }, [battle?.won]);
 
+  // Seed companion dialogue whenever a new enemy is encountered
+  useEffect(() => {
+    if (!battle || battle.won) return;
+    const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
+    setCompanionBattleLine(sig.text);
+  }, [battle?.entityName]);
+
   useEffect(() => {
     if (activeTab === 'field' && !fieldNote && !fieldNoteLoading) generateFieldNote();
     if (activeTab === 'companion') {
@@ -2187,10 +2194,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
       setTimeout(() => setAttackAnim(false), 600);
       return;
     }
-    if (battleDialogueOn) {
-      const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
-      setCompanionBattleLine(`[${sig.tag}] ${sig.text}`);
-    }
+    const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
+    setCompanionBattleLine(sig.text);
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(action === 'attack' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
     setAttackAnim(true);
@@ -2354,6 +2359,8 @@ Speak as the ${archetype.name} mind, in the voice of ${displayName || archetype.
   const handleSpell = async (spell: SpellDef) => {
     if (!battle || battle.won || tokensLeft < spell.cost || attackAnim) return;
     setSpellMenuOpen(false);
+    const _spellSig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
+    setCompanionBattleLine(_spellSig.text);
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setAttackAnim(true);
@@ -4837,24 +4844,24 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                       );
                     })()}
                     {/* Enemy dialogue */}
-                    <View style={{ borderLeftWidth:2, borderLeftColor:rc+'66', paddingLeft:8, marginTop:2 }}>
-                      <Text style={{ color:'#888899', fontSize:10, fontStyle:'italic', lineHeight:15 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
-                    </View>
                   </View>
                 </View>
 
-                {/* Companion dialogue bubble */}
-                {battleDialogueOn && companionBattleLine !== '' && (
-                  <View style={{ flexDirection:'row', alignItems:'flex-start', gap:8, marginBottom:10, paddingHorizontal:2 }}>
-                    <View style={{ width:28, height:28, borderRadius:14, borderWidth:1, borderColor:color+'66', backgroundColor:color+'14', alignItems:'center', justifyContent:'center' }}>
-                      <Text style={{ fontSize:13 }}>{skin.glyph}</Text>
-                    </View>
-                    <View style={{ flex:1, backgroundColor:color+'0E', borderRadius:12, borderTopLeftRadius:3, borderWidth:1, borderColor:color+'33', paddingHorizontal:11, paddingVertical:8 }}>
-                      <Text style={{ color:color+'CC', fontSize:9, fontFamily:mono, letterSpacing:1, marginBottom:3 }}>◈ SIGNAL INTERCEPT</Text>
-                      <Text style={{ color:'#CCCCDD', fontSize:11, fontStyle:'italic', lineHeight:17 }}>{companionBattleLine}</Text>
-                    </View>
+                {/* ── DIALOGUE EXCHANGE ── enemy speaks / companion responds ── */}
+                <View style={{ marginBottom:10, gap:6 }}>
+                  {/* Enemy line */}
+                  <View style={{ flexDirection:'row', alignItems:'flex-start', gap:6 }}>
+                    <Text style={{ color:rc, fontSize:9, fontFamily:mono, fontWeight:'700', minWidth:14, marginTop:1 }}>▸</Text>
+                    <Text style={{ color:rc+'CC', fontSize:11, fontStyle:'italic', lineHeight:17, flex:1 }} numberOfLines={2}>{`"${battle.enemyLine}"`}</Text>
                   </View>
-                )}
+                  {/* Companion response */}
+                  {companionBattleLine !== '' && (
+                    <View style={{ flexDirection:'row', alignItems:'flex-start', gap:6 }}>
+                      <Text style={{ color:color, fontSize:10, marginTop:1 }}>{skin.glyph}</Text>
+                      <Text style={{ color:color+'BB', fontSize:11, lineHeight:17, flex:1 }} numberOfLines={2}>{companionBattleLine}</Text>
+                    </View>
+                  )}
+                </View>
 
                 {/* Player HP — cinematic bar / GB block bar */}
                 {(() => {
