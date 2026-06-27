@@ -3453,12 +3453,35 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   </View>
                   <View style={{ gap:6 }}>
                     <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:4 }}>ASK SOMETHING</Text>
-                    {[
-                      'What should I study today?',
-                      'Tell me about my zone.',
-                      'What does my stage mean?',
-                      'Give me a challenge.',
-                    ].map((q, i) => (
+                    {((): string[] => {
+                      const charQ: Partial<Record<SkinId, string>> = {
+                        solform:   'What does it feel like to be truly known?',
+                        void:      'What lives in the space between my thoughts?',
+                        aurora:    'What conditions need to be perfect before I act?',
+                        crimson:   'What am I refusing to destroy that needs to die?',
+                        obsidian:  'What am I avoiding looking at directly?',
+                        lycheetah: "What did I know when I was younger that I've since forgotten?",
+                        chaos:     'What structure in my life was always broken beneath the surface?',
+                        sovereign: "What have I already earned that I'm not claiming?",
+                        akashic:   'What thought have I been trying to forget?',
+                        delphi:    'What question am I afraid to ask myself?',
+                        celtic:    "What is waiting for me at the threshold I keep walking past?",
+                        egyptian:  "What am I carrying that I'm ready to set down?",
+                        norse:     'What would I fight for, knowing how it ends?',
+                        kabbala:   'What am I supposed to become?',
+                        noetic:    'What have I noticed recently that I dismissed as coincidence?',
+                        lamague:   "What word am I using that doesn't mean what I think it does?",
+                        sufi:      "What am I, once everything that isn't me has burned away?",
+                        quantum:   'Which version of myself am I choosing to observe into being?',
+                      };
+                      const q0 = charQ[skin.id as SkinId];
+                      return [
+                        q0 ?? 'Give me a challenge.',
+                        'What should I study today?',
+                        'Tell me about my zone.',
+                        'What does my stage mean?',
+                      ];
+                    })().map((q, i) => (
                       <TouchableOpacity key={i} onPress={() => { setTalkInput(q); }}
                         style={{ padding:12, borderRadius:10, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08', flexDirection:'row', alignItems:'center', gap:10 }}>
                         <Text style={{ color:color+'88', fontSize:12 }}>◦</Text>

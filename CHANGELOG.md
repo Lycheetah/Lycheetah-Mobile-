@@ -1,5 +1,11 @@
 # Changelog
 
+## [5.20.0] — 2026-06-27 — Per-character TALK starter questions
+
+Each of the 18 companions now opens TALK with a question that belongs specifically to them:
+PYTHIA: "What question am I afraid to ask myself?" · FRACTUR: "What structure in my life was always broken?" · NOCTIS: "What lives in the space between my thoughts?" · CORDIA: "What am I avoiding looking at directly?" · RAGNA: "What would I fight for, knowing how it ends?" · QUON: "Which version of myself am I choosing to observe into being?" · HAVIZ: "What am I, once everything that isn't me has burned away?" · + 11 more.
+Falls back to "Give me a challenge." for unrecognized skins.
+
 ## [5.19.0] — 2026-06-27 — TALK character identity polish
 
 ### Character Identity in TALK
