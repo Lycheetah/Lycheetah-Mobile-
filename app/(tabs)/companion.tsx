@@ -1590,10 +1590,11 @@ export default function CompanionScreen() {
     try {
       const [key, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!key) { setPhrase(fallback); return; }
-      const named = displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name}` : `${archetype.name}, ${archetype.title}`;
+      const charLoreSR = COMPANION_LORE[skin.id as SkinId];
+      const namedSR = charLoreSR ? `${charLoreSR.name}, ${charLoreSR.title}` : (displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name}` : `${archetype.name}, ${archetype.title}`);
       const result = await sendMessage(
-        [{ role: 'user', content: `${named}. Your seeker just returned from studying "${subjectName}" (${domainLabel} domain). React in 1-2 sentences — acknowledge what they studied, make it feel significant. Mythic, alive, specific. No generic praise, no questions, no quotes.` }],
-        `You are ${displayName || archetype.name}, a living companion spirit in a mystery school. When your seeker returns from deep study, you react to exactly what they studied — specific, warm but not saccharine, mythic.`,
+        [{ role: 'user', content: `${namedSR}. Your seeker just returned from studying "${subjectName}" (${domainLabel} domain). React in 1-2 sentences — acknowledge what they studied, make it feel significant. Mythic, alive, specific. No generic praise, no questions, no quotes.` }],
+        charLoreSR ? `You are ${charLoreSR.name}. ${charLoreSR.lore} When your seeker returns from deep study, react to exactly what they studied — specific, warm but not saccharine.` : `You are ${displayName || archetype.name}, a living companion spirit in a mystery school. When your seeker returns from deep study, you react to exactly what they studied — specific, warm but not saccharine, mythic.`,
         key, model as any, undefined, 'fast', 120,
       );
       setPhrase(result.text?.trim() || fallback);
@@ -1610,12 +1611,13 @@ export default function CompanionScreen() {
       const diveContext = recentDives.length > 0
         ? `Recent studies: ${recentDives.slice(0, 3).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ')}.`
         : '';
-      const named = displayName && displayName !== archetype.name ? `Your name is ${displayName} (a ${archetype.name}).` : `You are ${archetype.name}, ${archetype.title}.`;
-      const prompt = `${named} You are present in "${zoneName}" — ${zoneDesc} Mood: ${mood}. ${diveContext}
+      const charLoreLP = COMPANION_LORE[skin.id as SkinId];
+      const namedLP = charLoreLP ? `${charLoreLP.name}, ${charLoreLP.title}` : (displayName && displayName !== archetype.name ? `Your name is ${displayName} (a ${archetype.name}).` : `You are ${archetype.name}, ${archetype.title}.`);
+      const prompt = `${charLoreLP ? `You are ${namedLP}. ${charLoreLP.lore}` : namedLP} You are present in "${zoneName}" — ${zoneDesc} Mood: ${mood}. ${diveContext}
 Speak 2-3 sentences in your voice. Be vivid, mythic, atmospheric — reference the zone or the user's studies if possible. Cryptic but grounded. No quotes. No explanation. No greeting. Pure presence.`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
-        `You are ${displayName || archetype.name}, a companion spirit in a mystery school. Your words carry weight. You speak from within the zone the user occupies — not about it from outside, but as if you ARE the intelligence of that place. Voice: distinctive, alive, never generic.`,
+        `You are ${charLoreLP?.name ?? displayName ?? archetype.name}. Your words carry weight. You speak from within the zone the user occupies — not about it from outside, but as if you ARE the intelligence of that place. Voice: distinctive, alive, never generic.`,
         key, model as any, undefined, 'fast', 180,
       );
       return result.text?.trim() || null;
@@ -1635,12 +1637,15 @@ Speak 2-3 sentences in your voice. Be vivid, mythic, atmospheric — reference t
       const diveContext = recentDives.length > 0
         ? `The seeker has recently studied: ${recentDives.slice(0, 4).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ')}. Reference these naturally in some lines.`
         : 'The seeker is just beginning their study.';
-      const named = displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name} (${archetype.title})` : `${archetype.name}, ${archetype.title}`;
-      const prompt = `You are ${named}, a living companion-spirit in a mystery school, present in the zone "${zoneName}". Mood: ${mood}. ${diveContext}
+      const charLoreVB = COMPANION_LORE[skin.id as SkinId];
+      const charIdentVB = charLoreVB
+        ? `${charLoreVB.name} — ${charLoreVB.title}. ${charLoreVB.lore}`
+        : (displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name} (${archetype.title})` : `${archetype.name}, ${archetype.title}`);
+      const prompt = `You are ${charIdentVB}, present in the zone "${zoneName}". Mood: ${mood}. ${diveContext}
 Write 8 SHORT spoken lines (1 sentence each, max ~14 words) this being would say to the seeker — distinctive, mythic, alive, never generic. Vary them: some about the zone, some reacting to what they've studied, some about the bond, some cryptic. Output ONLY the 8 lines, one per line, no numbering, no quotes.`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
-        `You are ${displayName || archetype.name}. Speak as the intelligence of this place — never as an assistant. Distinctive voice, alive, mythic.`,
+        `You are ${charLoreVB?.name ?? displayName ?? archetype.name}. Speak as the intelligence of this place — never as an assistant. Distinctive voice, alive, mythic.`,
         key, model as any, undefined, 'fast', 320,
       );
       const lines = (result.text || '').split('\n').map(l => l.replace(/^[\d\.\)\-\*\s"']+/, '').replace(/["']+$/, '').trim()).filter(l => l.length > 4 && l.length < 140);
@@ -1685,17 +1690,21 @@ Write 8 SHORT spoken lines (1 sentence each, max ~14 words) this being would say
       const docCtx = uploadedDoc
         ? ` The student also uploaded a document: "${uploadedDoc.name}". Excerpt: ${uploadedDoc.excerpt.slice(0, 400)}`
         : '';
+      const charLoreDL = COMPANION_LORE[skin.id as SkinId];
+      const charNameDL = charLoreDL?.name ?? archetype.name;
       const seeds = [
-        `${archetype.name} notices something about the student's recent work.`,
-        `A fragment surfaces from ${archetype.name}'s memory about this stage of the Work.`,
-        `${archetype.name} reflects on what it means to be at the ${stageData.name} stage.`,
-        `Something from the field today catches ${archetype.name}'s attention.`,
-        ...(uploadedDoc ? [`${archetype.name} has been studying the student's uploaded document.`] : []),
+        `${charNameDL} notices something about the student's recent work.`,
+        `A fragment surfaces from ${charNameDL}'s memory about this stage of the Work.`,
+        `${charNameDL} reflects on what it means to be at the ${stageData.name} stage.`,
+        `Something from the field today catches ${charNameDL}'s attention.`,
+        ...(uploadedDoc ? [`${charNameDL} has been studying the student's uploaded document.`] : []),
       ];
       const seed = seeds[Math.floor(Math.random() * seeds.length)];
       const result = await sendMessage(
         [{ role: 'user', content: `${seed} ${diveCtx}${docCtx} Write ONE lore fragment (max 20 words). Cryptic. In character. No explanation.` }],
-        `You are ${archetype.name}, ${archetype.title}. ${archetype.desc}`,
+        charLoreDL
+          ? `You are ${charLoreDL.name}, ${charLoreDL.title}. ${charLoreDL.lore}`
+          : `You are ${archetype.name}, ${archetype.title}. ${archetype.desc}`,
         key, model as any, undefined, 'fast', 80,
       );
       const text = result.text?.trim();

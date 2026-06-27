@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.22.0] — 2026-06-27 — Deep prompt pass: all AI voices now character-specific
+
+All AI prompt generators that were still using generic archetype.name/title/desc now inject full COMPANION_LORE identity:
+- **Voice batch** (8 rotating speech bubble lines): NOCTIS generates as NOCTIS, not just "SENTINEL"
+- **Daily lore fragment**: character identity + lore injected into system prompt
+- **Study reaction** (after a dive): character-specific voice on return from studying
+- **Live phrase** (zone presence): character-specific identity + lore in both user + system prompt
+Every floating speech bubble, scene fragment, and zone phrase now has character DNA.
+
 ## [5.21.0] — 2026-06-27 — Quality pass: character identity sweep
 
 ### Battle Win Screen
