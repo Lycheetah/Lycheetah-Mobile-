@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.19.0] — 2026-06-27 — TALK character identity polish
+
+### Character Identity in TALK
+- TALK tab header subtitle now shows the character's specific title from COMPANION_LORE ("Prophetess of the Unasked", "Keeper of the Between") instead of the generic archetype title
+- TALK empty state card now shows the character's lore text instead of a random archetype phrase — PYTHIA's opening words are PYTHIA's, not VIGIL's
+- Fullscreen TALK modal: added lore quote card below the glyph (borderLeft accent, character title + lore in italic)
+- Falls back to archetype data gracefully for any skin without a COMPANION_LORE entry
+
 ## [5.18.0] — 2026-06-27 — #267: Companion depth pass (per-character voice + study-aware)
 
 ### Per-Character Voice

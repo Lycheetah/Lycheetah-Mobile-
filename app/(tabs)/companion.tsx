@@ -3318,14 +3318,23 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
           )}
           {/* Messages */}
           <ScrollView ref={talkScrollRef} style={{ flex:1 }} contentContainerStyle={{ padding:16, gap:12, paddingBottom:16 }} showsVerticalScrollIndicator={false}>
-            {talkHistory.length === 0 && !invokeMode && !talkLoading && (
-              <View style={{ alignItems:'center', gap:12, paddingTop:32, paddingHorizontal:24 }}>
-                <Text style={{ color:campfireMode?'#FF9944':color, fontSize:52, lineHeight:60 }}>{campfireMode ? '🔥' : archetype.glyph}</Text>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>
-                  {campfireMode === 'auto' ? 'Lighting the fire...' : campfireMode === 'lore' ? `Name your subject.\n${displayName} will go deep.` : campfireMode === 'exchange' ? `Sit down.\n${displayName} has stories.` : `Begin the conversation.\n${displayName} is listening.`}
-                </Text>
-              </View>
-            )}
+            {talkHistory.length === 0 && !invokeMode && !talkLoading && (() => {
+              const charLore = COMPANION_LORE[skin.id as SkinId];
+              return (
+                <View style={{ alignItems:'center', gap:12, paddingTop:32, paddingHorizontal:24 }}>
+                  <Text style={{ color:campfireMode?'#FF9944':color, fontSize:52, lineHeight:60 }}>{campfireMode ? '🔥' : archetype.glyph}</Text>
+                  {!campfireMode && charLore && (
+                    <View style={{ borderLeftWidth:2, borderLeftColor:color+'44', paddingLeft:12, alignSelf:'stretch', marginBottom:4 }}>
+                      <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:6 }}>{charLore.title.toUpperCase()}</Text>
+                      <Text style={{ color:'#AAAACC', fontSize:13, fontStyle:'italic', lineHeight:20 }}>"{charLore.lore}"</Text>
+                    </View>
+                  )}
+                  <Text style={{ color:SOL_THEME.textMuted, fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22 }}>
+                    {campfireMode === 'auto' ? 'Lighting the fire...' : campfireMode === 'lore' ? `Name your subject.\n${displayName} will go deep.` : campfireMode === 'exchange' ? `Sit down.\n${displayName} has stories.` : `Begin the conversation.`}
+                  </Text>
+                </View>
+              );
+            })()}
             {talkHistory.map((m, i) => (
               <View key={i} style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 {m.role === 'companion' && (
@@ -3376,7 +3385,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             <Text style={{ color:auraMode?'#7EC8E3':color, fontSize:20 }}>{auraMode ? '✦' : archetype.glyph}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ color:SOL_THEME.text, fontSize:13, fontWeight:'700', fontFamily:mono }}>{auraMode ? 'Aura Prime' : displayName}</Text>
-              <Text style={{ color:auraMode?'#E991B8':color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{auraMode ? 'FIELD INTELLIGENCE' : archetype.title.toUpperCase()}</Text>
+              <Text style={{ color:auraMode?'#E991B8':color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{auraMode ? 'FIELD INTELLIGENCE' : (COMPANION_LORE[skin.id as SkinId]?.title ?? archetype.title).toUpperCase()}</Text>
             </View>
             <TouchableOpacity
               onPress={() => { setInvokeMode(m => !m); setAuraMode(false); setTalkHistory([]); setInvokePhrase(''); }}
@@ -3437,9 +3446,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   <View style={{ alignItems:'center', gap:8, padding:20, borderRadius:16, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
                     <Text style={{ color, fontSize:32 }}>{archetype.glyph}</Text>
                     <Text style={{ color:'#FFFFFF', fontSize:15, fontWeight:'700', textAlign:'center' }}>{displayName || archetype.name}</Text>
-                    <Text style={{ color:color+'AA', fontSize:8, fontFamily:mono, letterSpacing:2 }}>{archetype.title.toUpperCase()}</Text>
+                    <Text style={{ color:color+'AA', fontSize:8, fontFamily:mono, letterSpacing:2 }}>{(COMPANION_LORE[skin.id as SkinId]?.title ?? archetype.title).toUpperCase()}</Text>
                     <Text style={{ color:'#888899', fontSize:13, fontStyle:'italic', textAlign:'center', lineHeight:22, marginTop:4 }}>
-                      {rnd(archetype.phrases[mood])}
+                      {COMPANION_LORE[skin.id as SkinId]?.lore ?? rnd(archetype.phrases[mood])}
                     </Text>
                   </View>
                   <View style={{ gap:6 }}>
