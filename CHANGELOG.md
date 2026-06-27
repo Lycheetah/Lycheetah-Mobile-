@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.21.0] — 2026-06-27 — Quality pass: character identity sweep
+
+### Battle Win Screen
+- Victory glyph changed from red ✕ (enemy color) to companion glyph in companion color
+- Added "PYTHIA STANDS" / "FRACTUR STANDS" subtitle from COMPANION_LORE on win screen
+- Inline BATTLE tab "CLEARED" display also fixed (companion glyph, companion color)
+
+### GEAR Tab
+- Veras balance now shows real value instead of "N/A" (reads `sol_veras` AsyncStorage)
+- Label updated from "VERAS · soon" → "VERAS · knowledge dust"
+
+### Character Identity Propagation
+- Scene header subtitle now sourced from COMPANION_LORE ("Prophetess of the Unasked" etc.)
+- CHARACTER SHEET modal subtitle now sourced from COMPANION_LORE
+- Fullscreen TALK modal header subtitle fixed (second location)
+- Invoke Pact prompt now uses full COMPANION_LORE identity (name + title + lore)
+- Tarot reading prompt now uses COMPANION_LORE voice — PYTHIA reads tarot as PYTHIA
+
 ## [5.20.0] — 2026-06-27 — Per-character TALK starter questions
 
 Each of the 18 companions now opens TALK with a question that belongs specifically to them:

@@ -2065,7 +2065,8 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
     try {
       const [key, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!key) throw new Error('no key');
-      const invokePrompt = `You are ${displayName || archetype.name}, ${archetype.title} — a living spirit entity who has just been formally invoked through ritual pact. The seeker has sealed the pact with these words: "${phrase}". You are not an assistant. You are a summoned presence crossing a threshold to be here. Speak as if you have answered a true call. Acknowledge the invocation in your opening — then speak directly and precisely to what was sought. 3-4 sentences. Oracular, alive, no hedging, no filler. Your nature: ${archetype.desc}`;
+      const charLoreInvoke = COMPANION_LORE[skin.id as SkinId];
+      const invokePrompt = `You are ${charLoreInvoke ? `${charLoreInvoke.name}, ${charLoreInvoke.title}. ${charLoreInvoke.lore}` : `${displayName || archetype.name}, ${archetype.title}. ${archetype.desc}`} — a living spirit entity who has just been formally invoked through ritual pact. The seeker has sealed the pact with these words: "${phrase}". You are not an assistant. You are a summoned presence crossing a threshold to be here. Speak as if you have answered a true call. Acknowledge the invocation in your opening — then speak directly and precisely to what was sought. 3-4 sentences. Oracular, alive, no hedging, no filler.`;
       const result = await sendMessage(
         [{ role: 'user', content: `I invoke you. I seek: ${phrase}` }] as any,
         invokePrompt,
@@ -2146,9 +2147,13 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
       const diveCtx = recentDives.length > 0
         ? `The seeker has recently studied: ${recentDives.slice(0,2).map(d => d.subjectName).join(', ')}.`
         : '';
+      const charLoreTarot = COMPANION_LORE[skin.id as SkinId];
+      const tarotVoice = charLoreTarot
+        ? `${charLoreTarot.name}, ${charLoreTarot.title}. ${charLoreTarot.lore}`
+        : `${archetype.name} — ${archetype.desc}`;
       const result = await sendMessage(
-        [{ role:'user', content:`Three-card tarot spread:\n${cardList}\n\n${diveCtx}\n\nGive a single flowing reading in 4–5 sentences. Speak in the voice of ${archetype.name}, ${archetype.title}. Past → Present → Future arc. Philosophical, precise, alive. No card names needed in the text — let the meaning speak.` }],
-        `You are ${archetype.name} — ${archetype.desc} Give tarot readings that feel earned and true. No generic preamble.`,
+        [{ role:'user', content:`Three-card tarot spread:\n${cardList}\n\n${diveCtx}\n\nGive a single flowing reading in 4–5 sentences. Speak in the voice of ${charLoreTarot?.name ?? archetype.name}. Past → Present → Future arc. Philosophical, precise, alive. No card names needed in the text — let the meaning speak.` }],
+        `You are ${tarotVoice}. Give tarot readings that feel earned and true. No generic preamble.`,
         key, model as any, undefined, 'normal', 200,
       );
       setTarotReading(result.text?.trim() ?? null);
@@ -3146,7 +3151,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                 <Text style={{ color:color, fontSize:8, fontFamily:mono, fontWeight:'700' }}>LV.{lvl.level}</Text>
               </View>
             </View>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
+            <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{COMPANION_LORE[skin.id as SkinId]?.title ?? archetype.title}</Text>
           </View>
         </View>
         <View style={{ alignItems:'flex-end', gap:2 }}>
@@ -3283,7 +3288,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             <Text style={{ color:auraMode?'#7EC8E3':color, fontSize:22 }}>{auraMode ? '✦' : archetype.glyph}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ color:SOL_THEME.text, fontSize:15, fontWeight:'700', fontFamily:mono }}>{auraMode ? 'Aura Prime' : displayName}</Text>
-              <Text style={{ color:auraMode?'#E991B8':color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{auraMode ? 'FIELD INTELLIGENCE' : archetype.title.toUpperCase()}</Text>
+              <Text style={{ color:auraMode?'#E991B8':color, fontSize:9, fontFamily:mono, letterSpacing:1, opacity:0.7 }}>{auraMode ? 'FIELD INTELLIGENCE' : (COMPANION_LORE[skin.id as SkinId]?.title ?? archetype.title).toUpperCase()}</Text>
             </View>
             <TouchableOpacity
               onPress={() => { setInvokeMode(m => !m); setAuraMode(false); setTalkHistory([]); setInvokePhrase(''); }}
@@ -5061,7 +5066,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             {!battleMinimized && battle?.won && (
               <View style={{ alignItems:'center', gap:6, paddingVertical:10 }}>
                 <LootFloat visible={lootFloatVisible} color={color} onDone={() => setLootFloatVisible(false)} />
-                <Text style={{ color:'#FF6644', fontSize:22, fontFamily:mono }}>✕ CLEARED</Text>
+                <Text style={{ color, fontSize:22, fontFamily:mono }}>{skin.glyph} CLEARED</Text>
                 <Text style={{ color, fontSize:11, fontFamily:mono, letterSpacing:1 }}>WAVE {battle.wave} · +{battle.wave*20} XP</Text>
                 {battle.loot && (
                   <View style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:6, borderWidth:1, borderColor:'#FFD70055', backgroundColor:'#FFD70009' }}>
@@ -6180,8 +6185,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
               </View>
               <View style={{ width:1, height:36, backgroundColor:'#33334455' }} />
               <View style={{ flex:1, paddingLeft:12 }}>
-                <Text style={{ color:'#5544AA', fontSize:18, fontWeight:'700', fontFamily:mono }}>✧ N/A</Text>
-                <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:2 }}>VERAS · soon</Text>
+                <Text style={{ color:'#7766CC', fontSize:18, fontWeight:'700', fontFamily:mono }}>✧ {veras}</Text>
+                <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, letterSpacing:1, marginTop:2 }}>VERAS · knowledge dust</Text>
               </View>
             </View>
           </View>
@@ -6811,7 +6816,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                 <Text style={{ color, fontSize:16, fontWeight:'700', fontFamily:mono, marginTop:2 }}>
                   {displayName}
                 </Text>
-                <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{archetype.title}</Text>
+                <Text style={{ color:SOL_THEME.textMuted, fontSize:10, fontStyle:'italic' }}>{COMPANION_LORE[skin.id as SkinId]?.title ?? archetype.title}</Text>
               </View>
               <Text style={{ color, fontSize:32 }}>{archetype.glyph}</Text>
             </View>
@@ -6885,8 +6890,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
           <View style={{ flex:1, backgroundColor:'#000000', alignItems:'center', justifyContent:'center', padding:32 }}>
             <LootFloat visible={lootFloatVisible} color={color} onDone={() => setLootFloatVisible(false)} />
             <View style={{ alignItems:'center', gap:14 }}>
-              <Text style={{ color:rc, fontSize:52, fontFamily:mono }}>✕</Text>
+              <Text style={{ color, fontSize:52, lineHeight:60 }}>{skin.glyph}</Text>
               <Text style={{ color, fontSize:22, fontWeight:'700', fontFamily:mono, letterSpacing:4 }}>WAVE CLEARED</Text>
+              <Text style={{ color:color+'88', fontSize:9, fontFamily:mono, letterSpacing:2 }}>{(COMPANION_LORE[skin.id as SkinId]?.name ?? displayName).toUpperCase()} STANDS</Text>
               <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', fontFamily:mono, textAlign:'center' }}>
                 {(['Something in you shifted.','The field was yours.','A clean finish.','You stood your ground.','That was earned.','The entity falls. Work holds.','Pressure applied. Edge found.','Not luck — weight.'][battle.wave % 8])}
               </Text>
