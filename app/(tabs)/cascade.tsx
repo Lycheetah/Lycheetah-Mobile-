@@ -321,8 +321,15 @@ export default function CascadeBuilderScreen() {
       {/* Header with inline Add button */}
       <View style={s.headerRow}>
         <View>
-          <Text style={s.title}>CASCADE</Text>
-          <Text style={s.subtitle}>Knowledge pyramid · {blocks.length} block{blocks.length !== 1 ? 's' : ''}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 7 }}>
+            <Text style={s.title}>CASCADE</Text>
+            <Text style={{ color: '#fb923c88', fontSize: 18, fontWeight: '800' }}>△</Text>
+          </View>
+          <Text style={s.subtitle}>
+            {blocks.length === 0
+              ? 'truth pressure engine · add your first block'
+              : `truth pressure engine · ${blocks.length} block${blocks.length !== 1 ? 's' : ''}`}
+          </Text>
         </View>
         <TouchableOpacity style={s.addBtnInline} onPress={() => setEditing(createEmptyBlock())}>
           <Text style={s.addBtnInlineText}>+ Add block</Text>
@@ -351,21 +358,27 @@ export default function CascadeBuilderScreen() {
         <View style={s.heroTension}>
           <View style={s.heroTensionHeader}>
             <Text style={s.heroTensionKicker}>⚡ BIGGEST CONTRADICTION</Text>
-            <Text style={s.heroTensionDelta}>{worstTension.delta} pts apart</Text>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={s.heroTensionDelta}>{worstTension.delta} pts apart</Text>
+              {tensions.length > 1 && (
+                <Text style={{ color: '#fb923c66', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginTop: 2 }}>
+                  +{tensions.length - 1} more
+                </Text>
+              )}
+            </View>
           </View>
           <Text style={s.heroTensionClaim} numberOfLines={2}>
             {blocks.find(x => x.id === worstTension.stronger.id)?.claim ?? 'untitled'}
           </Text>
-          <Text style={s.heroTensionArrow}>⟷</Text>
+          <View style={s.heroTensionArrowRow}>
+            <View style={s.heroTensionLine} />
+            <Text style={s.heroTensionArrow}>⟷</Text>
+            <View style={s.heroTensionLine} />
+          </View>
           <Text style={s.heroTensionClaim} numberOfLines={2}>
             {blocks.find(x => x.id === worstTension.weaker.id)?.claim ?? 'untitled'}
           </Text>
-          <Text style={s.heroTensionSub}>
-            {'This is where your pyramid is weakest.'}
-            {tensions.length > 1
-              ? `  +${tensions.length - 1} more tension${tensions.length > 2 ? 's' : ''} detected.`
-              : ''}
-          </Text>
+          <Text style={s.heroTensionSub}>This is where your pyramid is weakest.</Text>
         </View>
       )}
 
@@ -430,6 +443,16 @@ export default function CascadeBuilderScreen() {
                             {b.claim?.slice(0, 18)}
                           </Text>
                         )}
+                        {ri === 3 && (
+                          <Text style={s.pClaimTiny} numberOfLines={1}>
+                            {b.claim?.slice(0, 12)}
+                          </Text>
+                        )}
+                        {ri >= 4 && (
+                          <Text style={s.pClaimTiny} numberOfLines={1}>
+                            {b.claim?.slice(0, 8)}
+                          </Text>
+                        )}
                         {pressure && <Text style={s.pPressure}>⚡</Text>}
                       </TouchableOpacity>
                     );
@@ -454,12 +477,24 @@ export default function CascadeBuilderScreen() {
                 Π {expPi} · {piBand(expPi).label} PRESSURE
               </Text>
             </View>
-            <TouchableOpacity
-              style={s.expandedEditBtn}
-              onPress={() => { setEditing(expandedBlock); setExpanded(null); }}
-            >
-              <Text style={s.expandedEditBtnText}>Edit →</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              <TouchableOpacity
+                style={s.expandedDeleteBtn}
+                onPress={async () => {
+                  const next = await deleteBlock(expandedBlock.id);
+                  setBlocks(next);
+                  setExpanded(null);
+                }}
+              >
+                <Text style={s.expandedDeleteBtnText}>✕</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.expandedEditBtn}
+                onPress={() => { setEditing(expandedBlock); setExpanded(null); }}
+              >
+                <Text style={s.expandedEditBtnText}>Edit →</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={s.expandedClaim}>{expandedBlock.claim || '(no claim set — tap Edit to add one)'}</Text>
           <Text style={s.expandedLayersLabel}>9-LAYER BREAKDOWN</Text>
@@ -519,6 +554,20 @@ export default function CascadeBuilderScreen() {
         );
       })}
 
+      {/* Clear all — shown when blocks exist so user can wipe the seed pyramid */}
+      {blocks.length > 0 && (
+        <TouchableOpacity
+          style={s.clearAllBtn}
+          onPress={async () => {
+            for (const b of blocks) await deleteBlock(b.id);
+            setBlocks([]);
+            setExpanded(null);
+          }}
+        >
+          <Text style={s.clearAllText}>Clear all blocks</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Empty state */}
       {blocks.length === 0 && (
         <View style={s.emptyState}>
@@ -573,29 +622,35 @@ const s = StyleSheet.create({
   heroTension: {
     marginBottom: 16, padding: 16,
     borderRadius: 14, borderWidth: 1,
-    borderColor: '#fb923c55', backgroundColor: '#100800',
+    borderColor: '#fb923c99', backgroundColor: '#0D0500',
+    borderTopWidth: 2, borderTopColor: '#fb923c',
   },
   heroTensionHeader: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 12,
+    flexDirection: 'row', alignItems: 'flex-start',
+    justifyContent: 'space-between', marginBottom: 14,
   },
   heroTensionKicker: {
     color: '#fb923c', fontSize: 10, fontWeight: '800', letterSpacing: 1.5,
   },
   heroTensionDelta: {
-    color: '#fb923c', fontSize: 13, fontWeight: '800',
+    color: '#fb923c', fontSize: 15, fontWeight: '800',
   },
   heroTensionClaim: {
-    color: SOL_THEME.text, fontSize: 13, fontWeight: '600',
-    lineHeight: 19, marginBottom: 6,
+    color: SOL_THEME.text, fontSize: 14, fontWeight: '600',
+    lineHeight: 20, marginBottom: 6,
+  },
+  heroTensionArrowRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 8,
+  },
+  heroTensionLine: {
+    flex: 1, height: 1, backgroundColor: '#fb923c33',
   },
   heroTensionArrow: {
-    color: '#fb923c66', fontSize: 16, textAlign: 'center',
-    marginVertical: 4,
+    color: '#fb923c88', fontSize: 16,
   },
   heroTensionSub: {
     color: SOL_THEME.textMuted, fontSize: 11,
-    marginTop: 10, lineHeight: 16,
+    marginTop: 10, lineHeight: 16, fontStyle: 'italic',
   },
 
   // ── Pyramid visual ──────────────────────────────────────────────────────
@@ -617,10 +672,11 @@ const s = StyleSheet.create({
   pBlockRow3: { minHeight: 54, padding: 5 },
   pBlockRow4: { minHeight: 46, padding: 4 },
 
-  pScore:    { fontWeight: '800', fontSize: 20, textAlign: 'center' },
-  pClaim:    { color: '#88889a', fontSize: 8, textAlign: 'center', marginTop: 4, lineHeight: 12 },
-  pClaimXs:  { color: '#66667a', fontSize: 7, textAlign: 'center', marginTop: 3 },
-  pPressure: { color: '#fb923c', fontSize: 7, marginTop: 2 },
+  pScore:     { fontWeight: '800', fontSize: 20, textAlign: 'center' },
+  pClaim:     { color: '#C4B8AE99', fontSize: 8, textAlign: 'center', marginTop: 4, lineHeight: 12 },
+  pClaimXs:   { color: '#9890A099', fontSize: 7, textAlign: 'center', marginTop: 3 },
+  pClaimTiny: { color: '#887E9088', fontSize: 6, textAlign: 'center', marginTop: 2 },
+  pPressure:  { color: '#fb923c', fontSize: 7, marginTop: 2 },
 
   // ── Expanded block detail ───────────────────────────────────────────────
   expandedCard: {
@@ -640,6 +696,12 @@ const s = StyleSheet.create({
     borderColor: '#fb923c55', backgroundColor: '#1a0e00',
   },
   expandedEditBtnText: { color: '#fb923c', fontSize: 12, fontWeight: '700' },
+  expandedDeleteBtn: {
+    width: 30, height: 30, borderRadius: 8, borderWidth: 1,
+    borderColor: '#f8717144', backgroundColor: '#1a0505',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  expandedDeleteBtnText: { color: '#f87171', fontSize: 13, fontWeight: '700' },
   expandedClaim: {
     color: SOL_THEME.text, fontSize: 14, fontWeight: '600',
     lineHeight: 21, marginBottom: 14,
@@ -704,7 +766,7 @@ const s = StyleSheet.create({
   readoutScore: { fontSize: 36, fontWeight: '800' },
   readoutBand:  { fontSize: 11, fontWeight: '800', letterSpacing: 1, marginTop: 1 },
   readoutPi:    { fontSize: 12, fontWeight: '700' },
-  readoutHint:  { color: '#55556a', fontSize: 9, letterSpacing: 0.5, marginTop: 4 },
+  readoutHint:  { color: SOL_THEME.textMuted, fontSize: 9, letterSpacing: 0.5, marginTop: 4, opacity: 0.6 },
   pressureFlag: { color: '#fb923c', fontSize: 18, fontWeight: '800' },
 
   scoreRow:     { flexDirection: 'row', gap: 8, marginBottom: 8 },
@@ -751,4 +813,7 @@ const s = StyleSheet.create({
 
   deleteBtn:     { marginTop: 14, padding: 12, alignItems: 'center' },
   deleteBtnText: { color: SOL_THEME.error, fontSize: 13 },
+
+  clearAllBtn:  { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
+  clearAllText: { color: SOL_THEME.textMuted, fontSize: 11, opacity: 0.5 },
 });
