@@ -991,6 +991,14 @@ export default function SettingsScreen() {
         <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, marginTop: 8, fontStyle: 'italic' }}>
           {analyticsOptOut ? 'Analytics off — nothing is sent.' : 'Analytics on — anonymous event counts only.'}
         </Text>
+        <TouchableOpacity
+          onPress={() => router.push('/privacy')}
+          style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Privacy Policy</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>→</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Leave Gracefully */}

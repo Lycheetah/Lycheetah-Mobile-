@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.23.0] — 2026-06-28 — Privacy screen, Thoth attributions, AETHER removed
+
+### Privacy
+- Privacy Policy screen (`/privacy`) wired from Settings — tap "Privacy Policy" to open
+- `PRIVACY_POLICY.md` added for Play Store submission
+
+### Zodiac / Divination
+- `thoth-attributions.ts` — full Crowley/Harris Thoth system: Hebrew letters, astrological paths, Kabbalistic correspondences, decan rulers, all 78 cards
+- AETHER element removed from Gem Forge — back to 4 classical elements (EARTH/WATER/FIRE/AIR); real data only
+- Real chart builder functions added to zodiac.tsx (mean longitude for Mercury–Pluto, corrected Sun/Moon series)
+
+---
+
 ## [5.22.0] — 2026-06-27 — Deep prompt pass: all AI voices now character-specific
 
 All AI prompt generators that were still using generic archetype.name/title/desc now inject full COMPANION_LORE identity:

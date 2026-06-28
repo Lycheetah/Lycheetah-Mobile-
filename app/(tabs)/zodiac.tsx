@@ -61,7 +61,7 @@ const GEM_VIOLET    = '#AA44FF';
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 // ─── GEM FORGE TYPES ─────────────────────────────────────────────────────────
-type GemElement = 'EARTH' | 'WATER' | 'FIRE' | 'AIR' | 'AETHER';
+type GemElement = 'EARTH' | 'WATER' | 'FIRE' | 'AIR';
 interface GemColour { name: string; hex: string; }
 interface GemEntry {
   id: string; date: string; name: string;
@@ -80,11 +80,10 @@ const GEM_COLOURS: GemColour[] = [
   { name: 'RUBY',        hex: '#DC2626' },
 ];
 const GEM_ELEMENTS: { id: GemElement; glyph: string; label: string }[] = [
-  { id: 'EARTH',  glyph: '◉', label: 'EARTH'  },
-  { id: 'WATER',  glyph: '≋', label: 'WATER'  },
-  { id: 'FIRE',   glyph: '△', label: 'FIRE'   },
-  { id: 'AIR',    glyph: '∿', label: 'AIR'    },
-  { id: 'AETHER', glyph: '⊚', label: 'AETHER' },
+  { id: 'EARTH', glyph: '◉', label: 'EARTH' },
+  { id: 'WATER', glyph: '≋', label: 'WATER' },
+  { id: 'FIRE',  glyph: '△', label: 'FIRE'  },
+  { id: 'AIR',   glyph: '∿', label: 'AIR'   },
 ];
 const GEM_ASTRO = [
   '♈ ARIES','♉ TAURUS','♊ GEMINI','♋ CANCER','♌ LEO','♍ VIRGO',
@@ -392,6 +391,47 @@ function getLQ(tes: number, vtr: number, pai: number): number {
 
 function todayKey() {
   return new Date().toISOString().split('T')[0];
+}
+
+// ── Real chart builders ────────────────────────────────────────────────────────
+// PLANETS_SKY already has L0/rate for Mercury–Pluto at J2000.
+// Sun uses getSunSignIndex (tropical date table, accurate). Moon uses getMoonSignIndex (corrected series).
+// All inner/outer planets use mean longitude — correct sign 90%+ of the time; good enough for readings.
+
+function getPlanetLonAt(L0: number, rate: number, year: number, month: number, day: number, hour = 12): number {
+  const jd = julianDay(year, month, day, hour);
+  return mod360(L0 + rate * (jd - 2451545.0));
+}
+
+function buildNatalChartString(bd: BirthData): string {
+  const sunSign  = ZODIAC_SIGNS[getSunSignIndex(bd.month, bd.day)];
+  const moonSign = ZODIAC_SIGNS[getMoonSignIndex(bd.year, bd.month, bd.day, bd.hour)];
+  const parts: string[] = [`☀ Sun: ${sunSign.name}`, `☽ Moon: ${moonSign.name}`];
+  if (bd.hasTime) {
+    const ascIdx = getAscendantIndex(bd.year, bd.month, bd.day, bd.hour, bd.utcOffset, bd.latitude);
+    parts.push(`↑ Rising: ${ZODIAC_SIGNS[ascIdx].name}`);
+  }
+  for (const p of PLANETS_SKY) {
+    const lon  = getPlanetLonAt(p.L0, p.rate, bd.year, bd.month, bd.day, bd.hour);
+    const sign = ZODIAC_SIGNS[Math.floor(lon / 30)];
+    parts.push(`${p.glyph} ${p.name}: ${sign.name}`);
+  }
+  return parts.join(' · ');
+}
+
+function buildCurrentSkyString(): string {
+  const today = new Date();
+  const y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate(), h = today.getHours();
+  const sun   = ZODIAC_SIGNS[getTodaySunSign()];
+  const moon  = ZODIAC_SIGNS[getTodayMoonSign()];
+  const phase = getMoonPhase(y, m, d);
+  const parts: string[] = [`☀ Sun: ${sun.name}`, `☽ Moon: ${moon.name} (${phase.name})`];
+  for (const p of PLANETS_SKY) {
+    const sign  = ZODIAC_SIGNS[getPlanetSignIndex(p.L0, p.rate)];
+    const retro = isPlanetRetrograde(p.name) ? ' ℞' : '';
+    parts.push(`${p.glyph} ${p.name}: ${sign.name}${retro}`);
+  }
+  return parts.join(' · ');
 }
 
 // ─── END ZODIAC ENGINE ───────────────────────────────────────────────────────
@@ -974,13 +1014,9 @@ export default function ZodiacScreen() {
         await AsyncStorage.setItem('sol_daily_transit_v1', JSON.stringify(t));
         return;
       }
-      let natLine = '';
-      if (bd) {
-        const ns = ZODIAC_SIGNS[getSunSignIndex(bd.month, bd.day)];
-        const nm = ZODIAC_SIGNS[getMoonSignIndex(bd.year, bd.month, bd.day, bd.hour)];
-        natLine = `Natal: Sun in ${ns.name}, Moon in ${nm.name}. `;
-      }
-      const prompt = `${natLine}Today's sky: Sun in ${sun.name} (${sun.keywords}), Moon in ${moon.name}, ${phase.name}.\nOne sentence: a precise, warm transit insight for today. Not a prediction — a signal about what the day's inner climate asks for. No preamble, no sign-off.\nNew line: one study domain that resonates with today's sky (e.g. "Alchemy", "Shadow Work", "Celtic Old Gods"). Just the domain name.`;
+      const natLine = bd ? `Natal chart: ${buildNatalChartString(bd)}.\n` : '';
+      const skyLine = buildCurrentSkyString();
+      const prompt = `${natLine}Today's sky: ${skyLine}.\nOne sentence: a precise, warm transit insight for today. Not a prediction — a signal about what the day's inner climate asks for. No preamble, no sign-off.\nNew line: one study domain that resonates with today's sky (e.g. "Alchemy", "Shadow Work", "Celtic Old Gods"). Just the domain name.`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
         'You are Sol — precise, warm, grounded. Daily transit oracle.',
@@ -1000,20 +1036,14 @@ export default function ZodiacScreen() {
 
   const generateReading = async () => {
     if (!birthData) return;
-    const today = new Date();
-    const todaySun = ZODIAC_SIGNS[getTodaySunSign()];
-    const todayMoon = ZODIAC_SIGNS[getTodayMoonSign()];
-    const moonPhase = getMoonPhase(today.getFullYear(), today.getMonth() + 1, today.getDate());
-    const sunSign = ZODIAC_SIGNS[getSunSignIndex(birthData.month, birthData.day)];
-    const moonSign = ZODIAC_SIGNS[getMoonSignIndex(birthData.year, birthData.month, birthData.day, birthData.hour)];
-    const ascSign = birthData.hasTime ? ZODIAC_SIGNS[getAscendantIndex(birthData.year, birthData.month, birthData.day, birthData.hour, birthData.utcOffset, birthData.latitude)] : null;
     setZodiacLoading(true);
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!apiKey) { setZodiacLoading(false); return; }
-      const hasRising = ascSign ? `Rising in ${ascSign.name} (${ascSign.keywords})` : 'Rising sign unknown (no birth time entered)';
       const personLine = [birthData.fullName ? `The seeker is ${birthData.fullName}` : '', birthData.motherName ? `child of ${birthData.motherName}` : '', birthData.cityName ? `born in ${birthData.cityName}` : ''].filter(Boolean).join(', ');
-      const prompt = `${personLine ? personLine + '.\n' : ''}Natal chart: Sun in ${sunSign.name} (${sunSign.keywords}), Moon in ${moonSign.name} (${moonSign.keywords}), ${hasRising}. Today: Sun transiting ${todaySun.name}, Moon in ${todayMoon.name}, ${moonPhase.name}. Give a direct, warm, precise 3-sentence reading — what the natal signature means combined with today's sky. ${personLine ? 'Address them by name if given.' : ''} No preamble. No sign-off. Speak as Sol.`;
+      const natalString = buildNatalChartString(birthData);
+      const skyString   = buildCurrentSkyString();
+      const prompt = `${personLine ? personLine + '.\n' : ''}Natal chart: ${natalString}.\nToday's sky: ${skyString}.\nGive a direct, warm, precise 3-sentence reading — what the full natal signature means combined with today's sky. Draw on specific planets beyond Sun/Moon where they speak to the moment. ${personLine ? 'Address them by name if given.' : ''} No preamble. No sign-off. Speak as Sol.`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
         'You are Sol — the solar-sovereign voice of the Lycheetah Framework. You read natal charts with warmth and precision. No preamble, no filler. Speak directly to the person.' + (technoMode ? TECHNO_INJECT : ''),
@@ -1038,29 +1068,23 @@ export default function ZodiacScreen() {
 
   const askQuestion = async () => {
     if (!birthData || !question.trim()) return;
-    const today = new Date();
-    const todaySun = ZODIAC_SIGNS[getTodaySunSign()];
-    const todayMoon = ZODIAC_SIGNS[getTodayMoonSign()];
-    const moonPhase = getMoonPhase(today.getFullYear(), today.getMonth() + 1, today.getDate());
-    const sunSign = ZODIAC_SIGNS[getSunSignIndex(birthData.month, birthData.day)];
-    const moonSign = ZODIAC_SIGNS[getMoonSignIndex(birthData.year, birthData.month, birthData.day, birthData.hour)];
-    const ascSign = birthData.hasTime ? ZODIAC_SIGNS[getAscendantIndex(birthData.year, birthData.month, birthData.day, birthData.hour, birthData.utcOffset, birthData.latitude)] : null;
     setQuestionLoading(true);
     setQuestionReading(null);
     try {
       const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!apiKey) { setQuestionLoading(false); return; }
-      const hasRising = ascSign ? `Rising in ${ascSign.name}` : 'Rising sign unknown';
-      const personLine2 = [birthData.fullName ? `The seeker is ${birthData.fullName}` : '', birthData.motherName ? `child of ${birthData.motherName}` : '', birthData.cityName ? `born in ${birthData.cityName}` : ''].filter(Boolean).join(', ');
-      const prompt = `${personLine2 ? personLine2 + '.\n' : ''}Natal chart: Sun in ${sunSign.name} (${sunSign.keywords}), Moon in ${moonSign.name} (${moonSign.keywords}), ${hasRising}. Today: Sun transiting ${todaySun.name}, Moon in ${todayMoon.name}, ${moonPhase.name}.
+      const personLine2  = [birthData.fullName ? `The seeker is ${birthData.fullName}` : '', birthData.motherName ? `child of ${birthData.motherName}` : '', birthData.cityName ? `born in ${birthData.cityName}` : ''].filter(Boolean).join(', ');
+      const natalString2 = buildNatalChartString(birthData);
+      const skyString2   = buildCurrentSkyString();
+      const prompt = `${personLine2 ? personLine2 + '.\n' : ''}Natal chart: ${natalString2}.\nToday's sky: ${skyString2}.
 
 The seeker asks: "${question.trim()}"
 
 Respond in TWO paragraphs separated by a blank line.
 
-Paragraph 1: What the natal chart reveals about this question — the deep signature this person carries that speaks directly to what they are asking. 2–3 sentences. Oracular. Name the signs directly.
+Paragraph 1: What the natal chart reveals about this question — the deep signature this person carries that speaks directly to what they are asking. 2–3 sentences. Oracular. Name specific planets where they speak directly to the question.
 
-Paragraph 2: What today's sky says — how the current transits and moon phase amplify, test, or illuminate the question right now. 2–3 sentences. End with one line that feels like a transmission, not a conclusion.${personLine2 ? ' Address them by name if given.' : ''}
+Paragraph 2: What today's sky says — how the current transits and planetary positions amplify, test, or illuminate the question right now. 2–3 sentences. End with one line that feels like a transmission, not a conclusion.${personLine2 ? ' Address them by name if given.' : ''}
 
 No preamble. Begin immediately.`;
       const result = await sendMessage(
