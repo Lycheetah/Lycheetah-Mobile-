@@ -905,6 +905,20 @@ export default function CompanionScreen() {
   const [tarotReading, setTarotReading] = useState<string | null>(null);
   const [tarotLoading, setTarotLoading] = useState(false);
 
+  // ── Venture scene seeds — picked randomly each beat for narrative variety ──
+  const VENTURE_SEEDS = [
+    { type: 'discovery',     cue: 'Something is revealed — a door, a relic, a hidden truth.' },
+    { type: 'threshold',     cue: 'A boundary point. Crossing it changes what comes back with you.' },
+    { type: 'confrontation', cue: 'Something stands in the way — not hostile, but immovable without understanding.' },
+    { type: 'gift',          cue: 'An unexpected offering. Its nature matches the zone perfectly.' },
+    { type: 'trap',          cue: 'The path looks clear. It is not. Discernment is the key.' },
+    { type: 'revelation',    cue: 'The seeker learns something that reframes everything before.' },
+    { type: 'trial',         cue: 'An ordeal — not of strength, but of discernment and will.' },
+    { type: 'encounter',     cue: 'A presence makes itself known. Its intention is unclear.' },
+    { type: 'fracture',      cue: 'Something breaks — but the break reveals something hidden inside.' },
+    { type: 'stillness',     cue: 'Everything stops. The zone is asking the seeker to listen.' },
+  ];
+
   // ── Venture (D&D session) state ─────────────────────────────────────────────
   const [ventureActive,      setVentureActive]      = useState(false);
   const [venturePhase,       setVenturePhase]       = useState<'loading'|'beat'|'resolve'|'skill'|'dice'>('loading');
@@ -1795,20 +1809,23 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     const diceContext = diceRoll !== undefined
       ? ` The seeker just rolled ${diceRoll}/6 on a Risk — ${diceRoll >= 5 ? 'reward bold action, something opens' : diceRoll >= 3 ? 'mixed outcome, tension rises' : 'consequence follows, the path hardens'}.`
       : '';
+    const seed = VENTURE_SEEDS[Math.floor(Math.random() * VENTURE_SEEDS.length)];
     const prompt = isResolution
-      ? `Write a 2-sentence resolution for a seeker who ventured through "${s.name}" (${s.desc}). Their companion ${compName} speaks one last line. JSON only: {"narrative":"...","companion_line":"...","reward_msg":"..."}`
-      : `You are a mystical narrator for "${s.name}" — ${s.desc} — in the Sovereign Sol universe.${historyStr}${diceContext}
+      ? `Write a 3-sentence resolution for a seeker who completed a venture through "${s.name}" (${s.desc}). Name one thing the seeker found and one thing that changed in them. Their companion ${compName} speaks one final line. JSON only: {"narrative":"...","companion_line":"...","reward_msg":"..."}`
+      : `You are a mystical narrator for "${s.name}" — ${s.desc} — in the Sovereign Sol universe. Let the zone's own logic and imagery speak through you.${historyStr}${diceContext}
 
-Write ${beatNum === 0 ? 'an opening scene' : `beat ${beatNum + 1}`}. The seeker's companion is ${compName} — a ${archetype.name}: ${archetype.desc}.
+Scene type: ${seed.type} — ${seed.cue}
+
+Write ${beatNum === 0 ? 'an opening scene' : `beat ${beatNum + 1}`} (3 sentences, rich and zone-specific — never generic). The seeker's companion is ${compName} — a ${archetype.name}: ${archetype.desc}. The three choices must be specific to this scene and zone, not generic labels.
 
 JSON only, no extra text:
-{"narrative":"2 atmospheric sentences","choices":[{"label":"action up to 8 words","type":"explore"},{"label":"action up to 8 words","type":"risk"},{"label":"action up to 8 words","type":"wisdom"}]}`;
+{"narrative":"3 vivid sentences","choices":[{"label":"specific zone action, 8 words max","type":"explore"},{"label":"specific zone action, 8 words max","type":"risk"},{"label":"specific zone action, 8 words max","type":"wisdom"}]}`;
     try {
       const [key, model] = await Promise.all([getActiveKey(), getModel()]);
       if (!key) throw new Error('no key');
       const result = await sendMessage(
         [{ role: 'user', content: prompt }] as any,
-        '', key, model as any, undefined, 'normal', 280,
+        '', key, model as any, undefined, 'normal', 380,
       );
       const raw = result.text?.trim() || '';
       const m = raw.match(/\{[\s\S]*\}/);
