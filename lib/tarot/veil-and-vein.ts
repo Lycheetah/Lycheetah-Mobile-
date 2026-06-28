@@ -1,7 +1,8 @@
 // THE LYCHEETAH TAROT — VEIL & VEIN
 // Deck data for the in-app viewer. The 22 Major Arcana of the Veil & Vein deck.
 // Source canon: LYCHEETAH_TAROT_VEIL_AND_VEIN.md
-// Art: drop PNGs at assets/tarot/{id}.png — viewer auto-loads them; until then shows the glyph.
+// Art: mapped positionally from assets/tarot/deck/ (FULL_DECK order).
+import { DECK_ART } from './deck-art';
 
 export type TarotLead = 'Veil' | 'Vein' | 'Both';
 
@@ -100,8 +101,7 @@ export const MINOR_ARCANA: TarotCard[] = SUITS.flatMap(suit => [
 // The full 78-card deck.
 export const FULL_DECK: TarotCard[] = [...MAJOR_ARCANA, ...MINOR_ARCANA];
 
-// Art loader — returns the PNG if it exists, else undefined (viewer falls back to glyph).
-// To add art: drop assets/tarot/{id}.png and add it to this map.
-export const TAROT_ART: Record<string, any> = {
-  // seeker: require('../../assets/tarot/seeker.png'),
-};
+// Art map — positional: FULL_DECK[i] → DECK_ART[i]. Phone-test to confirm ordering.
+export const TAROT_ART: Record<string, any> = Object.fromEntries(
+  FULL_DECK.map((card, i) => [card.id, DECK_ART[i]])
+);
