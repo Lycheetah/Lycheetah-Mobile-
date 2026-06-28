@@ -1,17 +1,18 @@
 // TarotViewer — browse all tarot decks card by card.
-// Decks: Veil & Vein (custom Lycheetah art) | Lycheetah Arcana (87 AI-rendered cards)
-import React, { useState, useMemo } from 'react';
+// Decks: Veil & Vein | Lycheetah Arcana | AETHERA
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, Image, Platform, FlatList } from 'react-native';
 import { MAJOR_ARCANA, MINOR_ARCANA, TAROT_ART, leadColor, VEIL_COLOR, VEIN_COLOR } from '../lib/tarot/veil-and-vein';
 import { DECK_ART } from '../lib/tarot/deck-art';
 import { ARCANA_IMAGE } from '../lib/divination/arcana-images';
+import { AETHERA_DECK } from '../lib/divination/aethera';
+import { AETHERA_IMAGE } from '../lib/divination/aethera-images';
 
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
+const AETHERA_GOLD = '#D4AF6E';
 
-type ActiveDeck = 'vv' | 'arcana';
+type ActiveDeck = 'vv' | 'arcana' | 'aethera';
 
-// Build a flat ordered array of Arcana entries from the image map.
-// Insertion order is preserved: Majors first, then Minors by suit.
 const ARCANA_ENTRIES = Object.entries(ARCANA_IMAGE) as [string, ReturnType<typeof require>][];
 
 export default function TarotViewer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -26,6 +27,9 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
 
   // Lycheetah Arcana state
   const [arcanaIdx, setArcanaIdx] = useState(0);
+
+  // AETHERA state
+  const [aetheraIdx, setAetheraIdx] = useState(0);
 
   const DECK = arcana === 'major' ? MAJOR_ARCANA : MINOR_ARCANA;
   const safeDataIdx = Math.min(dataIdx, DECK.length - 1);
@@ -43,7 +47,7 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           {/* Deck selector tabs */}
           <View style={{ flexDirection: 'row', gap: 6 }}>
-            {([['vv', '✦ VEIL & VEIN'], ['arcana', '⊚ LYCHEETAH ARCANA']] as [ActiveDeck, string][]).map(([d, label]) => {
+            {([['vv', '✦ VEIL & VEIN'], ['arcana', '⊚ LYCHEETAH ARCANA'], ['aethera', '✧ AETHERA']] as [ActiveDeck, string][]).map(([d, label]) => {
               const on = activeDeck === d;
               return (
                 <TouchableOpacity key={d} onPress={() => { setActiveDeck(d); setGrid(false); }}
@@ -231,6 +235,72 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
             </View>
           )
         )}
+
+        {/* ── AETHERA ── */}
+        {activeDeck === 'aethera' && (() => {
+          const safeIdx = Math.min(aetheraIdx, AETHERA_DECK.length - 1);
+          const ac = AETHERA_DECK[safeIdx];
+          const img = AETHERA_IMAGE[ac.id];
+          return grid ? (
+            <FlatList
+              data={AETHERA_DECK}
+              keyExtractor={c => c.id}
+              numColumns={3}
+              style={{ maxHeight: '86%' }}
+              showsVerticalScrollIndicator={false}
+              columnWrapperStyle={{ gap: 6, marginBottom: 6, justifyContent: 'center' }}
+              initialNumToRender={9} maxToRenderPerBatch={9} windowSize={5} removeClippedSubviews
+              renderItem={({ item: c, index: i }) => (
+                <TouchableOpacity onPress={() => { setAetheraIdx(i); setGrid(false); }} activeOpacity={0.85}
+                  style={{ width: '31%', borderRadius: 8, borderWidth: 1, borderColor: AETHERA_GOLD + '44', backgroundColor: '#07050F' }}>
+                  <View style={{ aspectRatio: 0.62, borderRadius: 8, overflow: 'hidden' }}>
+                    {AETHERA_IMAGE[c.id]
+                      ? <Image source={AETHERA_IMAGE[c.id]} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                      : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: AETHERA_GOLD, fontSize: 18 }}>✧</Text>
+                        </View>}
+                  </View>
+                  <Text style={{ color: AETHERA_GOLD + 'CC', fontSize: 6, fontFamily: mono, fontWeight: '700', textAlign: 'center', padding: 3, lineHeight: 9 }} numberOfLines={2}>{c.name}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ width: '78%', aspectRatio: 0.62, borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: AETHERA_GOLD + '88',
+                backgroundColor: '#07050F', shadowColor: AETHERA_GOLD, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 }}>
+                {img
+                  ? <Image source={img} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                  : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: AETHERA_GOLD, fontSize: 48 }}>✧</Text>
+                      <Text style={{ color: AETHERA_GOLD + 'AA', fontSize: 11, fontFamily: mono, marginTop: 8 }}>{ac.numeral}</Text>
+                    </View>}
+              </View>
+              <Text style={{ color: '#F0ECFA', fontSize: 17, fontWeight: '800', letterSpacing: 1, marginTop: 16, textAlign: 'center', paddingHorizontal: 16 }}>{ac.name}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 5, alignItems: 'center' }}>
+                <Text style={{ color: '#7A84A0', fontSize: 9, fontFamily: mono }}>{ac.numeral} · {ac.root}</Text>
+                <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: AETHERA_GOLD + '55', backgroundColor: AETHERA_GOLD + '10' }}>
+                  <Text style={{ color: AETHERA_GOLD, fontSize: 7.5, fontFamily: mono, fontWeight: '700', letterSpacing: 0.5 }}>{ac.breath}</Text>
+                </View>
+              </View>
+              <Text style={{ color: '#BDC2D4', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 12, paddingHorizontal: 12, fontStyle: 'italic' }}>{ac.lore}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginTop: 20 }}>
+                <TouchableOpacity onPress={() => setAetheraIdx(i => (i - 1 + AETHERA_DECK.length) % AETHERA_DECK.length)}
+                  style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#33384A' }}>
+                  <Text style={{ color: '#9AA4BC', fontSize: 14 }}>←</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setGrid(true)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: AETHERA_GOLD + '44', backgroundColor: AETHERA_GOLD + '0D' }}>
+                  <Text style={{ color: AETHERA_GOLD, fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>▦ ALL {AETHERA_DECK.length}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setAetheraIdx(i => (i + 1) % AETHERA_DECK.length)}
+                  style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: AETHERA_GOLD + '66', backgroundColor: AETHERA_GOLD + '12' }}>
+                  <Text style={{ color: AETHERA_GOLD + 'CC', fontSize: 14 }}>→</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: '#66708A', fontSize: 9, fontFamily: mono, marginTop: 8 }}>{safeIdx + 1} / {AETHERA_DECK.length}</Text>
+            </View>
+          );
+        })()}
       </View>
     </Modal>
   );

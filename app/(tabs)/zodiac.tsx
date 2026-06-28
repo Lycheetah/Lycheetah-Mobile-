@@ -18,24 +18,55 @@ import TarotViewer from '../../components/TarotViewer';
 import { MAJOR_ARCANA as VV_MAJOR } from '../../lib/tarot/veil-and-vein';
 import { getArcanaName, ARCANA_LORE } from '../../lib/divination/lycheetah-arcana';
 import { ARCANA_IMAGE } from '../../lib/divination/arcana-images';
+import { AETHERA_DECK, getAetheraLore } from '../../lib/divination/aethera';
+import { AETHERA_IMAGE } from '../../lib/divination/aethera-images';
 
 // Veil & Vein name map: RWS card name → V&V name (Majors only)
 const VV_NAME_MAP: Record<string, string> = Object.fromEntries(
   VV_MAJOR.map(c => [c.root, c.name])
 );
-type DeckMode = 'classic' | 'vv' | 'arcana';
+// AETHERA — RWS card name → AETHERA card lookup
+const AETHERA_SUIT_MAP: Record<string, string> = {
+  cups: 'tides', wands: 'embers', swords: 'prisms', pentacles: 'seeds',
+};
+function rwsToAetheraId(rwsName: string): string | null {
+  // Major arcana — match by root field
+  const byRoot = AETHERA_DECK.find(c => c.root === rwsName);
+  if (byRoot) return byRoot.id;
+  // Minor arcana — "Ace of Cups" → "ace_of_tides"
+  const m = rwsName.match(/^(.+) of (\w+)$/);
+  if (m) {
+    const pip = m[1].toLowerCase();
+    const suit = AETHERA_SUIT_MAP[m[2].toLowerCase()];
+    if (suit) return `${pip}_of_${suit}`;
+  }
+  return null;
+}
+
+type DeckMode = 'classic' | 'vv' | 'arcana' | 'aethera';
 function getCardName(cardName: string, mode: DeckMode): string {
   if (mode === 'vv' && VV_NAME_MAP[cardName]) return VV_NAME_MAP[cardName];
   if (mode === 'arcana') return getArcanaName(cardName);
+  if (mode === 'aethera') {
+    const id = rwsToAetheraId(cardName);
+    if (id) return AETHERA_DECK.find(c => c.id === id)?.name ?? cardName;
+  }
   return cardName;
 }
-// Arcana lore override — falls back to the base card meaning when no bespoke lore yet.
 function getCardLoreText(cardName: string, mode: DeckMode, baseMeaning: string): string {
   if (mode === 'arcana' && ARCANA_LORE[cardName]) return ARCANA_LORE[cardName];
+  if (mode === 'aethera') {
+    const id = rwsToAetheraId(cardName);
+    if (id) return AETHERA_DECK.find(c => c.id === id)?.lore ?? baseMeaning;
+  }
   return baseMeaning;
 }
 function getCardImage(cardName: string, mode: DeckMode): ReturnType<typeof require> | null {
   if (mode === 'arcana') return ARCANA_IMAGE[getArcanaName(cardName)] ?? null;
+  if (mode === 'aethera') {
+    const id = rwsToAetheraId(cardName);
+    if (id) return AETHERA_IMAGE[id] ?? null;
+  }
   return CARD_IMAGE[cardName] ?? null;
 }
 
@@ -1919,13 +1950,13 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
       {/* Deck selector + draw mode row */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
         <View style={{ flex: 1, flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden' }}>
-          {(['classic', 'vv', 'arcana'] as const).map(mode => (
+          {(['classic', 'vv', 'arcana', 'aethera'] as const).map(mode => (
             <TouchableOpacity key={mode}
               onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
               style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
             >
               <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>
-                {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : '⟟ ARCANA'}
+                {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : mode === 'arcana' ? '⟟ ARCANA' : '✧ AETHERA'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -1980,7 +2011,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                           </View>
                           <Text style={{ color: '#FFFFFFCC', fontSize: 8, fontWeight: '700', textAlign: 'center', lineHeight: 11 }} numberOfLines={2}>{getCardName(tc.card.n, deckMode)}</Text>
                           {tc.reversed && <Text style={{ color: '#FF8888', fontSize: 7, letterSpacing: 1, fontFamily: mono }}>REV</Text>}
-                          <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 7, textAlign: 'center', lineHeight: 10 }} numberOfLines={2}>{tc.reversed ? tc.card.rev : tc.card.up}</Text>
+                          <Text style={{ color: ZODIAC_INDIGO + '88', fontSize: 7, textAlign: 'center', lineHeight: 10 }} numberOfLines={2}>{getCardLoreText(tc.card.n, deckMode, tc.reversed ? tc.card.rev : tc.card.up)}</Text>
                         </View>
                       );
                     })}
@@ -2016,7 +2047,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
               {drawMode === 'single' && (
                 <View style={{ borderTopWidth: 0.5, borderTopColor: ZODIAC_INDIGO + '33', paddingTop: 14, width: '100%', alignItems: 'center' }}>
                   <Text style={{ color: '#C0C0D8', fontSize: 13, lineHeight: 21, textAlign: 'center', fontStyle: 'italic' }}>
-                    {activeCard.reversed ? activeCard.card.rev : activeCard.card.up}
+                    {getCardLoreText(activeCard.card.n, deckMode, activeCard.reversed ? activeCard.card.rev : activeCard.card.up)}
                   </Text>
                 </View>
               )}
@@ -2429,13 +2460,13 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
           </View>
           {/* Deck selector */}
           <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden', marginBottom: 14 }}>
-            {(['classic', 'vv', 'arcana'] as const).map(mode => (
+            {(['classic', 'vv', 'arcana', 'aethera'] as const).map(mode => (
               <TouchableOpacity key={mode}
                 onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
                 style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
               >
                 <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>
-                  {mode === 'classic' ? 'CLASSIC RWS' : mode === 'vv' ? '🜍 VEIL & VEIN' : '⟟ ARCANA'}
+                  {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : mode === 'arcana' ? '⟟ ARCANA' : '✧ AETHERA'}
                 </Text>
               </TouchableOpacity>
             ))}
