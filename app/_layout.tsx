@@ -105,6 +105,7 @@ export default function RootLayout() {
             options={{ headerShown: false, gestureEnabled: false }}
           />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="privacy" options={{ headerShown: false }} />
         </Stack>
         <EmergencyBeacon />
       </View>

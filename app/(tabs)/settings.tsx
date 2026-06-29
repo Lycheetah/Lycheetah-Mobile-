@@ -960,7 +960,10 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <View style={{ marginBottom: 16, paddingHorizontal: 4 }}>
+      </>)}
+
+      {/* ── PRIVACY ── always visible ── */}
+      <View style={{ marginBottom: 16, marginTop: 8, paddingHorizontal: 4 }}>
         <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, fontStyle: 'italic', lineHeight: 16 }}>
           Your conversations stay on your device. Your mind is yours — nothing leaves without your hand on it.
         </Text>
@@ -993,11 +996,11 @@ export default function SettingsScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/privacy')}
-          style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.primary + '40', backgroundColor: SOL_THEME.primary + '10' }}
           activeOpacity={0.7}
         >
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 12 }}>Privacy Policy</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 14 }}>→</Text>
+          <Text style={{ color: SOL_THEME.primary, fontSize: 13, fontWeight: '600' }}>Privacy Policy</Text>
+          <Text style={{ color: SOL_THEME.primary, fontSize: 14 }}>→</Text>
         </TouchableOpacity>
       </View>
 
@@ -1202,7 +1205,7 @@ export default function SettingsScreen() {
           <Text style={styles.footerLink}>github.com/Lycheetah/Lycheetah-Mobile-</Text>
         </TouchableOpacity>
         <Text style={styles.footerSub}>Built by Mackenzie Clark · Dunedin, Aotearoa NZ</Text>
-        <Text style={styles.footerVersion}>v5.23.0</Text>
+        <Text style={styles.footerVersion}>v5.29.0</Text>
       </View>
 
       {/* ── RESTORE FROM BACKUP ── */}
@@ -1261,7 +1264,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-      </>)}
     </ScrollView>
   );
 }

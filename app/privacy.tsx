@@ -9,35 +9,53 @@ export default function PrivacyScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: SOL_THEME.background }}>
       <StatusBar barStyle="light-content" />
-      {/* Header */}
+
+      {/* Nav bar */}
       <View style={{
         paddingTop: Platform.OS === 'ios' ? 56 : 44,
         paddingHorizontal: 20,
-        paddingBottom: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: SOL_THEME.border,
-        backgroundColor: SOL_THEME.surface,
+        paddingBottom: 12,
         flexDirection: 'row',
         alignItems: 'center',
       }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 16, padding: 4 }}>
-          <Text style={{ color: SOL_THEME.primary, fontSize: 22 }}>←</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ padding: 6, marginRight: 12 }}>
+          <Text style={{ color: SOL_THEME.primary, fontSize: 20 }}>←</Text>
         </TouchableOpacity>
-        <View>
-          <Text style={{ color: SOL_THEME.text, fontSize: 16, fontWeight: '700' }}>Privacy Policy</Text>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, marginTop: 1 }}>Sovereign Sol · Lycheetah</Text>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 11, letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700' }}>
+          SOVEREIGN SOL · LYCHEETAH
+        </Text>
+      </View>
+
+      {/* Hero header */}
+      <View style={{
+        marginHorizontal: 20,
+        marginBottom: 24,
+        padding: 24,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: SOL_THEME.primary + '40',
+        backgroundColor: SOL_THEME.surface,
+        alignItems: 'center',
+      }}>
+        <Text style={{ fontSize: 36, marginBottom: 10 }}>⊚</Text>
+        <Text style={{ color: SOL_THEME.text, fontSize: 20, fontWeight: '700', letterSpacing: 1, marginBottom: 6 }}>
+          Privacy Policy
+        </Text>
+        <Text style={{ color: SOL_THEME.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
+          Your data stays on your device.{'\n'}We do not sell it, broker it, or share it with advertisers.
+        </Text>
+        <View style={{ marginTop: 14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: SOL_THEME.primary + '50', backgroundColor: SOL_THEME.primary + '15' }}>
+          <Text style={{ color: SOL_THEME.primary, fontSize: 10, letterSpacing: 1.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700' }}>
+            UPDATED JUNE 2026
+          </Text>
         </View>
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 60 }}
         showsVerticalScrollIndicator={false}
       >
-        <Section label="LAST UPDATED">
-          <Body>June 2026. This policy reflects exactly what the app does — no more, no less.</Body>
-        </Section>
-
         <Section label="THE SHORT VERSION">
           <Body>Your data stays on your device. We do not sell it, broker it, or share it with advertisers. We collect minimal anonymous analytics to understand how the app is used. You can turn that off in Settings.</Body>
         </Section>
@@ -71,9 +89,21 @@ export default function PrivacyScreen() {
           <Body>· We do not sell your data{'\n'}· We do not share your data with advertisers{'\n'}· We do not build advertising profiles{'\n'}· We do not track you across other apps or websites{'\n'}· We do not collect your precise location (birth location for Zodiac is entered manually){'\n'}· We do not collect push notification tokens</Body>
         </Section>
 
-        <Section label="THE COVENANT">
-          <Body>The intelligence in Sovereign Sol is never gated by payment. Free users get the same quality of response as paid subscribers. We will never make the free experience worse to push you toward a subscription. This is a founding principle, not a policy that changes.</Body>
-        </Section>
+        {/* Covenant — highlighted */}
+        <View style={{
+          marginBottom: 24,
+          padding: 18,
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: SOL_THEME.primary + '50',
+          backgroundColor: SOL_THEME.primary + '10',
+        }}>
+          <Text style={{ color: SOL_THEME.primary, fontSize: 10, fontWeight: '700', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', marginBottom: 10 }}>◉ THE COVENANT</Text>
+          <Text style={{ color: SOL_THEME.text, fontSize: 13, lineHeight: 21 }}>
+            The intelligence in Sovereign Sol is never gated by payment. Free users get the same quality of response as paid subscribers. We will never make the free experience worse to push you toward a subscription.{' '}
+            <Text style={{ color: SOL_THEME.primary, fontWeight: '600' }}>This is a founding principle, not a policy that changes.</Text>
+          </Text>
+        </View>
 
         <Section label="AGE REQUIREMENT">
           <Body>Sovereign Sol is intended for users 16 and older. By using this app you confirm you meet this requirement.</Body>
@@ -83,9 +113,10 @@ export default function PrivacyScreen() {
           <Body>Questions about this policy or your data:{'\n'}lycheetahsol@gmail.com</Body>
         </Section>
 
-        <View style={{ marginTop: 32, paddingTop: 20, borderTopWidth: 1, borderTopColor: SOL_THEME.border }}>
-          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', letterSpacing: 1, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
-            ⊚ SOVEREIGN SOL · LYCHEETAH · IN VERITAS
+        <View style={{ marginTop: 32, paddingTop: 20, borderTopWidth: 1, borderTopColor: SOL_THEME.border, alignItems: 'center', gap: 4 }}>
+          <Text style={{ fontSize: 20 }}>⊚</Text>
+          <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, textAlign: 'center', letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>
+            SOVEREIGN SOL · LYCHEETAH · IN VERITAS
           </Text>
         </View>
       </ScrollView>
