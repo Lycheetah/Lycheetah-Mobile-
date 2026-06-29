@@ -65,7 +65,7 @@ import {
 } from '../../lib/companion/game-data';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SCENE_H = 360;
+const SCENE_H = 400;
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 // ─── SceneBg — tintColor-sealed wrapper ──────────────────────────────────────
