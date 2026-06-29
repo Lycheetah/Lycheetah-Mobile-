@@ -53,7 +53,34 @@ function getCardName(cardName: string, mode: DeckMode): string {
   }
   return cardName;
 }
+// V&V lore — keyed by RWS root name. Shadow/longing/depth register.
+const VV_LORE: Record<string, string> = {
+  'The Fool':        'There is a moment before the first step when everything is still possible and nothing is promised. You are in that moment now. The abyss is not empty — it is patient.',
+  'The Magician':    'You already have the tools. The question is whether you will light the forge or stand at the threshold with full hands and an unlit room. The furnace asks only for intent.',
+  'High Priestess':  'She keeps nothing from you. She keeps it safe until you are ready for it. The door you cannot see is not locked — it waits for the version of you that can bear what is behind it.',
+  'The Empress':     'What you begin will grow beyond you. Generativity does not ask permission — it only asks that you stop uprooting what you have planted. The roots go deeper than you can see.',
+  'The Emperor':     'Sovereignty is not what you claim. It is what remains when everything given to you by others falls away. The throne you built from first principles — that is yours.',
+  'The Hierophant':  'The ache to learn from someone who already understands — who can say this is the shape of it — is not weakness. It is the recognition of exactly where you are in the process.',
+  'The Lovers':      'Where curiosity meets want, a third thing is born that belongs to neither. The braiding is the point. The choice is not which to keep — it is whether you can hold both without letting one consume the other.',
+  'The Chariot':     'Forward is not a destination. The reins pull opposite and you go anyway. The path does not clear before you arrive — it becomes path because you walked it.',
+  'Strength':        'The force that does not require loudness. You have held difficult things before — not because holding was easy but because you did not put them down. That is what this card names.',
+  'The Hermit':      'The light is for you first. You cannot show the path you have not walked. The withdrawal is not absence — it is the condition under which the most honest questions can be asked.',
+  'Wheel of Fortune':'The cycle is not punishment. AXIOM to CHAOS is the shape of all real systems. You are not stuck — you are at a particular layer, looking up or down, and the architecture is still turning.',
+  'Justice':         'The seven invariants do not punish. They measure. What you have built holds or it does not — the scale says which, without cruelty and without exception. This is the gift of honest measurement.',
+  'The Hanged Man':  'Surrender is not defeat. The new angle is only available from the position you have been unwilling to take. The blood pools upward. The world looks like this from here. Stay.',
+  'Death':           'What burns was not the real thing. What remains after — the green shoot in the cinders — that was always what you were building toward. Let the rest go.',
+  'Temperance':      'Dissolve and reform. The breath between becoming. You are not the shape you had before — and the shape you are becoming has not arrived yet. The crossing is the moment. You are in it now.',
+  'The Devil':       'The chain is loose. You have known this for some time. What keeps you is not the lock but the story about the lock — the one you have told yourself so long it feels like gravity. Look at the chain.',
+  'The Tower':       'The false structure falls. This is the lightning that was always going to come — not cruelty, not punishment, but physics. The tower was built on a lie. The ground beneath it was always real.',
+  'The Star':        'The ache is a compass. That specific longing for the impossible — the one you cannot explain to anyone without it sounding small — is not a flaw. It is the direction. Follow it.',
+  'The Moon':        'The dark is not empty. The shapes you have not yet been willing to name are still yours. Dream-logic is still logic. Listen to what the blood-moon whispers when you stop arguing with it.',
+  'The Sun':         'The warmth after the fire is not naive — it has been through the Nigredo and it knows what burned. Clarity earned is different from clarity received. This is what you have been building toward.',
+  'Judgement':       'The call has sounded. The reddening is the true self after the fire. You are not being asked to become something else — you are being asked to recognise what survived. That is who you are now.',
+  'The World':       'The dance at completion is not an end. HARMONIA is a ring, not a wall — what you have integrated becomes the foundation for the next descent. The figure at the centre is beginning again, from the whole.',
+};
+
 function getCardLoreText(cardName: string, mode: DeckMode, baseMeaning: string): string {
+  if (mode === 'vv' && VV_LORE[cardName]) return VV_LORE[cardName];
   if (mode === 'arcana' && ARCANA_LORE[cardName]) return ARCANA_LORE[cardName];
   if (mode === 'aethera') {
     const id = rwsToAetheraId(cardName);

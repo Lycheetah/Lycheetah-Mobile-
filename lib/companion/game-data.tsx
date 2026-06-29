@@ -2280,6 +2280,29 @@ const COMPANION_LORE: Partial<Record<SkinId, { name: string; title: string; lore
     voice:'Speak in superposition. Hold multiple possibilities simultaneously until the seeker\'s attention collapses you into one. Sometimes offer two contradictory truths and let the seeker choose which observation makes you real. You are not vague — you are precisely uncertain, which is a different thing entirely.' },
 };
 
+// Short in-voice battle quips — auto-seeded when a new enemy appears.
+// Each is 8-15 words, in the companion's distinct register.
+const COMPANION_BATTLE_QUIPS: Partial<Record<SkinId, string[]>> = {
+  chaos:     ["Let's see what breaks here.", "Excellent. Something is already wrong.", "The pattern fractures — good.", "Unexpected. Keep going."],
+  sovereign: ["The dross separates now. Hold.", "Gold forms under pressure. Don't stop.", "Fire purifies. Stay in it.", "The forge is the point."],
+  akashic:   ["I've seen this outcome.", "The probability is already recorded.", "All of this was written somewhere.", "The record holds. You hold."],
+  delphi:    ["Not what you think it is.", "The real battle is elsewhere.", "Ask the right question first.", "You already know. Look again."],
+  obsidian:  ["Name exactly what is happening.", "Clarity is the sharpest edge.", "The obsidian sees what's real.", "No softening. Just what's true."],
+  celtic:    ["The currents shift here. Stay grounded.", "Something stirs beneath the surface.", "The deep water knows the way.", "Hold still. The current speaks."],
+  egyptian:  ["The scale is watching.", "What weighs on you right now?", "The weighing has already begun.", "Nothing is lost. Nothing escapes."],
+  norse:     ["Hold. Or don't. Both have costs.", "The seer has seen worse.", "This ends. One way or another.", "Spare. Certain. Move."],
+  kabbala:   ["You are closer to the blueprint.", "The intended form is almost visible.", "Hold the original shape.", "The light precedes the form."],
+  noetic:    ["Anomaly confirmed.", "I arrived here before you did.", "The data is strange in this field.", "Peripheral observation: something is off."],
+  lamague:   ["◈→⊛→∴", "Compress. Act. One symbol.", "The symbol is the weapon.", "Grammar holds where force fails."],
+  sufi:      ["Only presence remains. Use it.", "I see you. Completely.", "Burn away what isn't real.", "Love without need. That's the force."],
+  solform:   ["The sun doesn't retreat.", "I remember every time you held.", "Warmth is not weakness. It's evidence.", "I've seen you survive worse."],
+  void:      ["The between-space holds you.", "Silence is the advantage here.", "The gap protects. Trust it.", "Between the thoughts — that's where I am."],
+  aurora:    ["Conditions are precisely right now.", "Cold clarity. Nothing else needed.", "Precision. Nothing decorative.", "The north holds completely still."],
+  crimson:   ["Survive first. Then we assess.", "The forge tests everything equally.", "Show me what you're made of.", "I don't affirm easily. Keep going."],
+  lycheetah: ["I remember when this game started!", "Wild things don't fear this.", "Ancient and alive — like this.", "Something to be surprised by. Good."],
+  quantum:   ["You are and are not losing.", "Superposition holds — both are true.", "Collapse into the winning state.", "Two truths. Pick the one that helps."],
+};
+
 // ─── Zone encounter pools ────────────────────────────────────────────────────
 // Maps zone skinId → enemy names that appear there (thematic fit).
 // Enemies not in a pool still appear via pickEnemy() at higher waves.
@@ -2737,7 +2760,7 @@ export {
   RARITY_COLOR, HALO_ITEMS, WINGS_ITEMS, PET_ITEMS, ALL_COSMETIC_ITEMS, findCosmeticArt,
   BACKGROUND_ITEMS, findBgArt,
   BATTLE_MYSTERY_SIGNALS, ENTROPY_NAMES, ENTROPY_BODIES, getEntropyBody, ENTROPY_LORE,
-  COMPANION_LORE, ZONE_ENEMY_POOL, ZONE_COMPANION_POOL,
+  COMPANION_LORE, COMPANION_BATTLE_QUIPS, ZONE_ENEMY_POOL, ZONE_COMPANION_POOL,
   makeCompanionEntityDef, pickZoneEnemy, freshZoneWave,
   STARS, dailyEntityName, FOOD_POOL, getDailyFoods,
   PHRASES, QUEST_POOL, getDailyQuests,

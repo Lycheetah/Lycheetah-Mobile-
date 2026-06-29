@@ -51,7 +51,7 @@ import {
   RARITY_COLOR, HALO_ITEMS, WINGS_ITEMS, PET_ITEMS, ALL_COSMETIC_ITEMS, findCosmeticArt,
   BACKGROUND_ITEMS, findBgArt,
   BATTLE_MYSTERY_SIGNALS, ENTROPY_NAMES, ENTROPY_BODIES, getEntropyBody, ENTROPY_LORE,
-  COMPANION_LORE, ZONE_ENEMY_POOL, ZONE_COMPANION_POOL,
+  COMPANION_LORE, COMPANION_BATTLE_QUIPS, ZONE_ENEMY_POOL, ZONE_COMPANION_POOL,
   makeCompanionEntityDef, pickZoneEnemy, freshZoneWave,
   STARS, dailyEntityName, FOOD_POOL, getDailyFoods,
   PHRASES, QUEST_POOL, getDailyQuests,
@@ -1484,11 +1484,16 @@ export default function CompanionScreen() {
     if (battle?.won && battle?.loot) setLootFloatVisible(true);
   }, [battle?.won]);
 
-  // Seed companion dialogue whenever a new enemy is encountered
+  // Seed companion dialogue whenever a new enemy is encountered — short in-voice quip
   useEffect(() => {
     if (!battle || battle.won) return;
-    const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
-    setCompanionBattleLine(sig.text);
+    const quips = COMPANION_BATTLE_QUIPS[activeSkin as SkinId];
+    if (quips && quips.length > 0) {
+      setCompanionBattleLine(quips[Math.floor(Math.random() * quips.length)]);
+    } else {
+      const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
+      setCompanionBattleLine(sig.text);
+    }
   }, [battle?.entityName]);
 
   useEffect(() => {
@@ -7088,7 +7093,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   </View>
                   <View style={{ flex:1, backgroundColor:color+'0E', borderRadius:10, borderWidth:1,
                     borderColor:color+'33', paddingHorizontal:10, paddingVertical:7 }}>
-                    <Text style={{ color:'#CCCCDD', fontSize:10, fontStyle:'italic', lineHeight:16 }} numberOfLines={2}>
+                    <Text style={{ color:'#CCCCDD', fontSize:10, fontStyle:'italic', lineHeight:16 }}>
                       {companionBattleLine}
                     </Text>
                   </View>
