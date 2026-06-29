@@ -2403,23 +2403,25 @@ function makeCompanionEntityDef(skinId: SkinId): EnemyDef {
   };
 }
 
-function pickZoneEnemy(skinId: SkinId, wave: number): { def: EnemyDef; companionId?: SkinId } {
-  const compPool = ZONE_COMPANION_POOL[skinId] ?? [];
-  const compWeight = compPool.reduce((s, [, w]) => s + w, 0);
-  const enemyWeight = 5;
-  const total = compWeight + enemyWeight;
-  const roll  = Math.random() * total;
+function pickZoneEnemy(skinId: SkinId, wave: number, entropyOnly = false): { def: EnemyDef; companionId?: SkinId } {
+  if (!entropyOnly) {
+    const compPool = ZONE_COMPANION_POOL[skinId] ?? [];
+    const compWeight = compPool.reduce((s, [, w]) => s + w, 0);
+    const enemyWeight = 5;
+    const total = compWeight + enemyWeight;
+    const roll  = Math.random() * total;
 
-  if (roll < compWeight) {
-    let cumul = 0;
-    for (const [cId, w] of compPool) {
-      cumul += w;
-      if (roll < cumul) return { def: makeCompanionEntityDef(cId), companionId: cId };
+    if (roll < compWeight) {
+      let cumul = 0;
+      for (const [cId, w] of compPool) {
+        cumul += w;
+        if (roll < cumul) return { def: makeCompanionEntityDef(cId), companionId: cId };
+      }
     }
   }
-  // Entropy enemy
+  // Entropy enemy — always used when entropyOnly, fallback otherwise
   const names = ZONE_ENEMY_POOL[skinId];
-  if (names && Math.random() < 0.7) {
+  if (names && (entropyOnly || Math.random() < 0.7)) {
     const name = names[Math.floor(Math.random() * names.length)];
     const found = ENEMY_ROSTER.find(e => e.name === name);
     if (found) return { def: found };
@@ -2427,8 +2429,8 @@ function pickZoneEnemy(skinId: SkinId, wave: number): { def: EnemyDef; companion
   return { def: pickEnemy(wave) };
 }
 
-function freshZoneWave(skinId: SkinId, wave: number, keepPlayerHP?: number, vit?: number): BattleState {
-  const { def: enemy, companionId } = pickZoneEnemy(skinId, wave);
+function freshZoneWave(skinId: SkinId, wave: number, keepPlayerHP?: number, vit?: number, entropyOnly = false): BattleState {
+  const { def: enemy, companionId } = pickZoneEnemy(skinId, wave, entropyOnly);
   const baseHP = 60 + wave * 25;
   const hp     = Math.round(baseHP * enemy.hpMult);
   const xp     = Math.round((wave * 20) * enemy.xpMult);

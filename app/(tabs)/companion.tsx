@@ -3686,7 +3686,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             onPress={() => {
               const rSkin = (currentRoomId.split('_')[0] as SkinId);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit));
+              setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit, true));
               setActiveTab('battle');
               setTabMinimized(false);
             }}
