@@ -20,7 +20,63 @@ import {
   type ScoreMode,
 } from './cascade-onion';
 
-export const CASCADE_STORAGE_KEY = 'sol_cascade_network';
+export const CASCADE_STORAGE_KEY   = 'sol_cascade_network'; // default pyramid (backward compat)
+export const PYRAMIDS_INDEX_KEY    = 'sol_cascade_pyramids_index';
+export const DEFAULT_PYRAMID_ID    = 'default';
+
+export type PyramidMeta = {
+  id: string;
+  name: string;
+  createdAt: number;
+};
+
+function pyramidKey(id: string): string {
+  return id === DEFAULT_PYRAMID_ID ? CASCADE_STORAGE_KEY : `sol_cascade_${id}`;
+}
+
+export async function loadPyramids(): Promise<PyramidMeta[]> {
+  try {
+    const raw = await AsyncStorage.getItem(PYRAMIDS_INDEX_KEY);
+    if (!raw) {
+      const def: PyramidMeta = { id: DEFAULT_PYRAMID_ID, name: 'Main', createdAt: Date.now() };
+      await savePyramids([def]);
+      return [def];
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0
+      ? parsed
+      : [{ id: DEFAULT_PYRAMID_ID, name: 'Main', createdAt: Date.now() }];
+  } catch {
+    return [{ id: DEFAULT_PYRAMID_ID, name: 'Main', createdAt: Date.now() }];
+  }
+}
+
+export async function savePyramids(list: PyramidMeta[]): Promise<void> {
+  try { await AsyncStorage.setItem(PYRAMIDS_INDEX_KEY, JSON.stringify(list)); } catch {}
+}
+
+export async function createPyramid(name: string): Promise<PyramidMeta> {
+  const meta: PyramidMeta = {
+    id: `pyr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    createdAt: Date.now(),
+  };
+  const list = await loadPyramids();
+  await savePyramids([...list, meta]);
+  return meta;
+}
+
+export async function renamePyramid(id: string, name: string): Promise<void> {
+  const list = await loadPyramids();
+  await savePyramids(list.map(p => p.id === id ? { ...p, name } : p));
+}
+
+export async function deletePyramid(id: string): Promise<void> {
+  if (id === DEFAULT_PYRAMID_ID) return; // Main pyramid is permanent
+  const list = await loadPyramids();
+  await savePyramids(list.filter(p => p.id !== id));
+  try { await AsyncStorage.removeItem(pyramidKey(id)); } catch {}
+}
 
 // A layer the user is building: engine scoring fields + the written content for that layer.
 export type BuilderLayer = LayerData & { content: string };
@@ -80,38 +136,35 @@ export function networkScore(blocks: CascadeBlock[], mode: ScoreMode = 'sovereig
 
 // ─── Persistence ────────────────────────────────────────────────────────────
 
-export async function loadNetwork(): Promise<CascadeBlock[]> {
+export async function loadNetwork(pyramidId: string = DEFAULT_PYRAMID_ID): Promise<CascadeBlock[]> {
   try {
-    const raw = await AsyncStorage.getItem(CASCADE_STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(pyramidKey(pyramidId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as CascadeBlock[]) : [];
   } catch {
-    return []; // corrupt store → empty network rather than a crash
+    return [];
   }
 }
 
-export async function saveNetwork(blocks: CascadeBlock[]): Promise<void> {
+export async function saveNetwork(blocks: CascadeBlock[], pyramidId: string = DEFAULT_PYRAMID_ID): Promise<void> {
   try {
-    await AsyncStorage.setItem(CASCADE_STORAGE_KEY, JSON.stringify(blocks));
-  } catch {
-    // swallow — persistence failure must never break the builder UI
-  }
+    await AsyncStorage.setItem(pyramidKey(pyramidId), JSON.stringify(blocks));
+  } catch {}
 }
 
-// Insert or update a block (recomputes scores), persists, returns the new network.
-export async function upsertBlock(block: CascadeBlock): Promise<CascadeBlock[]> {
+export async function upsertBlock(block: CascadeBlock, pyramidId: string = DEFAULT_PYRAMID_ID): Promise<CascadeBlock[]> {
   const scored = recomputeBlock(block);
-  const network = await loadNetwork();
+  const network = await loadNetwork(pyramidId);
   const idx = network.findIndex(b => b.id === scored.id);
   if (idx >= 0) network[idx] = scored;
   else network.push(scored);
-  await saveNetwork(network);
+  await saveNetwork(network, pyramidId);
   return network;
 }
 
-export async function deleteBlock(id: string): Promise<CascadeBlock[]> {
-  const network = (await loadNetwork()).filter(b => b.id !== id);
-  await saveNetwork(network);
+export async function deleteBlock(id: string, pyramidId: string = DEFAULT_PYRAMID_ID): Promise<CascadeBlock[]> {
+  const network = (await loadNetwork(pyramidId)).filter(b => b.id !== id);
+  await saveNetwork(network, pyramidId);
   return network;
 }

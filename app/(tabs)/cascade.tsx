@@ -2,8 +2,8 @@
 // Build, score, and pressure-test your own knowledge network across the 9 onion layers.
 // Pyramid view: 15 blocks sorted by strength, apex = most established, base = frontier.
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../../constants/theme';
 import { makeSeedBlocks, CASCADE_SEED_FLAG } from '../../lib/intelligence/cascade-seed';
@@ -23,7 +23,14 @@ import {
   saveNetwork,
   upsertBlock,
   deleteBlock,
+  loadPyramids,
+  savePyramids,
+  createPyramid,
+  renamePyramid,
+  deletePyramid,
+  DEFAULT_PYRAMID_ID,
   type CascadeBlock,
+  type PyramidMeta,
 } from '../../lib/intelligence/cascade-store';
 import { auditCascadeBlock, applyVerdict, quickBuildBlock, type CascadeVerdict } from '../../lib/intelligence/cascade-judge';
 
@@ -64,28 +71,88 @@ const GROUP_COLOR: Record<string, string> = {
 };
 
 export default function CascadeBuilderScreen() {
-  const [blocks, setBlocks]     = useState<CascadeBlock[]>([]);
-  const [editing, setEditing]   = useState<CascadeBlock | null>(null);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [scoring, setScoring]   = useState(false);
-  const [audit, setAudit]       = useState<{ weakest?: string; objection?: string } | null>(null);
-  const [scoreErr, setScoreErr] = useState<string | null>(null);
-  const [reasons, setReasons]   = useState<string[]>([]);
-  const [building, setBuilding] = useState(false);
-  const [viewMode, setViewMode] = useState<'pyramid' | 'list'>('pyramid');
+  const [blocks, setBlocks]         = useState<CascadeBlock[]>([]);
+  const [editing, setEditing]       = useState<CascadeBlock | null>(null);
+  const [expanded, setExpanded]     = useState<string | null>(null);
+  const [scoring, setScoring]       = useState(false);
+  const [audit, setAudit]           = useState<{ weakest?: string; objection?: string } | null>(null);
+  const [scoreErr, setScoreErr]     = useState<string | null>(null);
+  const [reasons, setReasons]       = useState<string[]>([]);
+  const [building, setBuilding]     = useState(false);
+  const [viewMode, setViewMode]     = useState<'pyramid' | 'list'>('pyramid');
+
+  // ── Pyramid management ──────────────────────────────────────────────────
+  const [pyramids, setPyramids]     = useState<PyramidMeta[]>([]);
+  const [activePyrId, setActivePyrId] = useState<string>(DEFAULT_PYRAMID_ID);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const chipScrollRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     (async () => {
-      const net = await loadNetwork();
-      if (net.length > 0) { setBlocks(net); return; }
-      const seeded = await AsyncStorage.getItem(CASCADE_SEED_FLAG);
-      if (seeded) { setBlocks([]); return; }
-      const seed = makeSeedBlocks();
-      await saveNetwork(seed);
-      await AsyncStorage.setItem(CASCADE_SEED_FLAG, 'true');
-      setBlocks(seed);
+      const pyrs = await loadPyramids();
+      setPyramids(pyrs);
+      const id = pyrs[0]?.id ?? DEFAULT_PYRAMID_ID;
+      setActivePyrId(id);
+      await loadPyramidBlocks(id);
     })();
   }, []);
+
+  const loadPyramidBlocks = async (id: string) => {
+    const net = await loadNetwork(id);
+    if (net.length > 0) { setBlocks(net); return; }
+    if (id !== DEFAULT_PYRAMID_ID) { setBlocks([]); return; }
+    const seeded = await AsyncStorage.getItem(CASCADE_SEED_FLAG);
+    if (seeded) { setBlocks([]); return; }
+    const seed = makeSeedBlocks();
+    await saveNetwork(seed, id);
+    await AsyncStorage.setItem(CASCADE_SEED_FLAG, 'true');
+    setBlocks(seed);
+  };
+
+  const switchPyramid = async (id: string) => {
+    setExpanded(null);
+    setEditing(null);
+    setActivePyrId(id);
+    await loadPyramidBlocks(id);
+  };
+
+  const addNewPyramid = async () => {
+    const next = pyramids.length + 1;
+    const meta = await createPyramid(`Pyramid ${next}`);
+    const updated = [...pyramids, meta];
+    setPyramids(updated);
+    await switchPyramid(meta.id);
+    setTimeout(() => chipScrollRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const onLongPressChip = (p: PyramidMeta) => {
+    Alert.alert(
+      p.name,
+      'What do you want to do?',
+      [
+        { text: 'Rename', onPress: () => { setRenamingId(p.id); setRenameText(p.name); } },
+        {
+          text: 'Delete', style: 'destructive',
+          onPress: async () => {
+            if (p.id === DEFAULT_PYRAMID_ID) return;
+            await deletePyramid(p.id);
+            const updated = pyramids.filter(x => x.id !== p.id);
+            setPyramids(updated);
+            if (activePyrId === p.id) await switchPyramid(updated[0]?.id ?? DEFAULT_PYRAMID_ID);
+          },
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  };
+
+  const commitRename = async () => {
+    if (!renamingId || !renameText.trim()) { setRenamingId(null); return; }
+    await renamePyramid(renamingId, renameText.trim());
+    setPyramids(prev => prev.map(p => p.id === renamingId ? { ...p, name: renameText.trim() } : p));
+    setRenamingId(null);
+  };
 
   const live = useMemo(() => {
     if (!editing) return null;
@@ -143,14 +210,14 @@ export default function CascadeBuilderScreen() {
 
   const onSave = async () => {
     if (!editing) return;
-    const net = await upsertBlock(editing);
+    const net = await upsertBlock(editing, activePyrId);
     setBlocks(net);
     setEditing(null);
   };
 
   const onDelete = async () => {
     if (!editing) return;
-    const net = await deleteBlock(editing.id);
+    const net = await deleteBlock(editing.id, activePyrId);
     setBlocks(net);
     setEditing(null);
   };
@@ -388,6 +455,46 @@ export default function CascadeBuilderScreen() {
         </View>
       </View>
 
+      {/* ── Pyramid selector chips ─────────────────────────────────────────── */}
+      <ScrollView
+        ref={chipScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginBottom: 14, marginHorizontal: -4 }}
+        contentContainerStyle={{ paddingHorizontal: 4, gap: 8, flexDirection: 'row', alignItems: 'center' }}
+      >
+        {pyramids.map(p => {
+          const isActive = p.id === activePyrId;
+          const isRenaming = renamingId === p.id;
+          return isRenaming ? (
+            <View key={p.id} style={[s.pyrChip, s.pyrChipActive, { paddingVertical: 4, paddingHorizontal: 10 }]}>
+              <TextInput
+                autoFocus
+                value={renameText}
+                onChangeText={setRenameText}
+                onBlur={commitRename}
+                onSubmitEditing={commitRename}
+                style={{ color: '#fb923c', fontSize: 12, fontWeight: '700', minWidth: 60, maxWidth: 140 }}
+              />
+            </View>
+          ) : (
+            <TouchableOpacity
+              key={p.id}
+              onPress={() => switchPyramid(p.id)}
+              onLongPress={() => onLongPressChip(p)}
+              style={[s.pyrChip, isActive && s.pyrChipActive]}
+            >
+              <Text style={[s.pyrChipText, isActive && s.pyrChipTextActive]}>
+                {p.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        <TouchableOpacity onPress={addNewPyramid} style={s.pyrChipNew}>
+          <Text style={s.pyrChipNewText}>+ New</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
       {/* Pyramid score bar */}
       {blocks.length >= 2 && (
         <View style={[s.pyramidBar, { borderColor: pyramidBand.textColor + '44', backgroundColor: pyramidBand.color }]}>
@@ -560,7 +667,7 @@ export default function CascadeBuilderScreen() {
               <TouchableOpacity
                 style={s.expandedDeleteBtn}
                 onPress={async () => {
-                  const next = await deleteBlock(expandedBlock.id);
+                  const next = await deleteBlock(expandedBlock.id, activePyrId);
                   setBlocks(next);
                   setExpanded(null);
                 }}
@@ -638,7 +745,7 @@ export default function CascadeBuilderScreen() {
         <TouchableOpacity
           style={s.clearAllBtn}
           onPress={async () => {
-            for (const b of blocks) await deleteBlock(b.id);
+            for (const b of blocks) await deleteBlock(b.id, activePyrId);
             setBlocks([]);
             setExpanded(null);
           }}
@@ -895,6 +1002,24 @@ const s = StyleSheet.create({
 
   clearAllBtn:  { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
   clearAllText: { color: SOL_THEME.textMuted, fontSize: 11, opacity: 0.5 },
+
+  // ── Pyramid chips ────────────────────────────────────────────────────────
+  pyrChip: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1,
+    borderColor: '#fb923c33', backgroundColor: SOL_THEME.surface,
+  },
+  pyrChipActive: {
+    borderColor: '#fb923c99', backgroundColor: '#fb923c18',
+  },
+  pyrChipText:       { color: '#fb923c66', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  pyrChipTextActive: { color: '#fb923c' },
+  pyrChipNew: {
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: 20, borderWidth: 1,
+    borderColor: '#fb923c22', backgroundColor: 'transparent',
+  },
+  pyrChipNewText: { color: '#fb923c44', fontSize: 12, fontWeight: '700' },
 
   // ── View toggle ──────────────────────────────────────────────────────────
   viewToggle: {
