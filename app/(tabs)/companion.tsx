@@ -65,7 +65,7 @@ import {
 } from '../../lib/companion/game-data';
 
 const { width: SCREEN_W } = Dimensions.get('window');
-const SCENE_H = 300;
+const SCENE_H = 360;
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 
 // ─── SceneBg — tintColor-sealed wrapper ──────────────────────────────────────
@@ -4818,9 +4818,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
               const rc  = def.colour;
               const _zoneSkinFallback = (currentRoomId.split('_')[0]) as SkinId;
               const enemyImg = battle.entitySkinId
-                ? (ZONE_COMPANION_IMAGES[`${battle.entitySkinId}_1`] ?? ZONE_COMPANION_IMAGES[`${_zoneSkinFallback}_1`] ?? null)
-                : (ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES]
-                   ?? ZONE_COMPANION_IMAGES[`${_zoneSkinFallback}_1`] ?? null);
+                ? (ZONE_COMPANION_IMAGES[`${battle.entitySkinId}_1`] ?? null)
+                : (ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES] ?? null);
               const disabled = attackAnim;
               const archetypeSpells = ARCHETYPE_SPELLS[archetype.id] ?? ARCHETYPE_SPELLS['vigil'];
               const roomSkinId = (currentRoomId.split('_')[0] as SkinId);
@@ -6919,9 +6918,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         const _zoneSkinFallback = (currentRoomId.split('_')[0]) as SkinId;
         const enemyImg = battle
           ? (battle.entitySkinId
-            ? (ZONE_COMPANION_IMAGES[`${battle.entitySkinId}_1`] ?? ZONE_COMPANION_IMAGES[`${_zoneSkinFallback}_1`] ?? null)
-            : (ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES]
-               ?? ZONE_COMPANION_IMAGES[`${_zoneSkinFallback}_1`] ?? null))
+            ? (ZONE_COMPANION_IMAGES[`${battle.entitySkinId}_1`] ?? null)
+            : (ENEMY_IMAGES[battle.entityName.toLowerCase().replace(/'/g,'').replace(/\s+/g,'_') as keyof typeof ENEMY_IMAGES] ?? null))
           : null;
         const disabled = attackAnim;
         const archetypeSpells = ARCHETYPE_SPELLS[archetype.id] ?? ARCHETYPE_SPELLS['vigil'];
