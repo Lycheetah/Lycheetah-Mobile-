@@ -3008,13 +3008,52 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             </View>
             <Text style={{ color: ZONK_GOLD + 'AA', fontSize: 11 }}>{zonkCollapsed ? '▶' : '▼'}</Text>
           </View>
-          {zonkCollapsed && <Text style={{ color: ZONK_GOLD + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>Wild hypotheses welcome. Aura walks you through it — naming every register, finding the grain.</Text>}
+          {zonkCollapsed && (
+            <Text style={{ color: ZONK_GOLD + '55', fontSize: 9, fontStyle: 'italic', lineHeight: 14 }}>
+              {zonkLog.length === 0
+                ? 'Wild hypotheses welcome. Aura walks you through it — naming every register, finding the grain.'
+                : `${zonkLog.length} forge${zonkLog.length !== 1 ? 's' : ''} · ${zonkLog.filter(e => e.status === 'grain').length} grain${zonkLog.filter(e => e.status === 'grain').length !== 1 ? 's' : ''} found · ${zonkLog.filter(e => e.status === 'cooking').length} cooking`}
+            </Text>
+          )}
         </TouchableOpacity>
         {!zonkCollapsed && <View style={{ height: 1, backgroundColor: ZONK_GOLD + '22' }} />}
         {!zonkCollapsed && !focusMode && (
         <View style={{ padding: 14 }}>
+
+        {/* Grain accumulation bar — only shows when there's history */}
+        {zonkLog.length > 0 && (() => {
+          const grains    = zonkLog.filter(e => e.status === 'grain').length;
+          const dissolved = zonkLog.filter(e => e.status === 'dissolved').length;
+          const cooking   = zonkLog.filter(e => e.status === 'cooking').length;
+          return (
+            <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: ZONK_GOLD + '0A', borderRadius: 10, borderWidth: 1, borderColor: ZONK_GOLD + '22', padding: 12, marginBottom: 14 }}>
+              <Text style={{ color: ZONK_GOLD, fontSize: 26, fontFamily: mono }}>◬</Text>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', gap: 14 }}>
+                  <View>
+                    <Text style={{ color: '#4CAF50', fontSize: 17, fontWeight: '700', fontFamily: mono }}>{grains}</Text>
+                    <Text style={{ color: '#4CAF5077', fontSize: 8, fontFamily: mono }}>GRAINS</Text>
+                  </View>
+                  <View>
+                    <Text style={{ color: '#FF9F1C', fontSize: 17, fontWeight: '700', fontFamily: mono }}>{cooking}</Text>
+                    <Text style={{ color: '#FF9F1C77', fontSize: 8, fontFamily: mono }}>COOKING</Text>
+                  </View>
+                  <View>
+                    <Text style={{ color: '#55557777', fontSize: 17, fontWeight: '700', fontFamily: mono }}>{dissolved}</Text>
+                    <Text style={{ color: '#44445566', fontSize: 8, fontFamily: mono }}>DISSOLVED</Text>
+                  </View>
+                  <View style={{ flex: 1 }} />
+                  <View style={{ justifyContent: 'center' }}>
+                    <Text style={{ color: ZONK_GOLD + '66', fontSize: 9, fontFamily: mono }}>{zonkLog.length} forge{zonkLog.length !== 1 ? 's' : ''}</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
+
         <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, lineHeight: 16, marginBottom: 12, fontStyle: 'italic' }}>
-          A field of lies and abstract thought. Throw in a wild hypothesis, an impossible question, a pattern you can't shake. Aura walks you through it — naming every register, finding the grain of truth in the sand. Forge a pillar, or watch it dissolve. Nothing here is proven. Everything is worth exploring.
+          A field of lies and abstract thought. Throw in a wild hypothesis, an impossible question, a pattern you can't shake. Aura walks you through it — naming every register, finding the grain of truth in the sand. Forge a pillar, or watch it dissolve.
         </Text>
 
         <TextInput
@@ -3117,9 +3156,62 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             ψ FRONTIER SCIENCE — Psi phenomena are genuinely contested. The evidence exists (Radin meta-analyses, STARGATE declassified, GCP 30-year dataset) and is genuinely uncertain. This is not mysticism and not consensus. Log what you observe. Draw your own conclusions.
           </Text>
         </View>
+
+        {/* ── Hit rate tracker ── */}
+        {(() => {
+          const judged = psiLog.filter(e => e.result !== 'pending');
+          if (judged.length === 0) return null;
+          const hits    = judged.filter(e => e.result === 'hit').length;
+          const partial = judged.filter(e => e.result === 'partial').length;
+          const misses  = judged.filter(e => e.result === 'miss').length;
+          const hitPct  = Math.round((hits / judged.length) * 100);
+          const hpPct   = Math.round(((hits + partial) / judged.length) * 100);
+          const byType  = (['RV','PREC','GANZFELD','GENERAL'] as PsiEntryType[]).map(t => ({
+            t, total: judged.filter(e => e.type === t).length, hits: judged.filter(e => e.type === t && e.result === 'hit').length,
+          })).filter(x => x.total > 0);
+          return (
+            <View style={{ backgroundColor: PSI_PURPLE + '0C', borderRadius: 12, borderWidth: 1, borderColor: PSI_PURPLE + '33', padding: 14, marginBottom: 14 }}>
+              <Text style={{ color: PSI_PURPLE, fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 10 }}>ψ SESSION RECORD · {judged.length} judged</Text>
+              {/* Hit / partial / miss bar */}
+              <View style={{ height: 6, borderRadius: 3, backgroundColor: '#1A1A2E', overflow: 'hidden', flexDirection: 'row', marginBottom: 8 }}>
+                <View style={{ flex: hits, backgroundColor: '#4CAF50' }} />
+                <View style={{ flex: partial, backgroundColor: '#FF9F1C' }} />
+                <View style={{ flex: misses, backgroundColor: '#E74C3C' }} />
+                <View style={{ flex: Math.max(0, judged.length - hits - partial - misses), backgroundColor: 'transparent' }} />
+              </View>
+              <View style={{ flexDirection: 'row', gap: 14, marginBottom: 10 }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#4CAF50', fontSize: 18, fontWeight: '700', fontFamily: mono }}>{hitPct}%</Text>
+                  <Text style={{ color: '#4CAF5088', fontSize: 8, fontFamily: mono }}>HIT RATE</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: '#FF9F1C', fontSize: 18, fontWeight: '700', fontFamily: mono }}>{hpPct}%</Text>
+                  <Text style={{ color: '#FF9F1C88', fontSize: 8, fontFamily: mono }}>HIT+PARTIAL</Text>
+                </View>
+                <View style={{ flex: 1 }} />
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: '#4CAF50', fontSize: 12, fontFamily: mono }}>{hits} hit</Text>
+                  <Text style={{ color: '#FF9F1C', fontSize: 12, fontFamily: mono }}>{partial} partial</Text>
+                  <Text style={{ color: '#E74C3C', fontSize: 12, fontFamily: mono }}>{misses} miss</Text>
+                </View>
+              </View>
+              {byType.length > 1 && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {byType.map(x => (
+                    <View key={x.t} style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: PSI_PURPLE + '33', backgroundColor: PSI_PURPLE + '0A' }}>
+                      <Text style={{ color: PSI_PURPLE + 'CC', fontSize: 9, fontFamily: mono }}>{x.t} {x.hits}/{x.total}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              <Text style={{ color: PSI_PURPLE + '55', fontSize: 8, fontFamily: mono, marginTop: 8, fontStyle: 'italic' }}>Chance baseline varies by protocol. RV 4-AFC = 25%. Track your own baseline.</Text>
+            </View>
+          );
+        })()}
+
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <Text style={{ color: SOL_THEME.textMuted, fontSize: 10, lineHeight: 15, fontStyle: 'italic', flex: 1 }}>
-            Remote viewing · precognition · ganzfeld. Log impressions before verification. Let the record speak.
+            Log impressions before verification. Let the record speak.
           </Text>
           <TouchableOpacity onPress={() => { setShowPsiForm(true); }} style={{ marginLeft: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: PSI_PURPLE + '55', backgroundColor: PSI_PURPLE + '18' }}>
             <Text style={{ color: PSI_PURPLE, fontSize: 10, fontWeight: '700' }}>+ Log</Text>
