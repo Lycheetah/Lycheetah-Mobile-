@@ -68,7 +68,6 @@ export default function SettingsScreen() {
   const [symbolRainOn, setSymbolRainOn] = useState(true);
   const [premiumOn, setPremiumOn] = useState(false);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [devMode, setDevMode] = useState(false);
   const [devTapCount, setDevTapCount] = useState(0);
   const [commitmentOpen, setCommitmentOpen] = useState(false);
@@ -588,19 +587,10 @@ export default function SettingsScreen() {
         </View>
       )}
 
-      {/* ─── ADVANCED ─── */}
-      <TouchableOpacity
-        onPress={() => setAdvancedOpen(v => !v)}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 28, marginBottom: 4 }}
-        activeOpacity={0.75}
-      >
-        <Text style={{ color: accentColor, fontSize: 14 }}>⚙</Text>
-        <Text style={{ color: accentColor, fontSize: 9, fontWeight: '700', letterSpacing: 2.5, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>ADVANCED</Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: accentColor + '30' }} />
-        <Text style={{ color: accentColor, fontSize: 11 }}>{advancedOpen ? '▲' : '▼'}</Text>
-      </TouchableOpacity>
+      </>)}
 
-      {advancedOpen && <>
+      <SectionDivider label="ADVANCED" glyph="⚙" />
+      {openGroups['ADVANCED'] && (<>
 
       {/* CONTEXT MEMORY */}
       <Text style={styles.sectionTitle}>CONTEXT MEMORY</Text>
@@ -759,10 +749,9 @@ export default function SettingsScreen() {
       {braveKeySaved && <Text style={[styles.keyStatus, { color: accentColor }]}>✓ Web search active · /search query in chat</Text>}
       <Text style={styles.sectionNote}>Calculator: built-in · no key needed. URL Reader: built-in · no key needed.</Text>
 
-      </>}
+      </>)}
 
       {/* ─── APP ─── */}
-      </>)}
 
       <SectionDivider label="APP" glyph="⊚" />
       {openGroups['APP'] && (<>
