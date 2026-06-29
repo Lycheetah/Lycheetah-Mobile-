@@ -118,7 +118,8 @@ function CompanionScene({
   const { color, bgColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
   const battleActive = battleHP > 0;
 
-  const [bgZoom, setBgZoom] = useState(1.0);
+  const bgZoomRef = useRef(1.0);
+  const bgZoomAnim = useRef(new Animated.Value(1.0)).current;
 
   const breathAnim    = useRef(new Animated.Value(0)).current;
   const auraPulse     = useRef(new Animated.Value(0)).current;
@@ -308,12 +309,12 @@ function CompanionScene({
     <View style={{ width: SCREEN_W, height: SCENE_H, backgroundColor: bgColor, overflow: 'hidden' }}>
       <SceneBg
         source={sceneBg}
-        style={{ position:'absolute', top:-20, left: isLandscapeBg ? -100 : -40, width: isLandscapeBg ? SCREEN_W+200 : SCREEN_W+80, height:SCENE_H+40, opacity:sceneFade, transform:[{ scale:bgZoom }, { translateX:bgParallaxX }, { translateX:bgAutoX }] }}
+        style={{ position:'absolute', top:-20, left: isLandscapeBg ? -100 : -40, width: isLandscapeBg ? SCREEN_W+200 : SCREEN_W+80, height:SCENE_H+40, opacity:sceneFade, transform:[{ scale:bgZoomAnim }, { translateX:bgParallaxX }, { translateX:bgAutoX }] }}
       />
       {/* Zoom controls — top-right corner */}
       <View style={{ position:'absolute', top:8, right:8, flexDirection:'row', gap:4 }}>
         {([{label:'−', delta:-0.15},{label:'+', delta:0.15}] as const).map(({ label, delta }) => (
-          <TouchableOpacity key={label} onPress={() => setBgZoom(z => Math.min(3.0, Math.max(0.3, +(z + delta).toFixed(2))))} activeOpacity={0.7}
+          <TouchableOpacity key={label} onPress={() => { const next = Math.min(3.0, Math.max(0.3, +(bgZoomRef.current + delta).toFixed(2))); bgZoomRef.current = next; bgZoomAnim.setValue(next); }} activeOpacity={0.7}
             style={{ width:26, height:26, borderRadius:13, borderWidth:1, borderColor:'rgba(255,255,255,0.2)', backgroundColor:'rgba(0,0,0,0.5)', alignItems:'center', justifyContent:'center' }}>
             <Text style={{ color:'rgba(255,255,255,0.7)', fontSize:14, lineHeight:16 }}>{label}</Text>
           </TouchableOpacity>
@@ -726,6 +727,8 @@ export default function CompanionScreen() {
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
   const [activeTab,      setActiveTab]     = useState<'talk'|'companion'|'world'|'battle'|'gear'>('talk');
+  const [sceneMinimized, setSceneMinimized] = useState(false);
+  const [voidEntitiesOpen, setVoidEntitiesOpen] = useState(false);
   const [tabPopup,       setTabPopup]      = useState<string|null>(null);
   const [seenTabs,       setSeenTabs]      = useState<Set<string>>(new Set());
   const [coins,            setCoins]            = useState(0);
@@ -946,6 +949,7 @@ export default function CompanionScreen() {
   const [activeCampaignIdx,  setActiveCampaignIdx]  = useState<number|null>(null);
   const [isCampaignMode,     setIsCampaignMode]     = useState(false);
   const isCampaignRef = useRef(false);
+  const adventureLengthRef = useRef(3);
   const ventureScrollRef = useRef<any>(null);
 
   // ── AI Talk panel ──────────────────────────────────────────────────────────
@@ -1501,7 +1505,7 @@ export default function CompanionScreen() {
   }, [battle?.entityName]);
 
   useEffect(() => {
-    if (activeTab === 'world' && !fieldNote && !fieldNoteLoading) generateFieldNote();
+    if (activeTab === 'companion' && !fieldNote && !fieldNoteLoading) generateFieldNote();
     if (activeTab === 'companion') {
       setTimeout(() => scrollRef.current?.scrollTo({ y: SCENE_H + 20, animated: true }), 160);
     }
@@ -1814,7 +1818,7 @@ Generate a unique visual spec for this specific student. Return ONLY valid JSON,
     setVenturePhase('loading');
     const s = SKINS[activeSkin];
     const compName = displayName || archetype.name;
-    const isResolution = beatNum >= (isCampaignRef.current ? 7 : 3);
+    const isResolution = beatNum >= (isCampaignRef.current ? 7 : adventureLengthRef.current);
     const historyStr = log.length > 0 ? `\n\nWhat happened so far:\n${log.slice(-6).join('\n')}` : '';
     const diceContext = diceRoll !== undefined
       ? ` The seeker just rolled ${diceRoll}/6 on a Risk — ${diceRoll >= 5 ? 'reward bold action, something opens' : diceRoll >= 3 ? 'mixed outcome, tension rises' : 'consequence follows, the path hardens'}.`
@@ -1873,7 +1877,8 @@ JSON only, no extra text:
     setTimeout(() => ventureScrollRef.current?.scrollToEnd({ animated: true }), 100);
   };
 
-  const startVenture = () => {
+  const startVenture = (length: number = 3) => {
+    adventureLengthRef.current = length;
     setVentureActive(true);
     setVentureBeatNum(0);
     setVentureLog([]);
@@ -1897,6 +1902,7 @@ JSON only, no extra text:
     const updated = [...campaignSlots]; updated[slotIdx] = newSlot;
     setCampaignSlots(updated);
     AsyncStorage.setItem('sol_campaigns', JSON.stringify(updated));
+    adventureLengthRef.current = 7;
     setActiveCampaignIdx(slotIdx);
     setIsCampaignMode(true);
     isCampaignRef.current = true;
@@ -2279,7 +2285,8 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
       if (battle.enemyBlind && Math.random() < 0.35) {
         logEntry = `⚔ BLINDED — attack missed.${_dotLog ? ' · ' + _dotLog : ''}`;
       } else {
-        dmg = Math.round((attackPower + variance) * chaosMult * critMult * focusMult);
+        const menagerieBonus = Math.min(5, menagerie.filter(m => m.zone === activeSkin).length);
+        dmg = Math.round((attackPower + variance + menagerieBonus) * chaosMult * critMult * focusMult);
         const assist = partyAssistTotal();
         dmg += assist;
         chaosNote = chaosRoll ? ` ✧CHAOS×${chaosMult.toFixed(1)}` : critRoll ? ' ✦CRIT' : '';
@@ -3034,21 +3041,15 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
         // 0.5% — UNIQUE encounter, wave 5
         setTimeout(() => {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          setBattle(freshZoneWave(id, 5, undefined, playerStats.vit));
-          setActiveTab('battle');
-          setTabMinimized(false);
-          setBattleMinimized(false);
-          showToast('⚠ UNIQUE ENTITY — ENGAGE');
+          setPendingBattle(freshZoneWave(id, 5, undefined, playerStats.vit));
+          showToast('⚠ UNIQUE ENTITY APPROACHES');
         }, 700);
       } else if (roll < 0.155) {
         // 15% — random encounter, wave 1
         setTimeout(() => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          setBattle(freshZoneWave(id, 1, undefined, playerStats.vit));
-          setActiveTab('battle');
-          setTabMinimized(false);
-          setBattleMinimized(false);
-          showToast('◈ ENCOUNTER — check BATTLE tab');
+          setPendingBattle(freshZoneWave(id, 1, undefined, playerStats.vit));
+          showToast('◈ ENCOUNTER — a presence makes itself known');
         }, 700);
       }
     }
@@ -3212,48 +3213,66 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
       </View>
 
       {/* ── SCENE — hidden during active battle so fight is immediately visible ── */}
-      {!(activeTab === 'battle' && battle && !battle.won) && <CompanionScene
-        stage={stage} mood={mood} skin={skin} archetype={archetype}
-        onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim} onDismissPhrase={dismissPhrase}
-        companionName={displayName}
-        battleHP={battle?.playerHP ?? 80}
-        battleMaxHP={battle?.maxPlayerHP ?? 80}
-        battleEntityName={battle?.entityName ?? ''}
-        battleWave={battle?.wave ?? 1}
-        entityShakeAnim={entityShakeAnim}
-        eating={eating}
-        evoPath={evoPath}
-        devStagePin={devStagePin}
-        gearCrown={gearCrown}
-        gearBody={gearBody}
-        gearCape={gearCape}
-        gearMantle={gearMantle}
-        companionSpec={companionSpec}
-        equippedCompanionSkin={equippedCompanionSkin}
-        currentRoomId={currentRoomId}
-        navigateRoom={navigateRoom}
-        getLockStatus={getLockStatus}
-        showRoomLabel={showRoomLabel}
-        sceneFade={sceneFade}
-        roomLore={roomLore}
-        roomLoreAnim={roomLoreAnim}
-        onDismissLore={dismissLore}
-        onSwitchTab={tab => { setActiveTab(tab); setTabMinimized(false); }}
-        equippedWings={equippedWings}
-        equippedHalo={equippedHalo}
-        equippedPet={equippedPet}
-        equippedBg={equippedBg}
-        onRandomZone={() => handleSkin(SKIN_IDS[Math.floor(Math.random() * SKIN_IDS.length)])}
-        onOpenMap={() => setGbaMapOpen(true)}
-        onTravelTo={(sid) => handleSkin(sid)}
-        campfireActive={!!campfireMode}
-        onBonfire={() => campfireMode ? setCampfireMode(false) : setCampfireOpen(true)}
-        onEncounter={() => {
-          const sid = (currentRoomId.split('_')[0] as SkinId);
-          if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          setPendingBattle(freshZoneWave(sid, 1, undefined, playerStats.vit));
-        }}
-      />}
+      {!(activeTab === 'battle' && battle && !battle.won) && (
+        sceneMinimized
+          ? <TouchableOpacity onPress={() => setSceneMinimized(false)} activeOpacity={0.85}
+              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:16, paddingVertical:7, borderBottomWidth:1, borderBottomColor:color+'22', backgroundColor:'#05050E' }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <Text style={{ color, fontSize:14 }}>{skin.glyph}</Text>
+                <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:1.5, fontWeight:'700' }}>{skin.name}</Text>
+                <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>· {STAGES[devStagePin ?? stage]?.name ?? 'SEED'}</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:9, fontFamily:mono }}>▼ scene</Text>
+            </TouchableOpacity>
+          : <View>
+              <CompanionScene
+                stage={stage} mood={mood} skin={skin} archetype={archetype}
+                onTap={handleTap} phrase={phrase} phraseAnim={phraseAnim} onDismissPhrase={dismissPhrase}
+                companionName={displayName}
+                battleHP={battle?.playerHP ?? 80}
+                battleMaxHP={battle?.maxPlayerHP ?? 80}
+                battleEntityName={battle?.entityName ?? ''}
+                battleWave={battle?.wave ?? 1}
+                entityShakeAnim={entityShakeAnim}
+                eating={eating}
+                evoPath={evoPath}
+                devStagePin={devStagePin}
+                gearCrown={gearCrown}
+                gearBody={gearBody}
+                gearCape={gearCape}
+                gearMantle={gearMantle}
+                companionSpec={companionSpec}
+                equippedCompanionSkin={equippedCompanionSkin}
+                currentRoomId={currentRoomId}
+                navigateRoom={navigateRoom}
+                getLockStatus={getLockStatus}
+                showRoomLabel={showRoomLabel}
+                sceneFade={sceneFade}
+                roomLore={roomLore}
+                roomLoreAnim={roomLoreAnim}
+                onDismissLore={dismissLore}
+                onSwitchTab={tab => { setActiveTab(tab); setTabMinimized(false); }}
+                equippedWings={equippedWings}
+                equippedHalo={equippedHalo}
+                equippedPet={equippedPet}
+                equippedBg={equippedBg}
+                onRandomZone={() => handleSkin(SKIN_IDS[Math.floor(Math.random() * SKIN_IDS.length)])}
+                onOpenMap={() => setGbaMapOpen(true)}
+                onTravelTo={(sid) => handleSkin(sid)}
+                campfireActive={!!campfireMode}
+                onBonfire={() => campfireMode ? setCampfireMode(false) : setCampfireOpen(true)}
+                onEncounter={() => {
+                  const sid = (currentRoomId.split('_')[0] as SkinId);
+                  if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setPendingBattle(freshZoneWave(sid, 1, undefined, playerStats.vit));
+                }}
+              />
+              <TouchableOpacity onPress={() => setSceneMinimized(true)} activeOpacity={0.7}
+                style={{ position:'absolute', bottom:6, right:8, paddingHorizontal:8, paddingVertical:3, borderRadius:8, backgroundColor:'#00000077', borderWidth:1, borderColor:color+'33' }}>
+                <Text style={{ color:color+'88', fontSize:7, fontFamily:mono, letterSpacing:1 }}>▲ hide</Text>
+              </TouchableOpacity>
+            </View>
+      )}
 
       {xpPop && (
         <Animated.Text style={{ position:'absolute', top:SCENE_H-55, alignSelf:'center', color, fontSize:13, fontFamily:mono, fontWeight:'700', transform:[{translateY:xpPopY}], opacity:xpPopOp }}>
@@ -3667,7 +3686,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             onPress={() => {
               const rSkin = (currentRoomId.split('_')[0] as SkinId);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setPendingBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit));
+              setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit));
+              setActiveTab('battle');
+              setTabMinimized(false);
             }}
             style={{ paddingVertical:13, borderRadius:4, borderWidth:2, borderColor:'#306230',
               backgroundColor:'#0F380F', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8, marginBottom:20 }}
@@ -4780,6 +4801,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                   style={{ paddingHorizontal:7, paddingVertical:3, borderRadius:6, borderWidth:1, borderColor: battleDialogueOn ? color+'88' : '#22223366', backgroundColor: battleDialogueOn ? color+'14' : 'transparent' }}>
                   <Text style={{ color: battleDialogueOn ? color : '#333344', fontSize:7, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>{battleDialogueOn ? '◈' : '◌'}</Text>
                 </TouchableOpacity>
+                {/* Menagerie zone bonus */}
+                {(() => { const mb = Math.min(5, menagerie.filter(m => m.zone === activeSkin).length); return mb > 0 ? <Text style={{ color:'#DD44FF99', fontSize:8, fontFamily:mono }}>+{mb}⚔</Text> : null; })()}
                 {/* Token count */}
                 {battle && (
                   <Text style={{ color: tokensLeft > 0 ? color : '#FF444488', fontSize:9, fontFamily:mono, fontWeight:'700' }}>
@@ -5136,32 +5159,44 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                       <Text style={{ color, fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>⚔ HUNT</Text>
                       <Text style={{ color:color+'66', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>zone encounter</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={startVenture}
+                    <TouchableOpacity onPress={() => startVenture(3)}
                       style={{ flex:1, paddingVertical:14, borderRadius:12, borderWidth:2, borderColor:'#8855FF', backgroundColor:'#8855FF18', alignItems:'center' }}>
-                      <Text style={{ color:'#BB88FF', fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>◆ VENTURE</Text>
-                      <Text style={{ color:'#8855FF88', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>3 beats · quick</Text>
+                      <Text style={{ color:'#BB88FF', fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>◆ ADVENTURE</Text>
+                      <Text style={{ color:'#8855FF88', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>3 · 5 · 7 beats</Text>
                     </TouchableOpacity>
                   </View>
-                  {/* Campaign — long-form, persistent across sessions */}
-                  <TouchableOpacity onPress={() => setShowCampaignSelect(true)}
-                    style={{ paddingVertical:13, borderRadius:12, borderWidth:1.5, borderColor:'#AA77FF88', backgroundColor:'#AA77FF0C', alignItems:'center', flexDirection:'row', justifyContent:'center', gap:10 }}>
-                    <Text style={{ color:'#CC99FF', fontSize:13, fontWeight:'700', fontFamily:mono, letterSpacing:3 }}>◈ CAMPAIGN</Text>
-                    <View style={{ flexDirection:'row', gap:4 }}>
-                      {campaignSlots.map((s, i) => (
-                        <View key={i} style={{ width:6, height:6, borderRadius:3, backgroundColor: s?.complete ? '#C49A3C' : s ? '#AA77FF' : '#333355' }} />
-                      ))}
-                    </View>
-                    <Text style={{ color:'#AA77FF55', fontSize:8, fontFamily:mono, letterSpacing:1 }}>7 chapters · saved</Text>
-                  </TouchableOpacity>
+                  {/* Adventure length row */}
+                  <View style={{ flexDirection:'row', gap:6, marginTop:6 }}>
+                    {([{beats:3,label:'QUICK',sub:'3 beats',campaign:false},{beats:5,label:'DEEP',sub:'5 beats',campaign:false},{beats:7,label:'CAMPAIGN',sub:'7 · saved',campaign:true}] as const).map(opt => (
+                      <TouchableOpacity key={opt.beats}
+                        onPress={() => opt.campaign ? setShowCampaignSelect(true) : startVenture(opt.beats)}
+                        style={{ flex:1, paddingVertical:9, borderRadius:10, borderWidth:1, borderColor:'#8855FF55', backgroundColor:'#8855FF0A', alignItems:'center' }}>
+                        <Text style={{ color:'#AA77FF', fontSize:9, fontWeight:'700', fontFamily:mono, letterSpacing:1 }}>{opt.label}</Text>
+                        <Text style={{ color:'#8855FF88', fontSize:7, fontFamily:mono, marginTop:1 }}>{opt.sub}</Text>
+                        {opt.campaign && (
+                          <View style={{ flexDirection:'row', gap:3, marginTop:3 }}>
+                            {campaignSlots.map((s, i) => (
+                              <View key={i} style={{ width:5, height:5, borderRadius:3, backgroundColor: s?.complete ? '#C49A3C' : s ? '#AA77FF' : '#333355' }} />
+                            ))}
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               );
             })()}
           </View>
           ); })()}
 
-          {/* ── VOID ENTITIES (#273) — combat that can only be won by learning. Below encounters. ── */}
-          <View style={{ marginBottom:16, padding:13, borderRadius:12, borderWidth:1, borderColor:'#8855FF44', backgroundColor:'#8855FF08' }}>
-            <Text style={{ color:'#AA88FF', fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:3 }}>◈ VOID ENTITIES</Text>
+          {/* ── VOID ENTITIES (#273) — collapsed by default, below encounters ── */}
+          <View style={{ marginBottom:16, borderRadius:12, borderWidth:1, borderColor:'#8855FF33', backgroundColor:'#8855FF06' }}>
+            <TouchableOpacity onPress={() => setVoidEntitiesOpen(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:13 }}>
+              <Text style={{ color:'#AA88FF', fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>◈ VOID ENTITIES</Text>
+              <Text style={{ color:'#555566', fontSize:9 }}>{voidEntitiesOpen ? '▼' : '▶'}</Text>
+            </TouchableOpacity>
+            {voidEntitiesOpen && (
+            <View style={{ paddingHorizontal:13, paddingBottom:13 }}>
             <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:10 }}>Cannot be out-fought. Dive the bound subject to learn the word that repels them.</Text>
             <View style={{ gap:8 }}>
               {VOID_BOSSES.map(b => {
@@ -5179,6 +5214,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                 );
               })}
             </View>
+            </View>
+            )}
           </View>
 
           {/* ── QUESTS ────────────────────────────────────────────── */}
@@ -5221,19 +5258,6 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             )}
           </View>
 
-          {/* Top row: TALK + STATS */}
-          <View style={{ flexDirection:'row', gap:8, marginBottom:12, marginTop:12 }}>
-            <TouchableOpacity onPress={openTalk} activeOpacity={0.75}
-              style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1.5, borderColor:color, backgroundColor:color+'14', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:7 }}>
-              <Text style={{ color, fontSize:16 }}>◈</Text>
-              <Text style={{ color, fontSize:9, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>TALK</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowStatModal(true)} activeOpacity={0.75}
-              style={{ flex:1, paddingVertical:11, borderRadius:10, borderWidth:1, borderColor:'#1A1A26', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:7 }}>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:16 }}>⊛</Text>
-              <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono }}>SHEET</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Stats chips row */}
           <View style={{ flexDirection:'row', gap:5, marginBottom:14 }}>
@@ -5518,10 +5542,24 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
           )}
 
           {/* ── THE CHRONICLE (#264) — lore that grows from your real journey ── */}
-          {chronicle.length > 0 && (
+          {(chronicle.length > 0 || fieldNote || fieldNoteLoading) && (
             <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor: skin.color+'08' }}>
-              <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:2 }}>𝔏 THE CHRONICLE</Text>
-              <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:11 }}>Your companion remembers everything you've earned together.</Text>
+              <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>𝔏 THE CHRONICLE</Text>
+                <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7}>
+                  <Text style={{ color: fieldNoteLoading ? '#333344' : skin.color+'88', fontSize:16, opacity: fieldNoteLoading ? 0.4 : 1 }}>↺</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom: (fieldNote || fieldNoteLoading) ? 8 : 11 }}>Your companion remembers everything you've earned together.</Text>
+              {/* Field note — living context at the top of the chronicle */}
+              {(fieldNote || fieldNoteLoading) && (
+                <View style={{ marginBottom:11, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1, borderColor: skin.color+'22', backgroundColor:'#0A0A14' }}>
+                  {fieldNoteLoading
+                    ? <ActivityIndicator size="small" color={skin.color+'88'} style={{ alignSelf:'flex-start' }} />
+                    : <Text style={{ color:'#9AA4BC', fontSize:11, lineHeight:17, fontStyle:'italic' }}>{fieldNote ?? fieldFallback}</Text>
+                  }
+                </View>
+              )}
               <View style={{ gap:9 }}>
                 {chronicle.slice(0, 14).map((c, i) => c.isSynthesis ? (
                   <View key={c.ts + '_' + i} style={{ paddingVertical:9, paddingHorizontal:11, borderRadius:9, borderWidth:1, borderColor: skin.color+'55', backgroundColor: skin.color+'0E' }}>
@@ -6159,27 +6197,6 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             </View>}
           </View>
 
-          {/* ── AI Field Note ───────────────────────────────────── */}
-          <View style={{ marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
-            <TouchableOpacity onPress={() => setFieldNoteCollapsed(v => !v)} style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: fieldNoteCollapsed ? 0 : 10 }}>
-              <Text style={{ color:'#333344', fontSize:9, letterSpacing:2, fontFamily:mono }}>FIELD NOTE</Text>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
-                <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7}>
-                  <Text style={{ color: fieldNoteLoading ? '#333344' : color, fontSize:18, opacity: fieldNoteLoading ? 0.4 : 1 }}>↺</Text>
-                </TouchableOpacity>
-                <Text style={{ color:'#333344', fontSize:11 }}>{fieldNoteCollapsed ? '▶' : '▼'}</Text>
-              </View>
-            </TouchableOpacity>
-            {!fieldNoteCollapsed && (<>
-            <Text style={{ color:SOL_THEME.text, fontSize:12, fontStyle:'italic', lineHeight:18 }}>
-              {fieldNote ?? fieldFallback}
-            </Text>
-            {fieldNoteLoading && (
-              <ActivityIndicator size="small" color={SOL_THEME.textMuted} style={{ marginTop:8, alignSelf:'flex-start' }} />
-            )}
-            </>)}
-          </View>
-
           {/* Stage + stat sheet */}
           <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12, padding:14, borderRadius:12, borderWidth:1, borderColor:color+'22', backgroundColor:cardBg }}>
             <View>
@@ -6726,7 +6743,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
                 )}
                 {venturePhase !== 'resolve' && (
                   <View style={{ flexDirection:'row', gap:4, marginTop:6 }}>
-                    {(isCampaignMode ? [0,1,2,3,4,5,6] : [0,1,2]).map(i => (
+                    {Array.from({ length: isCampaignMode ? 7 : adventureLengthRef.current }).map((_, i) => (
                       <View key={i} style={{ flex:1, height:2, borderRadius:1, backgroundColor: i < ventureBeatNum ? (isCampaignMode ? '#AA77FF' : vs.color) : i === ventureBeatNum && venturePhase === 'beat' ? (isCampaignMode ? '#AA77FF88' : vs.color+'88') : '#222233' }} />
                     ))}
                   </View>

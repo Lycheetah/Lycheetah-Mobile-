@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.29.0] — 2026-06-29 — Audit pass: UI depth, de-bloat, encounter fixes
+
+### UI Architecture
+- **CompanionScene minimize strip** — tap `▲ hide` to collapse scene to 32px glyph+zone strip; tap to re-expand
+- **ADVENTURE mode** — Venture + Campaign merged. QUICK (3) / DEEP (5) / CAMPAIGN (7 beats, saved). `adventureLengthRef` controls resolution + progress bar
+- **Field Note → Chronicle** — removed from WORLD tab, lives at top of Chronicle in COMPANION tab with ↺ refresh. One AI reflection surface.
+- **SHEET + TALK buttons removed** from battle tab (filler)
+- **Void Entities collapsed** by default — tappable header to expand
+
+### Battle / Encounter
+- **ENCOUNTER button** (companion tab) → direct to battle, no overlay
+- **Random zone travel encounters** → `setPendingBattle` overlay (player can retreat)
+- **Menagerie zone bonus** — captured entities grant passive +ATK in home zone (max +5), shown as `+n⚔` in battle header
+
+### Fixes
+- Background zoom (`+`/`−`) fixed — `bgZoom` converted to `Animated.Value` + ref
+- Void Entities hook-safe — `voidEntitiesOpen` at component level
+
+---
+
 ## [5.23.0] — 2026-06-28 — Privacy screen, Thoth attributions, AETHER removed
 
 ### Privacy
