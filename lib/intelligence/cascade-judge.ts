@@ -15,6 +15,7 @@
 //   'score' — fast auto-score: each layer 0–100 + a short reason.
 //   'audit' — Depth Audit (Nigredo): same scores PLUS the adversarial read — attacks the
 //             axiom's falsifiability, the weakest layer, and the single sharpest objection.
+// 'quickBuild' — single-pass: given only the claim, generate content + scores for all 9 layers.
 
 import { getActiveKey, getModel } from '../storage';
 import { sendMessageResilient, type AIModel } from '../ai-client';
@@ -101,6 +102,74 @@ export function parseCascadeVerdict(raw: string, mode: CascadeJudgeMode): Cascad
       if (parsed.objection) verdict.objection = String(parsed.objection).slice(0, 200);
     }
     return verdict;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Quick Build ─────────────────────────────────────────────────────────────
+
+const CASCADE_QUICK_BUILD_SYSTEM =
+  'You are the CASCADE engine — a truth-pressure builder for the Lycheetah framework. Given a ' +
+  'CLAIM, construct a knowledge block from scratch: write brief honest content for each of the ' +
+  '9 epistemic layers (what is genuinely known at that layer) AND score each 0–100. Keep content ' +
+  'to 1–2 sentences per layer. Be honest — thin evidence scores low and is named plainly; strong ' +
+  'structure scores high. You are building the user\'s best honest knowledge map, not flattering ' +
+  'the claim. Respond with ONLY the requested JSON.';
+
+export type QuickBuildResult = {
+  layers: { content: string; score: number }[];
+  falsifiable: boolean;
+};
+
+function parseQuickBuild(raw: string): QuickBuildResult | null {
+  try {
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]) as Record<string, any>;
+    const layers = ONION_LAYERS.map((_, i) => {
+      const v = parsed[String(i)];
+      const content = v?.content ? String(v.content).slice(0, 300) : '';
+      const score   = typeof v?.score === 'number'
+        ? Math.max(0, Math.min(100, Math.round(v.score))) : 0;
+      return { content, score };
+    });
+    return { layers, falsifiable: parsed.falsifiable === false ? false : true };
+  } catch {
+    return null;
+  }
+}
+
+export async function quickBuildBlock(claim: string): Promise<QuickBuildResult | null> {
+  const [apiKey, model] = await Promise.all([getActiveKey(), getModel()]);
+
+  const layerLines = ONION_LAYERS.map((l, i) =>
+    `${i}. ${l.name} — ${LAYER_QUESTION[i]}`
+  ).join('\n');
+
+  const schema = ONION_LAYERS.map((_, i) =>
+    `"${i}":{"content":"<1-2 honest sentences>","score":<0-100>}`
+  ).join(',');
+
+  const prompt =
+    `CLAIM: "${claim || '(no claim stated)'}"\n\n` +
+    `Build this knowledge block. For each layer write 1-2 honest sentences AND score it.\n\n` +
+    `LAYERS:\n${layerLines}\n\n` +
+    `Set "falsifiable" false only if the axiom cannot in principle be proven wrong.\n` +
+    `Return ONLY this JSON:\n{${schema},"falsifiable":true|false}`;
+
+  try {
+    const res = await sendMessageResilient(
+      [{ role: 'user', content: prompt }],
+      CASCADE_QUICK_BUILD_SYSTEM,
+      apiKey || '',
+      (model || 'meta/llama-3.3-70b-instruct') as AIModel,
+      undefined,
+      'fast',
+      2048,
+      0.55,
+    );
+    return parseQuickBuild(res.text);
   } catch {
     return null;
   }

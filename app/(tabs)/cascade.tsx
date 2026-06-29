@@ -25,7 +25,7 @@ import {
   deleteBlock,
   type CascadeBlock,
 } from '../../lib/intelligence/cascade-store';
-import { auditCascadeBlock, applyVerdict, type CascadeVerdict } from '../../lib/intelligence/cascade-judge';
+import { auditCascadeBlock, applyVerdict, quickBuildBlock, type CascadeVerdict } from '../../lib/intelligence/cascade-judge';
 
 const DISPLAY_MODE = 'composite' as const;
 const STEP = 5;
@@ -71,6 +71,8 @@ export default function CascadeBuilderScreen() {
   const [audit, setAudit]       = useState<{ weakest?: string; objection?: string } | null>(null);
   const [scoreErr, setScoreErr] = useState<string | null>(null);
   const [reasons, setReasons]   = useState<string[]>([]);
+  const [building, setBuilding] = useState(false);
+  const [viewMode, setViewMode] = useState<'pyramid' | 'list'>('pyramid');
 
   useEffect(() => {
     (async () => {
@@ -113,6 +115,27 @@ export default function CascadeBuilderScreen() {
       if (mode === 'audit') setAudit({ weakest: verdict.weakestLayer, objection: verdict.objection });
     } finally {
       setScoring(false);
+    }
+  };
+
+  const runQuickBuild = async () => {
+    if (!editing || building || !editing.claim.trim()) return;
+    setBuilding(true); setScoreErr(null); setAudit(null); setReasons([]);
+    try {
+      const result = await quickBuildBlock(editing.claim);
+      if (!result) { setScoreErr('Quick Build unreachable — add content manually and hit Score.'); return; }
+      setEditing(prev => {
+        if (!prev) return prev;
+        const layers = prev.layers.map((l, i) => ({
+          ...l,
+          content: result.layers[i]?.content || l.content,
+          framework_score: result.layers[i]?.score ?? 0,
+          ...(i === 0 ? { falsifiable: result.falsifiable } : {}),
+        }));
+        return { ...prev, layers };
+      });
+    } finally {
+      setBuilding(false);
     }
   };
 
@@ -177,12 +200,23 @@ export default function CascadeBuilderScreen() {
           {live!.underPressure && <Text style={s.pressureFlag}>⚡</Text>}
         </View>
 
+        <TouchableOpacity
+          style={[s.quickBuildBtn, (building || scoring || !editing.claim.trim()) && s.btnBusy]}
+          onPress={runQuickBuild}
+          disabled={building || scoring || !editing.claim.trim()}
+          activeOpacity={0.75}
+        >
+          <Text style={s.quickBuildBtnText}>
+            {building ? '⚡ building all 9 layers…' : '⚡ Quick Build — Sol writes all layers from your claim'}
+          </Text>
+        </TouchableOpacity>
+
         <View style={s.scoreRow}>
-          <TouchableOpacity style={[s.scoreBtn, scoring && s.btnBusy]} onPress={() => runScore('score')} disabled={scoring}>
-            <Text style={s.scoreBtnText}>{scoring ? '⊚ measuring…' : live!.scored ? '⊚ Re-score' : '⊚ Auto-score'}</Text>
+          <TouchableOpacity style={[s.scoreBtn, (scoring || building) && s.btnBusy]} onPress={() => runScore('score')} disabled={scoring || building}>
+            <Text style={s.scoreBtnText}>{scoring ? '⊚ scoring…' : live!.scored ? '⊚ Re-score' : '⊚ Score'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[s.auditBtn, scoring && s.btnBusy]} onPress={() => runScore('audit')} disabled={scoring}>
-            <Text style={s.auditBtnText}>⚔ Depth Audit</Text>
+          <TouchableOpacity style={[s.auditBtn, (scoring || building) && s.btnBusy]} onPress={() => runScore('audit')} disabled={scoring || building}>
+            <Text style={s.auditBtnText}>⚔ Audit</Text>
           </TouchableOpacity>
         </View>
 
@@ -331,9 +365,27 @@ export default function CascadeBuilderScreen() {
               : `truth pressure engine · ${blocks.length} block${blocks.length !== 1 ? 's' : ''}`}
           </Text>
         </View>
-        <TouchableOpacity style={s.addBtnInline} onPress={() => setEditing(createEmptyBlock())}>
-          <Text style={s.addBtnInlineText}>+ Add block</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          {blocks.length > 0 && (
+            <View style={s.viewToggle}>
+              <TouchableOpacity
+                onPress={() => setViewMode('pyramid')}
+                style={[s.viewToggleBtn, viewMode === 'pyramid' && s.viewToggleBtnActive]}
+              >
+                <Text style={[s.viewToggleText, viewMode === 'pyramid' && s.viewToggleTextActive]}>△</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setViewMode('list')}
+                style={[s.viewToggleBtn, viewMode === 'list' && s.viewToggleBtnActive]}
+              >
+                <Text style={[s.viewToggleText, viewMode === 'list' && s.viewToggleTextActive]}>≡</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity style={s.addBtnInline} onPress={() => setEditing(createEmptyBlock())}>
+            <Text style={s.addBtnInlineText}>+ Add</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Pyramid score bar */}
@@ -353,8 +405,41 @@ export default function CascadeBuilderScreen() {
         </View>
       )}
 
+      {/* ── LIST VIEW ─────────────────────────────────────────────────────── */}
+      {viewMode === 'list' && blocks.length > 0 && (
+        <View style={{ marginBottom: 16 }}>
+          {sorted.map(b => {
+            const score    = effAgg(b);
+            const band     = getScoreBand(score);
+            const pressure = blockUnderPressure(b);
+            const bPi      = computePi(b.layers, effMode(b));
+            return (
+              <TouchableOpacity
+                key={b.id}
+                style={[s.listRow, { borderLeftColor: band.textColor }, pressure && s.blockPressure]}
+                onPress={() => { setEditing(b); }}
+                activeOpacity={0.75}
+              >
+                <View style={[s.listScoreBadge, { backgroundColor: band.textColor + '22', borderColor: band.textColor + '55' }]}>
+                  <Text style={[s.listScore, { color: band.textColor }]}>{score || '—'}</Text>
+                  <Text style={[s.listBand, { color: band.textColor + '99' }]}>{band.label}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.listClaim} numberOfLines={3}>{b.claim || '(no claim — tap to edit)'}</Text>
+                  <Text style={[s.listMeta, { color: piBand(bPi).color }]}>
+                    Π {bPi} · {piBand(bPi).label} PRESSURE{pressure ? '  ⚡' : ''}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* ── PYRAMID VIEW ──────────────────────────────────────────────────── */}
+
       {/* HERO TENSION — biggest contradiction at the top */}
-      {worstTension !== null && (
+      {viewMode === 'pyramid' && worstTension !== null && (
         <View style={s.heroTension}>
           <View style={s.heroTensionHeader}>
             <Text style={s.heroTensionKicker}>⚡ BIGGEST CONTRADICTION</Text>
@@ -383,7 +468,7 @@ export default function CascadeBuilderScreen() {
       )}
 
       {/* PYRAMID visual */}
-      {pyramidRows.length > 0 && (
+      {viewMode === 'pyramid' && pyramidRows.length > 0 && (
         <View style={s.pyramidWrap}>
           <Text style={s.pyramidTopLabel}>STRENGTH ↑</Text>
           {pyramidRows.map((row, ri) => {
@@ -439,19 +524,13 @@ export default function CascadeBuilderScreen() {
                           </Text>
                         )}
                         {ri === 2 && (
-                          <Text style={s.pClaimXs} numberOfLines={1}>
-                            {b.claim?.slice(0, 18)}
-                          </Text>
+                          <Text style={s.pClaimXs} numberOfLines={1}>{b.claim}</Text>
                         )}
                         {ri === 3 && (
-                          <Text style={s.pClaimTiny} numberOfLines={1}>
-                            {b.claim?.slice(0, 12)}
-                          </Text>
+                          <Text style={s.pClaimTiny} numberOfLines={1}>{b.claim}</Text>
                         )}
                         {ri >= 4 && (
-                          <Text style={s.pClaimTiny} numberOfLines={1}>
-                            {b.claim?.slice(0, 8)}
-                          </Text>
+                          <Text style={s.pClaimTiny} numberOfLines={1}>{b.claim}</Text>
                         )}
                         {pressure && <Text style={s.pPressure}>⚡</Text>}
                       </TouchableOpacity>
@@ -466,7 +545,7 @@ export default function CascadeBuilderScreen() {
       )}
 
       {/* EXPANDED BLOCK DETAIL — tap any block to see full claim + 9-layer breakdown */}
-      {expandedBlock !== null && (
+      {viewMode === 'pyramid' && expandedBlock !== null && (
         <View style={[s.expandedCard, { borderColor: expBand.textColor + '55' }]}>
           <View style={s.expandedHeader}>
             <View>
@@ -524,8 +603,8 @@ export default function CascadeBuilderScreen() {
         </View>
       )}
 
-      {/* Overflow blocks beyond 15 */}
-      {overflow.map(b => {
+      {/* Overflow blocks beyond 15 — pyramid mode only */}
+      {viewMode === 'pyramid' && overflow.map(b => {
         const score      = effAgg(b);
         const band       = getScoreBand(score);
         const pressure   = blockUnderPressure(b);
@@ -816,4 +895,39 @@ const s = StyleSheet.create({
 
   clearAllBtn:  { alignItems: 'center', paddingVertical: 12, marginTop: 4 },
   clearAllText: { color: SOL_THEME.textMuted, fontSize: 11, opacity: 0.5 },
+
+  // ── View toggle ──────────────────────────────────────────────────────────
+  viewToggle: {
+    flexDirection: 'row', borderRadius: 8, borderWidth: 1,
+    borderColor: '#fb923c33', overflow: 'hidden',
+  },
+  viewToggleBtn:        { paddingHorizontal: 12, paddingVertical: 6 },
+  viewToggleBtnActive:  { backgroundColor: '#fb923c22' },
+  viewToggleText:       { color: '#fb923c55', fontSize: 15, fontWeight: '800' },
+  viewToggleTextActive: { color: '#fb923c' },
+
+  // ── List view ────────────────────────────────────────────────────────────
+  listRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: 12, borderLeftWidth: 3,
+    backgroundColor: SOL_THEME.surface, marginBottom: 8,
+  },
+  listScoreBadge: {
+    alignItems: 'center', justifyContent: 'center',
+    width: 52, height: 52, borderRadius: 10, borderWidth: 1,
+  },
+  listScore:  { fontSize: 20, fontWeight: '800' },
+  listBand:   { fontSize: 7, fontWeight: '800', letterSpacing: 1, marginTop: 1 },
+  listClaim:  { color: SOL_THEME.text, fontSize: 13, fontWeight: '600', lineHeight: 19, marginBottom: 3 },
+  listMeta:   { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+
+  // ── Quick Build button ───────────────────────────────────────────────────
+  quickBuildBtn: {
+    paddingVertical: 14, alignItems: 'center', borderRadius: 10,
+    backgroundColor: '#1a0800', borderWidth: 1,
+    borderColor: '#fb923c88', marginBottom: 8,
+  },
+  quickBuildBtnText: {
+    color: '#fb923c', fontSize: 12, fontWeight: '800', letterSpacing: 0.5,
+  },
 });
