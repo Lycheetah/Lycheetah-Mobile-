@@ -848,6 +848,17 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
               )}
 
               {/* Natal chart summary — reads from zodiac_birth_v1 via sol_natal_cache */}
+              {!natalCache && (
+                <TouchableOpacity onPress={() => router.push('/(tabs)/zodiac' as any)}
+                  style={{ marginBottom: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#7B68EE33', backgroundColor: '#7B68EE08', borderLeftWidth: 3, borderLeftColor: '#7B68EE44', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Text style={{ color: '#7B68EE88', fontSize: 22 }}>✦</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#7B68EECC', fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 2 }}>Natal chart not set</Text>
+                    <Text style={{ color: '#555577', fontSize: 10, fontFamily: mono }}>Tap to set your birthdate in the Stars tab → your Sun, Moon & Rising appear here.</Text>
+                  </View>
+                  <Text style={{ color: '#7B68EE55', fontSize: 16 }}>›</Text>
+                </TouchableOpacity>
+              )}
               {natalCache && (
                 <View style={{ marginBottom: 14, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#7B68EE33', backgroundColor: '#7B68EE08', borderLeftWidth: 3, borderLeftColor: '#7B68EE' }}>
                   <Text style={{ color: '#7B68EE', fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 2, marginBottom: 10 }}>✦ NATAL SIGNATURE{natalCache.fullName ? ` · ${natalCache.fullName.toUpperCase()}` : ''}</Text>

@@ -484,6 +484,7 @@ export default function MysterySchoolScreen() {
   const [glyphSearch, setGlyphSearch] = useState('');
   const [drillCard, setDrillCard] = useState<{ id: string; glyph: string; name: string; options: string[]; answer: string } | null>(null);
   const [drillResult, setDrillResult] = useState<'correct' | 'wrong' | null>(null);
+  const [drillStreak, setDrillStreak] = useState(0);
   const [glyphCeremony, setGlyphCeremony] = useState<{ visible: boolean; glyphs: string[]; lessonName: string }>({ visible: false, glyphs: [], lessonName: '' });
   const ceremonyFade = useRef(new Animated.Value(0)).current;
 
@@ -2739,6 +2740,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
       if (!drillCard || drillResult) return;
       const correct = chosen === drillCard.answer;
       setDrillResult(correct ? 'correct' : 'wrong');
+      setDrillStreak(s => correct ? s + 1 : 0);
       if (correct) {
         const scores = { ...lamagueProgress.drillScores, [drillCard.id]: (lamagueProgress.drillScores[drillCard.id] ?? 0) + 1 };
         const mastered = [...lamagueProgress.masteredSymbols];
@@ -2908,12 +2910,35 @@ REJECTED = fails a core test — be direct about which one and why.`;
           {/* ── DRILLS ── */}
           {lamagueSection === 'drills' && (
             <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: DIM, fontSize: 11, fontFamily: MONO, letterSpacing: 2, marginBottom: 20 }}>FLASH CARD DRILL · 3 CORRECT = MASTERED</Text>
+              {/* Streak + mastery header */}
+              <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', marginBottom: 18 }}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: drillStreak >= 3 ? GRN : GOLD, fontSize: drillStreak >= 3 ? 22 : 18, fontFamily: MONO, fontWeight: '700' }}>{drillStreak}</Text>
+                  <Text style={{ color: DIM, fontSize: 8, fontFamily: MONO, letterSpacing: 1.5 }}>STREAK</Text>
+                </View>
+                <View style={{ flex: 1, height: 1, backgroundColor: BRDR }} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={{ color: GOLD, fontSize: 18, fontFamily: MONO, fontWeight: '700' }}>{masteredCount}/{LAMAGUE_SYMBOLS.length}</Text>
+                  <Text style={{ color: DIM, fontSize: 8, fontFamily: MONO, letterSpacing: 1.5 }}>MASTERED</Text>
+                </View>
+              </View>
               {drillCard ? (
                 <View style={{ width: '100%', maxWidth: 340 }}>
                   {/* Glyph card */}
                   <View style={{ backgroundColor: CARD, borderRadius: 16, borderWidth: 1, borderColor: BRDR, padding: 32, alignItems: 'center', marginBottom: 24 }}>
                     <Text style={{ color: GOLD, fontSize: 52, fontFamily: MONO, marginBottom: 12 }}>{drillCard.glyph}</Text>
+                    {/* Progress dots — how close to mastery for this symbol */}
+                    {(() => {
+                      const sc = lamagueProgress.drillScores[drillCard.id] ?? 0;
+                      const mastered = lamagueProgress.masteredSymbols.includes(drillCard.id);
+                      return (
+                        <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+                          {[0,1,2].map(i => (
+                            <Text key={i} style={{ color: mastered || i < sc ? GRN : DIM, fontSize: 14 }}>{mastered || i < sc ? '◆' : '◇'}</Text>
+                          ))}
+                        </View>
+                      );
+                    })()}
                     <Text style={{ color: DIM, fontSize: 11, fontFamily: MONO, letterSpacing: 2 }}>WHAT IS THIS SYMBOL?</Text>
                     {drillResult && (
                       <Text style={{ color: drillResult === 'correct' ? GRN : '#DD4444', fontSize: 13, fontFamily: MONO, fontWeight: '700', marginTop: 12 }}>
@@ -2952,6 +2977,104 @@ REJECTED = fails a core test — be direct about which one and why.`;
           )}
 
           {/* ── PROGRESS ── */}
+          {lamagueSection === 'progress' && (() => {
+            const byClassProgress = ['I','D','F','M','C','T','R','G'].map(cls => {
+              const syms = LAMAGUE_SYMBOLS.filter(s => s.cls === cls);
+              const mastered = syms.filter(s => lamagueProgress.masteredSymbols.includes(s.id)).length;
+              return { cls, total: syms.length, mastered };
+            }).filter(g => g.total > 0);
+
+            const inProgress = LAMAGUE_SYMBOLS.filter(s =>
+              !lamagueProgress.masteredSymbols.includes(s.id) &&
+              (lamagueProgress.drillScores[s.id] ?? 0) > 0
+            ).sort((a, b) => (lamagueProgress.drillScores[b.id] ?? 0) - (lamagueProgress.drillScores[a.id] ?? 0));
+
+            const unstarted = LAMAGUE_SYMBOLS.filter(s =>
+              !lamagueProgress.masteredSymbols.includes(s.id) &&
+              (lamagueProgress.drillScores[s.id] ?? 0) === 0
+            );
+
+            return (
+              <View style={{ padding: 16 }}>
+                {/* Overall bar */}
+                <View style={{ backgroundColor: CARD, borderRadius: 14, borderWidth: 1, borderColor: BRDR, padding: 18, marginBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                    <Text style={{ color: GOLD, fontSize: 13, fontFamily: MONO, fontWeight: '700', letterSpacing: 2 }}>OVERALL MASTERY</Text>
+                    <Text style={{ color: GOLD, fontSize: 22, fontFamily: MONO, fontWeight: '700' }}>{masteryPct}%</Text>
+                  </View>
+                  <View style={{ height: 6, backgroundColor: BRDR, borderRadius: 3, overflow: 'hidden' }}>
+                    <View style={{ width: `${masteryPct}%`, height: 6, backgroundColor: GRN, borderRadius: 3 }} />
+                  </View>
+                  <Text style={{ color: DIM, fontSize: 10, fontFamily: MONO, marginTop: 8 }}>{masteredCount} of {LAMAGUE_SYMBOLS.length} symbols mastered</Text>
+                </View>
+
+                {/* Per-class breakdown */}
+                <Text style={{ color: DIM, fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 10 }}>BY CLASS</Text>
+                {byClassProgress.map(({ cls, total, mastered: m }) => {
+                  const pct = total > 0 ? Math.round((m / total) * 100) : 0;
+                  const barCol = pct === 100 ? GRN : pct > 0 ? GOLD : BRDR;
+                  return (
+                    <View key={cls} style={{ marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ color: pct === 100 ? GRN : TXT, fontSize: 11, fontFamily: MONO, fontWeight: '700' }}>{cls} · {LM_CLASS_NAMES[cls]}</Text>
+                        <Text style={{ color: pct === 100 ? GRN : GOLD, fontSize: 11, fontFamily: MONO }}>{m}/{total}</Text>
+                      </View>
+                      <View style={{ height: 4, backgroundColor: BRDR, borderRadius: 2, overflow: 'hidden' }}>
+                        <View style={{ width: `${pct}%`, height: 4, backgroundColor: barCol, borderRadius: 2 }} />
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {/* In progress — closest to mastery */}
+                {inProgress.length > 0 && (
+                  <View style={{ marginTop: 18 }}>
+                    <Text style={{ color: DIM, fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 10 }}>CLOSEST TO MASTERY</Text>
+                    {inProgress.slice(0, 5).map(s => {
+                      const sc = lamagueProgress.drillScores[s.id] ?? 0;
+                      return (
+                        <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: CARD, borderRadius: 10, borderWidth: 1, borderColor: BRDR, padding: 10, marginBottom: 6 }}>
+                          <Text style={{ color: GOLD, fontSize: 22, fontFamily: MONO, width: 40 }}>{s.glyph}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: TXT, fontSize: 11, fontFamily: MONO, fontWeight: '700' }}>{s.name}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', gap: 4 }}>
+                            {[0,1,2].map(i => (
+                              <Text key={i} style={{ color: i < sc ? GRN : DIM, fontSize: 12 }}>{i < sc ? '◆' : '◇'}</Text>
+                            ))}
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {/* Next up */}
+                {unstarted.length > 0 && (
+                  <View style={{ marginTop: 18 }}>
+                    <Text style={{ color: DIM, fontSize: 9, fontFamily: MONO, letterSpacing: 2, marginBottom: 10 }}>NOT YET STARTED ({unstarted.length})</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {unstarted.slice(0, 12).map(s => (
+                        <View key={s.id} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: BRDR, backgroundColor: CARD }}>
+                          <Text style={{ color: DIM, fontSize: 16, fontFamily: MONO }}>{s.glyph}</Text>
+                        </View>
+                      ))}
+                      {unstarted.length > 12 && <Text style={{ color: DIM, fontSize: 10, fontFamily: MONO, alignSelf: 'center' }}>+{unstarted.length - 12} more</Text>}
+                    </View>
+                  </View>
+                )}
+
+                {masteredCount === LAMAGUE_SYMBOLS.length && (
+                  <View style={{ alignItems: 'center', marginTop: 24, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: GRN + '44', backgroundColor: GRN + '0A' }}>
+                    <Text style={{ color: GRN, fontSize: 28, fontFamily: MONO, marginBottom: 8 }}>◆</Text>
+                    <Text style={{ color: GRN, fontSize: 13, fontFamily: MONO, fontWeight: '700', letterSpacing: 2 }}>LAMAGUE MASTERED</Text>
+                    <Text style={{ color: DIM, fontSize: 10, fontFamily: MONO, marginTop: 6 }}>All {LAMAGUE_SYMBOLS.length} primitives held.</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+
           {/* ── SYMBOL FORGE ── */}
           {lamagueSection === 'forge' && (
             <View style={{ padding: 16 }}>
