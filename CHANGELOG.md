@@ -1,5 +1,31 @@
 # Changelog
 
+## [5.32.0] — 2026-06-29 — The Deepening: settings, encounter, PSI LOG, safe area
+
+### Settings
+- **Settings restructured** — ADVANCED pulled out of NOTIFICATIONS; now 6 independent sections: IDENTITY / AI PROVIDERS / EXPERIENCE / NOTIFICATIONS / ADVANCED / APP
+- **Privacy + Leave Gracefully always visible** — no longer buried inside APP collapsible
+- **Privacy Policy screen** — Sol-themed hero header, ⊚ glyph, Covenant highlighted. Route registered in `_layout.tsx` (was missing)
+- **Privacy Policy link** — proper tinted button in Settings, visible without expanding anything
+- **Footer version** corrected to v5.29.0 → v5.32.0
+
+### Battle / Encounter
+- **ENCOUNTER button** — always spawns zone entropy enemy (The Fog, Static, Dissolution etc.), never the player's own companion
+- **Enemy art fallback removed** — entropy enemies with no dedicated art show empty slot instead of Solara
+- **`entropyOnly` flag** added to `pickZoneEnemy` / `freshZoneWave` — random zone travel keeps companion discovery mechanic
+
+### Zone / Scene
+- **SCENE_H** — 300 → 400 (33% taller, more background art visible)
+
+### Zodiac / PSI LOG
+- **Practice-aware form fields** — RV gets coordinate language, Precognition gets future-sensing language, Ganzfeld gets sender language, General gets open practice language
+- **Entry cards** — show full label ("Remote Viewing") not raw key ("RV")
+
+### Fixes
+- **Safe area** — tab bar height = `54 + insets.bottom` via `useSafeAreaInsets`. Clears Android gesture nav bar and iPhone home indicator on all devices
+
+---
+
 ## [5.29.0] — 2026-06-29 — Audit pass: UI depth, de-bloat, encounter fixes
 
 ### UI Architecture
