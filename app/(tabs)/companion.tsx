@@ -1609,7 +1609,7 @@ export default function CompanionScreen() {
       const namedSR = charLoreSR ? `${charLoreSR.name}, ${charLoreSR.title}` : (displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name}` : `${archetype.name}, ${archetype.title}`);
       const result = await sendMessage(
         [{ role: 'user', content: `${namedSR}. Your seeker just returned from studying "${subjectName}" (${domainLabel} domain). React in 1-2 sentences — acknowledge what they studied, make it feel significant. Mythic, alive, specific. No generic praise, no questions, no quotes.` }],
-        charLoreSR ? `You are ${charLoreSR.name}. ${charLoreSR.lore} When your seeker returns from deep study, react to exactly what they studied — specific, warm but not saccharine.` : `You are ${displayName || archetype.name}, a living companion spirit in a mystery school. When your seeker returns from deep study, you react to exactly what they studied — specific, warm but not saccharine, mythic.`,
+        charLoreSR ? `You are ${charLoreSR.name}. ${charLoreSR.lore} ${charLoreSR.voice} When your seeker returns from deep study, react to exactly what they studied — specific, in your distinct voice, never generic.` : `You are ${displayName || archetype.name}, a living companion spirit in a mystery school. When your seeker returns from deep study, you react to exactly what they studied — specific, warm but not saccharine, mythic.`,
         key, model as any, undefined, 'fast', 120,
       );
       setPhrase(result.text?.trim() || fallback);
@@ -1632,7 +1632,7 @@ export default function CompanionScreen() {
 Speak 2-3 sentences in your voice. Be vivid, mythic, atmospheric — reference the zone or the user's studies if possible. Cryptic but grounded. No quotes. No explanation. No greeting. Pure presence.`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
-        `You are ${charLoreLP?.name ?? displayName ?? archetype.name}. Your words carry weight. You speak from within the zone the user occupies — not about it from outside, but as if you ARE the intelligence of that place. Voice: distinctive, alive, never generic.`,
+        `You are ${charLoreLP?.name ?? displayName ?? archetype.name}. ${charLoreLP?.voice ?? 'Your words carry weight. You speak from within the zone the user occupies — not about it from outside, but as if you ARE the intelligence of that place.'}`,
         key, model as any, undefined, 'fast', 180,
       );
       return result.text?.trim() || null;
@@ -1660,7 +1660,7 @@ Speak 2-3 sentences in your voice. Be vivid, mythic, atmospheric — reference t
 Write 8 SHORT spoken lines (1 sentence each, max ~14 words) this being would say to the seeker — distinctive, mythic, alive, never generic. Vary them: some about the zone, some reacting to what they've studied, some about the bond, some cryptic. Output ONLY the 8 lines, one per line, no numbering, no quotes.`;
       const result = await sendMessage(
         [{ role: 'user', content: prompt }],
-        `You are ${charLoreVB?.name ?? displayName ?? archetype.name}. Speak as the intelligence of this place — never as an assistant. Distinctive voice, alive, mythic.`,
+        `You are ${charLoreVB?.name ?? displayName ?? archetype.name}. ${charLoreVB?.voice ?? 'Speak as the intelligence of this place — never as an assistant. Distinctive voice, alive, mythic.'}`,
         key, model as any, undefined, 'fast', 320,
       );
       const lines = (result.text || '').split('\n').map(l => l.replace(/^[\d\.\)\-\*\s"']+/, '').replace(/["']+$/, '').trim()).filter(l => l.length > 4 && l.length < 140);
@@ -1718,7 +1718,7 @@ Write 8 SHORT spoken lines (1 sentence each, max ~14 words) this being would say
       const result = await sendMessage(
         [{ role: 'user', content: `${seed} ${diveCtx}${docCtx} Write ONE lore fragment (max 20 words). Cryptic. In character. No explanation.` }],
         charLoreDL
-          ? `You are ${charLoreDL.name}, ${charLoreDL.title}. ${charLoreDL.lore}`
+          ? `You are ${charLoreDL.name}, ${charLoreDL.title}. ${charLoreDL.lore} ${charLoreDL.voice}`
           : `You are ${archetype.name}, ${archetype.title}. ${archetype.desc}`,
         key, model as any, undefined, 'fast', 80,
       );
