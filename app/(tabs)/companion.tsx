@@ -718,6 +718,7 @@ export default function CompanionScreen() {
   const [companionHP,  setCompanionHP]  = useState(100);
 
   const [battle,         setBattle]        = useState<BattleState | null>(null);
+  const [pendingBattle,  setPendingBattle] = useState<BattleState | null>(null);
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
   const [activeTab,      setActiveTab]     = useState<'talk'|'companion'|'world'|'battle'|'gear'>('talk');
@@ -3238,13 +3239,8 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         onBonfire={() => campfireMode ? setCampfireMode(false) : setCampfireOpen(true)}
         onEncounter={() => {
           const sid = (currentRoomId.split('_')[0] as SkinId);
-          setBattle(freshZoneWave(sid, 1, undefined, playerStats.vit));
-          setActiveTab('battle');
-          setBattleMinimized(false);
-          setTabMinimized(false);
-          if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          // Jump straight to the fight — no scrolling to find it.
-          setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 120);
+          if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          setPendingBattle(freshZoneWave(sid, 1, undefined, playerStats.vit));
         }}
       />}
 
@@ -3660,10 +3656,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             onPress={() => {
               const rSkin = (currentRoomId.split('_')[0] as SkinId);
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              setBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit));
-              setActiveTab('battle');
-              setTabMinimized(false);
-              setBattleMinimized(false);
+              setPendingBattle(freshZoneWave(rSkin, 1, undefined, playerStats.vit));
             }}
             style={{ paddingVertical:13, borderRadius:4, borderWidth:2, borderColor:'#306230',
               backgroundColor:'#0F380F', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8, marginBottom:20 }}
@@ -7293,6 +7286,58 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         );
       })()}
     </Modal>
+
+    {/* ── ENCOUNTER PREVIEW MODAL ─────────────────────────────────────── */}
+    {pendingBattle && (
+      <View pointerEvents="box-none" style={{
+        position:'absolute', top:0, left:0, right:0, bottom:0,
+        alignItems:'center', justifyContent:'center',
+        backgroundColor:'#000000CC',
+      }}>
+        <View style={{
+          marginHorizontal:28, borderRadius:18, borderWidth:1,
+          borderColor:'#FF664488', backgroundColor:'#0A0508',
+          padding:24, alignItems:'center', gap:12,
+        }}>
+          <Text style={{ color:'#FF6644', fontSize:9, fontFamily:mono, letterSpacing:4 }}>⚔ ENCOUNTER</Text>
+          <Text style={{ color:'#FFFFFF', fontSize:22, fontWeight:'900', fontFamily:mono, letterSpacing:2, textAlign:'center' }}>
+            {pendingBattle.entityName}
+          </Text>
+          {pendingBattle.enemyLine ? (
+            <Text style={{ color:'#CCBBBB', fontSize:12, fontStyle:'italic', textAlign:'center', lineHeight:20, paddingHorizontal:8 }}>
+              "{pendingBattle.enemyLine}"
+            </Text>
+          ) : null}
+          <Text style={{ color:'#88668866', fontSize:10, fontFamily:mono, letterSpacing:1 }}>
+            WAVE {pendingBattle.wave} · {SKINS[(currentRoomId.split('_')[0] as SkinId)]?.name ?? 'Unknown Zone'}
+          </Text>
+          <View style={{ flexDirection:'row', gap:12, marginTop:8, width:'100%' }}>
+            <TouchableOpacity
+              onPress={() => setPendingBattle(null)}
+              style={{ flex:1, paddingVertical:14, borderRadius:10, borderWidth:1, borderColor:'#44334466', alignItems:'center' }}
+              activeOpacity={0.75}
+            >
+              <Text style={{ color:'#886688', fontSize:13, fontWeight:'700', fontFamily:mono }}>↩ RETREAT</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setBattle(pendingBattle);
+                setPendingBattle(null);
+                setActiveTab('battle');
+                setBattleMinimized(false);
+                setTabMinimized(false);
+                if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                setTimeout(() => scrollRef.current?.scrollTo({ y:0, animated:true }), 120);
+              }}
+              style={{ flex:2, paddingVertical:14, borderRadius:10, backgroundColor:'#3A0A0A', borderWidth:1, borderColor:'#FF664488', alignItems:'center' }}
+              activeOpacity={0.75}
+            >
+              <Text style={{ color:'#FF8866', fontSize:14, fontWeight:'900', fontFamily:mono, letterSpacing:1 }}>⚔ FIGHT</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    )}
 
     {/* ── FIRST ENCOUNTER OVERLAY ─────────────────────────────────────── */}
     {showFirstEncounter && (
