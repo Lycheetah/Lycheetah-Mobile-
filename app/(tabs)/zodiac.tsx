@@ -604,6 +604,12 @@ interface PsiEntry { id: string; date: string; type: PsiEntryType; target: strin
 const PSI_LOG_KEY = 'SOL_PSI_LOG';
 const PSI_PURPLE  = '#9B59B6';
 const PSI_TYPE_LABELS: Record<PsiEntryType, string> = { RV: 'Remote Viewing', PREC: 'Precognition', GANZFELD: 'Ganzfeld', GENERAL: 'Psi Practice' };
+const PSI_TYPE_FIELDS: Record<PsiEntryType, { targetLabel: string; targetPlaceholder: string; impressionPlaceholder: string; outcomePlaceholder: string }> = {
+  RV:       { targetLabel: 'TARGET / COORDINATES', targetPlaceholder: 'Target coordinates, image ID, or session code...', impressionPlaceholder: 'Shapes, textures, colours, locations, feelings — before the reveal...', outcomePlaceholder: 'What was the actual target?' },
+  PREC:     { targetLabel: 'EVENT / QUESTION', targetPlaceholder: 'What future event or question were you sensing into?', impressionPlaceholder: 'What did you sense, dream, or feel about what was coming?', outcomePlaceholder: 'What actually happened? How did it compare?' },
+  GANZFELD: { targetLabel: 'SENDER\'S TARGET', targetPlaceholder: 'Image or object the sender was focused on...', impressionPlaceholder: 'Images, words, scenes that arose during the session — before the reveal...', outcomePlaceholder: 'What was the actual target image? Match or miss?' },
+  GENERAL:  { targetLabel: 'PRACTICE CONTEXT', targetPlaceholder: 'What was the practice or intention? (e.g. spontaneous knowing, intuitive hit, dream...)', impressionPlaceholder: 'What arose, was noticed, or came through during the experience?', outcomePlaceholder: 'Any verification, reflection, or outcome?' },
+};
 const PSI_RESULT_COLOR: Record<PsiResult, string>   = { hit: '#4CAF50', miss: '#E74C3C', partial: '#FF9F1C', pending: '#555577' };
 
 // ─── THE ZONK ZONE ───────────────────────────────────────────────────────────
@@ -3320,17 +3326,17 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                 </TouchableOpacity>
               ))}
             </View>
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>TARGET / PROMPT</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>{PSI_TYPE_FIELDS[psiDraft.type].targetLabel}</Text>
             <TextInput
               value={psiDraft.target} onChangeText={v => setPsiDraft(d => ({ ...d, target: v }))}
-              placeholder="Coordinates, image ID, event to predict..."
+              placeholder={PSI_TYPE_FIELDS[psiDraft.type].targetPlaceholder}
               placeholderTextColor={SOL_THEME.textMuted + '88'}
               style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10 }}
             />
-            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>IMPRESSIONS (before reveal)</Text>
+            <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>IMPRESSIONS</Text>
             <TextInput
               value={psiDraft.impression} onChangeText={v => setPsiDraft(d => ({ ...d, impression: v }))}
-              placeholder="What came through — images, feelings, words..."
+              placeholder={PSI_TYPE_FIELDS[psiDraft.type].impressionPlaceholder}
               placeholderTextColor={SOL_THEME.textMuted + '88'}
               multiline numberOfLines={3}
               style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10, minHeight: 64, textAlignVertical: 'top' }}
@@ -3338,7 +3344,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontWeight: '700', letterSpacing: 1.5, fontFamily: mono, marginBottom: 4 }}>OUTCOME / VERIFICATION (optional)</Text>
             <TextInput
               value={psiDraft.outcome} onChangeText={v => setPsiDraft(d => ({ ...d, outcome: v }))}
-              placeholder="What was the actual target / what happened?"
+              placeholder={PSI_TYPE_FIELDS[psiDraft.type].outcomePlaceholder}
               placeholderTextColor={SOL_THEME.textMuted + '88'}
               style={{ backgroundColor: SOL_THEME.background, color: SOL_THEME.text, borderRadius: 8, borderWidth: 1, borderColor: SOL_THEME.border, padding: 10, fontSize: 12, marginBottom: 10 }}
             />
@@ -3371,7 +3377,7 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: mono }}>{entry.date}</Text>
                   <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: PSI_PURPLE + '22' }}>
-                    <Text style={{ color: PSI_PURPLE, fontSize: 9, fontWeight: '700' }}>{entry.type}</Text>
+                    <Text style={{ color: PSI_PURPLE, fontSize: 9, fontWeight: '700' }}>{PSI_TYPE_LABELS[entry.type]}</Text>
                   </View>
                   {entry.result === 'pending' && entry.outcome ? (
                     <View style={{ flexDirection: 'row', gap: 4, marginLeft: 'auto' }}>

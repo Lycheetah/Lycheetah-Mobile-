@@ -4,6 +4,7 @@ import {
   View, Text, Platform, TouchableOpacity, Modal, ScrollView,
   TextInput, KeyboardAvoidingView, Linking, Animated, AppState,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SOL_THEME } from '../../constants/theme';
 import { useAppMode } from '../../lib/app-mode';
@@ -97,6 +98,7 @@ const HELP_SECTIONS = [
 
 export default function TabLayout() {
   const { t } = useAppMode();
+  const insets = useSafeAreaInsets();
   const [helpVisible, setHelpVisible] = useState(false);
   const [tourForced, setTourForced] = useState(false);
   const [openHelpSection, setOpenHelpSection] = useState<string | null>(null);  // collapsible per-tab help zones
@@ -173,8 +175,8 @@ export default function TabLayout() {
             backgroundColor: '#070509',          // obsidian — so the hot colors glow against black
             borderTopColor: '#FF2D7822',          // hot-pink hairline
             borderTopWidth: 1,
-            height: Platform.OS === 'ios' ? 82 : 60,
-            paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+            height: 54 + insets.bottom,
+            paddingBottom: insets.bottom,
           },
 
           tabBarActiveTintColor: HOT.companion,   // default hot pink (per-screen overrides below)
