@@ -668,6 +668,10 @@ export default function CompanionScreen() {
   const [stage,         setStage]         = useState<EvolutionStage>(0);
   const [xp,            setXP]            = useState(0);
   const [phrase,        setPhrase]        = useState<string | null>(null);
+  const [fieldFallback] = useState(() => {
+    const opts = ['Your pattern suggests depth over breadth — the companion is responding.','Three domains in the last seven dives. The field is forming a shape.','Consistency is compounding. The creature knows.','The dives are feeding something. It shows.'];
+    return opts[Math.floor(Math.random() * opts.length)];
+  });
   const [voicePool,     setVoicePool]     = useState<string[]>([]);   // cached batch of fresh, character+study-aware lines
   const voiceGenRef = useRef(false);
   const [showRelics,    setShowRelics]    = useState(false);
@@ -2237,8 +2241,9 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
       setTimeout(() => setAttackAnim(false), 600);
       return;
     }
-    const sig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
-    setCompanionBattleLine(sig.text);
+    const _aqp = COMPANION_BATTLE_QUIPS[activeSkin as SkinId];
+    const _aqLine = _aqp ? _aqp[Math.floor(Math.random() * _aqp.length)] : BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)].text;
+    setCompanionBattleLine(_aqLine);
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(action === 'attack' ? Haptics.ImpactFeedbackStyle.Heavy : Haptics.ImpactFeedbackStyle.Medium);
     setAttackAnim(true);
@@ -2402,8 +2407,9 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
   const handleSpell = async (spell: SpellDef) => {
     if (!battle || battle.won || tokensLeft < spell.cost || attackAnim) return;
     setSpellMenuOpen(false);
-    const _spellSig = BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)];
-    setCompanionBattleLine(_spellSig.text);
+    const _sqp = COMPANION_BATTLE_QUIPS[activeSkin as SkinId];
+    const _sqLine = _sqp ? _sqp[Math.floor(Math.random() * _sqp.length)] : BATTLE_MYSTERY_SIGNALS[Math.floor(Math.random() * BATTLE_MYSTERY_SIGNALS.length)].text;
+    setCompanionBattleLine(_sqLine);
     const def = getEnemyDef(battle.entityName);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setAttackAnim(true);
@@ -6166,7 +6172,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
             </TouchableOpacity>
             {!fieldNoteCollapsed && (<>
             <Text style={{ color:SOL_THEME.text, fontSize:12, fontStyle:'italic', lineHeight:18 }}>
-              {fieldNote ?? FIELD_FALLBACKS[Math.floor(Math.random()*FIELD_FALLBACKS.length)]}
+              {fieldNote ?? fieldFallback}
             </Text>
             {fieldNoteLoading && (
               <ActivityIndicator size="small" color={SOL_THEME.textMuted} style={{ marginTop:8, alignSelf:'flex-start' }} />
@@ -7294,10 +7300,10 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
 
     {/* ── ENCOUNTER PREVIEW MODAL ─────────────────────────────────────── */}
     {pendingBattle && (
-      <View pointerEvents="box-none" style={{
+      <View style={{
         position:'absolute', top:0, left:0, right:0, bottom:0,
         alignItems:'center', justifyContent:'center',
-        backgroundColor:'#000000CC',
+        backgroundColor:'#000000DD',
       }}>
         <View style={{
           marginHorizontal:28, borderRadius:18, borderWidth:1,
