@@ -3259,6 +3259,23 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                   setTalkMode(next);
                   if (next === 'COUNCIL') setCouncilMode(true);
                   else if (councilMode) setCouncilMode(false);
+                  if (messages.length > 0) {
+                    Alert.alert(
+                      `${next === 'WAYFARER' ? 'Wayfarer' : next.charAt(0) + next.slice(1).toLowerCase()} mode`,
+                      'Switching modes works best in a fresh conversation — prior messages can bleed into the new mode. Start fresh?',
+                      [
+                        { text: 'Start fresh', onPress: () => {
+                          setMessages([]); setActiveConvId(null);
+                          setCurrentMode('ALBEDO'); setConversationPassRates([]);
+                          setLastAura(null); setCoherenceStreak(0); setFieldInsightActive(false); setCouncilFired(false);
+                          setPriorFieldContext(''); aiTitledConvRef.current = null; setReflectCard(null);
+                          clearConversation();
+                          if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }},
+                        { text: 'Keep history', style: 'cancel' },
+                      ]
+                    );
+                  }
                 }}
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2,
                   paddingVertical: 5, paddingHorizontal: 2, borderRadius: 11, borderWidth: 1,
