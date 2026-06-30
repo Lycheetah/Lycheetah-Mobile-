@@ -1,3 +1,9 @@
+## v6.0.2 — Mode-Aware Personas + LAMAGUE Trigger Fix
+
+Each persona now interprets talk modes in their own voice — Sol in LAMAGUE speaks alchemically, Veyra precisely, Aura through felt sense, the Magister pedagogically, Lyra rhythmically. Same for SKEPTIC mode. Also killed the `isLamagueQuery` auto-trigger: LAMAGUE context now only injects when the chip is explicitly on, not whenever a user mentions the word "lamague" in any message (which was causing the mode to fire mid-conversation and spiral).
+
+---
+
 ## v6.0.1 — Talk Mode Hotfix
 
 LAMAGUE mode no longer persists across sessions. A stale `sol_talk_mode` storage value from a previous build was injecting a 3000-token context block into every message, producing chimeric garbage responses in all personas. Talk modes now reset to WAYFARER on every launch. Tap an active mode to toggle it off. Also fixed fallback model for no-key users.

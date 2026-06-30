@@ -21,6 +21,7 @@ import { SOL_THEME, Mode, MODE_COLORS, MODE_DESCRIPTIONS, PERSONA_WORLDS } from 
 import { sendMessage, sendWithTools, sendViaFreeTier, Message, AIModel, getProviderFromModel, solSpeak } from '../../lib/ai-client';
 import { getActiveTools, TOOL_DISPLAY } from '../../lib/tools/definitions';
 import { isLamagueQuery, buildLamagueBlock } from '../../lib/lamague-context';
+import { buildPersonaModeInstruction } from '../../lib/mode-instructions';
 import { executeTool, ExecutorContext } from '../../lib/tools/executor';
 import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, LYRA_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
@@ -1623,8 +1624,8 @@ export default function SolChat() {
       ? 'Give thorough, detailed responses. Expand fully. Do not truncate.'
       : 'Match response length naturally to the complexity of the question.';
     const chaosInstruction = chaosMode ? '\n\n↯ CHAOS MODE ACTIVE: Be more playful, symbolic, and unpredictable than usual. Use unexpected metaphors, LAMAGUE symbols, paradoxical framings. Stay truthful and constitutional — just spicier. Let the trickster in.' : '';
-    const lamagueInstruction = (talkMode === 'LAMAGUE' || isLamagueQuery(text)) ? `\n\n${buildLamagueBlock()}\n\nLAMAGUE MODE: Weave LAMAGUE symbols naturally throughout your response. Each symbol should carry meaning — not decoration.` : '';
-    const skepticInstruction = talkMode === 'SKEPTIC' ? '\n\nSKEPTIC MODE: Reframe all mystical, spiritual, and symbolic language into psychological utility language. "Shadow work" → "confronting unconscious patterns". "Sigil" → "intention anchor". "Aura" → "field of attention and affect". Keep the depth, remove the mysticism. Speak to the part of the user that thinks scientifically.' : '';
+    const lamagueInstruction = talkMode === 'LAMAGUE' ? `\n\n${buildLamagueBlock()}\n\n${buildPersonaModeInstruction(persona, 'LAMAGUE')}` : '';
+    const skepticInstruction = talkMode === 'SKEPTIC' ? `\n\n${buildPersonaModeInstruction(persona, 'SKEPTIC')}` : '';
     const lang = await getLanguage();
     const langInstruction = lang !== 'English' ? `\n\nREPLY IN ${lang.toUpperCase()} — regardless of the language of the user's message.` : '';
     const _hour = new Date().getHours();
