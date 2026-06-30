@@ -478,7 +478,7 @@ export default function OnboardingScreen() {
                 bullets: [
                   'Sun, moon, rising + all 12 houses + planetary positions',
                   'Daily transit readings tied to your learning history',
-                  'Sigil forge, oracle, and three-card tarot spread',
+                  'Sigil forge, oracle, and 5-card Celtic Cross spread',
                   'Real astronomy, not sun-sign astrology',
                 ],
               },

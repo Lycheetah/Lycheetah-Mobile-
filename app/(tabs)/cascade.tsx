@@ -34,32 +34,32 @@ import {
 } from '../../lib/intelligence/cascade-store';
 import { auditCascadeBlock, applyVerdict, quickBuildBlock, type CascadeVerdict } from '../../lib/intelligence/cascade-judge';
 
-const DISPLAY_MODE = 'composite' as const;
 const STEP = 5;
 const PRESSURE_AXIOM_MIN = 50;
 const PRESSURE_COHERENCE_MAX = 40;
 const PYRAMID_ROWS = [1, 2, 3, 4, 5];
 const ROW_TIERS = ['BEDROCK', 'STRONG', 'MIDDLE', 'CONTESTED', 'FRONTIER'];
 
-function layerVal(l: CascadeBlock['layers'][number] | undefined): number {
+function layerVal(l: CascadeBlock['layers'][number] | undefined, mode: ScoreMode = 'framework'): number {
+  if (mode === 'sovereign') return l?.sovereign_score || 0;
   return l?.framework_score || l?.sovereign_score || 0;
 }
-function blockUnderPressure(b: CascadeBlock): boolean {
-  const axiom = layerVal(b.layers[0]);
-  const coherence = layerVal(b.layers[3]);
+function blockUnderPressure(b: CascadeBlock, mode: ScoreMode = 'framework'): boolean {
+  const axiom = layerVal(b.layers[0], mode);
+  const coherence = layerVal(b.layers[3], mode);
   return axiom > PRESSURE_AXIOM_MIN && coherence < PRESSURE_COHERENCE_MAX;
 }
-function effAgg(b: CascadeBlock): number {
-  return b.score_aggregate || b.sovereign_score_aggregate || 0;
-}
-function effMode(b: CascadeBlock): ScoreMode {
-  return b.layers.some(l => (l.framework_score || 0) > 0) ? 'composite' : 'sovereign';
+// mode: 'framework' = AUTO engine scores, 'sovereign' = user's own scores
+function effAgg(b: CascadeBlock, mode: ScoreMode = 'framework'): number {
+  return mode === 'sovereign'
+    ? (b.sovereign_score_aggregate || 0)
+    : (b.score_aggregate || 0);
 }
 function piBand(pi: number): { label: string; color: string } {
   if (pi < 100) return { label: 'LOW',      color: '#4ade80' };
   if (pi < 200) return { label: 'MODERATE', color: '#facc15' };
   if (pi < 350) return { label: 'HIGH',     color: '#fb923c' };
-  return { label: 'EXTREME', color: '#f87171' };
+  return { label: 'PEAK',     color: '#f87171' };
 }
 const LAYER_GROUP: Record<number, string> = {
   0: 'CORE', 1: 'CORE', 2: 'CORE',
@@ -80,6 +80,9 @@ export default function CascadeBuilderScreen() {
   const [reasons, setReasons]       = useState<string[]>([]);
   const [building, setBuilding]     = useState(false);
   const [viewMode, setViewMode]     = useState<'pyramid' | 'list'>('pyramid');
+  // AUTO = engine scores only (no user override). MANUAL = user scores only (no engine).
+  const [pyramidMode, setPyramidMode] = useState<'auto' | 'manual'>('auto');
+  const scoreMode: ScoreMode = pyramidMode === 'auto' ? 'framework' : 'sovereign';
 
   // ── Pyramid management ──────────────────────────────────────────────────
   const [pyramids, setPyramids]     = useState<PyramidMeta[]>([]);
@@ -156,14 +159,16 @@ export default function CascadeBuilderScreen() {
 
   const live = useMemo(() => {
     if (!editing) return null;
-    const score = computeBlockScore(editing.layers, DISPLAY_MODE);
-    const pi    = computePi(editing.layers, DISPLAY_MODE);
+    const score = computeBlockScore(editing.layers, scoreMode);
+    const pi    = computePi(editing.layers, scoreMode);
     const band  = getScoreBand(score);
-    const underPressure = blockUnderPressure(editing);
-    const scored = editing.layers.some(l => (l.framework_score || 0) > 0);
+    const underPressure = blockUnderPressure(editing, scoreMode);
+    const scored = pyramidMode === 'auto'
+      ? editing.layers.some(l => (l.framework_score || 0) > 0)
+      : editing.layers.some(l => (l.sovereign_score || 0) > 0);
     const filled = editing.layers.filter(l => (l.content || '').trim().length > 0).length;
     return { score, pi, band, underPressure, scored, filled };
-  }, [editing]);
+  }, [editing, scoreMode, pyramidMode]);
 
   const setLayer = (i: number, patch: Partial<CascadeBlock['layers'][number]>) => {
     if (!editing) return;
@@ -267,25 +272,29 @@ export default function CascadeBuilderScreen() {
           {live!.underPressure && <Text style={s.pressureFlag}>⚡</Text>}
         </View>
 
-        <TouchableOpacity
-          style={[s.quickBuildBtn, (building || scoring || !editing.claim.trim()) && s.btnBusy]}
-          onPress={runQuickBuild}
-          disabled={building || scoring || !editing.claim.trim()}
-          activeOpacity={0.75}
-        >
-          <Text style={s.quickBuildBtnText}>
-            {building ? '⚡ building all 9 layers…' : '⚡ Quick Build — Sol writes all layers from your claim'}
-          </Text>
-        </TouchableOpacity>
+        {pyramidMode === 'auto' && (
+          <>
+            <TouchableOpacity
+              style={[s.quickBuildBtn, (building || scoring || !editing.claim.trim()) && s.btnBusy]}
+              onPress={runQuickBuild}
+              disabled={building || scoring || !editing.claim.trim()}
+              activeOpacity={0.75}
+            >
+              <Text style={s.quickBuildBtnText}>
+                {building ? '⚡ building all 9 layers…' : '⚡ Quick Build — Sol writes all layers from your claim'}
+              </Text>
+            </TouchableOpacity>
 
-        <View style={s.scoreRow}>
-          <TouchableOpacity style={[s.scoreBtn, (scoring || building) && s.btnBusy]} onPress={() => runScore('score')} disabled={scoring || building}>
-            <Text style={s.scoreBtnText}>{scoring ? '⊚ scoring…' : live!.scored ? '⊚ Re-score' : '⊚ Score'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[s.auditBtn, (scoring || building) && s.btnBusy]} onPress={() => runScore('audit')} disabled={scoring || building}>
-            <Text style={s.auditBtnText}>⚔ Audit</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={s.scoreRow}>
+              <TouchableOpacity style={[s.scoreBtn, (scoring || building) && s.btnBusy]} onPress={() => runScore('score')} disabled={scoring || building}>
+                <Text style={s.scoreBtnText}>{scoring ? '⊚ scoring…' : live!.scored ? '⊚ Re-score' : '⊚ Score'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.auditBtn, (scoring || building) && s.btnBusy]} onPress={() => runScore('audit')} disabled={scoring || building}>
+                <Text style={s.auditBtnText}>⚔ Audit</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         {scoreErr && <Text style={s.scoreErr}>{scoreErr}</Text>}
 
@@ -305,6 +314,7 @@ export default function CascadeBuilderScreen() {
           const ld       = editing.layers[i];
           const verdict  = ld?.framework_score || 0;
           const override = ld?.sovereign_score || 0;
+          const displayScore = pyramidMode === 'auto' ? verdict : override;
           const reason   = reasons[i];
           const group    = LAYER_GROUP[i];
           const gColor   = GROUP_COLOR[group];
@@ -320,8 +330,8 @@ export default function CascadeBuilderScreen() {
                     <Text style={[s.layerIndex, { color: gColor }]}>{i}.</Text>
                     <Text style={s.layerName}>{layer.name}</Text>
                   </View>
-                  {verdict > 0 ? (
-                    <Text style={[s.layerVal, { color: getScoreBand(verdict).textColor }]}>{verdict}</Text>
+                  {displayScore > 0 ? (
+                    <Text style={[s.layerVal, { color: getScoreBand(displayScore).textColor }]}>{displayScore}</Text>
                   ) : (
                     <Text style={[s.layerVal, { color: SOL_THEME.textMuted }]}>—</Text>
                   )}
@@ -335,24 +345,26 @@ export default function CascadeBuilderScreen() {
                   onChangeText={t => setLayer(i, { content: t })}
                   multiline
                 />
-                {reason ? <Text style={s.layerReason}>⊚ {reason}</Text> : null}
-                <View style={s.overrideRow}>
-                  <Text style={s.overrideLabel}>YOUR CALL</Text>
-                  <View style={s.stepRow}>
-                    <TouchableOpacity style={s.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.max(0, override - STEP) })}>
-                      <Text style={s.stepBtnText}>−</Text>
-                    </TouchableOpacity>
-                    <View style={s.stepTrack}>
-                      <View style={[s.stepFill, { width: `${override}%`, backgroundColor: getScoreBand(override).textColor }]} />
+                {reason && pyramidMode === 'auto' ? <Text style={s.layerReason}>⊚ {reason}</Text> : null}
+                {pyramidMode === 'manual' && (
+                  <View style={s.overrideRow}>
+                    <Text style={s.overrideLabel}>YOUR SCORE</Text>
+                    <View style={s.stepRow}>
+                      <TouchableOpacity style={s.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.max(0, override - STEP) })}>
+                        <Text style={s.stepBtnText}>−</Text>
+                      </TouchableOpacity>
+                      <View style={s.stepTrack}>
+                        <View style={[s.stepFill, { width: `${override}%`, backgroundColor: getScoreBand(override).textColor }]} />
+                      </View>
+                      <Text style={[s.overrideVal, { color: override > 0 ? SOL_THEME.text : SOL_THEME.textMuted }]}>
+                        {override > 0 ? override : '—'}
+                      </Text>
+                      <TouchableOpacity style={s.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.min(100, override + STEP) })}>
+                        <Text style={s.stepBtnText}>+</Text>
+                      </TouchableOpacity>
                     </View>
-                    <Text style={[s.overrideVal, { color: override > 0 ? SOL_THEME.text : SOL_THEME.textMuted }]}>
-                      {override > 0 ? override : '—'}
-                    </Text>
-                    <TouchableOpacity style={s.stepBtn} onPress={() => setLayer(i, { sovereign_score: Math.min(100, override + STEP) })}>
-                      <Text style={s.stepBtnText}>+</Text>
-                    </TouchableOpacity>
                   </View>
-                </View>
+                )}
                 {i === 0 && (
                   <TouchableOpacity
                     style={s.falsifiableRow}
@@ -389,12 +401,12 @@ export default function CascadeBuilderScreen() {
   // ─────────────────────────────────────────────────────────────────────────
   // PYRAMID VIEW
   // ─────────────────────────────────────────────────────────────────────────
-  const effFiles     = blocks.map(b => ({ id: b.id, score_aggregate: effAgg(b) }));
+  const effFiles     = blocks.map(b => ({ id: b.id, score_aggregate: effAgg(b, scoreMode) }));
   const pyramidPi    = computePyramidPi(effFiles);
   const pyramidScore = computePyramidScore(effFiles);
   const pyramidBand  = getScoreBand(pyramidScore);
 
-  const sorted = [...blocks].sort((a, b) => effAgg(b) - effAgg(a));
+  const sorted = [...blocks].sort((a, b) => effAgg(b, scoreMode) - effAgg(a, scoreMode));
   const pyramidRows: CascadeBlock[][] = [];
   let cursor = 0;
   for (const size of PYRAMID_ROWS) {
@@ -405,16 +417,16 @@ export default function CascadeBuilderScreen() {
   }
   const overflow = cursor < sorted.length ? sorted.slice(cursor) : [];
 
-  const shadow       = blocks.map(b => ({ ...b, score_aggregate: effAgg(b) }));
+  const shadow       = blocks.map(b => ({ ...b, score_aggregate: effAgg(b, scoreMode) }));
   const tensions     = detectTensions(shadow);
   const worstTension = tensions.length > 0
     ? tensions.reduce((a, b) => a.delta > b.delta ? a : b)
     : null;
 
   const expandedBlock = expanded ? (blocks.find(b => b.id === expanded) ?? null) : null;
-  const expScore = expandedBlock ? effAgg(expandedBlock) : 0;
+  const expScore = expandedBlock ? effAgg(expandedBlock, scoreMode) : 0;
   const expBand  = getScoreBand(expScore);
-  const expPi    = expandedBlock ? computePi(expandedBlock.layers, effMode(expandedBlock)) : 0;
+  const expPi    = expandedBlock ? computePi(expandedBlock.layers, scoreMode) : 0;
 
   return (
     <ScrollView style={s.screen} contentContainerStyle={s.content}>
@@ -433,6 +445,20 @@ export default function CascadeBuilderScreen() {
           </Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <View style={s.viewToggle}>
+            <TouchableOpacity
+              onPress={() => setPyramidMode('auto')}
+              style={[s.viewToggleBtn, pyramidMode === 'auto' && s.viewToggleBtnActive]}
+            >
+              <Text style={[s.viewToggleText, pyramidMode === 'auto' && s.viewToggleTextActive]}>AUTO</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setPyramidMode('manual')}
+              style={[s.viewToggleBtn, pyramidMode === 'manual' && s.viewToggleBtnActive]}
+            >
+              <Text style={[s.viewToggleText, pyramidMode === 'manual' && s.viewToggleTextActive]}>MANUAL</Text>
+            </TouchableOpacity>
+          </View>
           {blocks.length > 0 && (
             <View style={s.viewToggle}>
               <TouchableOpacity
@@ -516,10 +542,10 @@ export default function CascadeBuilderScreen() {
       {viewMode === 'list' && blocks.length > 0 && (
         <View style={{ marginBottom: 16 }}>
           {sorted.map(b => {
-            const score    = effAgg(b);
+            const score    = effAgg(b, scoreMode);
             const band     = getScoreBand(score);
-            const pressure = blockUnderPressure(b);
-            const bPi      = computePi(b.layers, effMode(b));
+            const pressure = blockUnderPressure(b, scoreMode);
+            const bPi      = computePi(b.layers, scoreMode);
             return (
               <TouchableOpacity
                 key={b.id}
@@ -587,9 +613,9 @@ export default function CascadeBuilderScreen() {
                 </Text>
                 <View style={s.pyramidRow}>
                   {row.map(b => {
-                    const score      = effAgg(b);
+                    const score      = effAgg(b, scoreMode);
                     const band       = getScoreBand(score);
-                    const pressure   = blockUnderPressure(b);
+                    const pressure   = blockUnderPressure(b, scoreMode);
                     const isApex     = ri === 0;
                     const isExpanded = expanded === b.id;
                     return (
@@ -685,7 +711,9 @@ export default function CascadeBuilderScreen() {
           <Text style={s.expandedClaim}>{expandedBlock.claim || '(no claim set — tap Edit to add one)'}</Text>
           <Text style={s.expandedLayersLabel}>9-LAYER BREAKDOWN</Text>
           {expandedBlock.layers.map((l, i) => {
-            const lScore = l.framework_score || l.sovereign_score || 0;
+            const lScore = scoreMode === 'sovereign'
+              ? (l.sovereign_score || 0)
+              : (l.framework_score || l.sovereign_score || 0);
             const lBand  = getScoreBand(lScore);
             const gColor = GROUP_COLOR[LAYER_GROUP[i]];
             return (
@@ -712,10 +740,10 @@ export default function CascadeBuilderScreen() {
 
       {/* Overflow blocks beyond 15 — pyramid mode only */}
       {viewMode === 'pyramid' && overflow.map(b => {
-        const score      = effAgg(b);
+        const score      = effAgg(b, scoreMode);
         const band       = getScoreBand(score);
-        const pressure   = blockUnderPressure(b);
-        const bPi        = computePi(b.layers, effMode(b));
+        const pressure   = blockUnderPressure(b, scoreMode);
+        const bPi        = computePi(b.layers, scoreMode);
         const isExpanded = expanded === b.id;
         return (
           <TouchableOpacity
