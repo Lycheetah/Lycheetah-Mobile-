@@ -731,6 +731,7 @@ export default function CompanionScreen() {
   const [shopSections, setShopSections] = useState<Record<string, boolean>>({ halos:false, wings:false, pets:false, secrets:false });
   const toggleShopSection = (k: string) => setShopSections(s => ({ ...s, [k]: !s[k] }));
   const [shopAllCollapsed, setShopAllCollapsed] = useState(false);
+  const [arsenalCollapsed, setArsenalCollapsed] = useState(true);
   const [battleWins,       setBattleWins]       = useState(0);
   const [purchasedZones,   setPurchasedZones]   = useState<string[]>([]);
   const [shopUnlocks,      setShopUnlocks]      = useState<string[]>([]);
@@ -6839,24 +6840,27 @@ No other text.`;
             <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>⊚ EQUIPPED</Text>
             <View style={{ flexDirection:'row', gap:8 }}>
               {([
-                { label:'HALO',  equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'WINGS', equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'PET',   equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
-              ] as { label:string; equipped:string|null; items:{id:string;name:string;file?:any}[]; clear:()=>Promise<void> }[]).map(({ label, equipped, items, clear }) => {
+                { label:'HALO',  sectionKey:'halos' as const, equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'WINGS', sectionKey:'wings' as const, equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'PET',   sectionKey:'pets'  as const, equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
+              ] as { label:string; sectionKey:'halos'|'wings'|'pets'; equipped:string|null; items:{id:string;name:string;file?:any}[]; clear:()=>Promise<void> }[]).map(({ label, sectionKey, equipped, items, clear }) => {
                 const item = equipped ? items.find(i => i.id === equipped) : null;
                 return (
-                  <View key={label} style={{ flex:1, borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:88 }}>
+                  <TouchableOpacity key={label} activeOpacity={0.8}
+                    onPress={() => { setShopAllCollapsed(false); setShopSections(s => ({ ...s, [sectionKey]: true })); }}
+                    style={{ flex:1, borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:88 }}>
                     {item?.file
                       ? <Image source={item.file as any} style={{ width:42, height:42, borderRadius:8, marginBottom:5 }} resizeMode="contain" />
                       : <Text style={{ fontSize:20, color:'#333344', marginBottom:5, lineHeight:28 }}>—</Text>
                     }
                     <Text style={{ color: item ? '#EEEEFF' : '#444455', fontSize:7.5, fontFamily:mono, fontWeight:'700', textAlign:'center' }} numberOfLines={1}>{item ? item.name : label}</Text>
-                    {item && (
-                      <TouchableOpacity onPress={clear} style={{ marginTop:4 }}>
-                        <Text style={{ color:'#555566', fontSize:7, fontFamily:mono }}>✕ remove</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
+                    {item
+                      ? <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); clear(); }} style={{ marginTop:4 }}>
+                          <Text style={{ color:'#555566', fontSize:7, fontFamily:mono }}>✕ remove</Text>
+                        </TouchableOpacity>
+                      : <Text style={{ color:'#333344', fontSize:7, fontFamily:mono, marginTop:4 }}>tap to browse</Text>
+                    }
+                  </TouchableOpacity>
                 );
               })}
             </View>
@@ -7290,8 +7294,16 @@ No other text.`;
           </View>
           {/* ARSENAL — earned weapons from battle drops */}
           <View style={{ marginTop:20, marginBottom:4 }}>
-            <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>⚔ ARSENAL — BATTLE DROPS</Text>
-            {earnedWeapons.length === 0 ? (
+            <TouchableOpacity onPress={() => setArsenalCollapsed(v => !v)} activeOpacity={0.7}
+              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6, marginBottom:arsenalCollapsed ? 0 : 10 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#7C3AED' }} />
+                <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2 }}>⚔ ARSENAL</Text>
+                {earnedWeapons.length > 0 && <Text style={{ color:'#7C3AED88', fontSize:9, fontFamily:mono }}>{earnedWeapons.length}</Text>}
+              </View>
+              <Text style={{ color:'#333344', fontSize:10, fontFamily:mono }}>{arsenalCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+            {!arsenalCollapsed && (earnedWeapons.length === 0 ? (
               <Text style={{ color:'#333344', fontSize:11, fontFamily:mono, textAlign:'center', paddingVertical:16 }}>No weapons yet — win battles to earn drops (35% drop rate)</Text>
             ) : (
               earnedWeapons.map(wid => {
@@ -7309,9 +7321,7 @@ No other text.`;
                       <Text style={{ color:'#EEEEFF', fontSize:11, fontWeight:'700', fontFamily:mono }}>{w.name}</Text>
                       <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, marginTop:2 }}>ATK+{w.atk} · SPD+{w.spd} · WIL+{w.wil}</Text>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => equipWeapon(isEquipped ? null : w.id)}
-                      activeOpacity={0.7}
+                    <TouchableOpacity onPress={() => equipWeapon(isEquipped ? null : w.id)} activeOpacity={0.7}
                       style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:8, borderWidth:1, borderColor: isEquipped ? rc+'88' : '#7C3AED66', backgroundColor: isEquipped ? rc+'18' : '#7C3AED18' }}>
                       <Text style={{ color: isEquipped ? rc : '#C084FC', fontSize:9, fontFamily:mono, fontWeight:'700' }}>
                         {isEquipped ? 'EQUIPPED ✦' : 'EQUIP'}
@@ -7320,94 +7330,7 @@ No other text.`;
                   </View>
                 );
               })
-            )}
-          </View>
-
-          <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:8, letterSpacing:1 }}>WEAPONS DROP IN BATTLE · MORE COSMETICS EACH BUILD</Text>
-
-          {/* FRONTIER ZONES — purchasable */}
-          <View style={{ marginTop:24, marginBottom:4 }}>
-            <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:4 }}>◈ FRONTIER ZONES</Text>
-            <Text style={{ color:'#444455', fontSize:9, fontFamily:mono, letterSpacing:1, marginBottom:12 }}>UNLOCK WITH ⟡ COINS OR ✧ VERAS</Text>
-            {[
-              { id:'amber_vault',    name:'AMBER VAULT',      price:500,  currency:'coins' as const, glyph:'⟟' },
-              { id:'crystal_spire', name:'CRYSTAL SPIRE',    price:750,  currency:'coins' as const, glyph:'✦' },
-              { id:'golden_library',name:'GOLDEN LIBRARY',   price:1000, currency:'coins' as const, glyph:'⊛' },
-              { id:'veras_garden',  name:'VERAS GARDEN',     price:200,  currency:'veras' as const, glyph:'✧' },
-              { id:'deep_market',   name:'THE DEEP MARKET',  price:300,  currency:'veras' as const, glyph:'◦' },
-              { id:'lycheetah_spire',name:'LYCHEETAH SPIRE', price:500,  currency:'veras' as const, glyph:'⊜' },
-            ].map(z => {
-              const owned = purchasedZones.includes(z.id);
-              const balance = z.currency === 'coins' ? coins : veras;
-              const canAfford = balance >= z.price;
-              const currencyGlyph = z.currency === 'coins' ? '⟡' : '✧';
-              return (
-                <View key={z.id} style={{ flexDirection:'row', alignItems:'center', marginBottom:8, padding:10, borderRadius:10, borderWidth:1, borderColor: owned ? '#44CC8844' : '#2A2A3A', backgroundColor: owned ? '#00220E' : '#0A0A14' }}>
-                  <Text style={{ color: owned ? '#44CC88' : '#AAAACC', fontSize:18, marginRight:10 }}>{z.glyph}</Text>
-                  <View style={{ flex:1 }}>
-                    <Text style={{ color: owned ? '#44CC88' : '#EEEEFF', fontSize:11, fontWeight:'700', fontFamily:mono }}>{z.name}</Text>
-                    <Text style={{ color:'#666677', fontSize:9, fontFamily:mono, marginTop:1 }}>
-                      {owned ? 'UNLOCKED — accessible in ZONES' : `${z.price} ${currencyGlyph} ${z.currency.toUpperCase()} · you have ${balance} ${currencyGlyph}`}
-                    </Text>
-                  </View>
-                  {!owned && (
-                    <TouchableOpacity
-                      onPress={async () => {
-                        if (!canAfford) { showToast(`Need ${z.price} ${currencyGlyph}`); return; }
-                        const next = [...purchasedZones, z.id];
-                        setPurchasedZones(next);
-                        await AsyncStorage.setItem('sol_zone_unlocks', JSON.stringify(next));
-                        if (z.currency === 'coins') {
-                          const nc = coins - z.price;
-                          setCoins(nc);
-                          await AsyncStorage.setItem('sol_coins', String(nc));
-                        } else {
-                          const nv = veras - z.price;
-                          setVeras(nv);
-                          await AsyncStorage.setItem('sol_veras', String(nv));
-                        }
-                        showToast(`◈ ${z.name} unlocked — explore it in ZONES`);
-                      }}
-                      activeOpacity={0.7}
-                      style={{ paddingHorizontal:12, paddingVertical:7, borderRadius:8, borderWidth:1, borderColor: canAfford ? '#DDAA4466' : '#333344', backgroundColor: canAfford ? '#DDAA4418' : '#111120' }}>
-                      <Text style={{ color: canAfford ? '#DDAA44' : '#444455', fontSize:9, fontFamily:mono, fontWeight:'700' }}>
-                        {canAfford ? `BUY ${z.price}${currencyGlyph}` : 'LOCKED'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-
-          {/* BATTLE ZONES — earn by wins */}
-          <View style={{ marginTop:16, marginBottom:4 }}>
-            <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:4 }}>⚔ BATTLE ZONES</Text>
-            <Text style={{ color:'#444455', fontSize:9, fontFamily:mono, letterSpacing:1, marginBottom:12 }}>UNLOCK BY WINNING BATTLES · YOU HAVE {battleWins} WIN{battleWins === 1 ? '' : 'S'}</Text>
-            {[
-              { id:'iron_maw',        name:'THE IRON MAW',      winsNeeded:10  },
-              { id:'crucible_heart',  name:'CRUCIBLE HEART',    winsNeeded:25  },
-              { id:'phantom_citadel', name:'PHANTOM CITADEL',   winsNeeded:50  },
-              { id:'bone_archive',    name:'THE BONE ARCHIVE',  winsNeeded:75  },
-              { id:'void_colosseum',  name:'VOID COLOSSEUM',    winsNeeded:100 },
-              { id:'war_sanctum',     name:'THE WAR SANCTUM',   winsNeeded:150 },
-              { id:'sovereign_forge', name:'SOVEREIGN FORGE',   winsNeeded:200 },
-            ].map(z => {
-              const unlocked = battleWins >= z.winsNeeded;
-              const remaining = z.winsNeeded - battleWins;
-              return (
-                <View key={z.id} style={{ flexDirection:'row', alignItems:'center', marginBottom:6, padding:10, borderRadius:10, borderWidth:1, borderColor: unlocked ? '#CC224444' : '#2A2A3A', backgroundColor: unlocked ? '#1A0006' : '#0A0A14' }}>
-                  <Text style={{ color: unlocked ? '#CC4444' : '#555566', fontSize:18, marginRight:10 }}>⚔</Text>
-                  <View style={{ flex:1 }}>
-                    <Text style={{ color: unlocked ? '#FF6666' : '#EEEEFF', fontSize:11, fontWeight:'700', fontFamily:mono }}>{z.name}</Text>
-                    <Text style={{ color:'#666677', fontSize:9, fontFamily:mono, marginTop:1 }}>
-                      {unlocked ? `UNLOCKED at ${z.winsNeeded} wins` : `${z.winsNeeded} wins needed · ${remaining} to go`}
-                    </Text>
-                  </View>
-                  {unlocked && <Text style={{ color:'#CC4444', fontSize:9, fontFamily:mono }}>OPEN ◈</Text>}
-                </View>
-              );
-            })}
+            ))}
           </View>
         </View>
       )}
