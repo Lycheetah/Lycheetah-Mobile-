@@ -1,3 +1,9 @@
+## v6.0.0 — The Living School
+
+Everything that shipped across v5.32–v5.43 earned this number. The app has a bonfire keeper, four tarot decks, a knowledge pyramid with two clean modes, a fifth voice, a quiet Sanctum, a real learning loop, and a companion that grows because you study. That is not an increment. That is a different thing.
+
+---
+
 ## v5.43.0 — Nocturna wired, EMBER named, CASCADE seed fixed
 
 ### Tarot
