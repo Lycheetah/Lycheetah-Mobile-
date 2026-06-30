@@ -21,6 +21,7 @@ import { getGearOverlay } from '../data/task2_gear_overlays';
 import { generateJournalEntry, saveJournalEntry } from '../data/task3_journal';
 import { WEAPONS, RARITY_COLOR as WEAPON_RARITY_COLOR, pickWeaponDrop } from '../../lib/weapons';
 import { LYCHEETAH_SECRETS, LycheetahSecret } from '../../lib/mystery-school/lycheetah-secrets';
+import { getAllSubjects } from '../../lib/mystery-school/subjects';
 import { VOID_BOSSES, VoidBoss, diveUnlocksBoss } from '../../lib/bosses';
 import {
   SkinId, SKINS, SKIN_IDS, SKIN_ORDER, SKIN_RARITY, RARITY_ORDER, RarityTier,
@@ -967,6 +968,9 @@ export default function CompanionScreen() {
   const [protegeCollapsed, setProtegeCollapsed] = useState(true);
   const [pendingWhisper, setPendingWhisper] = useState<{ text: string; subject: string } | null>(null);
   const [synthesisPending, setSynthesisPending] = useState<{ domains: string[] } | null>(null);
+  const [whatNextRec, setWhatNextRec] = useState<{ subjectName: string; reason: string } | null>(null);
+  const [whatNextLoading, setWhatNextLoading] = useState(false);
+  const [growthLogCollapsed, setGrowthLogCollapsed] = useState(true);
   const [campfireOpen, setCampfireOpen] = useState(false);
   const [talkFullscreen, setTalkFullscreen] = useState(false);
   const talkCancelRef = useRef(false);
@@ -3386,6 +3390,40 @@ You are testing their memory RIGHT NOW. Do not discuss the material — ask them
     } catch {}
   };
 
+  const getWhatNext = async () => {
+    if (whatNextLoading) return;
+    setWhatNextLoading(true);
+    setWhatNextRec(null);
+    try {
+      const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+      if (!key) return;
+      const studied = recentDives.map(d => d.subjectName);
+      const allSubjs = getAllSubjects().map(s => s.name);
+      const unstudied = allSubjs.filter(n => !studied.includes(n)).slice(0, 30);
+      const stageN = STAGES[stage as EvolutionStage]?.name ?? 'SEED';
+      const charLoreWN = COMPANION_LORE[skin.id as SkinId];
+      const charLine = charLoreWN ? `You are ${charLoreWN.name} — ${charLoreWN.title}. ${charLoreWN.lore}` : `You are ${archetype.name} — ${archetype.title}. ${archetype.desc}`;
+      const prompt = `${charLine}
+
+The seeker has studied: ${studied.join(', ') || 'nothing yet'}. Their companion stage is ${stageN}.
+Available next subjects (choose ONE): ${unstudied.join(', ')}.
+
+Recommend exactly ONE subject from the list above. Respond in this exact format:
+SUBJECT: [subject name exactly as listed]
+REASON: [one sentence in your own voice — why this one, why now, why them]
+
+No other text.`;
+      const result = await sendMessage([], prompt, key, model as any, undefined, 'normal', 80);
+      const text = result.text?.trim() ?? '';
+      const subjectMatch = text.match(/SUBJECT:\s*(.+)/i);
+      const reasonMatch = text.match(/REASON:\s*(.+)/i);
+      if (subjectMatch && reasonMatch) {
+        setWhatNextRec({ subjectName: subjectMatch[1].trim(), reason: reasonMatch[1].trim() });
+      }
+    } catch {}
+    finally { setWhatNextLoading(false); }
+  };
+
   const startSummonCeremony = () => {
     setShowCompanionIntro(false);
     setShowSummonCeremony(true);
@@ -4078,6 +4116,29 @@ You are testing their memory RIGHT NOW. Do not discuss the material — ask them
             </TouchableOpacity>
           )}
 
+          {/* ── WHAT NEXT (LEARN-4) ─────────────────────────────────── */}
+          {recentDives.length > 0 && (
+            <View style={{ marginBottom:14 }}>
+              {!whatNextRec ? (
+                <TouchableOpacity onPress={getWhatNext} disabled={whatNextLoading} activeOpacity={0.8}
+                  style={{ flexDirection:'row', alignItems:'center', gap:10, padding:12, borderRadius:10, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
+                  <Text style={{ color:color, fontSize:14 }}>↗</Text>
+                  <Text style={{ color:color+'AA', fontSize:11, fontFamily:mono, letterSpacing:1 }}>{whatNextLoading ? 'THINKING...' : 'WHAT NEXT?'}</Text>
+                  {whatNextLoading && <ActivityIndicator size="small" color={color} style={{ marginLeft:'auto' }} />}
+                </TouchableOpacity>
+              ) : (
+                <View style={{ borderRadius:10, borderWidth:1, borderColor:color+'44', backgroundColor:color+'08', padding:14 }}>
+                  <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>↗ NEXT DIVE</Text>
+                  <Text style={{ color:'#FFFFFF', fontSize:14, fontWeight:'700', marginBottom:4 }}>{whatNextRec.subjectName}</Text>
+                  <Text style={{ color:'#AAAACC', fontSize:12, fontStyle:'italic', lineHeight:17 }}>{whatNextRec.reason}</Text>
+                  <TouchableOpacity onPress={() => setWhatNextRec(null)} style={{ marginTop:8, alignSelf:'flex-end' }}>
+                    <Text style={{ color:color+'66', fontSize:10, fontFamily:mono }}>dismiss</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* ── WHAT YOU'VE TAUGHT ME (LEARN-16) ───────────────────── */}
           {protegeLog.length > 0 && (
             <View style={{ marginBottom:14 }}>
@@ -4106,6 +4167,40 @@ You are testing their memory RIGHT NOW. Do not discuss the material — ask them
                   )}
                 </View>
               )}
+            </View>
+          )}
+
+          {/* ── WHAT SHAPED ME (LEARN-12) ───────────────────────────── */}
+          {(protegeLog.length > 0 || recentDives.length > 0) && (
+            <View style={{ marginBottom:14 }}>
+              <TouchableOpacity onPress={() => setGrowthLogCollapsed(v => !v)}
+                style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6 }}>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                  <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+                  <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WHAT SHAPED ME</Text>
+                </View>
+                <Text style={{ color:'#333344', fontSize:10 }}>{growthLogCollapsed ? '▶' : '▼'}</Text>
+              </TouchableOpacity>
+              {!growthLogCollapsed && (() => {
+                const events: Array<{ icon: string; text: string; date: string }> = [];
+                if (protegeLog.length > 0) events.push({ icon:'⟁', text:`Learned: ${protegeLog[0].lesson}`, date: protegeLog[0].date });
+                if (recentDives.length > 0) events.push({ icon:'◉', text:`Dived into ${recentDives[0].subjectName}`, date: '' });
+                if (recentDives.length >= 2) events.push({ icon:'◉', text:`Explored ${recentDives[1].subjectName}`, date: '' });
+                if (protegeLog.length > 1) events.push({ icon:'⟁', text:`Learned: ${protegeLog[1].lesson}`, date: protegeLog[1].date });
+                const stageName = STAGES[stage as EvolutionStage]?.name;
+                if (stageName) events.push({ icon:'✦', text:`Reached stage: ${stageName}`, date: '' });
+                return (
+                  <View style={{ borderRadius:10, borderWidth:1, borderColor:color+'22', backgroundColor:color+'06', padding:12, gap:8 }}>
+                    {events.slice(0,5).map((e,i) => (
+                      <View key={i} style={{ flexDirection:'row', gap:10, alignItems:'flex-start' }}>
+                        <Text style={{ color:color+'88', fontSize:11, marginTop:1 }}>{e.icon}</Text>
+                        <Text style={{ color:'#CCCCDD', fontSize:12, flex:1, lineHeight:17 }}>{e.text}</Text>
+                        {!!e.date && <Text style={{ color:'#444455', fontSize:9, fontFamily:mono }}>{e.date}</Text>}
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
             </View>
           )}
 
