@@ -3878,7 +3878,7 @@ No other text.`;
             <View style={{ flexDirection:'row', alignItems:'center', gap:8, paddingHorizontal:16, paddingVertical:8, backgroundColor:'#FF884408', borderBottomWidth:1, borderBottomColor:'#FF884422' }}>
               <Text style={{ fontSize:14 }}>🔥</Text>
               <Text style={{ color:'#FF9944', fontSize:9, fontFamily:mono, letterSpacing:2, flex:1 }}>
-                {campfireMode === 'auto' ? 'BONFIRE AUTO — story begins' : campfireMode === 'lore' ? 'BONFIRE DEEP LEARNING — the subject opens' : campfireMode === 'learn' ? 'LEARN MODE — the companion tests you' : campfireMode === 'recall' ? `RECALL — ${recallDue?.subjectName ?? 'past dive'}` : 'BONFIRE EXCHANGE — sit by the fire'}
+                {campfireMode === 'auto' ? 'BONFIRE AUTO — story begins' : campfireMode === 'lore' ? 'BONFIRE DEEP LEARNING — the subject opens' : campfireMode === 'learn' ? 'LEARN MODE — EMBER tests you' : campfireMode === 'recall' ? `RECALL — ${recallDue?.subjectName ?? 'past dive'}` : 'BONFIRE EXCHANGE — sit by the fire'}
               </Text>
             </View>
           )}
@@ -4132,15 +4132,15 @@ No other text.`;
       <Modal visible={campfireOpen} transparent animationType="fade" onRequestClose={() => setCampfireOpen(false)}>
         <View style={{ flex:1, backgroundColor:'rgba(0,0,0,0.88)', justifyContent:'flex-end' }}>
           <View style={{ backgroundColor:'#0A0608', borderTopLeftRadius:20, borderTopRightRadius:20, padding:24, borderTopWidth:1, borderColor:'#FF884422' }}>
-            <Text style={{ color:'#FF9944', fontSize:11, fontFamily:mono, letterSpacing:3, textAlign:'center', marginBottom:4 }}>🔥 BONFIRE MODE</Text>
+            <Text style={{ color:'#FF9944', fontSize:11, fontFamily:mono, letterSpacing:3, textAlign:'center', marginBottom:4 }}>🔥 BONFIRE — EMBER</Text>
             <Text style={{ color:'#6B5E4A', fontSize:12, textAlign:'center', marginBottom:22, lineHeight:18 }}>
-              Sit by the fire. No classroom. Your companion{'\n'}tells stories and goes deep through living lore.
+              Sit by the fire. EMBER — keeper of the school's flame —{'\n'}speaks in myth, lore, and living knowledge.
             </Text>
             {([
-              { mode:'auto'     as const, icon:'🔥', label:'AUTO', sub:'Companion starts the fire — no input needed. A story begins.' },
+              { mode:'auto'     as const, icon:'🔥', label:'AUTO', sub:'EMBER starts the fire without being asked. A story begins.' },
               { mode:'exchange' as const, icon:'⌖', label:'EXCHANGE', sub:'Message by message. Warmer, longer. Myths on request.' },
-              { mode:'lore'     as const, icon:'◬', label:'DEEP LEARNING', sub:'Insert your subject. Learn through folklore, myth, and fire.' },
-              { mode:'learn'    as const, icon:'⟁', label:'LEARN MODE', sub:'Companion pulls your last dive and tests your understanding. Real recall, real questions.' },
+              { mode:'lore'     as const, icon:'◬', label:'DEEP LEARNING', sub:'Name your subject. EMBER goes into the real roots — myth, history, living lineage.' },
+              { mode:'learn'    as const, icon:'⟁', label:'LEARN MODE', sub:'EMBER pulls your last dive and tests your understanding. Real recall, real questions.' },
             ] as { mode:'auto'|'exchange'|'lore'|'learn'; icon:string; label:string; sub:string }[]).map(item => (
               <TouchableOpacity
                 key={item.mode}
@@ -5019,7 +5019,7 @@ No other text.`;
           companion: { glyph:'⊛', color,           title:'COMPANION', lines:['Your archetype shapes stats, voice, and spells','Equip gear earned through dives and battles','Your companion evolves through 6 stages as you grow','Tap 🔥 or ⚔ ENCOUNTER in the scene at any time'] },
           bond:      { glyph:'△', color:'#44CC88', title:'GROWTH',    lines:['Track your bond level and evolution stage','Feed your companion to raise its mood','Higher bond unlocks deeper conversation','Stage milestones unlock new forms and abilities'] },
           field:     { glyph:'◉', color:'#4ECDC4', title:'THE ZONE',  lines:['Navigate rooms in your current zone using the arrow keys','Each zone has its own companion form, enemies, and lore','Travel unlocks new zones to explore and battle','Your zone changes the enemy types you face'] },
-          talk:      { glyph:'✦', color:'#9B6BFF', title:'TALK',      lines:['Speak directly with your companion — they know your zone and history','🔥 Bonfire Mode: AUTO fires a story, EXCHANGE goes turn-by-turn, DEEP LEARNING goes deep on a subject','Tap the 🔥 button in the scene to open Bonfire anytime','Aura Prime mode unlocks pure AI conversation'] },
+          talk:      { glyph:'✦', color:'#9B6BFF', title:'TALK',      lines:['Speak directly with your companion — they know your zone and history','🔥 Bonfire: EMBER (the school\'s fire-keeper) tells myth, drills learning, or goes deep on any subject','Tap 🔥 in the scene to open Bonfire anytime','Aura Prime mode unlocks pure AI conversation'] },
           shop:      { glyph:'⟡', color:'#C49A3C', title:'THE SHOP',  lines:['Spend ⟡ Lumens on cosmetics — halo, wings, pet, scene background','Spend ✧ Veras on exclusive items','LAMAGUE gear and relics have gameplay effects','Some items unlock by dive count, others by battle wins'] },
         };
         const info = tabPopup ? TAB_INFO[tabPopup] : null;
@@ -6616,7 +6616,7 @@ No other text.`;
               <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
                 {([
                   { mode:'learn'    as const, icon:'📖', label:'LEARN MODE',  sub:'Socratic drill',          bc:'#C084FC44', bg:'#C084FC08', tc:learnColor },
-                  { mode:'auto'     as const, icon:'🔥', label:'CAMPFIRE',    sub:'Companion story',          bc:'#C49A3C44', bg:'#C49A3C08', tc:'#E8C76A' },
+                  { mode:'auto'     as const, icon:'🔥', label:'CAMPFIRE',    sub:'EMBER starts the fire',    bc:'#C49A3C44', bg:'#C49A3C08', tc:'#E8C76A' },
                   { mode:'exchange' as const, icon:'💬', label:'EXCHANGE',    sub:'Two-way dialogue',         bc:'#44AABB44', bg:'#44AABB08', tc:'#55BBCC' },
                   { mode:'lore'     as const, icon:'📜', label:'LORE',        sub:'Deep lore',               bc:'#88664444', bg:'#88664408', tc:'#BB9966' },
                 ] as { mode:'learn'|'auto'|'exchange'|'lore'; icon:string; label:string; sub:string; bc:string; bg:string; tc:string }[]).map(b => (
