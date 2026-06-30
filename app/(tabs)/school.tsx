@@ -513,6 +513,30 @@ export default function MysterySchoolScreen() {
 
   // Dive log — recent study sessions
   const [diveLog, setDiveLog] = useState<DiveRecord[]>([]);
+
+  // LEARN-6: domain gate helper — advanced domains gated until EMBER (20 dives)
+  const ADVANCED_DOMAIN_IDS = ['lamague', 'cascade', 'noetic'];
+  const DOMAIN_GATE_MSGS: Record<string, string> = {
+    lamague: 'LAMAGUE rewards a deeper foundation. Return once you\'ve explored a few more domains.',
+    cascade: 'CASCADE opens further into the journey. Explore other domains first.',
+    noetic:  'Noetic Science rewards breadth. Wander a while longer before crossing this threshold.',
+  };
+  const enterDomainGated = useCallback((domain: SubjectDomain) => {
+    const diveCount = diveLog.length;
+    if (ADVANCED_DOMAIN_IDS.includes(domain.id) && diveCount < 20) {
+      Alert.alert(
+        domain.label,
+        DOMAIN_GATE_MSGS[domain.id] ?? 'This domain rewards a deeper foundation.',
+        [
+          { text: 'Enter anyway', onPress: () => { setSelectedDomain(domain); setSchoolView('domain'); } },
+          { text: 'Keep exploring', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+    setSelectedDomain(domain);
+    setSchoolView('domain');
+  }, [diveLog.length]);
   const [showRealityAnchor, setShowRealityAnchor] = useState(false);
 
   // Daily suggestion
@@ -5836,7 +5860,7 @@ REJECTED = fails a core test — be direct about which one and why.`;
                             shadowOpacity: mastered ? 0.35 : touched ? 0.15 : 0,
                             shadowRadius: 8, elevation: mastered ? 6 : touched ? 3 : 0,
                           }}
-                          onPress={() => { setSelectedDomain(domain); setSchoolView('domain'); }}
+                          onPress={() => enterDomainGated(domain)}
                           activeOpacity={0.75}>
                           {/* Large glyph watermark */}
                           <Text style={{ position: 'absolute', bottom: -10, right: -4, fontSize: 96, color: domain.color + (touched ? '18' : '0D'), lineHeight: 108, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{domain.glyph}</Text>

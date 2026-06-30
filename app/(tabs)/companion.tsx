@@ -971,6 +971,11 @@ export default function CompanionScreen() {
   const [whatNextRec, setWhatNextRec] = useState<{ subjectName: string; reason: string } | null>(null);
   const [whatNextLoading, setWhatNextLoading] = useState(false);
   const [growthLogCollapsed, setGrowthLogCollapsed] = useState(true);
+  const [weeklySynth, setWeeklySynth] = useState<string | null>(null);
+  const [weeklySynthLoading, setWeeklySynthLoading] = useState(false);
+  const [warmDecaySubject, setWarmDecaySubject] = useState<{ subjectName: string; domainLabel: string } | null>(null);
+  const [stageUpName, setStageUpName] = useState<string | null>(null);
+  const [constCollapsed, setConstCollapsed] = useState(true);
   const [campfireOpen, setCampfireOpen] = useState(false);
   const [talkFullscreen, setTalkFullscreen] = useState(false);
   const talkCancelRef = useRef(false);
@@ -1196,6 +1201,24 @@ export default function CompanionScreen() {
           setRecallDue(null);
         }
       } catch { setRecallDue(null); }
+      // LEARN-20: warm decay — find one subject gone quiet (30+ days overdue), Companion Clause strict
+      try {
+        const msPerDay = 86_400_000;
+        const spaceLogRaw2 = get('sol_space_log');
+        const spaceLog2: Record<string, { recalls: number; nextDue: number }> = spaceLogRaw2 ? JSON.parse(spaceLogRaw2) : {};
+        let decayCandidate: { subjectName: string; domainLabel: string } | null = null;
+        for (const d of dives.slice(0, 30)) {
+          if (!d.subjectName) continue;
+          const key2 = `${d.subjectName}__${d.domainLabel ?? ''}`;
+          const entry2 = spaceLog2[key2];
+          const diveTime2 = new Date(d.date).getTime();
+          if (isNaN(diveTime2)) continue;
+          const overdueDays = entry2 ? (now - entry2.nextDue) / msPerDay : (now - diveTime2) / msPerDay;
+          if (overdueDays > 30) { decayCandidate = { subjectName: d.subjectName, domainLabel: d.domainLabel || 'the unknown' }; break; }
+        }
+        setWarmDecaySubject(decayCandidate);
+      } catch {}
+
       // LEARN-16: load protégé log
       try {
         const plRaw = get('sol_protege_log');
@@ -1212,6 +1235,41 @@ export default function CompanionScreen() {
           }
         }
       } catch {}
+      // LEARN-8: weekly synthesis — fire if >7 days since last + 2+ dives this week
+      try {
+        const weekDives = dives.filter(d => new Date(d.date).getTime() > now - 7*86_400_000);
+        if (weekDives.length >= 2) {
+          const lastSynthRaw = await AsyncStorage.getItem('sol_weekly_synth_ts').catch(() => null);
+          const lastSynth = lastSynthRaw ? parseInt(lastSynthRaw) : 0;
+          const synthRaw = await AsyncStorage.getItem('sol_weekly_synth').catch(() => null);
+          if (synthRaw && (now - lastSynth) < 7*86_400_000) {
+            setWeeklySynth(JSON.parse(synthRaw));
+          } else if ((now - lastSynth) >= 7*86_400_000) {
+            // Generate in background — don't block
+            (async () => {
+              setWeeklySynthLoading(true);
+              try {
+                const [key, model] = await Promise.all([getActiveKey(), getModel()]);
+                if (!key) return;
+                const subjects = weekDives.map(d => d.subjectName).filter(Boolean).slice(0, 8).join(', ');
+                const charLoreWS = COMPANION_LORE[skin.id as SkinId];
+                const charLineWS = charLoreWS ? `You are ${charLoreWS.name} — ${charLoreWS.title}. ${charLoreWS.lore}` : `You are ${archetype.name}.`;
+                const wsResult = await sendMessage([],
+                  `${charLineWS}\n\nThe seeker studied these subjects this week: ${subjects}.\n\nWrite ONE paragraph (3-4 sentences) in your own voice connecting what they studied — not a summary, but a synthesis: what thread runs through all of it? What does it mean that they went to all these places? Warm, surprising, earned.`,
+                  key, model as any, undefined, 'normal', 120);
+                const synthText = wsResult.text?.trim();
+                if (synthText) {
+                  await AsyncStorage.setItem('sol_weekly_synth', JSON.stringify(synthText)).catch(() => {});
+                  await AsyncStorage.setItem('sol_weekly_synth_ts', String(now)).catch(() => {});
+                  setWeeklySynth(synthText);
+                }
+              } catch {}
+              finally { setWeeklySynthLoading(false); }
+            })();
+          }
+        }
+      } catch {}
+
       // LEARN-10: pending whisper from last dive start (max 4h old)
       try {
         const wRaw = get('sol_pending_whisper');
@@ -1276,8 +1334,15 @@ export default function CompanionScreen() {
       award('journaled',     journal.length >= 1);
       award('ten_journals',  journal.length >= 10);
       award('library_saved', library.length >= 10);
-      // ── STAGE
+      // ── STAGE + LEARN-19 stage transition detection
       const stageNow = getStage(total);
+      const prevStageRaw = await AsyncStorage.getItem('sol_prev_stage').catch(() => null);
+      const prevStageN = prevStageRaw ? parseInt(prevStageRaw) : 0;
+      if (stageNow > prevStageN) {
+        AsyncStorage.setItem('sol_prev_stage', String(stageNow)).catch(() => {});
+        const newStageName = STAGES[stageNow as EvolutionStage]?.name;
+        if (prevStageN > 0 && newStageName) setStageUpName(newStageName);
+      }
       award('stage_seed',     stageNow >= 0);
       award('stage_awakened', stageNow >= 1);
       award('stage_initiate', stageNow >= 2);
@@ -4116,6 +4181,55 @@ No other text.`;
             </TouchableOpacity>
           )}
 
+          {/* ── STAGE TRANSITION RITUAL (LEARN-19) ──────────────────── */}
+          {stageUpName && (
+            <View style={{ marginBottom:14, borderRadius:10, borderWidth:1, borderColor:'#FFD70044', backgroundColor:'#FFD70008', padding:14 }}>
+              <Text style={{ color:'#FFD700', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>✦ STAGE REACHED</Text>
+              <Text style={{ color:'#FFFFFF', fontSize:14, fontWeight:'700', marginBottom:4 }}>{stageUpName}</Text>
+              <Text style={{ color:'#CCCCDD', fontSize:12, lineHeight:17, fontStyle:'italic' }}>You have crossed a threshold. The companion feels it. Go to TALK — your companion is waiting.</Text>
+              <TouchableOpacity onPress={() => { setStageUpName(null); setCampfireMode('exchange'); }} style={{ marginTop:8 }}>
+                <Text style={{ color:'#FFD700', fontSize:11, fontFamily:mono }}>OPEN TALK →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── WARM DECAY (LEARN-20) ────────────────────────────────── */}
+          {warmDecaySubject && !recallDue && (
+            <View style={{ marginBottom:14, borderRadius:10, borderWidth:1, borderColor:'#88667744', backgroundColor:'#88667708', padding:14 }}>
+              <Text style={{ color:'#AA88BB', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>◌ GONE QUIET</Text>
+              <Text style={{ color:'#CCCCDD', fontSize:13, marginBottom:4 }}>{warmDecaySubject.subjectName} has gone quiet in you.</Text>
+              <Text style={{ color:'#AAAACC', fontSize:11, fontStyle:'italic' }}>Want to wake it?</Text>
+              <View style={{ flexDirection:'row', gap:12, marginTop:8 }}>
+                <TouchableOpacity onPress={() => { setRecallDue({ diveId: `${warmDecaySubject.subjectName}__${warmDecaySubject.domainLabel}`, subjectName: warmDecaySubject.subjectName, domainLabel: warmDecaySubject.domainLabel, daysAgo: 30 }); setWarmDecaySubject(null); }}>
+                  <Text style={{ color:'#AA88BB', fontSize:11, fontFamily:mono }}>REVISIT →</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setWarmDecaySubject(null)}>
+                  <Text style={{ color:'#444455', fontSize:11, fontFamily:mono }}>not now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ── WEEKLY SYNTHESIS (LEARN-8) ───────────────────────────── */}
+          {(weeklySynth || weeklySynthLoading) && (
+            <View style={{ marginBottom:14, borderRadius:10, borderWidth:1, borderColor:'#4488CC44', backgroundColor:'#4488CC08', padding:14 }}>
+              <Text style={{ color:'#4488CC', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:6 }}>⊕ THIS WEEK</Text>
+              {weeklySynthLoading && !weeklySynth ? (
+                <View style={{ flexDirection:'row', gap:8, alignItems:'center' }}>
+                  <ActivityIndicator size="small" color="#4488CC" />
+                  <Text style={{ color:'#4488CC88', fontSize:11, fontFamily:mono }}>weaving synthesis…</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={{ color:'#CCCCDD', fontSize:12, lineHeight:18, fontStyle:'italic' }}>{weeklySynth}</Text>
+                  <TouchableOpacity onPress={() => setWeeklySynth(null)} style={{ marginTop:8, alignSelf:'flex-end' }}>
+                    <Text style={{ color:'#333355', fontSize:10, fontFamily:mono }}>dismiss</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          )}
+
           {/* ── WHAT NEXT (LEARN-4) ─────────────────────────────────── */}
           {recentDives.length > 0 && (
             <View style={{ marginBottom:14 }}>
@@ -4198,6 +4312,37 @@ No other text.`;
                         {!!e.date && <Text style={{ color:'#444455', fontSize:9, fontFamily:mono }}>{e.date}</Text>}
                       </View>
                     ))}
+                  </View>
+                );
+              })()}
+            </View>
+          )}
+
+          {/* ── KNOWLEDGE CONSTELLATION (LEARN-18) ──────────────────── */}
+          {recentDives.length > 0 && (
+            <View style={{ marginBottom:14 }}>
+              <TouchableOpacity onPress={() => setConstCollapsed(v => !v)}
+                style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6 }}>
+                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                  <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#8866FF' }} />
+                  <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>CONSTELLATION</Text>
+                </View>
+                <Text style={{ color:'#333344', fontSize:10 }}>{constCollapsed ? '▶' : '▼'}</Text>
+              </TouchableOpacity>
+              {!constCollapsed && (() => {
+                const studied = Array.from(new Map(
+                  [...recentDives].map(d => [`${d.subjectName}__${d.domainLabel}`, d])
+                ).values()).slice(0, 12);
+                return (
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, padding:12, borderRadius:10, borderWidth:1, borderColor:'#8866FF22', backgroundColor:'#8866FF06' }}>
+                    {studied.map((d, i) => {
+                      const brightness = i === 0 ? 'FF' : i < 3 ? 'CC' : i < 6 ? '88' : '44';
+                      return (
+                        <View key={i} style={{ backgroundColor:`#8866FF${brightness}18`, borderRadius:6, borderWidth:1, borderColor:`#8866FF${brightness}`, paddingHorizontal:8, paddingVertical:4 }}>
+                          <Text style={{ color:`#CCCCDD`, fontSize:10, fontFamily:mono, opacity: i === 0 ? 1 : i < 3 ? 0.8 : i < 6 ? 0.55 : 0.3 }}>{d.subjectName}</Text>
+                        </View>
+                      );
+                    })}
                   </View>
                 );
               })()}
