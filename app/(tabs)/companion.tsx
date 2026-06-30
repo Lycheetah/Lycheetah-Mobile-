@@ -753,6 +753,10 @@ export default function CompanionScreen() {
   const [companionGridCollapsed, setCompanionGridCollapsed] = useState(true);
   const [rosterExpanded,        setRosterExpanded]         = useState<string|null>(null);
   const [rosterTierFilter,      setRosterTierFilter]       = useState<string>('ALL');
+  const [companionPickerOpen,     setCompanionPickerOpen]     = useState(false);
+  const [companionLevelCollapsed, setCompanionLevelCollapsed] = useState(true);
+  const [chronicleCollapsed,      setChronicleCollapsed]      = useState(false);
+  const [skillTreeCollapsed,      setSkillTreeCollapsed]      = useState(true);
   const [archetypeCollapsed, setArchetypeCollapsed] = useState(true);
   const [specialsCollapsed, setSpecialsCollapsed] = useState(true);
   const [worldCollapsed,   setWorldCollapsed]   = useState(false);
@@ -4094,9 +4098,16 @@ No other text.`;
                     </View>
                     <Text style={{ color:color+'88', fontSize:8, fontFamily:mono, letterSpacing:2 }}>{skin.name}</Text>
                   </View>
-                  <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginTop:6, lineHeight:14 }}>{skin.desc}</Text>
+                  {/* Archetype inline */}
+                  {(() => { const arch = ARCHETYPES[archetypeId]; const archColor = arch ? (SKINS[arch.defaultSkin]?.color ?? '#F5A623') : '#F5A623'; return arch ? (
+                    <View style={{ flexDirection:'row', alignItems:'center', gap:5, marginTop:5 }}>
+                      <Text style={{ color:archColor, fontSize:11, fontFamily:mono }}>{arch.glyph}</Text>
+                      <Text style={{ color:archColor+'AA', fontSize:9, fontFamily:mono, letterSpacing:1 }}>{arch.name}</Text>
+                      <Text style={{ color:'#333344', fontSize:9, fontFamily:mono }}>· {arch.title}</Text>
+                    </View>
+                  ) : null; })()}
                   {/* Currency strip */}
-                  <View style={{ flexDirection:'row', gap:10, marginTop:8 }}>
+                  <View style={{ flexDirection:'row', gap:10, marginTop:6 }}>
                     <Text style={{ color:'#C49A3C', fontSize:10, fontFamily:mono, fontWeight:'700' }}>⟡{coins}</Text>
                     <Text style={{ color:'#AA77FF', fontSize:10, fontFamily:mono, fontWeight:'700' }}>✦{diveCoins}</Text>
                     <Text style={{ color:'#7766CC', fontSize:10, fontFamily:mono, fontWeight:'700' }}>✧{veras}</Text>
@@ -4177,37 +4188,32 @@ No other text.`;
           )}
 
           {/* ── COMPANIONS ──────────────────────────────────────────── */}
-          <View style={{ marginBottom:20 }}>
-            <TouchableOpacity onPress={() => setCompanionGridCollapsed(v => !v)}
-              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: companionGridCollapsed ? 0 : 10 }}>
-              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
-                <Text style={{ color:'#333344', fontSize:8, fontFamily:mono }}>70 VARIANTS</Text>
-              </View>
-              {/* Live preview of equipped companion */}
-              {equippedCompanionSkin && (() => {
-                const ev = COMPANION_ROSTER.flatMap(c => c.variants).find(v => v.key === equippedCompanionSkin);
-                const ec = COMPANION_ROSTER.find(c => c.variants.some(v => v.key === equippedCompanionSkin));
-                if (!ev || !ec) return null;
-                return (
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginRight:8 }}>
+          <View style={{ marginBottom:16 }}>
+            <TouchableOpacity onPress={() => setCompanionPickerOpen(true)} activeOpacity={0.85}
+              style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', padding:12, borderRadius:12, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:10 }}>
+                {equippedCompanionSkin ? (() => {
+                  const ev = COMPANION_ROSTER.flatMap(c => c.variants).find(v => v.key === equippedCompanionSkin);
+                  const ec = COMPANION_ROSTER.find(c => c.variants.some(v => v.key === equippedCompanionSkin));
+                  if (!ev || !ec) return <Text style={{ color:color, fontSize:18 }}>⊛</Text>;
+                  return (
                     <View style={{ borderRadius:8, borderWidth:2, borderColor:ec.color, overflow:'hidden', backgroundColor:'#000000' }}>
-                      <Image source={ev.art} style={{ width:36, height:48, borderRadius:6 }} resizeMode="contain" />
+                      <Image source={ev.art} style={{ width:40, height:54, borderRadius:6 }} resizeMode="contain" />
                     </View>
-                    <View>
-                      <Text style={{ color:ec.color, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{ec.name}</Text>
-                      <Text style={{ color:'#555566', fontSize:6, fontFamily:mono }}>EQUIPPED</Text>
-                      <TouchableOpacity onPress={async () => { setEquippedCompanionSkin(null); await AsyncStorage.setItem('sol_equipped_skin',''); }}>
-                        <Text style={{ color:'#444455', fontSize:6, fontFamily:mono, marginTop:1 }}>✕ UNEQUIP</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })()}
-              <Text style={{ color:'#333344', fontSize:11 }}>{companionGridCollapsed ? '▶' : '▼'}</Text>
+                  );
+                })() : <Text style={{ color:color, fontSize:18 }}>⊛</Text>}
+                <View>
+                  <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COMPANIONS</Text>
+                  <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>
+                    {equippedCompanionSkin
+                      ? (() => { const ec = COMPANION_ROSTER.find(c => c.variants.some(v => v.key === equippedCompanionSkin)); return ec ? `${ec.name} equipped` : 'equipped'; })()
+                      : '70 variants · tap to pick'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ color:color+'88', fontSize:14 }}>→</Text>
             </TouchableOpacity>
-            {!companionGridCollapsed && (
+            {false /* roster inline removed — opens via modal above */ && (
               <View>
                 {/* Tier filter pills */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:10 }} contentContainerStyle={{ gap:5, paddingRight:8 }}>
@@ -4314,11 +4320,11 @@ No other text.`;
             )}
           </View>
 
-          {/* ── LAMAGUE LOADOUT ─────────────────────────────────── */}
+          {/* ── GEAR (LAMAGUE + BONUS) ──────────────────────────── */}
           <TouchableOpacity onPress={() => setLoadoutCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: loadoutCollapsed ? 12 : 12, marginTop:4 }}>
             <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
               <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>LAMAGUE LOADOUT</Text>
+              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>GEAR</Text>
             </View>
             <Text style={{ color:'#333344', fontSize:11 }}>{loadoutCollapsed ? '▶' : '▼'}</Text>
           </TouchableOpacity>
@@ -4392,12 +4398,8 @@ No other text.`;
             );
           })}
 
-          {/* ── BONUS SLOTS (body / cape) ── */}
-          <TouchableOpacity onPress={() => setBonusCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: bonusCollapsed ? 12 : 8, marginTop:4 }}>
-            <Text style={{ color:SOL_THEME.textMuted, fontSize:9, letterSpacing:2, fontFamily:mono }}>BONUS GEAR</Text>
-            <Text style={{ color:'#333344', fontSize:11 }}>{bonusCollapsed ? '▶' : '▼'}</Text>
-          </TouchableOpacity>
-          {!bonusCollapsed && ([
+          {/* ── BONUS GEAR (body / cape — merged into gear section) ── */}
+          {!loadoutCollapsed && ([
             { slot:'body' as GearSlot, gear:gearBody, next:nextBody },
             { slot:'cape' as GearSlot, gear:gearCape, next:nextCape },
           ]).map(({ slot, gear, next }) => {
@@ -4426,207 +4428,10 @@ No other text.`;
             );
           })}
 
-          {/* ── COSMETICS ───────────────────────────────────────────── */}
-          <TouchableOpacity onPress={() => setCosmeticsCollapsed(v => !v)}
-            style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: cosmeticsCollapsed ? 0 : 10, marginTop:8 }}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#FF44FF' }} />
-              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>COSMETICS</Text>
-              <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:4, backgroundColor:'#FF44FF18', borderWidth:1, borderColor:'#FF44FF33' }}>
-                <Text style={{ color:'#FF44FFAA', fontSize:7, fontFamily:mono }}>LIVE</Text>
-              </View>
-            </View>
-            <Text style={{ color:'#333344', fontSize:11 }}>{cosmeticsCollapsed ? '▶' : '▼'}</Text>
-          </TouchableOpacity>
-          {!cosmeticsCollapsed && (() => {
-            const equipCosmetic = async (label: string, id: string | null) => {
-              const next = {
-                halo:  label === 'HALO'  ? id : equippedHalo,
-                wings: label === 'WINGS' ? id : equippedWings,
-                pet:   label === 'PET'   ? id : equippedPet,
-                bg:    label === 'SCENE' ? id : equippedBg,
-              };
-              if (label === 'HALO')        setEquippedHalo(id);
-              else if (label === 'WINGS')  setEquippedWings(id);
-              else if (label === 'SCENE')  setEquippedBg(id);
-              else setEquippedPet(id);
-              await AsyncStorage.setItem('sol_cosmetics', JSON.stringify(next));
-            };
+          {/* COSMETICS — lives in GEAR tab only. */}
+          {false && (() => { return ( <View />) })()}
 
-            const CosmeticSlot = ({ label, icon, equipped, catalogue, open, onToggle, shopUnlocks: slotUnlocks, totalDives: slotDives }: { label:string; icon:string; equipped:string|null; catalogue:CosmeticItem[]; open:boolean; onToggle:()=>void; shopUnlocks:string[]; totalDives:number }) => {
-              const item = equipped ? catalogue.find(c => c.id === equipped) : null;
-              const rc = item ? RARITY_COLOR[item.rarity] : '#333344';
-              const hasArt = catalogue.some(c => c.file !== null);
-              // ORIGIN free · ARCANE 5dv · MYTHIC 15dv · LEGENDARY/SPECTRAL/SECRET bought with coins
-              const isUnlocked = (c: CosmeticItem): boolean => {
-                if (c.rarity === 'ORIGIN') return true;
-                if (c.rarity === 'ARCANE') return slotDives >= 5;
-                if (c.rarity === 'MYTHIC') return slotDives >= 15;
-                return slotUnlocks.includes(c.id);
-              };
-              const lockHint = (c: CosmeticItem): string => {
-                if (c.rarity === 'ARCANE') return `${Math.max(0, 5 - slotDives)}dv`;
-                if (c.rarity === 'MYTHIC') return `${Math.max(0, 15 - slotDives)}dv`;
-                return 'SHOP';
-              };
-              return (
-                <View style={{ marginBottom:14 }}>
-                  {/* Equipped slot */}
-                  <TouchableOpacity activeOpacity={0.85} onPress={onToggle} style={{ flexDirection:'row', alignItems:'center', gap:12, marginBottom: open ? 8 : 0,
-                    padding:12, borderRadius:12, borderWidth:1,
-                    borderColor: item ? rc+'44' : '#1A1A26',
-                    backgroundColor: item ? rc+'08' : '#080810' }}>
-                    <View style={{ width:50, height:50, borderRadius:10, borderWidth:1,
-                      borderColor: item ? rc+'66' : '#1A1A26',
-                      backgroundColor: item ? rc+'14' : '#0A0A14',
-                      alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                      {item?.file
-                        ? <Image source={item.file as any} style={{ width:50, height:50 }} resizeMode="cover" />
-                        : <Text style={{ color: item ? rc : '#2A2A3A', fontSize:20 }}>{item ? item.glyph : icon}</Text>
-                      }
-                    </View>
-                    <View style={{ flex:1 }}>
-                      <Text style={{ color: item ? SOL_THEME.text : '#333344', fontSize:12, fontWeight:'700', fontFamily:mono }}>
-                        {item ? item.name : `${label} · EMPTY`}
-                      </Text>
-                      {item && (
-                        <View style={{ marginTop:3, flexDirection:'row', alignItems:'center', gap:5 }}>
-                          <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:3, backgroundColor:rc+'22', borderWidth:1, borderColor:rc+'44' }}>
-                            <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{item.rarity}</Text>
-                          </View>
-                        </View>
-                      )}
-                      {!item && <Text style={{ color:'#333355', fontSize:9, fontFamily:mono, marginTop:2 }}>{hasArt ? (open ? 'Tap to collapse' : 'Tap to expand') : `Art dropping soon · ${catalogue.length} designs ready`}</Text>}
-                    </View>
-                    {item && (
-                      <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); equipCosmetic(label, null); }}
-                        style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:6, borderWidth:1, borderColor:'#FF444433' }}>
-                        <Text style={{ color:'#FF4444AA', fontSize:8, fontFamily:mono }}>REMOVE</Text>
-                      </TouchableOpacity>
-                    )}
-                    <Text style={{ color: open ? '#888899' : '#444455', fontSize:10, fontFamily:mono }}>{open ? '▲' : '▼'}</Text>
-                  </TouchableOpacity>
-                  {/* Catalogue picker — lazy: only renders when open */}
-                  {open && hasArt && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginLeft:2 }}>
-                      <View style={{ flexDirection:'row', gap:8, paddingBottom:4 }}>
-                        {catalogue.map(c => {
-                          const isEq = equipped === c.id;
-                          const cr = RARITY_COLOR[c.rarity];
-                          const ulk = isUnlocked(c);
-                          const hint = lockHint(c);
-                          return (
-                            <TouchableOpacity key={c.id}
-                              onPress={() => {
-                                if (!ulk) { showToast(hint === 'SHOP' ? 'Buy in Shop to unlock' : `${hint} more dives needed`); return; }
-                                equipCosmetic(label, isEq ? null : c.id);
-                              }}
-                              style={{ width:52, alignItems:'center' }}>
-                              <View style={{ width:48, height:48, borderRadius:10, borderWidth: isEq ? 2 : 1,
-                                borderColor: isEq ? cr : ulk ? cr+'44' : '#1A1A26',
-                                backgroundColor: isEq ? cr+'18' : ulk ? '#080810' : '#060608',
-                                overflow:'hidden', alignItems:'center', justifyContent:'center',
-                                opacity: ulk ? 1 : 0.4 }}>
-                                {ulk ? (
-                                  c.file
-                                    ? <Image source={c.file as any} style={{ width:48, height:48 }} resizeMode="cover" />
-                                    : <Text style={{ color:cr, fontSize:16 }}>{c.glyph}</Text>
-                                ) : (
-                                  <Text style={{ color:'#444455', fontSize:13 }}>⊜</Text>
-                                )}
-                              </View>
-                              <Text style={{ color: isEq ? cr : ulk ? '#333355' : '#2A2A38', fontSize:7, fontFamily:mono, marginTop:3, textAlign:'center' }} numberOfLines={1}>
-                                {ulk ? c.name.split(' ')[0] : hint}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </ScrollView>
-                  )}
-                </View>
-              );
-            };
-            return (
-              <View>
-                <CosmeticSlot label="HALO"  icon="◯" equipped={equippedHalo}  catalogue={HALO_ITEMS}        open={haloOpen}  onToggle={() => setHaloOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
-                <CosmeticSlot label="WINGS" icon="◁" equipped={equippedWings} catalogue={WINGS_ITEMS}       open={wingsOpen} onToggle={() => setWingsOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
-                <CosmeticSlot label="PET"   icon="✧" equipped={equippedPet}   catalogue={PET_ITEMS}         open={petOpen}   onToggle={() => setPetOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
-                <CosmeticSlot label="SCENE" icon="⊟" equipped={equippedBg}    catalogue={BACKGROUND_ITEMS}  open={bgOpen}    onToggle={() => setBgOpen(v => !v)} shopUnlocks={shopUnlocks} totalDives={totalDives} />
-                <Text style={{ color:'#222233', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:4, marginBottom:8, letterSpacing:1 }}>
-                  ORIGIN FREE · ARCANE @5 DIVES · MYTHIC @15 DIVES · LEGENDARY/SPECTRAL → SHOP
-                </Text>
-              </View>
-            );
-          })()}
-
-          {/* ── YOUR ARCHETYPE ─────────────────────────────────────── */}
-          {(() => {
-            const arch = ARCHETYPES[archetypeId];
-            const archColor = arch ? (SKINS[arch.defaultSkin]?.color ?? '#F5A623') : '#F5A623';
-            const archStats = ARCHETYPE_STAT_BASES[archetypeId];
-            const archSpells = ARCHETYPE_SPELLS[archetypeId] ?? [];
-            const [sym0, sym1] = arch?.sceneSymbols ?? ['◈','◈'];
-            return (
-              <View style={{ marginTop:4, marginBottom:8 }}>
-                <TouchableOpacity onPress={() => setArchetypeCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: archetypeCollapsed ? 0 : 12 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:archColor }} />
-                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>YOUR ARCHETYPE</Text>
-                    <Text style={{ color:archColor+'99', fontSize:9, fontFamily:mono }}>{arch?.glyph} {arch?.name}</Text>
-                  </View>
-                  <Text style={{ color:'#333344', fontSize:11 }}>{archetypeCollapsed ? '▶' : '▼'}</Text>
-                </TouchableOpacity>
-                {!archetypeCollapsed && arch && archStats && (
-                  <View style={{ borderRadius:14, borderWidth:1.5, borderColor:archColor+'44', backgroundColor:archColor+'07', overflow:'hidden' }}>
-                    <View style={{ height:2, backgroundColor:archColor, opacity:0.6 }} />
-                    <View style={{ padding:14 }}>
-                      <View style={{ flexDirection:'row', alignItems:'center', gap:12, marginBottom:10 }}>
-                        <View style={{ width:56, height:70, borderRadius:10, borderWidth:1, borderColor:archColor+'44', backgroundColor:archColor+'10', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-                          <Text style={{ position:'absolute', top:3, left:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym0}</Text>
-                          <Text style={{ position:'absolute', top:3, right:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym1}</Text>
-                          <Text style={{ position:'absolute', bottom:3, left:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym1}</Text>
-                          <Text style={{ position:'absolute', bottom:3, right:4, color:archColor+'55', fontSize:8, fontFamily:mono }}>{sym0}</Text>
-                          <Text style={{ color:archColor, fontSize:28, fontFamily:mono }}>{arch.glyph}</Text>
-                          <Text style={{ color:archColor+'66', fontSize:9, fontFamily:mono, marginTop:1, letterSpacing:2 }}>{arch.eyes.present}</Text>
-                        </View>
-                        <View style={{ flex:1 }}>
-                          <Text style={{ color:archColor, fontSize:14, fontWeight:'700', fontFamily:mono, letterSpacing:1, marginBottom:2 }}>{arch.name}</Text>
-                          <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginBottom:6 }}>{arch.title}</Text>
-                          <View style={{ flexDirection:'row', gap:10 }}>
-                            {(['atk','def','spd','wil','lck','vit'] as const)
-                              .map(k => [k.toUpperCase(), archStats[k]] as [string,number])
-                              .sort((a,b) => b[1]-a[1]).slice(0,3)
-                              .map(([k,v]) => (
-                                <View key={k} style={{ alignItems:'center' }}>
-                                  <Text style={{ color:archColor+'88', fontSize:6, fontFamily:mono, letterSpacing:1 }}>{k}</Text>
-                                  <Text style={{ color:archColor, fontSize:11, fontWeight:'700', fontFamily:mono }}>{v}</Text>
-                                </View>
-                              ))}
-                          </View>
-                        </View>
-                      </View>
-                      {archSpells.length > 0 && (
-                        <View style={{ flexDirection:'row', gap:6, flexWrap:'wrap', marginBottom:10 }}>
-                          {archSpells.map(sp => (
-                            <View key={sp.id} style={{ paddingHorizontal:7, paddingVertical:3, borderRadius:6, backgroundColor:archColor+'14', borderWidth:1, borderColor:archColor+'22' }}>
-                              <Text style={{ color:archColor+'AA', fontSize:9, fontFamily:mono }}>{sp.name}</Text>
-                            </View>
-                          ))}
-                        </View>
-                      )}
-                      <TouchableOpacity
-                        onPress={() => setShowArchSelect(true)}
-                        activeOpacity={0.8}
-                        style={{ paddingVertical:10, borderRadius:8, backgroundColor:archColor+'18', alignItems:'center', borderWidth:1, borderColor:archColor+'44' }}>
-                        <Text style={{ color:archColor, fontSize:10, fontFamily:mono, letterSpacing:2 }}>CHANGE ARCHETYPE →</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-            );
-          })()}
+          {/* YOUR ARCHETYPE — merged into hero card above. */}
 
         </View>
       )}
@@ -4805,6 +4610,93 @@ No other text.`;
         </View>
       </Modal>
 
+
+      {/* ── COMPANION PICKER MODAL ─────────────────────────────────────────── */}
+      <Modal visible={companionPickerOpen} transparent animationType="slide" onRequestClose={() => setCompanionPickerOpen(false)}>
+        <View style={{ flex:1, backgroundColor:'#000000EE' }}>
+          <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:20, paddingTop:56, paddingBottom:16 }}>
+            <Text style={{ color:'#CCCCDD', fontSize:13, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>COMPANIONS</Text>
+            <TouchableOpacity onPress={() => setCompanionPickerOpen(false)}>
+              <Text style={{ color:'#555566', fontSize:18 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Tier filter */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft:16, marginBottom:10, flexShrink:0 }} contentContainerStyle={{ gap:6, paddingRight:16 }}>
+            {(['ALL','T0','T1','T2','T3','hidden','secret','augmented'] as const).map(f => {
+              const active = rosterTierFilter === f;
+              const tc = f==='T0'?'#44CC88':f==='T1'?'#4A9EFF':f==='T2'?'#9B6BFF':f==='T3'?'#FF9F1C':f==='hidden'?'#FF6644':f==='secret'?'#CC44AA':f==='augmented'?'#44DDCC':'#AAAABC';
+              return (
+                <TouchableOpacity key={f} onPress={() => setRosterTierFilter(f)} activeOpacity={0.75}
+                  style={{ paddingHorizontal:10, paddingVertical:5, borderRadius:10, borderWidth:1, borderColor: active?tc:tc+'33', backgroundColor: active?tc+'22':'transparent' }}>
+                  <Text style={{ color: active?tc:tc+'66', fontSize:8, fontFamily:mono, letterSpacing:1, fontWeight:'700' }}>{f.toUpperCase()}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+          <ScrollView contentContainerStyle={{ paddingHorizontal:16, paddingBottom:40 }} showsVerticalScrollIndicator={false}>
+            {rosterTierFilter !== 'ALL' ? (
+              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                {COMPANION_ROSTER.flatMap(char => char.variants.filter(v => v.tier === rosterTierFilter).map(v => ({ v, char }))).map(({ v, char }) => {
+                  const isEq = equippedCompanionSkin === v.key;
+                  const tc = v.tier==='T0'?'#44CC88':v.tier==='T1'?'#4A9EFF':v.tier==='T2'?'#9B6BFF':v.tier==='T3'?'#FF9F1C':v.tier==='hidden'?'#FF6644':v.tier==='secret'?'#CC44AA':'#44DDCC';
+                  const unlocked = v.unlock==='free'||(v.unlock==='dive'&&diveCoins>=(v.diveCost??0))||(v.unlock==='battle'&&battleWins>=(v.battleCost??0))||(v.unlock==='sovereign'&&isSovereign)||v.unlock==='zodiac';
+                  const unlockLabel = v.unlock==='free'?'FREE':v.unlock==='dive'?`${v.diveCost}✦`:v.unlock==='battle'?`${v.battleCost}⚔`:v.unlock==='sovereign'?'SOV':v.unlock==='zodiac'?'ZOD':'EVT';
+                  return (
+                    <TouchableOpacity key={v.key} activeOpacity={0.8} style={{ width:'23%', alignItems:'center' }}
+                      onPress={async () => { if (!unlocked) return; const next = isEq ? null : v.key as SkinId; setEquippedCompanionSkin(next); await AsyncStorage.setItem('sol_equipped_skin', next??''); Haptics.selectionAsync(); if (next) setCompanionPickerOpen(false); }}>
+                      <View style={{ width:'100%', borderRadius:8, borderWidth:isEq?2:1, borderColor:isEq?tc:tc+'44', backgroundColor:isEq?tc+'18':char.color+'08', overflow:'hidden', alignItems:'center', paddingVertical:6, paddingHorizontal:2 }}>
+                        <Image source={v.art} style={{ width:44, height:58, borderRadius:5, opacity:unlocked?1:0.3 }} resizeMode="contain" />
+                        {!unlocked && <View style={{ position:'absolute', top:0,left:0,right:0,bottom:0, alignItems:'center', justifyContent:'center', backgroundColor:'#000000AA' }}><Text style={{ color:'#FFFFFF', fontSize:7, fontFamily:mono, fontWeight:'700' }}>{unlockLabel}</Text></View>}
+                      </View>
+                      <Text style={{ color:unlocked?'#888899':'#444455', fontSize:6, fontFamily:mono, marginTop:2, textAlign:'center' }} numberOfLines={1}>{v.label.replace(char.name+' ','')}</Text>
+                      {isEq && <Text style={{ color:tc, fontSize:7, fontFamily:mono }}>◈</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : (
+              COMPANION_ROSTER.map(char => {
+                const isOpen = rosterExpanded === char.id;
+                return (
+                  <View key={char.id} style={{ marginBottom:12 }}>
+                    <TouchableOpacity onPress={() => setRosterExpanded(isOpen ? null : char.id)}
+                      style={{ flexDirection:'row', alignItems:'center', gap:8, paddingVertical:6 }}>
+                      <View style={{ width:3, height:12, borderRadius:2, backgroundColor:char.color }} />
+                      <Text style={{ color:char.color, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:1.5, flex:1 }}>{char.name}</Text>
+                      <Text style={{ color:'#444455', fontSize:8, fontFamily:mono }}>{char.variants.length}</Text>
+                      <Text style={{ color:'#333344', fontSize:10 }}>{isOpen ? '▼' : '▶'}</Text>
+                    </TouchableOpacity>
+                    {isOpen && (
+                      <View style={{ flexDirection:'row', flexWrap:'wrap', gap:6 }}>
+                        {char.variants.map(v => {
+                          const isEq = equippedCompanionSkin === v.key;
+                          const tc = v.tier==='T0'?'#44CC88':v.tier==='T1'?'#4A9EFF':v.tier==='T2'?'#9B6BFF':v.tier==='T3'?'#FF9F1C':v.tier==='hidden'?'#FF6644':v.tier==='secret'?'#CC44AA':'#44DDCC';
+                          const unlocked = v.unlock==='free'||(v.unlock==='dive'&&diveCoins>=(v.diveCost??0))||(v.unlock==='battle'&&battleWins>=(v.battleCost??0))||(v.unlock==='sovereign'&&isSovereign)||v.unlock==='zodiac';
+                          const unlockLabel = v.unlock==='free'?'FREE':v.unlock==='dive'?`${v.diveCost}✦`:v.unlock==='battle'?`${v.battleCost}⚔`:v.unlock==='sovereign'?'SOV':v.unlock==='zodiac'?'ZOD':'EVT';
+                          return (
+                            <TouchableOpacity key={v.key} activeOpacity={0.8} style={{ width:'23%', alignItems:'center' }}
+                              onPress={async () => { if (!unlocked) return; const next = isEq ? null : v.key as SkinId; setEquippedCompanionSkin(next); await AsyncStorage.setItem('sol_equipped_skin', next??''); Haptics.selectionAsync(); if (next) setCompanionPickerOpen(false); }}>
+                              <View style={{ width:'100%', borderRadius:8, borderWidth:isEq?2:1, borderColor:isEq?tc:tc+'44', backgroundColor:isEq?tc+'18':char.color+'08', overflow:'hidden', alignItems:'center', paddingVertical:6, paddingHorizontal:2 }}>
+                                <Image source={v.art} style={{ width:44, height:58, borderRadius:5, opacity:unlocked?1:0.3 }} resizeMode="contain" />
+                                {!unlocked && <View style={{ position:'absolute', top:0,left:0,right:0,bottom:0, alignItems:'center', justifyContent:'center', backgroundColor:'#000000AA' }}><Text style={{ color:'#FFFFFF', fontSize:7, fontFamily:mono, fontWeight:'700' }}>{unlockLabel}</Text></View>}
+                                <View style={{ paddingHorizontal:3, paddingVertical:1, borderRadius:3, backgroundColor:tc+'22', marginTop:2 }}>
+                                  <Text style={{ color:tc, fontSize:5, fontFamily:mono, fontWeight:'700' }}>{v.tier.toUpperCase()}</Text>
+                                </View>
+                              </View>
+                              <Text style={{ color:unlocked?'#888899':'#444455', fontSize:6, fontFamily:mono, marginTop:2, textAlign:'center' }} numberOfLines={1}>{v.label.replace(char.name+' ','')}</Text>
+                              {isEq && <Text style={{ color:tc, fontSize:7, fontFamily:mono }}>◈</Text>}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* ── NAME MODAL ─────────────────────────────────────────────────────── */}
       <Modal visible={editingName} transparent animationType="fade">
@@ -5900,14 +5792,19 @@ No other text.`;
       )}
 
 
-      {/* ════════════════════════════════════════════════════════════════════
-          COMPANION TAB — GROWTH (bond content merged here)
-          ════════════════════════════════════════════════════════════════════ */}
+      {/* ── COMPANION TAB — GROWTH (continuation, same conditional) ── */}
       {activeTab === 'companion' && !tabMinimized && (
-        <View style={{ paddingHorizontal:16, paddingTop:12 }}>
+        <View style={{ paddingHorizontal:16, paddingTop:0 }}>
 
-          {/* ── COMPANION LEVEL + STAT BUILD (#265) ── */}
-          {(() => {
+          {/* ── COMPANION LEVEL + STAT BUILD ── */}
+          <TouchableOpacity onPress={() => setCompanionLevelCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom:companionLevelCollapsed?4:0 }}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>LEVEL & STATS</Text>
+            </View>
+            <Text style={{ color:'#333344', fontSize:11 }}>{companionLevelCollapsed ? '▶' : '▼'}</Text>
+          </TouchableOpacity>
+          {!companionLevelCollapsed && (() => {
             const sid = (equippedCompanionSkin ?? activeSkin) as string;
             const xp = companionXP[sid] ?? 0;
             const lvl = levelFromXP(xp);
@@ -5957,8 +5854,8 @@ No other text.`;
             );
           })()}
 
-          {/* ── SEEKER'S FIELD (#258) — living personal data ── */}
-          {(lqHistory.length > 0 || diveLog.length > 0) && (
+          {/* SEEKER'S FIELD — moved to Sanctum. Removed from companion. */}
+          {false && (lqHistory.length > 0 || diveLog.length > 0) && (
             <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor:'#060610' }}>
               <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700', marginBottom:2 }}>◈ SEEKER'S FIELD</Text>
               <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom:12 }}>Your living record — every dive, every shift in the field.</Text>
@@ -6018,8 +5915,17 @@ No other text.`;
             </View>
           )}
 
-          {/* ── THE CHRONICLE (#264) — lore that grows from your real journey ── */}
+          {/* ── THE CHRONICLE ── */}
           {(chronicle.length > 0 || fieldNote || fieldNoteLoading) && (
+            <TouchableOpacity onPress={() => setChronicleCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom:chronicleCollapsed?4:0 }}>
+              <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                <View style={{ width:3, height:14, borderRadius:2, backgroundColor:skin.color }} />
+                <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>𝔏 CHRONICLE</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:11 }}>{chronicleCollapsed ? '▶' : '▼'}</Text>
+            </TouchableOpacity>
+          )}
+          {!chronicleCollapsed && (chronicle.length > 0 || fieldNote || fieldNoteLoading) && (
             <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor: skin.color+'08' }}>
               <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
                 <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>𝔏 THE CHRONICLE</Text>
@@ -6060,8 +5966,15 @@ No other text.`;
             </View>
           )}
 
-          {/* ── SKILL TREE ──────────────────────────────────────────────────── */}
-          {(() => {
+          {/* ── SKILL TREE ── */}
+          <TouchableOpacity onPress={() => setSkillTreeCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8, marginBottom:skillTreeCollapsed?4:0 }}>
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
+              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>SKILL TREE</Text>
+            </View>
+            <Text style={{ color:'#333344', fontSize:11 }}>{skillTreeCollapsed ? '▶' : '▼'}</Text>
+          </TouchableOpacity>
+          {!skillTreeCollapsed && (() => {
             const tiers = [0,1,2,3];
             const NODE_SIZE = 64;
             const GAP = 12;
