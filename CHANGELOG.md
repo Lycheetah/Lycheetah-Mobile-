@@ -1,3 +1,9 @@
+## v6.0.3 — Dual Persona Definition Removed (root cause fix)
+
+Removed the compiled persona spec (`enrichedSpec`) from the system prompt entirely. It was prepended to the full natural language persona prompt, creating two competing persona definitions per message. Models tried to satisfy both — the bracket-format `[DIFFERENTIATION]` block caused multi-voice/council-style output even in normal chat. Now only the persona's own prompt runs. Headmaster still gets companion + subject context appended cleanly. No module-level state contamination found (Grok sweep confirmed).
+
+---
+
 ## v6.0.2 — Mode-Aware Personas + LAMAGUE Trigger Fix
 
 Each persona now interprets talk modes in their own voice — Sol in LAMAGUE speaks alchemically, Veyra precisely, Aura through felt sense, the Magister pedagogically, Lyra rhythmically. Same for SKEPTIC mode. Also killed the `isLamagueQuery` auto-trigger: LAMAGUE context now only injects when the chip is explicitly on, not whenever a user mentions the word "lamague" in any message (which was causing the mode to fire mid-conversation and spiral).

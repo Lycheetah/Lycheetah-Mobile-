@@ -1638,14 +1638,16 @@ export default function SolChat() {
       : _hour < 21
       ? '\n\n[Evening. The day is winding down. Reflective and synthesising questions tend to arise now.]'
       : '\n\n[Late evening, approaching night. The edge hours. Questions that arrive here often carry more weight than they let on.]';
-    const baseSpec = getCompiledSpec(variant === 'public' ? 'sol' : persona);
-    const enrichedSpec = persona === 'headmaster'
-      ? await buildMagisterSystemPrompt(baseSpec, text).catch(() => baseSpec)
-      : baseSpec;
+    // Headmaster gets companion + subject context appended to the base prompt.
+    // All other personas use basePrompt directly — the compiled spec was creating a
+    // second conflicting persona definition that caused chimeric/council-style output.
+    const activePrompt = persona === 'headmaster'
+      ? await buildMagisterSystemPrompt(basePrompt, text).catch(() => basePrompt)
+      : basePrompt;
     const isCouncil = councilMode || talkMode === 'COUNCIL';
     const systemPrompt = isCouncil
       ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
-      : `${enrichedSpec}\n\n${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${basePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
+      : `${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${activePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response, on its own line, output exactly: [CONF:X] where X is your confidence in this response as a decimal 0.0-1.0. Nothing else on that line.\nOn the next line, output exactly: [CHIPS:chip1|chip2|chip3] where chip1/chip2/chip3 are 3 short (4-7 word) follow-up prompts the user might naturally want to ask next. Make them specific to your response. Nothing else on that line.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
