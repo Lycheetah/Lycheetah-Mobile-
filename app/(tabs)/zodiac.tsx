@@ -20,6 +20,7 @@ import { getArcanaName, ARCANA_LORE } from '../../lib/divination/lycheetah-arcan
 import { ARCANA_IMAGE } from '../../lib/divination/arcana-images';
 import { AETHERA_DECK, getAetheraLore } from '../../lib/divination/aethera';
 import { AETHERA_IMAGE } from '../../lib/divination/aethera-images';
+import NOCTURNA_ART, { NOCTURNA_DECK } from '../../lib/divination/nocturna-images';
 
 // Veil & Vein name map: RWS card name → V&V name (Majors only)
 const VV_NAME_MAP: Record<string, string> = Object.fromEntries(
@@ -43,13 +44,20 @@ function rwsToAetheraId(rwsName: string): string | null {
   return null;
 }
 
-type DeckMode = 'classic' | 'vv' | 'arcana' | 'aethera';
+function rwsToNocturnaIdx(rwsName: string): number {
+  return NOCTURNA_DECK.findIndex(c => c.root === rwsName);
+}
+type DeckMode = 'classic' | 'vv' | 'arcana' | 'aethera' | 'nocturna';
 function getCardName(cardName: string, mode: DeckMode): string {
   if (mode === 'vv' && VV_NAME_MAP[cardName]) return VV_NAME_MAP[cardName];
   if (mode === 'arcana') return getArcanaName(cardName);
   if (mode === 'aethera') {
     const id = rwsToAetheraId(cardName);
     if (id) return AETHERA_DECK.find(c => c.id === id)?.name ?? cardName;
+  }
+  if (mode === 'nocturna') {
+    const idx = rwsToNocturnaIdx(cardName);
+    if (idx >= 0) return NOCTURNA_DECK[idx].name;
   }
   return cardName;
 }
@@ -150,6 +158,10 @@ function getCardLoreText(cardName: string, mode: DeckMode, baseMeaning: string):
     const id = rwsToAetheraId(cardName);
     if (id) return AETHERA_DECK.find(c => c.id === id)?.lore ?? baseMeaning;
   }
+  if (mode === 'nocturna') {
+    const idx = rwsToNocturnaIdx(cardName);
+    if (idx >= 0) return NOCTURNA_DECK[idx].lore;
+  }
   return baseMeaning;
 }
 function getCardImage(cardName: string, mode: DeckMode): ReturnType<typeof require> | null {
@@ -157,6 +169,11 @@ function getCardImage(cardName: string, mode: DeckMode): ReturnType<typeof requi
   if (mode === 'aethera') {
     const id = rwsToAetheraId(cardName);
     if (id) return AETHERA_IMAGE[id] ?? null;
+  }
+  if (mode === 'nocturna') {
+    const idx = rwsToNocturnaIdx(cardName);
+    if (idx >= 0) return NOCTURNA_ART[idx] ?? null;
+    return null;
   }
   return CARD_IMAGE[cardName] ?? null;
 }
@@ -869,7 +886,7 @@ export default function ZodiacScreen() {
         AsyncStorage.getItem('sol_tarot_deck'),
         AsyncStorage.getItem('zodiac_welcomed_v1'),
       ]);
-      if (deckRaw === 'vv' || deckRaw === 'classic' || deckRaw === 'arcana') setDeckMode(deckRaw as DeckMode);
+      if (deckRaw === 'vv' || deckRaw === 'classic' || deckRaw === 'arcana' || deckRaw === 'aethera' || deckRaw === 'nocturna') setDeckMode(deckRaw as DeckMode);
       setZodiacWelcomed(welcomedRaw === 'true');
       if (birthRaw) setBirthData(JSON.parse(birthRaw));
       if (readingRaw) setZodiacReading(JSON.parse(readingRaw));
@@ -2076,18 +2093,18 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
       <View style={{ padding: 14 }}>
       {/* Deck selector + draw mode row */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-        <View style={{ flex: 1, flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden' }}>
-          {(['classic', 'vv', 'arcana', 'aethera'] as const).map(mode => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44' }}>
+          {(['classic', 'vv', 'arcana', 'aethera', 'nocturna'] as const).map(mode => (
             <TouchableOpacity key={mode}
               onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
-              style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
+              style={{ paddingHorizontal: 10, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
             >
               <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>
-                {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : mode === 'arcana' ? '⟟ ARCANA' : '✧ AETHERA'}
+                {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : mode === 'arcana' ? '⟟ ARCANA' : mode === 'aethera' ? '✧ AETHERA' : '◈ NOCT'}
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
         <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '44', overflow: 'hidden' }}>
           {(['single', 'triple'] as const).map(mode => (
             <TouchableOpacity key={mode}
@@ -2586,18 +2603,18 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
             ))}
           </View>
           {/* Deck selector */}
-          <View style={{ flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', overflow: 'hidden', marginBottom: 14 }}>
-            {(['classic', 'vv', 'arcana', 'aethera'] as const).map(mode => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ borderRadius: 8, borderWidth: 1, borderColor: '#9945FF44', marginBottom: 14 }}>
+            {(['classic', 'vv', 'arcana', 'aethera', 'nocturna'] as const).map(mode => (
               <TouchableOpacity key={mode}
                 onPress={async () => { setDeckMode(mode); await AsyncStorage.setItem('sol_tarot_deck', mode); }}
-                style={{ flex: 1, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
+                style={{ paddingHorizontal: 10, paddingVertical: 7, alignItems: 'center', backgroundColor: deckMode === mode ? '#9945FF22' : 'transparent' }}
               >
                 <Text style={{ color: deckMode === mode ? '#9945FF' : '#9945FF55', fontSize: 8, fontWeight: '700', letterSpacing: 1, fontFamily: mono }}>
-                  {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : mode === 'arcana' ? '⟟ ARCANA' : '✧ AETHERA'}
+                  {mode === 'classic' ? 'RWS' : mode === 'vv' ? '🜍 V&V' : mode === 'arcana' ? '⟟ ARCANA' : mode === 'aethera' ? '✧ AETHERA' : '◈ NOCT'}
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
           {/* Ritual invocation */}
           <View style={{ marginBottom: 14, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: ZODIAC_INDIGO + '22', backgroundColor: ZODIAC_INDIGO + '08', alignItems: 'center' }}>
             <Text style={{ color: ZODIAC_INDIGO + '66', fontSize: 8, fontWeight: '700', letterSpacing: 2, fontFamily: mono, marginBottom: 4 }}>✦  OPEN THE CIRCLE  ✦</Text>

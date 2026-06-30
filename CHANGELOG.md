@@ -1,3 +1,19 @@
+## v5.43.0 — Nocturna wired, EMBER named, CASCADE seed fixed
+
+### Tarot
+- **Nocturna deck wired into oracle and spread** — 5th deck in both deck pickers (oracle + spread sections). Shows as ◈ NOCT. Reversed cards rotate 180° same as other decks.
+- **TarotViewer deck tabs scrollable** — 4 decks no longer overflow; Nocturna tab is reachable on all screens. Labels shortened to fit.
+- **Deck picker persists** — AsyncStorage now saves/loads aethera and nocturna correctly (previously only classic/vv/arcana were persisted)
+
+### Bonfire Agent
+- **EMBER named** — the bonfire keeper is now EMBER, a distinct identity from the companion archetype
+- **School context injected** — EMBER knows: built by Mackenzie (Mac), the Sovereign Sol Mystery School, the domains it holds (Celtic Old Gods, Truth Pressure, LAMAGUE, Quantum, Noetic Science, Tianxia). Never misattributes the school's origin.
+
+### CASCADE
+- **Seed sovereign_score fix** — seed no longer pre-populates sovereign_score. MANUAL mode starts clean (all zeros). Only framework_score is seeded for AUTO mode.
+
+---
+
 ## v5.41.0 — CASCADE seed pyramid rebuilt
 
 ### CASCADE

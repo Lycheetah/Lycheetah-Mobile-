@@ -1,17 +1,29 @@
 // TarotViewer — browse all tarot decks card by card.
-// Decks: Veil & Vein | Lycheetah Arcana | AETHERA
+// Decks: Veil & Vein | Lycheetah Arcana | AETHERA | NOCTURNA
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, Image, Platform, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, Image, Platform, FlatList, ScrollView } from 'react-native';
 import { MAJOR_ARCANA, MINOR_ARCANA, TAROT_ART, leadColor, VEIL_COLOR, VEIN_COLOR } from '../lib/tarot/veil-and-vein';
 import { DECK_ART } from '../lib/tarot/deck-art';
 import { ARCANA_IMAGE } from '../lib/divination/arcana-images';
 import { AETHERA_DECK } from '../lib/divination/aethera';
 import { AETHERA_IMAGE } from '../lib/divination/aethera-images';
+import NOCTURNA_ART, { NOCTURNA_DECK } from '../lib/divination/nocturna-images';
 
 const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
 const AETHERA_GOLD = '#D4AF6E';
+const NOCTURNA_DARK = '#334466';
+const NOCTURNA_ACCENT = '#6699BB';
 
-type ActiveDeck = 'vv' | 'arcana' | 'aethera';
+const NOCTURNA_SUIT_COLOR: Record<string, string> = {
+  major:    '#AAAACC',
+  tides:    '#00BBAA',
+  embers:   '#FF6633',
+  prisms:   '#BB3366',
+  seeds:    '#CCAA33',
+  undertow: '#8844AA',
+};
+
+type ActiveDeck = 'vv' | 'arcana' | 'aethera' | 'nocturna';
 
 const ARCANA_ENTRIES = Object.entries(ARCANA_IMAGE) as [string, ReturnType<typeof require>][];
 
@@ -31,6 +43,9 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
   // AETHERA state
   const [aetheraIdx, setAetheraIdx] = useState(0);
 
+  // NOCTURNA state
+  const [nocturnaIdx, setNocturnaIdx] = useState(0);
+
   const DECK = arcana === 'major' ? MAJOR_ARCANA : MINOR_ARCANA;
   const safeDataIdx = Math.min(dataIdx, DECK.length - 1);
   const card = DECK[safeDataIdx];
@@ -45,9 +60,9 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
       <View style={{ flex: 1, backgroundColor: '#04060AF7', justifyContent: 'flex-start', padding: 18, paddingTop: 28 }}>
         {/* ── HEADER ── */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          {/* Deck selector tabs */}
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {([['vv', '✦ VEIL & VEIN'], ['arcana', '⊚ LYCHEETAH ARCANA'], ['aethera', '✧ AETHERA']] as [ActiveDeck, string][]).map(([d, label]) => {
+          {/* Deck selector tabs — horizontal scroll so all 4 decks are reachable */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6 }}>
+            {([['vv', '✦ V&V'], ['arcana', '⊚ ARCANA'], ['aethera', '✧ AETHERA'], ['nocturna', '◈ NOCTURNA']] as [ActiveDeck, string][]).map(([d, label]) => {
               const on = activeDeck === d;
               return (
                 <TouchableOpacity key={d} onPress={() => { setActiveDeck(d); setGrid(false); }}
@@ -57,7 +72,7 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
                 </TouchableOpacity>
               );
             })}
-          </View>
+          </ScrollView>
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <TouchableOpacity onPress={() => setGrid(g => !g)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Text style={{ color: '#88AACC', fontSize: 13 }}>{grid ? '🃏' : '▦'}</Text>
@@ -301,6 +316,77 @@ export default function TarotViewer({ visible, onClose }: { visible: boolean; on
             </View>
           );
         })()}
+        {/* ── NOCTURNA ── */}
+        {activeDeck === 'nocturna' && (() => {
+          const safeIdx = Math.min(nocturnaIdx, NOCTURNA_DECK.length - 1);
+          const nc = NOCTURNA_DECK[safeIdx];
+          const img = NOCTURNA_ART[safeIdx];
+          const suitColor = NOCTURNA_SUIT_COLOR[nc.suit] ?? NOCTURNA_ACCENT;
+          return grid ? (
+            <FlatList
+              data={NOCTURNA_DECK}
+              keyExtractor={c => c.id}
+              numColumns={3}
+              style={{ maxHeight: '86%' }}
+              showsVerticalScrollIndicator={false}
+              columnWrapperStyle={{ gap: 6, marginBottom: 6, justifyContent: 'center' }}
+              initialNumToRender={9} maxToRenderPerBatch={9} windowSize={5} removeClippedSubviews
+              renderItem={({ item: c, index: i }) => {
+                const sc = NOCTURNA_SUIT_COLOR[c.suit] ?? NOCTURNA_ACCENT;
+                return (
+                  <TouchableOpacity onPress={() => { setNocturnaIdx(i); setGrid(false); }} activeOpacity={0.85}
+                    style={{ width: '31%', borderRadius: 8, borderWidth: 1, borderColor: sc + '44', backgroundColor: '#050810' }}>
+                    <View style={{ aspectRatio: 0.62, borderRadius: 8, overflow: 'hidden' }}>
+                      {NOCTURNA_ART[i]
+                        ? <Image source={NOCTURNA_ART[i]} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                        : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: sc, fontSize: 18 }}>◈</Text>
+                          </View>}
+                    </View>
+                    <Text style={{ color: sc + 'CC', fontSize: 5.5, fontFamily: mono, fontWeight: '700', textAlign: 'center', padding: 3, lineHeight: 8 }} numberOfLines={2}>{c.name}</Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <View style={{ width: '78%', aspectRatio: 0.62, borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: suitColor + '88',
+                backgroundColor: '#050810', shadowColor: suitColor, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8 }}>
+                {img
+                  ? <Image source={img} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+                  : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: suitColor, fontSize: 48 }}>◈</Text>
+                      <Text style={{ color: suitColor + 'AA', fontSize: 11, fontFamily: mono, marginTop: 8 }}>{nc.numeral}</Text>
+                    </View>}
+              </View>
+              <Text style={{ color: '#F0ECFA', fontSize: 17, fontWeight: '800', letterSpacing: 1, marginTop: 16, textAlign: 'center', paddingHorizontal: 16 }}>{nc.name}</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 5, alignItems: 'center' }}>
+                <Text style={{ color: '#7A84A0', fontSize: 9, fontFamily: mono }}>{nc.numeral}{nc.root ? ` · ${nc.root}` : ''}</Text>
+                <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: suitColor + '55', backgroundColor: suitColor + '10' }}>
+                  <Text style={{ color: suitColor, fontSize: 7.5, fontFamily: mono, fontWeight: '700', letterSpacing: 0.5 }}>{nc.suit.toUpperCase()}</Text>
+                </View>
+              </View>
+              <Text style={{ color: '#BDC2D4', fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 12, paddingHorizontal: 12, fontStyle: 'italic' }}>{nc.lore}</Text>
+              <Text style={{ color: suitColor + '88', fontSize: 10, lineHeight: 16, textAlign: 'center', marginTop: 8, paddingHorizontal: 16 }}>{nc.pull}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20, marginTop: 20 }}>
+                <TouchableOpacity onPress={() => setNocturnaIdx(i => (i - 1 + NOCTURNA_DECK.length) % NOCTURNA_DECK.length)}
+                  style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#33384A' }}>
+                  <Text style={{ color: '#9AA4BC', fontSize: 14 }}>←</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setGrid(true)}
+                  style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: suitColor + '44', backgroundColor: suitColor + '0D' }}>
+                  <Text style={{ color: suitColor, fontSize: 9, fontFamily: mono, fontWeight: '700', letterSpacing: 1 }}>▦ ALL {NOCTURNA_DECK.length}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setNocturnaIdx(i => (i + 1) % NOCTURNA_DECK.length)}
+                  style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: suitColor + '66', backgroundColor: suitColor + '12' }}>
+                  <Text style={{ color: suitColor + 'CC', fontSize: 14 }}>→</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ color: '#66708A', fontSize: 9, fontFamily: mono, marginTop: 8 }}>{safeIdx + 1} / {NOCTURNA_DECK.length}</Text>
+            </View>
+          );
+        })()}
+
       </View>
     </Modal>
   );

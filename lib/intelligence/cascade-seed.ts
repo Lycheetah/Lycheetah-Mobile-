@@ -11,8 +11,7 @@ type Spec = { content: string; score: number; falsifiable?: boolean };
 function build(id: string, claim: string, specs: Spec[]): CascadeBlock {
   const layers: BuilderLayer[] = specs.map(s => ({
     content:        s.content,
-    framework_score: s.score,   // AUTO mode: engine track
-    sovereign_score: s.score,   // MANUAL mode: same starting point
+    framework_score: s.score,   // AUTO only — MANUAL starts clean (sovereign_score stays 0)
     ...(s.falsifiable !== undefined ? { falsifiable: s.falsifiable } : {}),
   }));
   const now = Date.now();
@@ -21,7 +20,7 @@ function build(id: string, claim: string, specs: Spec[]): CascadeBlock {
     claim,
     layers,
     score_aggregate:          computeBlockScore(layers, 'framework'),
-    sovereign_score_aggregate: computeBlockScore(layers, 'sovereign'),
+    sovereign_score_aggregate: 0,  // MANUAL mode unscored — user scores themselves
     createdAt: now,
     updatedAt: now,
   };
