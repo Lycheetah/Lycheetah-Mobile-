@@ -1005,13 +1005,13 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
           {todayDives.length > 0 && (
             <View style={{ marginTop: 10, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: SOL_THEME.border, backgroundColor: SOL_THEME.surface }}>
               <Text style={{ color: SOL_THEME.textMuted, fontSize: 9, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', letterSpacing: 2, fontWeight: '700', marginBottom: 10 }}>⊚ TODAY IN THE SCHOOL</Text>
-              <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {todayDives.map((d, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View key={i} style={{ width: '47%', flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, borderColor: d.domainColor + '33', backgroundColor: d.domainColor + '0A' }}>
                     <Text style={{ color: d.domainColor, fontSize: 18 }}>{d.domainGlyph}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ color: SOL_THEME.text, fontSize: 12, fontWeight: '700' }} numberOfLines={1}>{d.subjectName}</Text>
-                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 10 }}>{d.domainLabel}{d.durationSec ? ` · ${Math.round(d.durationSec / 60)} min` : ''}</Text>
+                      <Text style={{ color: SOL_THEME.text, fontSize: 11, fontWeight: '700' }} numberOfLines={1}>{d.subjectName}</Text>
+                      <Text style={{ color: SOL_THEME.textMuted, fontSize: 9 }} numberOfLines={1}>{d.durationSec ? `${Math.round(d.durationSec / 60)} min` : d.domainLabel}</Text>
                     </View>
                   </View>
                 ))}

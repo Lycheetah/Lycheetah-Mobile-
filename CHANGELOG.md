@@ -1,5 +1,10 @@
 # Changelog
 
+## [5.36.0] — 2026-06-30 — Sanctum grid: TODAY IN THE SCHOOL dives 2-col
+
+### Sanctum (TODAY tab)
+- **Today's dives: 2-col grid** — school dives now render as compact 2-col cards (domain glyph + subject + duration), replacing the vertical glyph-row list
+
 ## [5.35.0] — 2026-06-30 — The Grid Pass: shop/fight/learn all grids
 
 ### GEAR Tab
