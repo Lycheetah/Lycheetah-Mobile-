@@ -40,7 +40,7 @@ import { generateImage, saveImageToDevice } from '../../lib/image-gen';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type StudyMessage = { role: 'user' | 'assistant'; content: string };
-type DiveRecord = { id: string; subjectName: string; domainLabel: string; domainColor: string; domainGlyph: string; teacher: string; teacherId: string; layer: SubjectLayer; date: string; messageCount: number; durationSec: number; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'; whisperShown: string | null };
+type DiveRecord = { id: string; subjectName: string; domainLabel: string; domainColor: string; domainGlyph: string; teacher: string; teacherId: string; layer: SubjectLayer; date: string; messageCount: number; durationSec: number; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'; whisperShown: string | null; contentSeed?: string };
 type ArcPhase = 'intro' | 'concept' | 'question' | 'reflection' | 'advanced';
 type FieldStage = 'NEOPHYTE' | 'ADEPT' | 'MASTER' | 'HIEROPHANT' | 'AVATAR' | null;
 type SchoolLayer = 'FOUNDATION' | 'MIDDLE' | 'EDGE' | 'OPEN' | 'VOID';
@@ -1406,6 +1406,8 @@ export default function MysterySchoolScreen() {
     if (activeStudySubject && !skipDive) {
       const _hour = new Date().getHours();
       const _timeOfDay: DiveRecord['timeOfDay'] = _hour < 12 ? 'morning' : _hour < 17 ? 'afternoon' : _hour < 21 ? 'evening' : 'night';
+      const _firstTeacherMsg = studyMessages.find(m => m.role === 'assistant')?.content ?? '';
+      const _contentSeed = (_firstTeacherMsg || activeStudySubject.description || '').slice(0, 280).trimEnd();
       const record: DiveRecord = {
         id: Date.now().toString(),
         subjectName: activeStudySubject.name,
@@ -1420,6 +1422,7 @@ export default function MysterySchoolScreen() {
         durationSec: focusSeconds,
         timeOfDay: _timeOfDay,
         whisperShown: sessionWhisper,
+        contentSeed: _contentSeed || undefined,
       };
       AsyncStorage.getItem('sol_dive_log').then(raw => {
         const log: DiveRecord[] = raw ? JSON.parse(raw) : [];
