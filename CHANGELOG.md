@@ -1,3 +1,9 @@
+## v6.0.1 — Talk Mode Hotfix
+
+LAMAGUE mode no longer persists across sessions. A stale `sol_talk_mode` storage value from a previous build was injecting a 3000-token context block into every message, producing chimeric garbage responses in all personas. Talk modes now reset to WAYFARER on every launch. Tap an active mode to toggle it off. Also fixed fallback model for no-key users.
+
+---
+
 ## v6.0.0 — The Living School
 
 Everything that shipped across v5.32–v5.43 earned this number. The app has a bonfire keeper, four tarot decks, a knowledge pyramid with two clean modes, a fifth voice, a quiet Sanctum, a real learning loop, and a companion that grows because you study. That is not an increment. That is a different thing.

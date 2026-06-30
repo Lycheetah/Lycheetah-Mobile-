@@ -920,11 +920,10 @@ export default function SolChat() {
     AsyncStorage.getItem('sol_companion_archetype').then(v => { if (v) setCompanionArchetype(v); }).catch(() => {});
   }, []));
 
-  // Persist talk mode across sessions
+  // Talk mode resets to WAYFARER each session — LAMAGUE/SKEPTIC are power modes that
+  // should not persist. A stuck LAMAGUE mode injects 3k tokens per message (lethal).
   useFocusEffect(useCallback(() => {
-    AsyncStorage.getItem('sol_talk_mode').then(v => {
-      if (v === 'WAYFARER' || v === 'COUNCIL' || v === 'LAMAGUE' || v === 'SKEPTIC') setTalkMode(v as any);
-    });
+    AsyncStorage.removeItem('sol_talk_mode');
     AsyncStorage.getItem('sol_scoring_mode').then(v => {
       if (v === 'AURA' || v === 'CASCADE' || v === 'OFF') setScoringMode(v as any);
     });
@@ -1506,12 +1505,12 @@ export default function SolChat() {
 
     let model = (await getModel() || 'deepseek-chat') as AIModel;
     let apiKey = await getActiveKey();
-    // No key for current model — fall back to NVIDIA dev key on GLM-5.1 (unlimited free)
+    // No key for current model — fall back to NVIDIA dev key on llama-3.3-70b (free tier)
     if (!apiKey || !apiKey.trim()) {
       const nvidiaFallback = await getProviderKey('nvidia');
       if (nvidiaFallback) {
         apiKey = nvidiaFallback;
-        model = 'nvidia/nemotron-3-nano-30b-a3b' as AIModel;
+        model = 'meta/llama-3.3-70b-instruct' as AIModel;
       }
     }
     const currentStreamSpeed = streamSpeed;
@@ -3252,9 +3251,9 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
               return (
               <TouchableOpacity key={chip.id}
                 onPress={() => {
-                  setTalkMode(chip.id);
-                  AsyncStorage.setItem('sol_talk_mode', chip.id);
-                  if (chip.id === 'COUNCIL') setCouncilMode(true);
+                  const next = talkMode === chip.id ? 'WAYFARER' : chip.id;
+                  setTalkMode(next);
+                  if (next === 'COUNCIL') setCouncilMode(true);
                   else if (councilMode) setCouncilMode(false);
                 }}
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2,
