@@ -39,6 +39,7 @@ export {
 
 export function buildContextBlock(params: {
   mode: string;
+  talkMode?: string;
   persona: string;
   userName: string;
   studiedCount: number;
@@ -49,11 +50,11 @@ export function buildContextBlock(params: {
   domainInterest: string | null;
 }): string {
   const name = params.userName || 'friend';
-  const modeLabel = params.mode === 'adept' ? 'ADEPT (full protocol)' : 'SEEKER (full framework)';
+  const talkLabel = params.talkMode ?? 'WAYFARER';
   const lines: string[] = [
     `\n\n---\n## Your Context Right Now`,
     `You are running inside the Sovereign Sol app.`,
-    `Mode: ${modeLabel} | Persona: ${params.persona} | User: ${name}`,
+    `Persona: ${params.persona} | Conversation mode: ${talkLabel} | User: ${name}`,
   ];
   if (params.studiedCount > 0) {
     const stage = params.fieldStage ? ` | Stage: ${params.fieldStage}` : '';
@@ -87,16 +88,9 @@ export function resolvePrompt(template: string, userName: string): string {
 export function selectBasePrompt(
   persona: string,
   variant: string,
-  appMode: 'seeker' | 'adept',
+  appMode?: string,
 ): string {
   if (variant === 'public') return SOL_PUBLIC_SYSTEM_PROMPT;
-  if (appMode === 'adept') {
-    if (persona === 'veyra') return VEYRA_ADEPT_SYSTEM_PROMPT;
-    if (persona === 'aura-prime') return AURA_PRIME_ADEPT_SYSTEM_PROMPT;
-    if (persona === 'headmaster') return HEADMASTER_ADEPT_SYSTEM_PROMPT;
-    if (persona === 'lyra') return LYRA_SYSTEM_PROMPT;
-    return SOL_ADEPT_SYSTEM_PROMPT;
-  }
   if (persona === 'veyra') return VEYRA_SYSTEM_PROMPT;
   if (persona === 'aura-prime') return AURA_PRIME_SYSTEM_PROMPT;
   if (persona === 'headmaster') return HEADMASTER_SYSTEM_PROMPT;

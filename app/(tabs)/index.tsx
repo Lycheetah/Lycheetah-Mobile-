@@ -1588,6 +1588,7 @@ export default function SolChat() {
       }
       appContextBlock = buildContextBlock({
         mode: appMode,
+        talkMode,
         persona,
         userName,
         studiedCount,
