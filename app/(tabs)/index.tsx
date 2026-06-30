@@ -2186,7 +2186,7 @@ export default function SolChat() {
           const COUNCIL_SECOND: Record<string, string> = { sol: 'aura-prime', veyra: 'sol', 'aura-prime': 'headmaster', headmaster: 'lyra', lyra: 'sol' };
           const COUNCIL_GLYPHS: Record<string, string> = { sol: '⊚', veyra: '◈', 'aura-prime': '✦', headmaster: '⊙', lyra: '✧' };
           const COUNCIL_COLORS: Record<string, string> = { sol: '#F5A623', veyra: '#4A9EFF', 'aura-prime': '#9B59B6', headmaster: '#E8C76A', lyra: '#4ECDC4' };
-          const COUNCIL_NAMES: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura Prime', headmaster: 'Magister' };
+          const COUNCIL_NAMES: Record<string, string> = { sol: 'Sol', veyra: 'Veyra', 'aura-prime': 'Aura Prime', headmaster: 'Magister', lyra: 'Lyra' };
           const secondPersona = COUNCIL_SECOND[persona] || 'aura-prime';
           const secondGlyph = COUNCIL_GLYPHS[secondPersona] || '✦';
           const secondColor = COUNCIL_COLORS[secondPersona] || '#9B59B6';
@@ -3243,8 +3243,8 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
       {/* ── TALK MODE CHIPS ── */}
       {!focusMode && (() => {
         const CHIPS: { id: typeof talkMode; label: string; glyph: string; color: string; desc: string }[] = [
-          { id: 'WAYFARER', label: 'WAYFARER', glyph: '❂', color: '#F5A623', desc: 'Open conversation — Sol speaks freely from your zone and persona' },
-          { id: 'COUNCIL',  label: 'COUNCIL',  glyph: '⚖', color: '#9B59B6', desc: 'Many voices — Sol, Veyra, Aura and Magister converge on your question' },
+          { id: 'WAYFARER', label: 'WAYFARER', glyph: '❂', color: '#F5A623', desc: 'Open conversation — your active persona speaks freely in your chosen zone' },
+          { id: 'COUNCIL',  label: 'COUNCIL',  glyph: '⚖', color: '#9B59B6', desc: 'Two voices — your persona and a second voice converge on your question' },
           { id: 'LAMAGUE',  label: 'LAMAGUE',  glyph: '⬡', color: '#8855FF', desc: 'Symbol weave — LAMAGUE notation threaded naturally through responses' },
           { id: 'SKEPTIC',  label: 'SKEPTIC',  glyph: '⊘', color: '#4A9EFF', desc: 'Scientific frame — mystical language translated to psychology and utility. The bridge for the rational mind.' },
         ];

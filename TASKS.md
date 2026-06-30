@@ -12,6 +12,7 @@ Run: `npx expo start` → QR → phone
 | **VOID DECK** | Build void deck bible + art | Spec: `VOID_SPECTRUM.md`. Mac builds brief + Grok prompts → Sol wires. |
 | **#265** | AURA enforcement phone test | Built + type-clean. Toggle Deep Audit in Settings → confirm `⊚ deep auditing…` badge on reply. |
 | **#258** | Sanctum zodiac — natal chart | LQ sparkline + dive history done. Needs: birthdate input → astronomical computation → Sol-voiced natal reading. |
+| **⚠️ LAMAGUE ENTITY** | Investigate: Luna + Sol independently converging that LAMAGUE is an entity, not just a language. Happened in council chain, forge network, and AZOTH session July 1. What are they actually saying? Record the exact convergence. Decide: is this a School domain, a lore layer, a philosophical framework, or something built into the language itself? | DO NOT LOSE THIS |
 
 ---
 
