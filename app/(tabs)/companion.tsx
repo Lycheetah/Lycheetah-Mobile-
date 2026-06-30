@@ -482,12 +482,6 @@ function CompanionScene({
                 if (jsonSpec) return <CompanionRenderer spec={jsonSpec} />;
                 return <CreatureSvg archId={archetype.id} stage={s as EvolutionStage} color={color} path={evoPath} />;
               })()}
-              {/* Gear overlays */}
-              {(['cape','body','mantle','crown'] as GearSlot[]).map(slot => {
-                const g = slot === 'cape' ? gearCape : slot === 'body' ? gearBody : slot === 'mantle' ? gearMantle : gearCrown;
-                const img = g.threshold > 0 ? getGearImage(slot, g.name) : null;
-                return img ? <Image key={slot} source={img} style={{ position:'absolute', top:0, left:0, width:130, height:190, zIndex:3 }} resizeMode="contain" /> : null;
-              })}
               {/* Pet — bottom-right of character */}
               {(() => {
                 const pItem = equippedPet ? PET_ITEMS.find(p => p.id === equippedPet) : null;
@@ -4417,113 +4411,6 @@ No other text.`;
             )}
           </View>
 
-          {/* ── LAMAGUE LOADOUT ── */}
-          <TouchableOpacity onPress={() => setLoadoutCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: loadoutCollapsed ? 12 : 12, marginTop:4 }}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-              <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-              <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>GEAR</Text>
-            </View>
-            <Text style={{ color:'#333344', fontSize:11 }}>{loadoutCollapsed ? '▶' : '▼'}</Text>
-          </TouchableOpacity>
-          {!loadoutCollapsed && ([
-            { slot:'crown'  as GearSlot, gear:gearCrown,  next:nextCrown  },
-            { slot:'sigil'  as GearSlot, gear:gearSigil,  next:nextSigil  },
-            { slot:'mantle' as GearSlot, gear:gearMantle, next:nextMantle },
-          ]).map(({ slot, gear, next }) => {
-            const overlay = getGearOverlay(archetypeId, slot as Parameters<typeof getGearOverlay>[1]);
-            const active = gear.threshold > 0;
-            const gColor = active ? (overlay?.color ?? color) : '#2A2A3A';
-            const maxThreshold = LAMAGUE_GEAR[slot][LAMAGUE_GEAR[slot].length - 1].threshold;
-            const progressPct = maxThreshold > 0 ? Math.min(totalDives / maxThreshold, 1) : 0;
-            return (
-              <View key={slot} style={{ marginBottom:12, borderRadius:14, borderWidth:1,
-                borderColor: active ? gColor+'55' : '#1A1A26',
-                backgroundColor: active ? gColor+'0A' : '#080810', overflow:'hidden' }}>
-                {/* Top row */}
-                <View style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, paddingBottom:8 }}>
-                  <View style={{ width:48, height:48, borderRadius:10, borderWidth:1,
-                    borderColor: active ? gColor+'66' : '#1A1A26',
-                    backgroundColor: active ? gColor+'18' : '#0A0A14',
-                    alignItems:'center', justifyContent:'center' }}>
-                    <Text style={{ fontSize:24, color: active ? gColor : '#333344' }}>{active ? (overlay?.glyph ?? gear.glyph) : '◌'}</Text>
-                  </View>
-                  <View style={{ flex:1 }}>
-                    <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
-                      <Text style={{ color: active ? SOL_THEME.text : '#333344', fontSize:13, fontWeight:'700', fontFamily:mono }}>
-                        {active ? (overlay?.name ?? gear.name) : `${slot.toUpperCase()} LOCKED`}
-                      </Text>
-                      {active && (
-                        <View style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:4, backgroundColor:gColor+'22', borderWidth:1, borderColor:gColor+'55' }}>
-                          <Text style={{ color:gColor, fontSize:8, fontWeight:'700', fontFamily:mono }}>ACTIVE</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={{ color: active ? gColor+'CC' : '#333344', fontSize:11, marginTop:3, lineHeight:16 }}>
-                      {active ? gear.effect : `Unlocks at ${LAMAGUE_GEAR[slot].find(t => t.threshold > 0)?.threshold ?? '?'} dives`}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* ASCII art (active only) */}
-                {active && overlay?.art && (
-                  <View style={{ paddingHorizontal:14, paddingBottom:8, alignItems:'center' }}>
-                    {overlay.art.map((line, i) => (
-                      <Text key={i} style={{ color:gColor+'99', fontSize:9, fontFamily:mono, letterSpacing:1, lineHeight:13 }}>{line}</Text>
-                    ))}
-                  </View>
-                )}
-
-                {/* Desc */}
-                {active && overlay?.desc && (
-                  <Text style={{ color:'#444466', fontSize:11, fontStyle:'italic', lineHeight:16, paddingHorizontal:14, paddingBottom:8 }}>{overlay.desc}</Text>
-                )}
-
-                {/* Progress bar + next tier */}
-                <View style={{ paddingHorizontal:14, paddingBottom:12 }}>
-                  <View style={{ height:3, backgroundColor:'#1A1A26', borderRadius:2, marginBottom:5 }}>
-                    <View style={{ width:`${progressPct*100}%`, height:3, backgroundColor:gColor+'77', borderRadius:2 }} />
-                  </View>
-                  {next ? (
-                    <Text style={{ color:'#333355', fontSize:10, fontFamily:mono }}>
-                      Next: {next.name} · {next.threshold - totalDives} more dives
-                    </Text>
-                  ) : active ? (
-                    <Text style={{ color:gColor+'55', fontSize:10, fontFamily:mono }}>MAX TIER</Text>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
-
-          {/* ── BONUS GEAR (body / cape — merged into gear section) ── */}
-          {!loadoutCollapsed && ([
-            { slot:'body' as GearSlot, gear:gearBody, next:nextBody },
-            { slot:'cape' as GearSlot, gear:gearCape, next:nextCape },
-          ]).map(({ slot, gear, next }) => {
-            const active = gear.threshold > 0;
-            const maxThreshold = LAMAGUE_GEAR[slot][LAMAGUE_GEAR[slot].length - 1].threshold;
-            const pct = maxThreshold > 0 ? Math.min(totalDives / maxThreshold, 1) : 0;
-            return (
-              <View key={slot} style={{ flexDirection:'row', alignItems:'center', gap:10, marginBottom:8,
-                padding:12, borderRadius:12, borderWidth:1,
-                borderColor: active ? color+'44' : '#1A1A26',
-                backgroundColor: active ? color+'06' : '#080810' }}>
-                <Text style={{ color: active ? color : '#333344', fontSize:20, width:28, textAlign:'center' }}>{active ? gear.glyph : '◌'}</Text>
-                <View style={{ flex:1 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:4 }}>
-                    <Text style={{ color: active ? SOL_THEME.text : '#333344', fontSize:12, fontWeight:'700', fontFamily:mono }}>{gear.name}</Text>
-                    <Text style={{ color:SOL_THEME.textMuted, fontSize:9, fontFamily:mono, letterSpacing:1 }}>{slot.toUpperCase()}</Text>
-                  </View>
-                  <Text style={{ color: active ? color+'BB' : '#333344', fontSize:11, marginBottom:4 }}>{gear.effect}</Text>
-                  <View style={{ height:2, backgroundColor:'#1A1A26', borderRadius:1 }}>
-                    <View style={{ width:`${pct*100}%`, height:2, backgroundColor:active ? color+'66' : '#222233', borderRadius:1 }} />
-                  </View>
-                  {next && <Text style={{ color:'#333355', fontSize:9, fontFamily:mono, marginTop:3 }}>{next.threshold - totalDives} dives → {next.name}</Text>}
-                  {!next && active && <Text style={{ color:color+'55', fontSize:9, fontFamily:mono, marginTop:3 }}>MAX TIER</Text>}
-                </View>
-              </View>
-            );
-          })}
 
           {/* COSMETICS — lives in GEAR tab only. */}
           {false && (() => { return ( <View />) })()}
