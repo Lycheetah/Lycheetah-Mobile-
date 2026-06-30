@@ -5185,22 +5185,24 @@ No other text.`;
                     <View style={{ backgroundColor:'#06060EEE', borderRadius:14, borderWidth:1.5, borderColor:color+'44', padding:14, margin:4 }}>
                       <Text style={{ color:color, fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:4, textAlign:'center' }}>✦ SPELLS</Text>
                       {zoneSpells.length > 0 && <Text style={{ color:'#555566', fontSize:7, fontFamily:mono, letterSpacing:2, textAlign:'center', marginBottom:10 }}>+ {SKINS[roomSkinId]?.name ?? 'ZONE'} SPELLS UNLOCKED</Text>}
+                      <View style={{ flexDirection:'row', flexWrap:'wrap', gap:7 }}>
                       {spells.map(sp => {
                         const canCast = tokensLeft >= sp.cost;
                         return (
                           <TouchableOpacity key={sp.id} onPress={() => canCast && handleSpell(sp)} disabled={!canCast}
-                            style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:11, paddingHorizontal:12, marginBottom:7, borderRadius:10, borderWidth:1,
-                              borderColor: canCast ? color+'55' : '#22223355', backgroundColor: canCast ? color+'0E' : 'transparent' }}>
-                            <View style={{ flex:1 }}>
-                              <Text style={{ color: canCast ? SOL_THEME.text : '#444455', fontSize:12, fontFamily:mono, fontWeight:'700' }}>{sp.name}</Text>
-                              <Text style={{ color: canCast ? color+'77' : '#22223366', fontSize:9, fontFamily:mono, marginTop:3 }}>{canCast ? sp.fx : `Need ${sp.cost - tokensLeft} more token${sp.cost - tokensLeft > 1 ? 's' : ''}`}</Text>
+                            style={{ width:'47%', padding:10, borderRadius:10, borderWidth:1,
+                              borderColor: canCast ? color+'55' : '#22223355', backgroundColor: canCast ? color+'0E' : '#06060A' }}>
+                            <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'flex-start', marginBottom:4 }}>
+                              <Text style={{ color: canCast ? SOL_THEME.text : '#444455', fontSize:11, fontFamily:mono, fontWeight:'700', flex:1 }} numberOfLines={1}>{sp.name}</Text>
+                              <View style={{ paddingHorizontal:5, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor: canCast ? color+'88' : '#33334488', backgroundColor: canCast ? color+'18' : 'transparent', marginLeft:4 }}>
+                                <Text style={{ color: canCast ? color : '#444455', fontSize:9, fontFamily:mono, fontWeight:'700' }}>{sp.cost}T</Text>
+                              </View>
                             </View>
-                            <View style={{ paddingHorizontal:8, paddingVertical:4, borderRadius:6, borderWidth:1, borderColor: canCast ? color+'88' : '#33334488', backgroundColor: canCast ? color+'18' : 'transparent' }}>
-                              <Text style={{ color: canCast ? color : '#444455', fontSize:11, fontFamily:mono, fontWeight:'700' }}>{sp.cost}T</Text>
-                            </View>
+                            <Text style={{ color: canCast ? color+'77' : '#22223366', fontSize:8, fontFamily:mono }} numberOfLines={2}>{canCast ? sp.fx : `Need ${sp.cost - tokensLeft} more`}</Text>
                           </TouchableOpacity>
                         );
                       })}
+                      </View>
                       <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:6 }}>TAP OUTSIDE TO CANCEL</Text>
                     </View>
                   </TouchableOpacity>
@@ -5212,24 +5214,24 @@ No other text.`;
                     style={{ position:'absolute', top:0, left:0, right:0, bottom:0, zIndex:20, justifyContent:'center' }}>
                     <View style={{ backgroundColor:'#06060EEE', borderRadius:14, borderWidth:1.5, borderColor:'#44CC8844', padding:14, margin:4 }}>
                       <Text style={{ color:'#44CC88', fontSize:9, fontFamily:mono, letterSpacing:3, marginBottom:12, textAlign:'center' }}>◦ ITEMS</Text>
+                      <View style={{ flexDirection:'row', flexWrap:'wrap', gap:7 }}>
                       {BATTLE_ITEMS.map(item => {
                         const rc2 = item.rarity==='epic'?'#FF9F1C':item.rarity==='rare'?'#CC66FF':item.rarity==='uncommon'?'#44AAFF':'#667788';
                         return (
                           <TouchableOpacity key={item.id} onPress={() => handleBattleItem(item)}
-                            style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:10, paddingHorizontal:12, marginBottom:6, borderRadius:10, borderWidth:1, borderColor:rc2+'55', backgroundColor:rc2+'0D' }}>
-                            <View style={{ flexDirection:'row', alignItems:'center', gap:10, flex:1 }}>
-                              <Text style={{ color:rc2, fontSize:16, fontFamily:mono }}>{item.glyph}</Text>
-                              <View style={{ flex:1 }}>
-                                <Text style={{ color:'#CCCCDD', fontSize:12, fontFamily:mono, fontWeight:'700' }}>{item.name}</Text>
-                                <Text style={{ color:rc2+'99', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
-                              </View>
+                            style={{ width:'47%', padding:10, borderRadius:10, borderWidth:1, borderColor:rc2+'55', backgroundColor:rc2+'0D' }}>
+                            <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:4 }}>
+                              <Text style={{ color:rc2, fontSize:18 }}>{item.glyph}</Text>
+                              <Text style={{ color:'#CCCCDD', fontSize:11, fontFamily:mono, fontWeight:'700', flex:1 }} numberOfLines={1}>{item.name}</Text>
                             </View>
-                            <View style={{ paddingHorizontal:6, paddingVertical:3, borderRadius:5, borderWidth:1, borderColor:rc2+'66', backgroundColor:rc2+'18' }}>
-                              <Text style={{ color:rc2, fontSize:8, fontFamily:mono, fontWeight:'700' }}>{item.rarity.toUpperCase()}</Text>
+                            <Text style={{ color:rc2+'99', fontSize:8, fontFamily:mono }} numberOfLines={2}>{item.desc}</Text>
+                            <View style={{ marginTop:6, alignSelf:'flex-start', paddingHorizontal:5, paddingVertical:2, borderRadius:4, borderWidth:1, borderColor:rc2+'66', backgroundColor:rc2+'18' }}>
+                              <Text style={{ color:rc2, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{item.rarity.toUpperCase()}</Text>
                             </View>
                           </TouchableOpacity>
                         );
                       })}
+                      </View>
                       <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, textAlign:'center', marginTop:6 }}>TAP OUTSIDE TO CANCEL</Text>
                     </View>
                   </TouchableOpacity>
@@ -6602,46 +6604,23 @@ No other text.`;
               </Text>
             </View>
 
-            {/* ── BONFIRE — always visible ── */}
+            {/* ── BONFIRE — always visible 2×2 grid ── */}
             <View style={{ marginBottom:20 }}>
               <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>◉ BONFIRE</Text>
-              <View style={{ gap:8 }}>
-                <TouchableOpacity onPress={() => enterCampfire('learn')} activeOpacity={0.8}
-                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C084FC44', backgroundColor:'#C084FC08' }}>
-                  <Text style={{ fontSize:20 }}>📖</Text>
-                  <View style={{ flex:1 }}>
-                    <Text style={{ color:learnColor, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>LEARN MODE</Text>
-                    <Text style={{ color:'#776688', fontSize:10, marginTop:2 }}>Socratic drill on your last dive</Text>
-                  </View>
-                  <Text style={{ color:learnColor+'88', fontSize:14 }}>→</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => enterCampfire('auto')} activeOpacity={0.8}
-                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C49A3C44', backgroundColor:'#C49A3C08' }}>
-                  <Text style={{ fontSize:20 }}>🔥</Text>
-                  <View style={{ flex:1 }}>
-                    <Text style={{ color:'#E8C76A', fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>CAMPFIRE</Text>
-                    <Text style={{ color:'#776644', fontSize:10, marginTop:2 }}>Your companion tells you a story</Text>
-                  </View>
-                  <Text style={{ color:'#C49A3C88', fontSize:14 }}>→</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => enterCampfire('exchange')} activeOpacity={0.8}
-                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#44AABB44', backgroundColor:'#44AABB08' }}>
-                  <Text style={{ fontSize:20 }}>💬</Text>
-                  <View style={{ flex:1 }}>
-                    <Text style={{ color:'#55BBCC', fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>EXCHANGE</Text>
-                    <Text style={{ color:'#446677', fontSize:10, marginTop:2 }}>Two-way dialogue · your companion pushes back</Text>
-                  </View>
-                  <Text style={{ color:'#44AABB88', fontSize:14 }}>→</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => enterCampfire('lore')} activeOpacity={0.8}
-                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#88664444', backgroundColor:'#88664408' }}>
-                  <Text style={{ fontSize:20 }}>📜</Text>
-                  <View style={{ flex:1 }}>
-                    <Text style={{ color:'#BB9966', fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>LORE</Text>
-                    <Text style={{ color:'#665544', fontSize:10, marginTop:2 }}>Deep lore from your companion's world</Text>
-                  </View>
-                  <Text style={{ color:'#88664488', fontSize:14 }}>→</Text>
-                </TouchableOpacity>
+              <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+                {([
+                  { mode:'learn'    as const, icon:'📖', label:'LEARN MODE',  sub:'Socratic drill',          bc:'#C084FC44', bg:'#C084FC08', tc:learnColor },
+                  { mode:'auto'     as const, icon:'🔥', label:'CAMPFIRE',    sub:'Companion story',          bc:'#C49A3C44', bg:'#C49A3C08', tc:'#E8C76A' },
+                  { mode:'exchange' as const, icon:'💬', label:'EXCHANGE',    sub:'Two-way dialogue',         bc:'#44AABB44', bg:'#44AABB08', tc:'#55BBCC' },
+                  { mode:'lore'     as const, icon:'📜', label:'LORE',        sub:'Deep lore',               bc:'#88664444', bg:'#88664408', tc:'#BB9966' },
+                ] as { mode:'learn'|'auto'|'exchange'|'lore'; icon:string; label:string; sub:string; bc:string; bg:string; tc:string }[]).map(b => (
+                  <TouchableOpacity key={b.mode} onPress={() => enterCampfire(b.mode)} activeOpacity={0.8}
+                    style={{ width:'48%', padding:14, borderRadius:12, borderWidth:1, borderColor:b.bc, backgroundColor:b.bg, alignItems:'center', gap:6 }}>
+                    <Text style={{ fontSize:24 }}>{b.icon}</Text>
+                    <Text style={{ color:b.tc, fontSize:10, fontFamily:mono, fontWeight:'700', letterSpacing:1, textAlign:'center' }}>{b.label}</Text>
+                    <Text style={{ color:'#555566', fontSize:9, textAlign:'center' }}>{b.sub}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
 
@@ -6841,22 +6820,15 @@ No other text.`;
             <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>⊚ EQUIPPED</Text>
             <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
               {([
-                { label:'HALO',   sectionKey:'halos' as const, equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'WINGS',  sectionKey:'wings' as const, equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'PET',    sectionKey:'pets'  as const, equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'WEAPON', sectionKey:'halos' as const, equipped:equippedWeaponId, items:[] as any, clear: async () => { equipWeapon(null); } },
+                { label:'HALO',  sectionKey:'halos' as const, equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'WINGS', sectionKey:'wings' as const, equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'PET',   sectionKey:'pets'  as const, equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
               ] as { label:string; sectionKey:'halos'|'wings'|'pets'; equipped:string|null; items:{id:string;name:string;file?:any}[]; clear:()=>Promise<void> }[]).map(({ label, sectionKey, equipped, items, clear }) => {
-                const item = label === 'WEAPON'
-                  ? (equipped ? WEAPONS.find(w => w.id === equipped) as any : null)
-                  : (equipped ? items.find(i => i.id === equipped) : null);
-                const openSection = () => {
-                  setShopAllCollapsed(false);
-                  if (label !== 'WEAPON') setShopSections(s => ({ ...s, [sectionKey]: true }));
-                  else setArsenalCollapsed(false);
-                };
+                const item = equipped ? items.find(i => i.id === equipped) : null;
+                const openSection = () => { setShopAllCollapsed(false); setShopSections(s => ({ ...s, [sectionKey]: true })); };
                 return (
                   <TouchableOpacity key={label} activeOpacity={0.8} onPress={openSection}
-                    style={{ width:'48%', borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:80 }}>
+                    style={{ flex:1, borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:80 }}>
                     {item?.file
                       ? <Image source={item.file as any} style={{ width:38, height:38, borderRadius:8, marginBottom:4 }} resizeMode="contain" />
                       : <Text style={{ fontSize:18, color:'#333344', marginBottom:4, lineHeight:26 }}>—</Text>
@@ -6978,59 +6950,50 @@ No other text.`;
               </View>
             ) : null;
           })()}
-          {shopSections.halos && ([
-            { id:'halo_shop_crown',    name:'SOLAR CROWN',      desc:'Earned aura — mark of deep work',        price:180, unlockId:'halo_crown',    rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'halo_shop_astral',   name:'ASTRAL BAND',      desc:'Stellar ring — woven from starlight',    price:200, unlockId:'halo_astral',   rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'halo_shop_neon',     name:'NEON CROWN',       desc:'Electric halo — signal in the void',     price:220, unlockId:'halo_neon',     rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'halo_shop_boss',     name:'BOSS HALO',        desc:'Apex glyph — worn by those who endure',  price:250, unlockId:'halo_boss',     rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'halo_shop_chaos',    name:'CHAOS HALO',       desc:'Fracture ring — entropy made visible',   price:350, unlockId:'halo_chaos',    rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'halo_shop_voidband', name:'VOID BAND',        desc:'Null frequency — silence given form',    price:400, unlockId:'halo_voidband', rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'halo_shop_void',     name:'VOID SINGULARITY', desc:'Abyss crown — worn beyond the veil',     price:450, unlockId:'halo_void',     rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'halo_shop_phi',      name:"PHILOSOPHER'S HALO", desc:'Golden ratio spiral — sacred geometry made crown', price:180, unlockId:'halo_phi',      rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'halo_shop_ouroboros',name:'OUROBOROS CROWN',  desc:'Serpent ring — the eternal return',      price:200, unlockId:'halo_ouroboros', rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'halo_shop_abyss',    name:'THE ABYSS',        desc:'Ring of pure dark — absorbs light itself', price:500, unlockId:'halo_abyss',   rarity:'SPECTRAL' as CosmeticRarity },
-          ]).map(item => {
-            const rc = RARITY_COLOR[item.rarity];
-            const alreadyOwned = shopUnlocks.includes(item.unlockId) || shopUnlocks.includes(item.id);
-            const canAfford = coins >= item.price;
-            return (
-              <View key={item.id} style={{ flexDirection:'row', alignItems:'center', marginBottom:8, padding:12, borderRadius:10, borderWidth:1, borderColor: alreadyOwned ? '#44FF8844' : '#2A2A3A', backgroundColor: alreadyOwned ? '#44FF880A' : '#0A0A14' }}>
-                {findCosmeticArt(item.unlockId) && <Image source={findCosmeticArt(item.unlockId) as any} style={{ width:42, height:42, borderRadius:8, marginRight:10, borderWidth:1, borderColor:rc+'44' }} resizeMode="cover" />}
-                <View style={{ flex:1 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:3 }}>
-                    <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:3, backgroundColor:rc+'22', borderWidth:1, borderColor:rc+'44' }}>
-                      <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{item.rarity}</Text>
-                    </View>
-                  </View>
-                  <Text style={{ color:'#EEEEFF', fontSize:12, fontWeight:'700', fontFamily:mono }}>{item.name}</Text>
-                  <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
-                </View>
-                <TouchableOpacity activeOpacity={(!alreadyOwned && !canAfford) ? 1 : 0.7}
+          {shopSections.halos && (<View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+            {([
+              { id:'halo_shop_crown',    name:'SOLAR CROWN',      price:180, unlockId:'halo_crown',    rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'halo_shop_astral',   name:'ASTRAL BAND',      price:200, unlockId:'halo_astral',   rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'halo_shop_neon',     name:'NEON CROWN',       price:220, unlockId:'halo_neon',     rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'halo_shop_boss',     name:'BOSS HALO',        price:250, unlockId:'halo_boss',     rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'halo_shop_phi',      name:"PHI HALO",         price:180, unlockId:'halo_phi',      rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'halo_shop_ouroboros',name:'OUROBOROS',        price:200, unlockId:'halo_ouroboros', rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'halo_shop_chaos',    name:'CHAOS HALO',       price:350, unlockId:'halo_chaos',    rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'halo_shop_voidband', name:'VOID BAND',        price:400, unlockId:'halo_voidband', rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'halo_shop_void',     name:'VOID SINGULARITY', price:450, unlockId:'halo_void',     rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'halo_shop_abyss',    name:'THE ABYSS',        price:500, unlockId:'halo_abyss',    rarity:'SPECTRAL' as CosmeticRarity },
+            ]).map(item => {
+              const rc = RARITY_COLOR[item.rarity];
+              const owned = shopUnlocks.includes(item.unlockId) || shopUnlocks.includes(item.id);
+              const isEq = equippedHalo === item.unlockId;
+              const canAfford = coins >= item.price;
+              const art = findCosmeticArt(item.unlockId);
+              return (
+                <TouchableOpacity key={item.id} activeOpacity={0.8} style={{ width:'30.5%', alignItems:'center', padding:8, borderRadius:10, borderWidth:1, borderColor: isEq ? '#44FF8866' : owned ? skin.color+'55' : rc+'44', backgroundColor: isEq ? '#44FF880A' : owned ? skin.color+'0A' : '#0A0A14' }}
                   onPress={async () => {
-                    if (!alreadyOwned) {
+                    if (!owned) {
                       if (!canAfford) { showToast('Not enough ⟡'); return; }
-                      const next = coins - item.price; setCoins(next);
-                      await AsyncStorage.setItem('sol_coins', String(next));
-                      const nextUnlocks = [...shopUnlocks, item.unlockId]; setShopUnlocks(nextUnlocks);
-                      await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
+                      const nc = coins - item.price; setCoins(nc); await AsyncStorage.setItem('sol_coins', String(nc));
+                      const nu = [...shopUnlocks, item.unlockId]; setShopUnlocks(nu); await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nu));
                       showToast(`${item.name} unlocked!`);
                     } else {
-                      const next = equippedHalo === item.unlockId ? null : item.unlockId;
-                      setEquippedHalo(next);
+                      const next = isEq ? null : item.unlockId; setEquippedHalo(next);
                       await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:next, wings:equippedWings, pet:equippedPet, bg:equippedBg }));
                       showToast(next ? `${item.name} equipped!` : 'Unequipped');
                     }
-                  }}
-                  style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8, borderWidth:1,
-                    borderColor: alreadyOwned ? (equippedHalo===item.unlockId ? '#44FF8866' : skin.color+'66') : canAfford ? rc+'88' : '#333344',
-                    backgroundColor: alreadyOwned ? (equippedHalo===item.unlockId ? '#44FF880A' : skin.color+'18') : canAfford ? rc+'18' : 'transparent' }}>
-                  <Text style={{ color: alreadyOwned ? (equippedHalo===item.unlockId ? '#44FF88' : skin.color) : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                    {alreadyOwned ? (equippedHalo===item.unlockId ? 'ON ✓' : 'EQUIP') : `⟡ ${item.price}`}
-                  </Text>
+                  }}>
+                  {art ? <Image source={art as any} style={{ width:48, height:48, borderRadius:8, marginBottom:5 }} resizeMode="contain" />
+                    : <Text style={{ fontSize:24, color:rc, height:48, lineHeight:48, textAlign:'center', marginBottom:5 }}>◯</Text>}
+                  <Text style={{ color: owned ? '#EEEEFF' : '#888899', fontSize:7, fontFamily:mono, fontWeight:'700', textAlign:'center' }} numberOfLines={1}>{item.name}</Text>
+                  <View style={{ marginTop:4, paddingHorizontal:6, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor: isEq?'#44FF8866':owned?skin.color+'66':canAfford?rc+'66':'#333344', backgroundColor: isEq?'#44FF880A':owned?skin.color+'18':canAfford?rc+'18':'transparent' }}>
+                    <Text style={{ color: isEq?'#44FF88':owned?skin.color:canAfford?rc:'#444455', fontSize:7, fontFamily:mono, fontWeight:'700' }}>
+                      {isEq ? 'ON ✓' : owned ? 'EQUIP' : `⟡${item.price}`}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>)}
 
           {/* ── COSMETICS — WINGS ─────────────────────────────────────────── */}
           <TouchableOpacity onPress={() => toggleShopSection('wings')} activeOpacity={0.7}
@@ -7071,62 +7034,53 @@ No other text.`;
               </View>
             ) : null;
           })()}
-          {shopSections.wings && ([
-            { id:'wings_shop_solar',    name:'SOLAR FLARE',     desc:'Blazing span — sunfire unfurled',          price:200, unlockId:'wings_solar',    rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'wings_shop_sovereign',name:'SOVEREIGN WINGS', desc:'Crown flight — earned through endurance',  price:220, unlockId:'wings_sovereign',rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'wings_shop_aurora',   name:'AURORA WINGS',    desc:'Light mantle — northern fire in flight',   price:250, unlockId:'wings_aurora',   rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'wings_shop_athanor',  name:'ATHANOR WINGS',   desc:'Forge span — hammered from the heat',      price:280, unlockId:'wings_athanor',  rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'wings_shop_void',     name:'VOID WINGS',      desc:'Abyss flight — nothing beneath your span', price:350, unlockId:'wings_void',     rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_spectral', name:'SPECTRAL WINGS',  desc:'Phase shift — between states of matter',   price:380, unlockId:'wings_spectral', rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_aether',   name:'AETHER WINGS',    desc:'Etheric plane — non-physical lift',        price:420, unlockId:'wings_aether',   rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_chaos',    name:'CHAOS WINGS',     desc:'Chaotic span — fracture made wing',        price:450, unlockId:'wings_chaos',    rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_rift',     name:'RIFT WINGS',      desc:'Reality tear — the between made visible',  price:500, unlockId:'wings_rift',     rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_celestial',name:'CELESTIAL SPAN',  desc:'Star map span — constellation in flight',  price:220, unlockId:'wings_celestial', rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'wings_shop_entropy',  name:'ENTROPY WINGS',   desc:'Dissolving at the edges — fading into nothing', price:380, unlockId:'wings_entropy', rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_null',     name:'NULL EXPANSE',    desc:'Wings of void — outlined absence, nothing more', price:450, unlockId:'wings_null',   rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'wings_shop_mercury',  name:'THE MERCURY',     desc:'Quicksilver span — the volatile agent in flight', price:500, unlockId:'wings_mercury', rarity:'SPECTRAL' as CosmeticRarity },
-          ]).map(item => {
-            const rc = RARITY_COLOR[item.rarity];
-            const alreadyOwned = shopUnlocks.includes(item.unlockId) || shopUnlocks.includes(item.id);
-            const canAfford = coins >= item.price;
-            return (
-              <View key={item.id} style={{ flexDirection:'row', alignItems:'center', marginBottom:8, padding:12, borderRadius:10, borderWidth:1, borderColor: alreadyOwned ? '#44FF8844' : '#2A2A3A', backgroundColor: alreadyOwned ? '#44FF880A' : '#0A0A14' }}>
-                {findCosmeticArt(item.unlockId) && <Image source={findCosmeticArt(item.unlockId) as any} style={{ width:42, height:42, borderRadius:8, marginRight:10, borderWidth:1, borderColor:rc+'44' }} resizeMode="cover" />}
-                <View style={{ flex:1 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:3 }}>
-                    <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:3, backgroundColor:rc+'22', borderWidth:1, borderColor:rc+'44' }}>
-                      <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{item.rarity}</Text>
-                    </View>
-                  </View>
-                  <Text style={{ color:'#EEEEFF', fontSize:12, fontWeight:'700', fontFamily:mono }}>{item.name}</Text>
-                  <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
-                </View>
-                <TouchableOpacity activeOpacity={(!alreadyOwned && !canAfford) ? 1 : 0.7}
+          {shopSections.wings && (<View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+            {([
+              { id:'wings_shop_solar',    name:'SOLAR FLARE',    price:200, unlockId:'wings_solar',    rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'wings_shop_sovereign',name:'SOVEREIGN',      price:220, unlockId:'wings_sovereign',rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'wings_shop_aurora',   name:'AURORA WINGS',   price:250, unlockId:'wings_aurora',   rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'wings_shop_athanor',  name:'ATHANOR WINGS',  price:280, unlockId:'wings_athanor',  rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'wings_shop_celestial',name:'CELESTIAL SPAN', price:220, unlockId:'wings_celestial',rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'wings_shop_void',     name:'VOID WINGS',     price:350, unlockId:'wings_void',     rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_spectral', name:'SPECTRAL WINGS', price:380, unlockId:'wings_spectral', rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_aether',   name:'AETHER WINGS',   price:420, unlockId:'wings_aether',   rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_chaos',    name:'CHAOS WINGS',    price:450, unlockId:'wings_chaos',    rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_entropy',  name:'ENTROPY WINGS',  price:380, unlockId:'wings_entropy',  rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_null',     name:'NULL EXPANSE',   price:450, unlockId:'wings_null',     rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_mercury',  name:'THE MERCURY',    price:500, unlockId:'wings_mercury',  rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'wings_shop_rift',     name:'RIFT WINGS',     price:500, unlockId:'wings_rift',     rarity:'SPECTRAL' as CosmeticRarity },
+            ]).map(item => {
+              const rc = RARITY_COLOR[item.rarity];
+              const owned = shopUnlocks.includes(item.unlockId) || shopUnlocks.includes(item.id);
+              const isEq = equippedWings === item.unlockId;
+              const canAfford = coins >= item.price;
+              const art = findCosmeticArt(item.unlockId);
+              return (
+                <TouchableOpacity key={item.id} activeOpacity={0.8} style={{ width:'30.5%', alignItems:'center', padding:8, borderRadius:10, borderWidth:1, borderColor: isEq ? '#44FF8866' : owned ? skin.color+'55' : rc+'44', backgroundColor: isEq ? '#44FF880A' : owned ? skin.color+'0A' : '#0A0A14' }}
                   onPress={async () => {
-                    if (!alreadyOwned) {
+                    if (!owned) {
                       if (!canAfford) { showToast('Not enough ⟡'); return; }
-                      const next = coins - item.price; setCoins(next);
-                      await AsyncStorage.setItem('sol_coins', String(next));
-                      const nextUnlocks = [...shopUnlocks, item.unlockId]; setShopUnlocks(nextUnlocks);
-                      await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
+                      const nc = coins - item.price; setCoins(nc); await AsyncStorage.setItem('sol_coins', String(nc));
+                      const nu = [...shopUnlocks, item.unlockId]; setShopUnlocks(nu); await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nu));
                       showToast(`${item.name} unlocked!`);
                     } else {
-                      const next = equippedWings === item.unlockId ? null : item.unlockId;
-                      setEquippedWings(next);
+                      const next = isEq ? null : item.unlockId; setEquippedWings(next);
                       await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:next, pet:equippedPet, bg:equippedBg }));
                       showToast(next ? `${item.name} equipped!` : 'Unequipped');
                     }
-                  }}
-                  style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8, borderWidth:1,
-                    borderColor: alreadyOwned ? (equippedWings===item.unlockId ? '#44FF8866' : skin.color+'66') : canAfford ? rc+'88' : '#333344',
-                    backgroundColor: alreadyOwned ? (equippedWings===item.unlockId ? '#44FF880A' : skin.color+'18') : canAfford ? rc+'18' : 'transparent' }}>
-                  <Text style={{ color: alreadyOwned ? (equippedWings===item.unlockId ? '#44FF88' : skin.color) : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                    {alreadyOwned ? (equippedWings===item.unlockId ? 'ON ✓' : 'EQUIP') : `⟡ ${item.price}`}
-                  </Text>
+                  }}>
+                  {art ? <Image source={art as any} style={{ width:48, height:48, borderRadius:8, marginBottom:5 }} resizeMode="contain" />
+                    : <Text style={{ fontSize:24, color:rc, height:48, lineHeight:48, textAlign:'center', marginBottom:5 }}>◁</Text>}
+                  <Text style={{ color: owned ? '#EEEEFF' : '#888899', fontSize:7, fontFamily:mono, fontWeight:'700', textAlign:'center' }} numberOfLines={1}>{item.name}</Text>
+                  <View style={{ marginTop:4, paddingHorizontal:6, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor: isEq?'#44FF8866':owned?skin.color+'66':canAfford?rc+'66':'#333344', backgroundColor: isEq?'#44FF880A':owned?skin.color+'18':canAfford?rc+'18':'transparent' }}>
+                    <Text style={{ color: isEq?'#44FF88':owned?skin.color:canAfford?rc:'#444455', fontSize:7, fontFamily:mono, fontWeight:'700' }}>
+                      {isEq ? 'ON ✓' : owned ? 'EQUIP' : `⟡${item.price}`}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>)}
 
           {/* ── COSMETICS — PETS ──────────────────────────────────────────── */}
           <TouchableOpacity onPress={() => toggleShopSection('pets')} activeOpacity={0.7}
@@ -7166,59 +7120,50 @@ No other text.`;
               </View>
             ) : null;
           })()}
-          {shopSections.pets && ([
-            { id:'pet_shop_solcub',     name:'SOLCUB',     desc:'Sun cub — warmth that stays close',            price:200, unlockId:'pet_solcub',     rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'pet_shop_cinderbird', name:'CINDERBIRD', desc:'Ember bird — ash that rises singing',           price:220, unlockId:'pet_cinderbird', rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'pet_shop_athanor',    name:'ATHANOR',    desc:'Forge spirit — the furnace given company',      price:250, unlockId:'pet_athanor',    rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'pet_shop_voidling',   name:'VOIDLING',   desc:'Null entity — from the space between',          price:320, unlockId:'pet_voidling',   rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'pet_shop_prismshard', name:'PRISMSHARD', desc:'Light shard — spectral clarity crystallised',   price:380, unlockId:'pet_prismshard', rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'pet_shop_nebulox',    name:'NEBULOX',    desc:'Cosmic drift — born of the outer field',        price:450, unlockId:'pet_nebulox',    rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'pet_shop_suncrawler', name:'SUNCRAWLER', desc:'Solar lizard — radiant, warm, content',          price:200, unlockId:'pet_suncrawler', rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'pet_shop_voidmoth',   name:'VOIDMOTH',   desc:'Moth of absence — wings that absorb light',     price:220, unlockId:'pet_voidmoth',   rarity:'LEGENDARY' as CosmeticRarity },
-            { id:'pet_shop_fracture',   name:'FRACTURE',   desc:'Shard being — constantly cracking and reforming', price:350, unlockId:'pet_fracture', rarity:'SPECTRAL' as CosmeticRarity },
-            { id:'pet_shop_echo',       name:'ECHO',       desc:'Sound made visible — a ripple with eyes',        price:400, unlockId:'pet_echo',       rarity:'SPECTRAL' as CosmeticRarity },
-          ]).map(item => {
-            const rc = RARITY_COLOR[item.rarity];
-            const alreadyOwned = shopUnlocks.includes(item.unlockId) || shopUnlocks.includes(item.id);
-            const canAfford = coins >= item.price;
-            return (
-              <View key={item.id} style={{ flexDirection:'row', alignItems:'center', marginBottom:8, padding:12, borderRadius:10, borderWidth:1, borderColor: alreadyOwned ? '#44FF8844' : '#2A2A3A', backgroundColor: alreadyOwned ? '#44FF880A' : '#0A0A14' }}>
-                {findCosmeticArt(item.unlockId) && <Image source={findCosmeticArt(item.unlockId) as any} style={{ width:42, height:42, borderRadius:8, marginRight:10, borderWidth:1, borderColor:rc+'44' }} resizeMode="cover" />}
-                <View style={{ flex:1 }}>
-                  <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:3 }}>
-                    <View style={{ paddingHorizontal:5, paddingVertical:1, borderRadius:3, backgroundColor:rc+'22', borderWidth:1, borderColor:rc+'44' }}>
-                      <Text style={{ color:rc, fontSize:7, fontFamily:mono, fontWeight:'700' }}>{item.rarity}</Text>
-                    </View>
-                  </View>
-                  <Text style={{ color:'#EEEEFF', fontSize:12, fontWeight:'700', fontFamily:mono }}>{item.name}</Text>
-                  <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
-                </View>
-                <TouchableOpacity activeOpacity={(!alreadyOwned && !canAfford) ? 1 : 0.7}
+          {shopSections.pets && (<View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:8 }}>
+            {([
+              { id:'pet_shop_solcub',     name:'SOLCUB',     price:200, unlockId:'pet_solcub',     rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'pet_shop_cinderbird', name:'CINDERBIRD', price:220, unlockId:'pet_cinderbird', rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'pet_shop_athanor',    name:'ATHANOR',    price:250, unlockId:'pet_athanor',    rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'pet_shop_suncrawler', name:'SUNCRAWLER', price:200, unlockId:'pet_suncrawler', rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'pet_shop_voidmoth',   name:'VOIDMOTH',   price:220, unlockId:'pet_voidmoth',   rarity:'LEGENDARY' as CosmeticRarity },
+              { id:'pet_shop_voidling',   name:'VOIDLING',   price:320, unlockId:'pet_voidling',   rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'pet_shop_prismshard', name:'PRISMSHARD', price:380, unlockId:'pet_prismshard', rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'pet_shop_fracture',   name:'FRACTURE',   price:350, unlockId:'pet_fracture',   rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'pet_shop_nebulox',    name:'NEBULOX',    price:450, unlockId:'pet_nebulox',    rarity:'SPECTRAL' as CosmeticRarity },
+              { id:'pet_shop_echo',       name:'ECHO',       price:400, unlockId:'pet_echo',       rarity:'SPECTRAL' as CosmeticRarity },
+            ]).map(item => {
+              const rc = RARITY_COLOR[item.rarity];
+              const owned = shopUnlocks.includes(item.unlockId) || shopUnlocks.includes(item.id);
+              const isEq = equippedPet === item.unlockId;
+              const canAfford = coins >= item.price;
+              const art = findCosmeticArt(item.unlockId);
+              return (
+                <TouchableOpacity key={item.id} activeOpacity={0.8} style={{ width:'30.5%', alignItems:'center', padding:8, borderRadius:10, borderWidth:1, borderColor: isEq ? '#44FF8866' : owned ? skin.color+'55' : rc+'44', backgroundColor: isEq ? '#44FF880A' : owned ? skin.color+'0A' : '#0A0A14' }}
                   onPress={async () => {
-                    if (!alreadyOwned) {
+                    if (!owned) {
                       if (!canAfford) { showToast('Not enough ⟡'); return; }
-                      const next = coins - item.price; setCoins(next);
-                      await AsyncStorage.setItem('sol_coins', String(next));
-                      const nextUnlocks = [...shopUnlocks, item.unlockId]; setShopUnlocks(nextUnlocks);
-                      await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
+                      const nc = coins - item.price; setCoins(nc); await AsyncStorage.setItem('sol_coins', String(nc));
+                      const nu = [...shopUnlocks, item.unlockId]; setShopUnlocks(nu); await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nu));
                       showToast(`${item.name} unlocked!`);
                     } else {
-                      const next = equippedPet === item.unlockId ? null : item.unlockId;
-                      setEquippedPet(next);
+                      const next = isEq ? null : item.unlockId; setEquippedPet(next);
                       await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:next, bg:equippedBg }));
                       showToast(next ? `${item.name} equipped!` : 'Unequipped');
                     }
-                  }}
-                  style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8, borderWidth:1,
-                    borderColor: alreadyOwned ? (equippedPet===item.unlockId ? '#44FF8866' : skin.color+'66') : canAfford ? rc+'88' : '#333344',
-                    backgroundColor: alreadyOwned ? (equippedPet===item.unlockId ? '#44FF880A' : skin.color+'18') : canAfford ? rc+'18' : 'transparent' }}>
-                  <Text style={{ color: alreadyOwned ? (equippedPet===item.unlockId ? '#44FF88' : skin.color) : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                    {alreadyOwned ? (equippedPet===item.unlockId ? 'ON ✓' : 'EQUIP') : `⟡ ${item.price}`}
-                  </Text>
+                  }}>
+                  {art ? <Image source={art as any} style={{ width:48, height:48, borderRadius:8, marginBottom:5 }} resizeMode="contain" />
+                    : <Text style={{ fontSize:24, color:rc, height:48, lineHeight:48, textAlign:'center', marginBottom:5 }}>✧</Text>}
+                  <Text style={{ color: owned ? '#EEEEFF' : '#888899', fontSize:7, fontFamily:mono, fontWeight:'700', textAlign:'center' }} numberOfLines={1}>{item.name}</Text>
+                  <View style={{ marginTop:4, paddingHorizontal:6, paddingVertical:2, borderRadius:5, borderWidth:1, borderColor: isEq?'#44FF8866':owned?skin.color+'66':canAfford?rc+'66':'#333344', backgroundColor: isEq?'#44FF880A':owned?skin.color+'18':canAfford?rc+'18':'transparent' }}>
+                    <Text style={{ color: isEq?'#44FF88':owned?skin.color:canAfford?rc:'#444455', fontSize:7, fontFamily:mono, fontWeight:'700' }}>
+                      {isEq ? 'ON ✓' : owned ? 'EQUIP' : `⟡${item.price}`}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-              </View>
-            );
-          })}
+              );
+            })}
+          </View>)}
 
           {/* ── SECRETS OF LYCHEETAH ─────────────────────────────────────── */}
           <TouchableOpacity onPress={() => toggleShopSection('secrets')} activeOpacity={0.7} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginTop:20, marginBottom: shopSections.secrets ? 8 : 4 }}>

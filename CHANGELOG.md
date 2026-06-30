@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.35.0] — 2026-06-30 — The Grid Pass: shop/fight/learn all grids
+
+### GEAR Tab
+- **Shop items: 3-col grid** — LEGENDARY & SPECTRAL halos/wings/pets now rendered as compact grid cards (art + name + price/equip) instead of full-width rows
+- **EQUIPPED: 3-slot row** — WEAPON slot removed (not wired yet); HALO/WINGS/PET now 3 flex-1 cards in a row
+
+### FIGHT Tab
+- **Spell menu: 2-col grid** — spells now render as compact 2-col cards with name, cost, and effect; no more tall vertical list
+- **Items menu: 2-col grid** — battle items same treatment: glyph + name + desc + rarity tag in 2-col grid
+
+### LEARN Tab
+- **Bonfire: 2×2 grid** — LEARN/CAMPFIRE/EXCHANGE/LORE now sit in a 2×2 compact card grid instead of 4 tall rows
+
 ## [5.34.0] — 2026-06-30 — The Companion Update: gear equip, LEARN bonfire, chronicle open
 
 ### GEAR Tab
