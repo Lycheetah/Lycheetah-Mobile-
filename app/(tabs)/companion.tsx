@@ -119,6 +119,7 @@ function CompanionScene({
   const { color, bgColor, particleGlyph, glowColor, cardBg, starGlyphs } = skin;
   const battleActive = battleHP > 0;
 
+  const gearScrollRef = useRef<ScrollView>(null);
   const bgZoomRef = useRef(1.0);
   const bgZoomAnim = useRef(new Animated.Value(1.0)).current;
 
@@ -6838,27 +6839,34 @@ No other text.`;
           {/* ── EQUIPPED ────────────────────────────────────────────────────── */}
           <View style={{ marginBottom:20 }}>
             <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>⊚ EQUIPPED</Text>
-            <View style={{ flexDirection:'row', gap:8 }}>
+            <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
               {([
-                { label:'HALO',  sectionKey:'halos' as const, equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'WINGS', sectionKey:'wings' as const, equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
-                { label:'PET',   sectionKey:'pets'  as const, equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'HALO',   sectionKey:'halos' as const, equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'WINGS',  sectionKey:'wings' as const, equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'PET',    sectionKey:'pets'  as const, equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'WEAPON', sectionKey:'halos' as const, equipped:equippedWeaponId, items:[] as any, clear: async () => { equipWeapon(null); } },
               ] as { label:string; sectionKey:'halos'|'wings'|'pets'; equipped:string|null; items:{id:string;name:string;file?:any}[]; clear:()=>Promise<void> }[]).map(({ label, sectionKey, equipped, items, clear }) => {
-                const item = equipped ? items.find(i => i.id === equipped) : null;
+                const item = label === 'WEAPON'
+                  ? (equipped ? WEAPONS.find(w => w.id === equipped) as any : null)
+                  : (equipped ? items.find(i => i.id === equipped) : null);
+                const openSection = () => {
+                  setShopAllCollapsed(false);
+                  if (label !== 'WEAPON') setShopSections(s => ({ ...s, [sectionKey]: true }));
+                  else setArsenalCollapsed(false);
+                };
                 return (
-                  <TouchableOpacity key={label} activeOpacity={0.8}
-                    onPress={() => { setShopAllCollapsed(false); setShopSections(s => ({ ...s, [sectionKey]: true })); }}
-                    style={{ flex:1, borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:88 }}>
+                  <TouchableOpacity key={label} activeOpacity={0.8} onPress={openSection}
+                    style={{ width:'48%', borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:80 }}>
                     {item?.file
-                      ? <Image source={item.file as any} style={{ width:42, height:42, borderRadius:8, marginBottom:5 }} resizeMode="contain" />
-                      : <Text style={{ fontSize:20, color:'#333344', marginBottom:5, lineHeight:28 }}>—</Text>
+                      ? <Image source={item.file as any} style={{ width:38, height:38, borderRadius:8, marginBottom:4 }} resizeMode="contain" />
+                      : <Text style={{ fontSize:18, color:'#333344', marginBottom:4, lineHeight:26 }}>—</Text>
                     }
                     <Text style={{ color: item ? '#EEEEFF' : '#444455', fontSize:7.5, fontFamily:mono, fontWeight:'700', textAlign:'center' }} numberOfLines={1}>{item ? item.name : label}</Text>
                     {item
-                      ? <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); clear(); }} style={{ marginTop:4 }}>
+                      ? <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); clear(); }} style={{ marginTop:3 }}>
                           <Text style={{ color:'#555566', fontSize:7, fontFamily:mono }}>✕ remove</Text>
                         </TouchableOpacity>
-                      : <Text style={{ color:'#333344', fontSize:7, fontFamily:mono, marginTop:4 }}>tap to browse</Text>
+                      : <Text style={{ color:'#333344', fontSize:7, fontFamily:mono, marginTop:3 }}>tap to browse</Text>
                     }
                   </TouchableOpacity>
                 );
@@ -6929,7 +6937,9 @@ No other text.`;
           })()}
 
           {/* ── COSMETICS — HALOS ─────────────────────────────────────────── */}
-          <TouchableOpacity onPress={() => toggleShopSection('halos')} activeOpacity={0.7} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: shopSections.halos ? 6 : 4 }}>
+          <TouchableOpacity onPress={() => toggleShopSection('halos')} activeOpacity={0.7}
+
+            style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: shopSections.halos ? 6 : 4 }}>
             <View>
               <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2 }}>◯ HALOS — LEGENDARY & SPECTRAL</Text>
               {shopSections.halos && <Text style={{ color:'#333344', fontSize:8, fontFamily:mono, letterSpacing:1, marginTop:2 }}>ORIGIN FREE · ARCANE @25 DIVES · MYTHIC @75 DIVES · BUY BELOW FOR REST</Text>}
@@ -6945,7 +6955,7 @@ No other text.`;
             return earned.length > 0 ? (
               <View style={{ marginBottom:14 }}>
                 <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:8 }}>YOURS — EARNED</Text>
-                <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap:8, paddingRight:8 }}>
                   {earned.map(item => {
                     const isEq = equippedHalo === item.id;
                     return (
@@ -6964,7 +6974,7 @@ No other text.`;
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             ) : null;
           })()}
@@ -7023,7 +7033,9 @@ No other text.`;
           })}
 
           {/* ── COSMETICS — WINGS ─────────────────────────────────────────── */}
-          <TouchableOpacity onPress={() => toggleShopSection('wings')} activeOpacity={0.7} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginTop:16, marginBottom: shopSections.wings ? 10 : 4 }}>
+          <TouchableOpacity onPress={() => toggleShopSection('wings')} activeOpacity={0.7}
+
+            style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginTop:16, marginBottom: shopSections.wings ? 10 : 4 }}>
             <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2 }}>◁ WINGS — LEGENDARY & SPECTRAL</Text>
             <Text style={{ color:'#555566', fontSize:11, fontFamily:mono }}>{shopSections.wings ? '▼' : '▶'}</Text>
           </TouchableOpacity>
@@ -7036,7 +7048,7 @@ No other text.`;
             return earned.length > 0 ? (
               <View style={{ marginBottom:14 }}>
                 <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:8 }}>YOURS — EARNED</Text>
-                <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap:8, paddingRight:8 }}>
                   {earned.map(item => {
                     const isEq = equippedWings === item.id;
                     return (
@@ -7055,7 +7067,7 @@ No other text.`;
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             ) : null;
           })()}
@@ -7117,7 +7129,8 @@ No other text.`;
           })}
 
           {/* ── COSMETICS — PETS ──────────────────────────────────────────── */}
-          <TouchableOpacity onPress={() => toggleShopSection('pets')} activeOpacity={0.7} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginTop:16, marginBottom: shopSections.pets ? 10 : 4 }}>
+          <TouchableOpacity onPress={() => toggleShopSection('pets')} activeOpacity={0.7}
+            style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginTop:16, marginBottom: shopSections.pets ? 10 : 4 }}>
             <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2 }}>✧ PETS — LEGENDARY & SPECTRAL</Text>
             <Text style={{ color:'#555566', fontSize:11, fontFamily:mono }}>{shopSections.pets ? '▼' : '▶'}</Text>
           </TouchableOpacity>
@@ -7130,7 +7143,7 @@ No other text.`;
             return earned.length > 0 ? (
               <View style={{ marginBottom:14 }}>
                 <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:8 }}>YOURS — EARNED</Text>
-                <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8 }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap:8, paddingRight:8 }}>
                   {earned.map(item => {
                     const isEq = equippedPet === item.id;
                     return (
@@ -7149,7 +7162,7 @@ No other text.`;
                       </TouchableOpacity>
                     );
                   })}
-                </View>
+                </ScrollView>
               </View>
             ) : null;
           })()}
