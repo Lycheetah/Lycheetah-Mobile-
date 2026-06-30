@@ -6771,6 +6771,40 @@ No other text.`;
             </View>
           </View>
 
+          {/* ── EQUIPPED ────────────────────────────────────────────────────── */}
+          <View style={{ marginBottom:20 }}>
+            <Text style={{ color:'#888899', fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>⊚ EQUIPPED</Text>
+            <View style={{ flexDirection:'row', gap:8 }}>
+              {([
+                { label:'HALO',  equipped:equippedHalo,  items:HALO_ITEMS,  clear: async () => { setEquippedHalo(null);  await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:null,        wings:equippedWings, pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'WINGS', equipped:equippedWings, items:WINGS_ITEMS, clear: async () => { setEquippedWings(null); await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:null,         pet:equippedPet, bg:equippedBg })); showToast('Unequipped'); } },
+                { label:'PET',   equipped:equippedPet,   items:PET_ITEMS,   clear: async () => { setEquippedPet(null);   await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:null,        bg:equippedBg })); showToast('Unequipped'); } },
+              ] as { label:string; equipped:string|null; items:{id:string;name:string;file?:any}[]; clear:()=>Promise<void> }[]).map(({ label, equipped, items, clear }) => {
+                const item = equipped ? items.find(i => i.id === equipped) : null;
+                return (
+                  <View key={label} style={{ flex:1, borderRadius:10, borderWidth:1, borderColor: item ? skin.color+'44' : '#2A2A3A', backgroundColor: item ? skin.color+'0A' : '#0A0A14', padding:10, alignItems:'center', minHeight:88 }}>
+                    {item?.file
+                      ? <Image source={item.file as any} style={{ width:42, height:42, borderRadius:8, marginBottom:5 }} resizeMode="contain" />
+                      : <Text style={{ fontSize:20, color:'#333344', marginBottom:5, lineHeight:28 }}>—</Text>
+                    }
+                    <Text style={{ color: item ? '#EEEEFF' : '#444455', fontSize:7.5, fontFamily:mono, fontWeight:'700', textAlign:'center' }} numberOfLines={1}>{item ? item.name : label}</Text>
+                    {item && (
+                      <TouchableOpacity onPress={clear} style={{ marginTop:4 }}>
+                        <Text style={{ color:'#555566', fontSize:7, fontFamily:mono }}>✕ remove</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ── THE SHOP ─────────────────────────────────────────────────────── */}
+          <View style={{ flexDirection:'row', alignItems:'center', gap:8, marginBottom:14 }}>
+            <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#C49A3C' }} />
+            <Text style={{ color:'#C49A3C', fontSize:11, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>THE SHOP</Text>
+          </View>
+
           {/* ── TODAY'S FORGE (#261) — rotating daily cosmetics, fresh every day ── */}
           {(() => {
             // Deterministic daily pick of 3 buyable (LEGENDARY/SPECTRAL/SECRET) cosmetics with art.
@@ -6856,22 +6890,27 @@ No other text.`;
                   <Text style={{ color:'#EEEEFF', fontSize:12, fontWeight:'700', fontFamily:mono }}>{item.name}</Text>
                   <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
                 </View>
-                <TouchableOpacity activeOpacity={alreadyOwned || !canAfford ? 1 : 0.7}
+                <TouchableOpacity activeOpacity={(!alreadyOwned && !canAfford) ? 1 : 0.7}
                   onPress={async () => {
-                    if (alreadyOwned) return;
-                    if (!canAfford) { showToast('Not enough ⟡'); return; }
-                    const next = coins - item.price; setCoins(next);
-                    await AsyncStorage.setItem('sol_coins', String(next));
-                    const nextUnlocks = [...shopUnlocks, item.unlockId];
-                    setShopUnlocks(nextUnlocks);
-                    await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
-                    showToast(`${item.name} unlocked!`);
+                    if (!alreadyOwned) {
+                      if (!canAfford) { showToast('Not enough ⟡'); return; }
+                      const next = coins - item.price; setCoins(next);
+                      await AsyncStorage.setItem('sol_coins', String(next));
+                      const nextUnlocks = [...shopUnlocks, item.unlockId]; setShopUnlocks(nextUnlocks);
+                      await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
+                      showToast(`${item.name} unlocked!`);
+                    } else {
+                      const next = equippedHalo === item.unlockId ? null : item.unlockId;
+                      setEquippedHalo(next);
+                      await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:next, wings:equippedWings, pet:equippedPet, bg:equippedBg }));
+                      showToast(next ? `${item.name} equipped!` : 'Unequipped');
+                    }
                   }}
                   style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8, borderWidth:1,
-                    borderColor: alreadyOwned ? '#44FF8866' : canAfford ? rc+'88' : '#333344',
-                    backgroundColor: alreadyOwned ? '#44FF880A' : canAfford ? rc+'18' : 'transparent' }}>
-                  <Text style={{ color: alreadyOwned ? '#44FF88' : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                    {alreadyOwned ? 'OWNED ✓' : `⟡ ${item.price}`}
+                    borderColor: alreadyOwned ? (equippedHalo===item.unlockId ? '#44FF8866' : skin.color+'66') : canAfford ? rc+'88' : '#333344',
+                    backgroundColor: alreadyOwned ? (equippedHalo===item.unlockId ? '#44FF880A' : skin.color+'18') : canAfford ? rc+'18' : 'transparent' }}>
+                  <Text style={{ color: alreadyOwned ? (equippedHalo===item.unlockId ? '#44FF88' : skin.color) : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
+                    {alreadyOwned ? (equippedHalo===item.unlockId ? 'ON ✓' : 'EQUIP') : `⟡ ${item.price}`}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -6913,22 +6952,27 @@ No other text.`;
                   <Text style={{ color:'#EEEEFF', fontSize:12, fontWeight:'700', fontFamily:mono }}>{item.name}</Text>
                   <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
                 </View>
-                <TouchableOpacity activeOpacity={alreadyOwned || !canAfford ? 1 : 0.7}
+                <TouchableOpacity activeOpacity={(!alreadyOwned && !canAfford) ? 1 : 0.7}
                   onPress={async () => {
-                    if (alreadyOwned) return;
-                    if (!canAfford) { showToast('Not enough ⟡'); return; }
-                    const next = coins - item.price; setCoins(next);
-                    await AsyncStorage.setItem('sol_coins', String(next));
-                    const nextUnlocks = [...shopUnlocks, item.unlockId];
-                    setShopUnlocks(nextUnlocks);
-                    await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
-                    showToast(`${item.name} unlocked!`);
+                    if (!alreadyOwned) {
+                      if (!canAfford) { showToast('Not enough ⟡'); return; }
+                      const next = coins - item.price; setCoins(next);
+                      await AsyncStorage.setItem('sol_coins', String(next));
+                      const nextUnlocks = [...shopUnlocks, item.unlockId]; setShopUnlocks(nextUnlocks);
+                      await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
+                      showToast(`${item.name} unlocked!`);
+                    } else {
+                      const next = equippedWings === item.unlockId ? null : item.unlockId;
+                      setEquippedWings(next);
+                      await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:next, pet:equippedPet, bg:equippedBg }));
+                      showToast(next ? `${item.name} equipped!` : 'Unequipped');
+                    }
                   }}
                   style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8, borderWidth:1,
-                    borderColor: alreadyOwned ? '#44FF8866' : canAfford ? rc+'88' : '#333344',
-                    backgroundColor: alreadyOwned ? '#44FF880A' : canAfford ? rc+'18' : 'transparent' }}>
-                  <Text style={{ color: alreadyOwned ? '#44FF88' : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                    {alreadyOwned ? 'OWNED ✓' : `⟡ ${item.price}`}
+                    borderColor: alreadyOwned ? (equippedWings===item.unlockId ? '#44FF8866' : skin.color+'66') : canAfford ? rc+'88' : '#333344',
+                    backgroundColor: alreadyOwned ? (equippedWings===item.unlockId ? '#44FF880A' : skin.color+'18') : canAfford ? rc+'18' : 'transparent' }}>
+                  <Text style={{ color: alreadyOwned ? (equippedWings===item.unlockId ? '#44FF88' : skin.color) : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
+                    {alreadyOwned ? (equippedWings===item.unlockId ? 'ON ✓' : 'EQUIP') : `⟡ ${item.price}`}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -6967,22 +7011,27 @@ No other text.`;
                   <Text style={{ color:'#EEEEFF', fontSize:12, fontWeight:'700', fontFamily:mono }}>{item.name}</Text>
                   <Text style={{ color:'#555566', fontSize:9, fontFamily:mono, marginTop:2 }}>{item.desc}</Text>
                 </View>
-                <TouchableOpacity activeOpacity={alreadyOwned || !canAfford ? 1 : 0.7}
+                <TouchableOpacity activeOpacity={(!alreadyOwned && !canAfford) ? 1 : 0.7}
                   onPress={async () => {
-                    if (alreadyOwned) return;
-                    if (!canAfford) { showToast('Not enough ⟡'); return; }
-                    const next = coins - item.price; setCoins(next);
-                    await AsyncStorage.setItem('sol_coins', String(next));
-                    const nextUnlocks = [...shopUnlocks, item.unlockId];
-                    setShopUnlocks(nextUnlocks);
-                    await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
-                    showToast(`${item.name} unlocked!`);
+                    if (!alreadyOwned) {
+                      if (!canAfford) { showToast('Not enough ⟡'); return; }
+                      const next = coins - item.price; setCoins(next);
+                      await AsyncStorage.setItem('sol_coins', String(next));
+                      const nextUnlocks = [...shopUnlocks, item.unlockId]; setShopUnlocks(nextUnlocks);
+                      await AsyncStorage.setItem('sol_shop_unlocks', JSON.stringify(nextUnlocks));
+                      showToast(`${item.name} unlocked!`);
+                    } else {
+                      const next = equippedPet === item.unlockId ? null : item.unlockId;
+                      setEquippedPet(next);
+                      await AsyncStorage.setItem('sol_cosmetics', JSON.stringify({ halo:equippedHalo, wings:equippedWings, pet:next, bg:equippedBg }));
+                      showToast(next ? `${item.name} equipped!` : 'Unequipped');
+                    }
                   }}
                   style={{ paddingHorizontal:14, paddingVertical:8, borderRadius:8, borderWidth:1,
-                    borderColor: alreadyOwned ? '#44FF8866' : canAfford ? rc+'88' : '#333344',
-                    backgroundColor: alreadyOwned ? '#44FF880A' : canAfford ? rc+'18' : 'transparent' }}>
-                  <Text style={{ color: alreadyOwned ? '#44FF88' : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
-                    {alreadyOwned ? 'OWNED ✓' : `⟡ ${item.price}`}
+                    borderColor: alreadyOwned ? (equippedPet===item.unlockId ? '#44FF8866' : skin.color+'66') : canAfford ? rc+'88' : '#333344',
+                    backgroundColor: alreadyOwned ? (equippedPet===item.unlockId ? '#44FF880A' : skin.color+'18') : canAfford ? rc+'18' : 'transparent' }}>
+                  <Text style={{ color: alreadyOwned ? (equippedPet===item.unlockId ? '#44FF88' : skin.color) : canAfford ? rc : '#444455', fontSize:10, fontFamily:mono, fontWeight:'700' }}>
+                    {alreadyOwned ? (equippedPet===item.unlockId ? 'ON ✓' : 'EQUIP') : `⟡ ${item.price}`}
                   </Text>
                 </TouchableOpacity>
               </View>
