@@ -1647,7 +1647,7 @@ export default function SolChat() {
       : basePrompt;
     const isCouncil = councilMode || talkMode === 'COUNCIL';
     const systemPrompt = isCouncil
-      ? `${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
+      ? `${styleInstruction}\n\n${lengthInstruction}\n\n${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
       : `${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${activePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${talkMode === 'WAYFARER' ? `\n\nYou are in WAYFARER mode — open conversation. If asked what mode you are in, say: "Wayfarer mode — open conversation, no special frame."` : ''}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response append exactly: [CONF:X] (X = confidence 0.0-1.0) then on the next line: [CHIPS:chip1|chip2|chip3] (3 short follow-up prompts). Output these silently — never reference or explain them.`;
 
     const detectedMode = detectMode(text);
@@ -2204,10 +2204,12 @@ export default function SolChat() {
             const councilModel = nvidiaKey
               ? (COUNCIL_MODELS[secondPersona] || 'z-ai/glm-5.1')
               : model;
-            const councilPrompt = `You are ${secondName}. In 1-2 sentences only, add your perspective on the following exchange. Do not repeat what was said — only add what ${getPersonaLabel(persona)} missed or what you see differently. Be direct.\n\nUser: ${text}\n\n${getPersonaLabel(persona)} responded: ${fullResponse.slice(0, 600)}`;
+            const councilPrompt = `In 1-2 sentences only, add your perspective on the following exchange. Do not repeat what was said — only add what ${getPersonaLabel(persona)} missed or what you see differently. Be direct.\n\nUser: ${text}\n\n${getPersonaLabel(persona)} responded: ${fullResponse.slice(0, 600)}`;
+            const councilSystemPrompt = resolvePrompt(selectBasePrompt(secondPersona as Persona, 'full'), userName) +
+              `\n\nYou are responding as a council voice — 1-2 sentences only. No preamble, no sign-off. Add only what ${getPersonaLabel(persona)} missed.`;
             const councilResult = await sendMessage(
               [{ role: 'user', content: councilPrompt }],
-              `You are ${secondName} from the Sol constitutional AI system. Brief, precise, no padding.`,
+              councilSystemPrompt,
               councilKey,
               councilModel as any
             );
