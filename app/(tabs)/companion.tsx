@@ -5910,42 +5910,40 @@ No other text.`;
             </TouchableOpacity>
           )}
           {!chronicleCollapsed && (chronicle.length > 0 || fieldNote || fieldNoteLoading) && (
-            <View style={{ marginBottom:18, padding:14, borderRadius:12, borderWidth:1, borderColor: skin.color+'33', backgroundColor: skin.color+'08' }}>
-              <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
-                <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, fontWeight:'700' }}>𝔏 THE CHRONICLE</Text>
-                <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7}>
-                  <Text style={{ color: fieldNoteLoading ? '#333344' : skin.color+'88', fontSize:16, opacity: fieldNoteLoading ? 0.4 : 1 }}>↺</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={{ color:'#66607A', fontSize:8, fontFamily:mono, marginBottom: (fieldNote || fieldNoteLoading) ? 8 : 11 }}>Your companion remembers everything you've earned together.</Text>
-              {/* Field note — living context at the top of the chronicle */}
+            <View style={{ marginBottom:20 }}>
+              {/* Refresh button */}
+              <TouchableOpacity onPress={generateFieldNote} disabled={fieldNoteLoading} activeOpacity={0.7} style={{ alignSelf:'flex-end', marginBottom:8 }}>
+                <Text style={{ color: fieldNoteLoading ? '#333344' : skin.color+'66', fontSize:14 }}>↺</Text>
+              </TouchableOpacity>
+              {/* Field note — companion's living voice */}
               {(fieldNote || fieldNoteLoading) && (
-                <View style={{ marginBottom:11, paddingVertical:8, paddingHorizontal:10, borderRadius:8, borderWidth:1, borderColor: skin.color+'22', backgroundColor:'#0A0A14' }}>
+                <View style={{ marginBottom:18, paddingLeft:12, borderLeftWidth:2, borderLeftColor: skin.color+'55' }}>
                   {fieldNoteLoading
                     ? <ActivityIndicator size="small" color={skin.color+'88'} style={{ alignSelf:'flex-start' }} />
-                    : <Text style={{ color:'#9AA4BC', fontSize:11, lineHeight:17, fontStyle:'italic' }}>{fieldNote ?? fieldFallback}</Text>
+                    : <Text style={{ color:'#A8A0BC', fontSize:13, lineHeight:20, fontStyle:'italic' }}>{fieldNote ?? fieldFallback}</Text>
                   }
                 </View>
               )}
-              <View style={{ gap:9 }}>
-                {chronicle.slice(0, 14).map((c, i) => c.isSynthesis ? (
-                  <View key={c.ts + '_' + i} style={{ paddingVertical:9, paddingHorizontal:11, borderRadius:9, borderWidth:1, borderColor: skin.color+'55', backgroundColor: skin.color+'0E' }}>
-                    <Text style={{ color: skin.color, fontSize:9, fontFamily:mono, letterSpacing:2, marginBottom:4 }}>⊚ THE CHRONICLE SPEAKS</Text>
-                    <Text style={{ color:'#DDDAEE', fontSize:12, lineHeight:18, fontStyle:'italic' }}>{c.text}</Text>
-                    <Text style={{ color:'#44404F', fontSize:7.5, fontFamily:mono, marginTop:3 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric' })}</Text>
+              {/* Chronicle entries — journal style, open, no box */}
+              <View style={{ gap:16 }}>
+                {chronicle.slice(0, 8).map((c, i) => c.isSynthesis ? (
+                  <View key={c.ts + '_' + i} style={{ paddingLeft:12, borderLeftWidth:2, borderLeftColor: skin.color+'88' }}>
+                    <Text style={{ color: skin.color, fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:5 }}>⊚ CHRONICLE SPEAKS</Text>
+                    <Text style={{ color:'#DDDAEE', fontSize:13, lineHeight:20, fontStyle:'italic' }}>{c.text}</Text>
+                    <Text style={{ color:'#44404F', fontSize:8, fontFamily:mono, marginTop:4 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric' })}</Text>
                   </View>
                 ) : (
-                  <View key={c.ts + '_' + i} style={{ flexDirection:'row', gap:9, alignItems:'flex-start' }}>
-                    <Text style={{ fontSize:13, color: skin.color, marginTop:1, width:18, textAlign:'center' }}>{c.glyph}</Text>
+                  <View key={c.ts + '_' + i} style={{ flexDirection:'row', gap:12, alignItems:'flex-start' }}>
+                    <Text style={{ fontSize:16, color: skin.color, marginTop:2, width:20, textAlign:'center' }}>{c.glyph}</Text>
                     <View style={{ flex:1 }}>
-                      <Text style={{ color:'#C8C4D8', fontSize:11.5, lineHeight:16 }}>{c.text}</Text>
-                      <Text style={{ color:'#44404F', fontSize:7.5, fontFamily:mono, marginTop:2 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric' })}</Text>
+                      <Text style={{ color:'#C8C4D8', fontSize:13, lineHeight:19 }}>{c.text}</Text>
+                      <Text style={{ color:'#44404F', fontSize:8, fontFamily:mono, marginTop:3 }}>{new Date(c.ts).toLocaleDateString(undefined, { month:'short', day:'numeric' })}</Text>
                     </View>
                   </View>
                 ))}
               </View>
-              {chronicle.length > 14 && (
-                <Text style={{ color: skin.color+'88', fontSize:8, fontFamily:mono, marginTop:10, textAlign:'center' }}>+ {chronicle.length - 14} more chapters</Text>
+              {chronicle.length > 8 && (
+                <Text style={{ color: skin.color+'55', fontSize:9, fontFamily:mono, marginTop:14, textAlign:'center' }}>+ {chronicle.length - 8} more memories</Text>
               )}
             </View>
           )}
