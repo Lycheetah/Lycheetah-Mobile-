@@ -816,7 +816,7 @@ export default function CompanionScreen() {
 
   const phraseAnim      = useRef(new Animated.Value(0)).current;
   const relicAnim       = useRef(new Animated.Value(0)).current;
-  const freshDiveRef    = useRef<{ subjectName: string; domainLabel: string } | null>(null);
+  const freshDiveRef    = useRef<{ subjectName: string; domainLabel: string; depthScore?: 1|2|3 } | null>(null);
   const xpPopAnim       = useRef(new Animated.Value(0)).current;
   const entityShakeAnim = useRef(new Animated.Value(0)).current;
   const enemyHitFlash   = useRef(new Animated.Value(0)).current;
@@ -965,6 +965,8 @@ export default function CompanionScreen() {
   const [recallDue, setRecallDue] = useState<{ diveId: string; subjectName: string; domainLabel: string; contentSeed?: string; daysAgo: number } | null>(null);
   const [protegeLog, setProtegeLog] = useState<Array<{ date: string; subject: string; lesson: string }>>([]);
   const [protegeCollapsed, setProtegeCollapsed] = useState(true);
+  const [pendingWhisper, setPendingWhisper] = useState<{ text: string; subject: string } | null>(null);
+  const [synthesisPending, setSynthesisPending] = useState<{ domains: string[] } | null>(null);
   const [campfireOpen, setCampfireOpen] = useState(false);
   const [talkFullscreen, setTalkFullscreen] = useState(false);
   const talkCancelRef = useRef(false);
@@ -1149,7 +1151,8 @@ export default function CompanionScreen() {
         'sol_zone_unlocks','sol_dive_spent','sol_bonus_coins','sol_unlocked_companions','sol_boss_defeated','sol_chronicle',
         'sol_companion_xp','sol_companion_alloc','sol_xp_last_total',
         'sol_fresh_dive','sol_campaigns',
-        'sol_space_log','sol_protege_log',
+        'sol_space_log','sol_protege_log','sol_learn_log','sol_pending_whisper',
+        'sol_domain_first_signal','sol_synthesis_signal',
       ];
       const vals = await AsyncStorage.multiGet(keys);
       const get  = (k: string) => vals.find(([key]) => key === k)?.[1] ?? null;
@@ -1194,13 +1197,35 @@ export default function CompanionScreen() {
         const plRaw = get('sol_protege_log');
         setProtegeLog(plRaw ? JSON.parse(plRaw) : []);
       } catch {}
+      // LEARN-7: synthesis signal
+      try {
+        const ssRaw = get('sol_synthesis_signal');
+        if (ssRaw) {
+          const ss = JSON.parse(ssRaw);
+          if (ss?.domains && ss?.ts && (Date.now() - ss.ts) < 86_400_000) {
+            setSynthesisPending({ domains: ss.domains });
+            AsyncStorage.removeItem('sol_synthesis_signal').catch(() => {});
+          }
+        }
+      } catch {}
+      // LEARN-10: pending whisper from last dive start (max 4h old)
+      try {
+        const wRaw = get('sol_pending_whisper');
+        if (wRaw) {
+          const w = JSON.parse(wRaw);
+          if (w?.text && w?.ts && (Date.now() - w.ts) < 14_400_000) {
+            setPendingWhisper({ text: w.text, subject: w.subject });
+            AsyncStorage.removeItem('sol_pending_whisper').catch(() => {});
+          }
+        }
+      } catch {}
       // Fresh dive signal from School — triggers live study-reaction on companion greeting (#245)
       const freshRaw = get('sol_fresh_dive');
       if (freshRaw) {
         try {
           const fd = JSON.parse(freshRaw);
           if (fd?.subjectName && fd?.timestamp && (Date.now() - fd.timestamp) < 7_200_000) {
-            freshDiveRef.current = { subjectName: fd.subjectName, domainLabel: fd.domainLabel || 'the unknown' };
+            freshDiveRef.current = { subjectName: fd.subjectName, domainLabel: fd.domainLabel || 'the unknown', depthScore: fd.depthScore };
             AsyncStorage.removeItem('sol_fresh_dive').catch(() => {});
           }
         } catch {}
@@ -1493,13 +1518,24 @@ export default function CompanionScreen() {
       // Greeting — fires on every tab open. Study-aware: if the seeker has dived recently,
       // Greeting — fresh dive takes priority (live AI reaction), then memory template, then generic.
       setTimeout(() => {
+        // LEARN-5: first-domain signal
+        const domainFirstRaw = get('sol_domain_first_signal');
+        if (domainFirstRaw) {
+          try {
+            const df = JSON.parse(domainFirstRaw);
+            if (df?.domainLabel && df?.ts && (Date.now() - df.ts) < 7_200_000) {
+              AsyncStorage.removeItem('sol_domain_first_signal').catch(() => {});
+              setPhrase(`You've never gone into ${df.domainLabel} before. I wondered when you would.`);
+            }
+          } catch {}
+        }
         if (freshDiveRef.current) {
           const fd = freshDiveRef.current;
           freshDiveRef.current = null;
           if (total === 1) {
             setPhrase('Something noticed you.');
           } else {
-            generateStudyReaction(fd.subjectName, fd.domainLabel);
+            generateStudyReaction(fd.subjectName, fd.domainLabel, fd.depthScore);
           }
         } else if (recentDives.length > 0 && Math.random() < 0.6) {
           const dive = recentDives[Math.floor(Math.random() * Math.min(recentDives.length, 3))];
@@ -1658,7 +1694,7 @@ export default function CompanionScreen() {
   ];
 
   // Live AI reaction to a fresh dive — fires when companion tab is opened right after study (#245)
-  const generateStudyReaction = async (subjectName: string, domainLabel: string) => {
+  const generateStudyReaction = async (subjectName: string, domainLabel: string, depthScore?: 1|2|3) => {
     const fallbacks = MEMORY_TEMPLATES;
     const fallback = fallbacks[Math.floor(Math.random() * fallbacks.length)](subjectName, domainLabel);
     try {
@@ -1666,8 +1702,14 @@ export default function CompanionScreen() {
       if (!key) { setPhrase(fallback); return; }
       const charLoreSR = COMPANION_LORE[skin.id as SkinId];
       const namedSR = charLoreSR ? `${charLoreSR.name}, ${charLoreSR.title}` : (displayName && displayName !== archetype.name ? `${displayName}, a ${archetype.name}` : `${archetype.name}, ${archetype.title}`);
+      const depthCtx = depthScore === 3 ? ' They went deep — a long, genuine session.' : depthScore === 1 ? ' It was brief — they grazed the surface.' : '';
+      const depthInstruction = depthScore === 3
+        ? 'React with genuine weight — they earned something real. Mythic acknowledgment, no flattery.'
+        : depthScore === 1
+        ? 'React warmly but note the brevity — "You grazed it. Come back." No guilt, just truth.'
+        : 'React to exactly what they studied — make it feel significant.';
       const result = await sendMessage(
-        [{ role: 'user', content: `${namedSR}. Your seeker just returned from studying "${subjectName}" (${domainLabel} domain). React in 1-2 sentences — acknowledge what they studied, make it feel significant. Mythic, alive, specific. No generic praise, no questions, no quotes.` }],
+        [{ role: 'user', content: `${namedSR}. Your seeker just returned from studying "${subjectName}" (${domainLabel} domain).${depthCtx} ${depthInstruction} 1-2 sentences. No generic praise, no questions, no quotes.` }],
         charLoreSR ? `You are ${charLoreSR.name}. ${charLoreSR.lore} ${charLoreSR.voice} When your seeker returns from deep study, react to exactly what they studied — specific, in your distinct voice, never generic.` : `You are ${displayName || archetype.name}, a living companion spirit in a mystery school. When your seeker returns from deep study, you react to exactly what they studied — specific, warm but not saccharine, mythic.`,
         key, model as any, undefined, 'fast', 120,
       );
@@ -2084,6 +2126,16 @@ JSON only, no extra text:
       const diveCtx = recentDives.length > 0
         ? `The student has recently studied: ${recentDives.slice(0, 3).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ')}.`
         : '';
+      // LEARN-2: past Q+A context for learn/recall modes
+      let learnHistoryCtx = '';
+      if (campfireMode === 'learn' || campfireMode === 'recall') {
+        try {
+          const llRaw = await AsyncStorage.getItem('sol_learn_log');
+          const ll: Array<{ date: string; subject: string; question: string; answer: string }> = llRaw ? JSON.parse(llRaw) : [];
+          const relevant = ll.filter(e => e.subject === recentDives[0]?.subjectName || e.subject === recallDue?.subjectName).slice(0, 3);
+          if (relevant.length > 0) learnHistoryCtx = `\nPast answers from this seeker on related subjects: ${relevant.map(e => `Q: "${e.question.slice(0,80)}" → A: "${e.answer.slice(0,120)}"`).join(' | ')}`;
+        } catch {}
+      }
       const history = next.slice(-6).map(m => ({
         role: m.role === 'user' ? 'user' : 'assistant',
         content: m.text,
@@ -2111,9 +2163,9 @@ BONFIRE — DEEP LEARNING. The seeker has named a subject they want to understan
                 : lastDive ? `They studied ${lastDive.subjectName} in ${lastDive.domainLabel}.` : '';
               return `${fireBase}
 
-LEARN MODE — SOCRATIC DIALOGUE. The seeker is testing their understanding of "${lastDive?.subjectName ?? 'a recent subject'}" (${lastDive?.domainLabel ?? 'unknown domain'}). ${seedCtx}
+LEARN MODE — SOCRATIC DIALOGUE. The seeker is testing their understanding of "${lastDive?.subjectName ?? 'a recent subject'}" (${lastDive?.domainLabel ?? 'unknown domain'}). ${seedCtx}${learnHistoryCtx}
 
-You are drilling them. Each response you give MUST do one of: (1) push deeper on their answer — find the gap or the assumption they haven't examined, (2) offer a precise correction if they're wrong — warm but unflinching (you are the Healer, you clarify without bypass), or (3) confirm and then escalate — if they got it right, say so briefly and ask the next harder question. Never just affirm. Never say "great answer." The companion that only praises is lying. 2-4 sentences. End with a question or a challenge.`;
+You are drilling them. Each response you give MUST do one of: (1) push deeper on their answer — find the gap or the assumption they haven't examined, (2) offer a precise correction if they're wrong — warm but unflinching (you are the Healer, you clarify without bypass), or (3) confirm and then escalate — if they got it right, say so briefly and ask the next harder question. If you have their past answers on this subject, reference them: "Last time you said X — does that still hold?" Never just affirm. Never say "great answer." The companion that only praises is lying. 2-4 sentences. End with a question or a challenge.`;
             }
             if (campfireMode === 'recall') {
               const target = recallDue;
@@ -2122,9 +2174,9 @@ You are drilling them. Each response you give MUST do one of: (1) push deeper on
                 : target ? `They studied ${target.subjectName} in ${target.domainLabel}.` : '';
               return `${fireBase}
 
-RECALL SESSION. The seeker is recalling "${target?.subjectName ?? 'a past subject'}" studied ${target?.daysAgo ?? 'several'} day(s) ago. ${seedCtx}
+RECALL SESSION. The seeker is recalling "${target?.subjectName ?? 'a past subject'}" studied ${target?.daysAgo ?? 'several'} day(s) ago. ${seedCtx}${learnHistoryCtx}
 
-This is a closed recall test — you know what they studied, they are trying to retrieve it from memory without looking. Evaluate their answer precisely: did they get the core right? Did they miss anything important? Correct gaps warmly but honestly. Then: if their recall was good, push them to the next level of that topic. If it was shallow, ask them to try again with a specific prompt. 2-4 sentences. The recall session ends when you say so — not on their first answer.`;
+This is a closed recall test — you know what they studied, they are trying to retrieve it from memory without looking. Evaluate their answer precisely: did they get the core right? Did they miss anything important? Correct gaps warmly but honestly. Then: if their recall was good, push them to the next level of that topic. If it was shallow, ask them to try again with a specific prompt. If you have their past answers on this subject, reference them directly. 2-4 sentences. The recall session ends when you say so — not on their first answer.`;
             }
             // exchange
             return `${fireBase}
@@ -2159,10 +2211,33 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
       const reply = result.text?.trim() || fallback;
       setTalkHistory(h => [...h, { role: 'companion', text: reply }]);
       setTimeout(() => talkScrollRef.current?.scrollToEnd({ animated: true }), 80);
-      // LEARN-16: protégé effect — extract lesson from learn/recall exchanges
+      // LEARN-3: 2× bond XP for teaching exchanges (learn/recall first reply)
+      if ((campfireMode === 'learn' || campfireMode === 'recall') && next.filter(m => m.role === 'user').length === 1) {
+        (async () => {
+          try {
+            const cur = activeSkin || 'solform';
+            const raw = await AsyncStorage.getItem('sol_companion_xp');
+            const xpMap: Record<string, number> = raw ? JSON.parse(raw) : {};
+            xpMap[cur] = (xpMap[cur] ?? 0) + 24; // 2× the 12 XP of a dive
+            await AsyncStorage.setItem('sol_companion_xp', JSON.stringify(xpMap));
+            setCompanionXP(xpMap);
+          } catch {}
+        })();
+      }
+      // LEARN-16+2: protégé effect + question history — log learn/recall exchanges
       if ((campfireMode === 'learn' || campfireMode === 'recall') && next.filter(m => m.role === 'user').length === 1) {
         const userAnswer = next.filter(m => m.role === 'user').at(-1)?.text ?? '';
         const subj = campfireMode === 'recall' ? (recallDue?.subjectName ?? recentDives[0]?.subjectName ?? 'unknown') : (recentDives[0]?.subjectName ?? 'unknown');
+        // LEARN-2: store Q+A to sol_learn_log
+        (async () => {
+          try {
+            const companionQ = next.find(m => m.role === 'companion')?.text ?? '';
+            const entry = { date: new Date().toISOString(), subject: subj, question: companionQ.slice(0, 300), answer: userAnswer.slice(0, 500) };
+            const raw = await AsyncStorage.getItem('sol_learn_log');
+            const log: typeof entry[] = raw ? JSON.parse(raw) : [];
+            await AsyncStorage.setItem('sol_learn_log', JSON.stringify([entry, ...log].slice(0, 100)));
+          } catch {}
+        })();
         if (userAnswer.length > 10) {
           (async () => {
             try {
@@ -3628,6 +3703,18 @@ You are testing their memory RIGHT NOW. Do not discuss the material — ask them
               </View>
             )}
           </ScrollView>
+          {/* LEARN-9: The companion remembers strip */}
+          {recentDives.length > 0 && !campfireMode && !auraMode && (
+            <View style={{ flexDirection:'row', alignItems:'center', gap:8, paddingHorizontal:16, paddingVertical:6, backgroundColor:color+'08', borderTopWidth:1, borderTopColor:color+'11' }}>
+              <Text style={{ color:color+'66', fontSize:9, fontFamily:mono, letterSpacing:1 }}>KNOWS:</Text>
+              {recentDives.slice(0,3).map((d,i) => (
+                <View key={i} style={{ paddingHorizontal:6, paddingVertical:2, borderRadius:4, backgroundColor:color+'15' }}>
+                  <Text style={{ color:color+'AA', fontSize:9, fontFamily:mono }}>{d.subjectName.slice(0,14)}</Text>
+                </View>
+              ))}
+              {streak > 0 && <Text style={{ color:'#FF994488', fontSize:9, fontFamily:mono, marginLeft:'auto' }}>🔥{streak}</Text>}
+            </View>
+          )}
           {/* Input */}
           <View style={{ flexDirection:'row', gap:10, padding:16, paddingBottom:Platform.OS === 'ios' ? 32 : 16, borderTopWidth:1, borderTopColor:auraMode?'#E991B822':color+'22', backgroundColor: SOL_THEME.background }}>
             <TextInput
@@ -3923,6 +4010,19 @@ You are testing their memory RIGHT NOW. Do not discuss the material — ask them
             </View>
           </TouchableOpacity>
 
+          {/* ── COMPANION WHISPER (LEARN-10) ────────────────────────── */}
+          {pendingWhisper && (
+            <TouchableOpacity onPress={() => setPendingWhisper(null)} activeOpacity={0.8}
+              style={{ flexDirection:'row', alignItems:'center', gap:10, padding:12, borderRadius:10, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08', marginBottom:14 }}>
+              <Text style={{ color:color, fontSize:14 }}>{skin.glyph}</Text>
+              <View style={{ flex:1 }}>
+                <Text style={{ color:color+'99', fontSize:9, fontFamily:mono, letterSpacing:2 }}>BEFORE YOU DIVED INTO {pendingWhisper.subject.toUpperCase()}</Text>
+                <Text style={{ color:'#DDDDEE', fontSize:12, fontStyle:'italic', marginTop:3, lineHeight:17 }}>"{pendingWhisper.text}"</Text>
+              </View>
+              <Text style={{ color:'#333344', fontSize:10 }}>✕</Text>
+            </TouchableOpacity>
+          )}
+
           {/* ── DAILY QUESTS SUMMARY (CG-6) ────────────────────────── */}
           {(() => {
             const done = quests.filter(q => q.check(questData)).length;
@@ -3959,6 +4059,22 @@ You are testing their memory RIGHT NOW. Do not discuss the material — ask them
                 <Text style={{ color:'#CCBBEE', fontSize:12, marginTop:2 }}>{recallDue.daysAgo}d ago · {recallDue.subjectName}</Text>
               </View>
               <Text style={{ color:'#8866CC88', fontSize:12 }}>→</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ── SYNTHESIS TRIGGER (LEARN-7) ─────────────────────────── */}
+          {synthesisPending && (
+            <TouchableOpacity
+              onPress={() => { setSynthesisPending(null); enterCampfire('auto'); }}
+              activeOpacity={0.85}
+              style={{ flexDirection:'row', alignItems:'center', gap:12, padding:12, borderRadius:10, borderWidth:1, borderColor:'#44AABB44', backgroundColor:'#44AABB0A', marginBottom:14 }}
+            >
+              <Text style={{ fontSize:16 }}>⊗</Text>
+              <View style={{ flex:1 }}>
+                <Text style={{ color:'#55BBCC', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>A THREAD BETWEEN WORLDS</Text>
+                <Text style={{ color:'#AADDEE', fontSize:12, marginTop:2 }}>You've been in {synthesisPending.domains[0]} and {synthesisPending.domains[1]}. There's a connection. Want to pull it?</Text>
+              </View>
+              <Text style={{ color:'#44AABB88', fontSize:12 }}>→</Text>
             </TouchableOpacity>
           )}
 

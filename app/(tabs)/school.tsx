@@ -40,7 +40,7 @@ import { generateImage, saveImageToDevice } from '../../lib/image-gen';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type StudyMessage = { role: 'user' | 'assistant'; content: string };
-type DiveRecord = { id: string; subjectName: string; domainLabel: string; domainColor: string; domainGlyph: string; teacher: string; teacherId: string; layer: SubjectLayer; date: string; messageCount: number; durationSec: number; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'; whisperShown: string | null; contentSeed?: string };
+type DiveRecord = { id: string; subjectName: string; domainLabel: string; domainColor: string; domainGlyph: string; teacher: string; teacherId: string; layer: SubjectLayer; date: string; messageCount: number; durationSec: number; timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'; whisperShown: string | null; contentSeed?: string; depthScore?: 1 | 2 | 3 };
 type ArcPhase = 'intro' | 'concept' | 'question' | 'reflection' | 'advanced';
 type FieldStage = 'NEOPHYTE' | 'ADEPT' | 'MASTER' | 'HIEROPHANT' | 'AVATAR' | null;
 type SchoolLayer = 'FOUNDATION' | 'MIDDLE' | 'EDGE' | 'OPEN' | 'VOID';
@@ -1067,6 +1067,17 @@ export default function MysterySchoolScreen() {
       await AsyncStorage.setItem('sol_daily_cap', JSON.stringify({ date: today, count: todayCount + 1 }));
     }
 
+    // LEARN-5: track first-domain visit
+    if (domain?.id) {
+      AsyncStorage.getItem('sol_domain_firsts').then(raw => {
+        const firsts: string[] = raw ? JSON.parse(raw) : [];
+        if (!firsts.includes(domain.id)) {
+          const updated = [domain.id, ...firsts];
+          AsyncStorage.setItem('sol_domain_firsts', JSON.stringify(updated)).catch(() => {});
+          AsyncStorage.setItem('sol_domain_first_signal', JSON.stringify({ domainId: domain.id, domainLabel: domain.label, ts: Date.now() })).catch(() => {});
+        }
+      }).catch(() => {});
+    }
     const host = hostOverride || getDailyHost(subject.name);
     sessionStartTime.current = Date.now();
     setStudyHost(host);
@@ -1075,6 +1086,21 @@ export default function MysterySchoolScreen() {
     setStudyMessages([]);
     setStudyInput('');
     setStudyArcPhase('intro');
+    // LEARN-10: companion whisper — written at dive start, companion tab reads on return
+    (async () => {
+      try {
+        const apiKey = await getActiveKey();
+        if (!apiKey) return;
+        const skinRaw = await AsyncStorage.getItem('sol_companion_skin');
+        const { COMPANION_LORE } = await import('../../lib/companion/game-data');
+        const lore = skinRaw ? (COMPANION_LORE as any)[skinRaw] : null;
+        const charLine = lore ? `You are ${lore.name} — ${lore.title}. ${lore.lore}` : `You are a companion-spirit.`;
+        const whisperPrompt = `${charLine}\n\nThe seeker is about to dive into "${subject.name}" (${domain?.label ?? 'the unknown'}). Send them off with ONE line — 8–15 words. In your own voice. Not a farewell, not encouragement — something that makes the subject feel alive. No quotes.`;
+        const result = await sendMessage([], whisperPrompt, apiKey, (await getModel()) as any, undefined, 'normal', 40);
+        const whisper = result.text?.trim();
+        if (whisper) await AsyncStorage.setItem('sol_pending_whisper', JSON.stringify({ text: whisper, subject: subject.name, ts: Date.now() }));
+      } catch {}
+    })();
     setStudyStudentDepth('balanced');
 
     const today = new Date().toISOString().split('T')[0];
@@ -1408,6 +1434,7 @@ export default function MysterySchoolScreen() {
       const _timeOfDay: DiveRecord['timeOfDay'] = _hour < 12 ? 'morning' : _hour < 17 ? 'afternoon' : _hour < 21 ? 'evening' : 'night';
       const _firstTeacherMsg = studyMessages.find(m => m.role === 'assistant')?.content ?? '';
       const _contentSeed = (_firstTeacherMsg || activeStudySubject.description || '').slice(0, 280).trimEnd();
+      const _depthScore: 1 | 2 | 3 = focusSeconds >= 900 && studyMessages.length >= 8 ? 3 : focusSeconds >= 300 && studyMessages.length >= 4 ? 2 : 1;
       const record: DiveRecord = {
         id: Date.now().toString(),
         subjectName: activeStudySubject.name,
@@ -1423,13 +1450,25 @@ export default function MysterySchoolScreen() {
         timeOfDay: _timeOfDay,
         whisperShown: sessionWhisper,
         contentSeed: _contentSeed || undefined,
+        depthScore: _depthScore,
       };
       AsyncStorage.getItem('sol_dive_log').then(raw => {
         const log: DiveRecord[] = raw ? JSON.parse(raw) : [];
         const updated = [record, ...log].slice(0, 20);
         AsyncStorage.setItem('sol_dive_log', JSON.stringify(updated)).catch(() => {});
-        AsyncStorage.setItem('sol_fresh_dive', JSON.stringify({ subjectName: record.subjectName, domainLabel: record.domainLabel, timestamp: Date.now() })).catch(() => {});
+        AsyncStorage.setItem('sol_fresh_dive', JSON.stringify({ subjectName: record.subjectName, domainLabel: record.domainLabel, depthScore: record.depthScore, timestamp: Date.now() })).catch(() => {});
         setDiveLog(updated);
+        // LEARN-7: cross-domain synthesis signal — fire when 2+ distinct domains in last 5 dives
+        (() => {
+          const recentDomains = [...new Set(updated.slice(0, 5).map(d => d.domainLabel).filter(Boolean))];
+          if (recentDomains.length >= 2) {
+            AsyncStorage.getItem('sol_synthesis_last').then(lastRaw => {
+              if (lastRaw && (Date.now() - parseInt(lastRaw)) < 86_400_000) return; // max once/day
+              AsyncStorage.setItem('sol_synthesis_signal', JSON.stringify({ domains: recentDomains.slice(0, 2), ts: Date.now() })).catch(() => {});
+              AsyncStorage.setItem('sol_synthesis_last', Date.now().toString()).catch(() => {});
+            }).catch(() => {});
+          }
+        })();
         // Reality Anchor — show after 3rd dive, max once per 3 days
         if (updated.length >= 3) {
           AsyncStorage.getItem('sol_reality_anchor_last').then(lastRaw => {
