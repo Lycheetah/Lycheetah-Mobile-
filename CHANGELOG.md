@@ -1,3 +1,17 @@
+## v5.39.0 — CASCADE AUTO/MANUAL mode split + onboarding accuracy
+
+### CASCADE
+- AUTO mode: engine scores everything. Score/Audit/Quick Build visible. No manual +/- controls. Π computed from framework layer scores only.
+- MANUAL mode: user scores each layer with +/- stepper. Engine buttons hidden. Π computed from sovereign layer scores only.
+- No blending between modes — structurally separate (ruler vs eye).
+- Mode toggle (AUTO / MANUAL) in header, next to pyramid/list toggle.
+- Renamed "EXTREME" pressure label → "PEAK" (less alarming, same meaning).
+
+### Onboarding
+- Step 6 Zodiac bullet: "three-card tarot spread" → "5-card Celtic Cross spread"
+
+---
+
 # Changelog
 
 ## [5.38.0] — 2026-06-30 — Help modal + Library: Lyra wired everywhere
