@@ -3787,10 +3787,10 @@ No other text.`;
 
 
       {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
-      <View style={{ flexDirection:'row', gap:3, marginHorizontal:12, marginTop:0, marginBottom:6, padding:3, borderRadius:14, backgroundColor:'#0A0A14' }}>
+      <View style={{ flexDirection:'row', gap:2, marginHorizontal:8, marginTop:0, marginBottom:6, padding:3, borderRadius:14, backgroundColor:'#0A0A14' }}>
         {([
           { id:'talk'      as const, label:'✦',  name:'TALK'      },
-          { id:'companion' as const, label:'⊛',  name:'COMPANION' },
+          { id:'companion' as const, label:'⊛',  name:'COMP'      },
           { id:'world'     as const, label:'◉',  name:'WORLD'     },
           { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
           { id:'gear'      as const, label:'⟡',  name:'GEAR'      },
@@ -3826,12 +3826,12 @@ No other text.`;
                 }
               }}
               activeOpacity={0.75}
-              style={{ flex:1, paddingVertical:9, borderRadius:11, alignItems:'center', gap:2,
+              style={{ flex:1, paddingVertical:active?7:6, borderRadius:10, alignItems:'center', gap:1,
                 backgroundColor: active ? color+'22' : 'transparent',
                 borderWidth: active ? 1 : 0,
                 borderColor: active ? color+'66' : 'transparent' }}>
-              <Text style={{ color: active ? color : '#444455', fontSize:13, fontFamily:mono }}>{t.label}</Text>
-              <Text style={{ color: active ? (tabMinimized ? color+'55' : color+'CC') : '#333344', fontSize:6, letterSpacing:1.5, fontFamily:mono, fontWeight:'700' }}>{active && tabMinimized ? '▶' : t.name}</Text>
+              <Text style={{ color: active ? color : '#3A3A4A', fontSize:active?12:11, fontFamily:mono }}>{t.label}</Text>
+              {active && <Text style={{ color: tabMinimized ? color+'55' : color+'CC', fontSize:5.5, letterSpacing:1, fontFamily:mono, fontWeight:'700' }}>{tabMinimized ? '▶' : t.name}</Text>}
             </TouchableOpacity>
           );
         })}
