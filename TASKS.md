@@ -8,10 +8,66 @@ Run: `npx expo start` → QR → phone
 
 | # | Task | Notes |
 |---|---|---|
-| **NOCTERA** | Wire NOCTERA deck | 90 prompts done, art generated. Mac: where are the art files? Sol wires same session. |
+| **NOCTURNA** | ✅ Wire NOCTURNA deck + lores | 90/90 complete. Wired as 4th deck in TarotViewer. Lore written all 90 cards. Phone-test. |
 | **VOID DECK** | Build void deck bible + art | Spec: `VOID_SPECTRUM.md`. Mac builds brief + Grok prompts → Sol wires. |
 | **#265** | AURA enforcement phone test | Built + type-clean. Toggle Deep Audit in Settings → confirm `⊚ deep auditing…` badge on reply. |
 | **#258** | Sanctum zodiac — natal chart | LQ sparkline + dive history done. Needs: birthdate input → astronomical computation → Sol-voiced natal reading. |
+
+---
+
+## 🧠 THE LEARNING LOOP — "you learn by raising the companion" made true ✅ CORE DONE
+
+**Built June 30 2026. The pitch is now structurally true.**
+
+### ✅ COMPLETE (all shipped, type-clean, committed)
+
+| # | What | Key mechanic |
+|---|---|---|
+| **LEARN-0** ✅ | Dive content seed | `sol_dive_log.contentSeed` — first 280 chars of teacher's first msg |
+| **LEARN-1** ✅ | Learn Mode (5th bonfire) | Socratic drill on last dive's contentSeed |
+| **LEARN-2** ✅ | Question history log | `sol_learn_log` — Q+A stored, injected into learn/recall prompts |
+| **LEARN-3** ✅ | 2× bond XP for teaching | 24 XP on first learn/recall reply |
+| **LEARN-4** ✅ | What Next button | AI picks next subject from unstudied list + stage; companion explains |
+| **LEARN-5** ✅ | First-domain celebration | `sol_domain_firsts` + signal → "I wondered when you would." |
+| **LEARN-7** ✅ | Cross-domain synthesis card | Surfaces in companion tab when 2+ domains in last 5 dives (max 1/day) |
+| **LEARN-9** ✅ | Companion remembers strip | Last 3 subjects + streak shown above TALK input |
+| **LEARN-10** ✅ | Companion whisper at dive start | AI fires at dive open → `sol_pending_whisper` → card on return |
+| **LEARN-11** ✅ | Depth score 1–3 | `depthScore` on DiveRecord; companion reacts to shallow vs deep |
+| **LEARN-12** ✅ | What Shaped Me growth log | Expandable — last 5 events from protegeLog + dives + stage |
+| **LEARN-13** ✅ | Stage descriptions | SEED→SOVEREIGN all reference learning milestones |
+| **LEARN-14** ✅ | Recall session (6th bonfire) | Closed recall with `sol_space_log` scheduling |
+| **LEARN-15** ✅ | Spaced resurfacing | 1/3/7/16 day intervals per subject |
+| **LEARN-16** ✅ | Protégé effect | `sol_protege_log` — "What you've taught me" codex in companion tab |
+| **LEARN-17** ✅ | Honest pushback | Normal TALK prompt permits warm correction |
+| **LEARN-21** ✅ | Session director | `selectSmartMode()` — recall→learn→synthesis→exchange priority |
+| **LEARN-22** ✅ | Cold-start | Day-1 exchange fires AI welcome invitation |
+
+### 🟡 POLISH / NEXT ERA
+
+| # | Task | Notes |
+|---|---|---|
+| **LEARN-6** | Domain unlock by stage | Advanced domains show soft gate at early stages |
+| **LEARN-8** | Weekly synthesis message | Companion synthesises week's study on day 7 to TALK |
+| **LEARN-18** | Knowledge constellation | Visual star map of studied subjects. Sanctum. |
+| **LEARN-19** | Stage-transition ritual | Companion invites demonstration at milestone transitions |
+| **LEARN-20** | Warm decay resurfacing | "Quantum has gone quiet in you. Want to wake it?" — Companion Clause strict |
+
+---
+
+## 🌱 COMPANION DEPTH — June 30 2026 (from full retention audit)
+
+**Goal: companion feels alive and growing at every stage. No shallow stretches.**
+
+| # | Gap | Fix | Priority |
+|---|---|---|---|
+| **CG-1** ✅ | Stage 0 (dive 1) — companion is silent, no feedback anything happened | Micro-moment at dive 1: companion stirs, one line, tiny animation pulse. "Something noticed you." | 🔴 TODAY |
+| **CG-2** ✅ | EMBER gap (dives 20–50) — 30-dive stretch with no named milestone | Add mid-Ember milestone at dive 35: gear unlock OR bond tier shift OR named moment | 🔴 TODAY |
+| **CG-3** ✅ | LANTERN gap (dives 100–200) — longest stretch, least content | Named moment at dive 150: "LANTERN DEEP" milestone, unlock something visible | 🔴 TODAY |
+| **CG-4** ✅ | Post-SOVEREIGN cliff (200+ dives) — `nextAt: Infinity`, nothing left to chase | Prestige/legacy layer: title, post-sovereign badge, secret companion unlock path | 🔴 TODAY |
+| **CG-5** ✅ | Feeding mechanic — affects bond but visibility unclear to user | Show bond score breakdown somewhere: "dives + streak + feedings = bond tier" | 🟡 SOON |
+| **CG-6** ✅ | Daily quest panel — is it the first thing seen? Needs to be front and centre | Audit quest panel prominence in companion tab. Should feel like a daily checklist, not buried | 🟡 SOON |
+| **CG-7** ✅ | Streak break state — Companion Clause check: does absence punish or rest? | Audit sol_study_streak break handling. Companion must rest, not dim or guilt | 🔴 TODAY |
+| **CG-8** ✅ | Streak XP cap at day 30 — not communicated to user | Add "streak bonus maxed at 30 days" label near XP bar | 🟡 SOON |
 
 ---
 
