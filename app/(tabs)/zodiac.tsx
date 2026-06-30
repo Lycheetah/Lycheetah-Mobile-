@@ -1928,6 +1928,36 @@ verdict: RATIFIED (passes all 5) · CHALLENGED (passes 3-4, name the refinement)
         </View>
       )}
 
+      {/* ── MY CHART ANCHOR — pinned once birth data is set ── */}
+      {!fullscreenSection && birthData && sunSign && (
+        <TouchableOpacity
+          onPress={() => setFullscreenSection('natal')}
+          activeOpacity={0.85}
+          style={{
+            marginBottom: 12,
+            borderRadius: 14,
+            borderWidth: 1.5,
+            borderColor: ZODIAC_INDIGO + '88',
+            backgroundColor: ZODIAC_INDIGO + '0F',
+            paddingVertical: 14,
+            paddingHorizontal: 18,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: ZODIAC_INDIGO, fontSize: 9, fontWeight: '700', letterSpacing: 2, fontFamily: mono, marginBottom: 5 }}>
+              ✦  MY CHART
+            </Text>
+            <Text style={{ color: '#D4C8F0', fontSize: 13, fontWeight: '600', letterSpacing: 0.3 }}>
+              {`☀ ${sunSign.name}  ·  ☽ ${moonSign?.name ?? '—'}${ascSign ? `  ·  ↑ ${ascSign.name}` : ''}`}
+            </Text>
+          </View>
+          <Text style={{ color: ZODIAC_INDIGO + '99', fontSize: 16 }}>→</Text>
+        </TouchableOpacity>
+      )}
+
       {/* ── SECTION TILE GRID ── */}
       {!fullscreenSection && (
         <View style={{ gap: 8, marginBottom: 12 }}>

@@ -1,3 +1,13 @@
+## v5.40.0 — Natal chart persistent anchor
+
+### Zodiac
+- MY CHART banner pinned above tile grid whenever birth data is set
+- Shows ☀ Sun · ☽ Moon · ↑ Rising at a glance
+- Taps directly into natal chart screen
+- Welcome reveal banner unchanged (still first-time only)
+
+---
+
 ## v5.39.0 — CASCADE AUTO/MANUAL mode split + onboarding accuracy
 
 ### CASCADE
