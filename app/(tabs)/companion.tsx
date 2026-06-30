@@ -4417,7 +4417,7 @@ No other text.`;
             )}
           </View>
 
-          {/* ── GEAR (LAMAGUE + BONUS) ──────────────────────────── */}
+          {/* ── LAMAGUE LOADOUT ── */}
           <TouchableOpacity onPress={() => setLoadoutCollapsed(v => !v)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom: loadoutCollapsed ? 12 : 12, marginTop:4 }}>
             <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
               <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
