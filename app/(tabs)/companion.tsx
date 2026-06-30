@@ -102,7 +102,7 @@ function CompanionScene({
   roomLore: string | null;
   roomLoreAnim: Animated.Value;
   onDismissLore: () => void;
-  onSwitchTab: (tab: 'talk'|'companion'|'world'|'battle'|'gear') => void;
+  onSwitchTab: (tab: 'talk'|'companion'|'world'|'battle'|'gear'|'learn') => void;
   equippedWings?: string | null;
   equippedHalo?: string | null;
   equippedPet?: string | null;
@@ -727,7 +727,7 @@ export default function CompanionScreen() {
   const [pendingBattle,  setPendingBattle] = useState<BattleState | null>(null);
   const [attackPower,    setAttackPower]   = useState(10);
   const [playerStats,    setPlayerStats]   = useState<PlayerStats>({ atk:10, def:10, spd:10, wil:10, lck:10, vit:12, res:10 });
-  const [activeTab,      setActiveTab]     = useState<'talk'|'companion'|'world'|'battle'|'gear'>('talk');
+  const [activeTab,      setActiveTab]     = useState<'talk'|'companion'|'world'|'battle'|'gear'|'learn'>('talk');
   const [sceneMinimized, setSceneMinimized] = useState(false);
   const [voidEntitiesOpen, setVoidEntitiesOpen] = useState(false);
   const [tabPopup,       setTabPopup]      = useState<string|null>(null);
@@ -757,6 +757,21 @@ export default function CompanionScreen() {
   const [companionLevelCollapsed, setCompanionLevelCollapsed] = useState(true);
   const [chronicleCollapsed,      setChronicleCollapsed]      = useState(false);
   const [skillTreeCollapsed,      setSkillTreeCollapsed]      = useState(true);
+
+  // ── LEARN tab state
+  const [learnRecentDives,    setLearnRecentDives]    = useState<Array<{ subjectName:string; domainLabel:string; contentSeed?:string; date:string }>>([]);
+  const [learnRecallDue,      setLearnRecallDue]      = useState<{ diveId:string; subjectName:string; domainLabel:string; daysAgo:number }|null>(null);
+  const [learnSynthPending,   setLearnSynthPending]   = useState<{ domains:string[] }|null>(null);
+  const [learnWarmDecay,      setLearnWarmDecay]      = useState<{ subjectName:string; domainLabel:string }|null>(null);
+  const [learnProtegeLog,     setLearnProtegeLog]     = useState<Array<{ date:string; subject:string; lesson:string }>>([]);
+  const [learnWeeklySynth,    setLearnWeeklySynth]    = useState<string|null>(null);
+  const [learnWeeklySynthLoading, setLearnWeeklySynthLoading] = useState(false);
+  const [learnWhatNext,       setLearnWhatNext]       = useState<{ subjectName:string; reason:string }|null>(null);
+  const [learnWhatNextLoading,setLearnWhatNextLoading]= useState(false);
+  const [learnProtegeCollapsed, setLearnProtegeCollapsed] = useState(true);
+  const [learnGrowthCollapsed,  setLearnGrowthCollapsed]  = useState(true);
+  const [learnConstCollapsed,   setLearnConstCollapsed]   = useState(true);
+  const [learnDataLoaded,     setLearnDataLoaded]     = useState(false);
   const [archetypeCollapsed, setArchetypeCollapsed] = useState(true);
   const [specialsCollapsed, setSpecialsCollapsed] = useState(true);
   const [worldCollapsed,   setWorldCollapsed]   = useState(false);
@@ -1673,6 +1688,7 @@ export default function CompanionScreen() {
     if (activeTab === 'companion') {
       setTimeout(() => scrollRef.current?.scrollTo({ y: SCENE_H + 20, animated: true }), 160);
     }
+    if (activeTab === 'learn' && !learnDataLoaded) loadLearnData();
   }, [activeTab]);
 
   useEffect(() => {
@@ -3502,6 +3518,86 @@ No other text.`;
     finally { setWhatNextLoading(false); }
   };
 
+  // ── LEARN TAB DATA LOADER
+  const loadLearnData = async () => {
+    setLearnDataLoaded(true);
+    const keys = ['sol_dive_log','sol_space_log','sol_protege_log','sol_synthesis_signal','sol_weekly_synth','sol_weekly_synth_ts'];
+    const vals = await AsyncStorage.multiGet(keys).catch(() => [] as [string, string|null][]);
+    const get = (k: string) => (vals as [string,string|null][]).find(([key]) => key === k)?.[1] ?? null;
+    const dives: Array<{ date:string; subjectName?:string; domainLabel?:string; contentSeed?:string }> =
+      get('sol_dive_log') ? JSON.parse(get('sol_dive_log')!) : [];
+    const now = Date.now(); const msPerDay = 86_400_000;
+    const SPACE_INTERVALS = [1,3,7,16];
+    setLearnRecentDives(dives.slice(0,10).filter(d => d.subjectName).map(d => ({ subjectName:d.subjectName!, domainLabel:d.domainLabel||'the unknown', contentSeed:d.contentSeed, date:d.date })));
+    try {
+      const spaceLog: Record<string,{recalls:number;nextDue:number}> = get('sol_space_log') ? JSON.parse(get('sol_space_log')!) : {};
+      let dueEntry: typeof dives[0]|undefined; let dueKey='';
+      for (const d of dives) {
+        if (!d.subjectName) continue;
+        const key=`${d.subjectName}__${d.domainLabel??''}`; const diveTime=new Date(d.date).getTime();
+        if (isNaN(diveTime)) continue;
+        const entry=spaceLog[key];
+        if (!entry) { if((now-diveTime)/msPerDay>=SPACE_INTERVALS[0]){dueEntry=d;dueKey=key;break;} }
+        else if(entry.recalls<SPACE_INTERVALS.length&&now>=entry.nextDue){dueEntry=d;dueKey=key;break;}
+      }
+      if(dueEntry?.subjectName) { const daysAgo=Math.round((now-new Date(dueEntry.date).getTime())/msPerDay); setLearnRecallDue({diveId:dueKey,subjectName:dueEntry.subjectName,domainLabel:dueEntry.domainLabel||'unknown',daysAgo}); }
+      else setLearnRecallDue(null);
+    } catch { setLearnRecallDue(null); }
+    try {
+      const ss = get('sol_synthesis_signal') ? JSON.parse(get('sol_synthesis_signal')!) : null;
+      if(ss?.domains&&ss?.ts&&(now-ss.ts)<86_400_000) setLearnSynthPending({domains:ss.domains}); else setLearnSynthPending(null);
+    } catch {}
+    try {
+      const spaceLog2: Record<string,{recalls:number;nextDue:number}> = get('sol_space_log') ? JSON.parse(get('sol_space_log')!) : {};
+      let decayCandidate: {subjectName:string;domainLabel:string}|null=null;
+      for(const d of dives.slice(0,30)){
+        if(!d.subjectName)continue; const key2=`${d.subjectName}__${d.domainLabel??''}`; const e2=spaceLog2[key2]; const dt2=new Date(d.date).getTime();
+        if(isNaN(dt2))continue; const od=e2?(now-e2.nextDue)/msPerDay:(now-dt2)/msPerDay;
+        if(od>30){decayCandidate={subjectName:d.subjectName,domainLabel:d.domainLabel||'unknown'};break;}
+      }
+      setLearnWarmDecay(decayCandidate);
+    } catch {}
+    try { const pl=get('sol_protege_log'); setLearnProtegeLog(pl?JSON.parse(pl):[]); } catch {}
+    try {
+      const weekDives=dives.filter(d=>new Date(d.date).getTime()>now-7*msPerDay);
+      if(weekDives.length>=2){
+        const lastSynthRaw=get('sol_weekly_synth_ts'); const lastSynth=lastSynthRaw?parseInt(lastSynthRaw):0;
+        const synthRaw=get('sol_weekly_synth');
+        if(synthRaw&&(now-lastSynth)<7*msPerDay){ setLearnWeeklySynth(JSON.parse(synthRaw)); }
+        else if((now-lastSynth)>=7*msPerDay){
+          (async()=>{
+            setLearnWeeklySynthLoading(true);
+            try{
+              const [key,model]=await Promise.all([getActiveKey(),getModel()]); if(!key)return;
+              const subjects=weekDives.map(d=>d.subjectName).filter(Boolean).slice(0,8).join(', ');
+              const charLore=(COMPANION_LORE as any)[activeSkin];
+              const charLine=charLore?`You are ${charLore.name} — ${charLore.title}. ${charLore.lore}`:'You are Sol.';
+              const result=await sendMessage([],`${charLine}\n\nThe seeker studied: ${subjects} this week.\n\nWrite ONE paragraph (3-4 sentences) in your own voice connecting what they studied — a synthesis, not a summary. Warm, surprising, earned.`,key,model as any,undefined,'normal',120);
+              const synthText=result.text?.trim();
+              if(synthText){await AsyncStorage.setItem('sol_weekly_synth',JSON.stringify(synthText)).catch(()=>{});await AsyncStorage.setItem('sol_weekly_synth_ts',String(now)).catch(()=>{});setLearnWeeklySynth(synthText);}
+            }catch{}finally{setLearnWeeklySynthLoading(false);}
+          })();
+        }
+      }
+    } catch {}
+  };
+
+  const getLearnWhatNext = async () => {
+    if(learnWhatNextLoading)return; setLearnWhatNextLoading(true); setLearnWhatNext(null);
+    try{
+      const[key,model]=await Promise.all([getActiveKey(),getModel()]); if(!key)return;
+      const studied=learnRecentDives.map(d=>d.subjectName);
+      const unstudied=getAllSubjects().map(s=>s.name).filter(n=>!studied.includes(n)).slice(0,30);
+      const stageName=STAGES[stage]?.name??'SEED';
+      const charLore=(COMPANION_LORE as any)[activeSkin];
+      const charLine=charLore?`You are ${charLore.name} — ${charLore.title}. ${charLore.lore}`:'You are Sol.';
+      const result=await sendMessage([],`${charLine}\n\nThe seeker has studied: ${studied.join(', ')||'nothing yet'}. Stage: ${stageName}.\nAvailable next subjects: ${unstudied.join(', ')}.\n\nRespond in this exact format:\nSUBJECT: [subject name exactly as listed]\nREASON: [one sentence in your own voice]\n\nNo other text.`,key,model as any,undefined,'normal',80);
+      const text=result.text?.trim()??'';
+      const sm=text.match(/SUBJECT:\s*(.+)/i); const rm=text.match(/REASON:\s*(.+)/i);
+      if(sm&&rm) setLearnWhatNext({subjectName:sm[1].trim(),reason:rm[1].trim()});
+    }catch{}finally{setLearnWhatNextLoading(false);}
+  };
+
   const startSummonCeremony = () => {
     setShowCompanionIntro(false);
     setShowSummonCeremony(true);
@@ -3698,6 +3794,7 @@ No other text.`;
           { id:'world'     as const, label:'◉',  name:'WORLD'     },
           { id:'battle'    as const, label:'⚔',  name:'BATTLE'    },
           { id:'gear'      as const, label:'⟡',  name:'GEAR'      },
+          { id:'learn'     as const, label:'◈',  name:'LEARN'     },
         ]).map(t => {
           const active = activeTab === t.id;
           return (
@@ -6603,6 +6700,167 @@ No other text.`;
 
         </View>
       )}
+
+      {/* ── LEARN TAB ────────────────────────────────────────────────────── */}
+      {activeTab === 'learn' && !tabMinimized && (() => {
+        const learnColor = '#C084FC';
+        const hasContent = learnRecentDives.length > 0 || learnProtegeLog.length > 0;
+        return (
+          <View style={{ paddingHorizontal:16, paddingTop:8, paddingBottom:40 }}>
+            {/* header */}
+            <View style={{ marginBottom:16 }}>
+              <Text style={{ color:learnColor, fontSize:11, fontFamily:mono, letterSpacing:3, fontWeight:'700' }}>◈ LEARN</Text>
+              <Text style={{ color:'#666677', fontSize:10, fontFamily:mono, marginTop:3 }}>{learnRecentDives.length} dives · {learnProtegeLog.length} lessons taught</Text>
+            </View>
+            {!hasContent && (
+              <View style={{ alignItems:'center', paddingTop:40, gap:12 }}>
+                <Text style={{ color:learnColor, fontSize:24 }}>◈</Text>
+                <Text style={{ color:'#555566', fontSize:13, textAlign:'center', lineHeight:20 }}>Dive in the School to start the loop.{'\n'}Your companion learns when you do.</Text>
+              </View>
+            )}
+            {learnRecallDue && (
+              <TouchableOpacity onPress={() => enterCampfire('recall')} activeOpacity={0.85}
+                style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#8866CC44', backgroundColor:'#8866CC0A', marginBottom:14 }}>
+                <Text style={{ fontSize:18 }}>⟁</Text>
+                <View style={{ flex:1 }}>
+                  <Text style={{ color:'#9977DD', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>RECALL DUE</Text>
+                  <Text style={{ color:'#CCBBEE', fontSize:13, marginTop:3, fontWeight:'600' }}>{learnRecallDue.subjectName}</Text>
+                  <Text style={{ color:'#776688', fontSize:10, fontFamily:mono, marginTop:2 }}>{learnRecallDue.daysAgo}d ago · tap to test recall</Text>
+                </View>
+                <Text style={{ color:'#8866CC', fontSize:16 }}>→</Text>
+              </TouchableOpacity>
+            )}
+            {learnSynthPending && (
+              <TouchableOpacity onPress={() => { setLearnSynthPending(null); AsyncStorage.removeItem('sol_synthesis_signal').catch(()=>{}); enterCampfire('auto'); }}
+                activeOpacity={0.85}
+                style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#44AABB44', backgroundColor:'#44AABB0A', marginBottom:14 }}>
+                <Text style={{ fontSize:18 }}>⊗</Text>
+                <View style={{ flex:1 }}>
+                  <Text style={{ color:'#55BBCC', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>A THREAD BETWEEN WORLDS</Text>
+                  <Text style={{ color:'#AADDEE', fontSize:12, marginTop:3, lineHeight:17 }}>You've been in {learnSynthPending.domains[0]} and {learnSynthPending.domains[1]}. There's a connection.</Text>
+                </View>
+                <Text style={{ color:'#44AABB', fontSize:16 }}>→</Text>
+              </TouchableOpacity>
+            )}
+            {learnWarmDecay && !learnRecallDue && (
+              <View style={{ marginBottom:14, borderRadius:12, borderWidth:1, borderColor:'#88667744', backgroundColor:'#88667708', padding:14 }}>
+                <Text style={{ color:'#AA88BB', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>◌ GONE QUIET</Text>
+                <Text style={{ color:'#CCCCDD', fontSize:13, marginBottom:4, fontWeight:'600' }}>{learnWarmDecay.subjectName}</Text>
+                <Text style={{ color:'#AAAACC', fontSize:11, fontStyle:'italic', marginBottom:10 }}>Want to wake it?</Text>
+                <View style={{ flexDirection:'row', gap:16 }}>
+                  <TouchableOpacity onPress={() => { setLearnRecallDue({diveId:`${learnWarmDecay.subjectName}__${learnWarmDecay.domainLabel}`,subjectName:learnWarmDecay.subjectName,domainLabel:learnWarmDecay.domainLabel,daysAgo:30}); setLearnWarmDecay(null); }}>
+                    <Text style={{ color:'#AA88BB', fontSize:11, fontFamily:mono, fontWeight:'700' }}>REVISIT →</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setLearnWarmDecay(null)}>
+                    <Text style={{ color:'#444455', fontSize:11, fontFamily:mono }}>not now</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            {(learnWeeklySynth || learnWeeklySynthLoading) && (
+              <View style={{ marginBottom:14, borderRadius:12, borderWidth:1, borderColor:'#4488CC44', backgroundColor:'#4488CC08', padding:14 }}>
+                <Text style={{ color:'#4488CC', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:8 }}>⊕ THIS WEEK</Text>
+                {learnWeeklySynthLoading && !learnWeeklySynth
+                  ? <View style={{ flexDirection:'row', gap:8, alignItems:'center' }}><ActivityIndicator size="small" color="#4488CC" /><Text style={{ color:'#4488CC88', fontSize:11, fontFamily:mono }}>weaving synthesis…</Text></View>
+                  : <><Text style={{ color:'#CCCCDD', fontSize:13, lineHeight:19, fontStyle:'italic' }}>{learnWeeklySynth}</Text><TouchableOpacity onPress={() => setLearnWeeklySynth(null)} style={{ marginTop:10, alignSelf:'flex-end' }}><Text style={{ color:'#333355', fontSize:10, fontFamily:mono }}>dismiss</Text></TouchableOpacity></>
+                }
+              </View>
+            )}
+            {learnRecentDives.length > 0 && (
+              <View style={{ marginBottom:16 }}>
+                {!learnWhatNext
+                  ? <TouchableOpacity onPress={getLearnWhatNext} disabled={learnWhatNextLoading} activeOpacity={0.8}
+                      style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:learnColor+'44', backgroundColor:learnColor+'08' }}>
+                      <Text style={{ color:learnColor, fontSize:16 }}>↗</Text>
+                      <Text style={{ color:learnColor+'BB', fontSize:12, fontFamily:mono, letterSpacing:1 }}>{learnWhatNextLoading?'THINKING...':'WHAT NEXT?'}</Text>
+                      {learnWhatNextLoading && <ActivityIndicator size="small" color={learnColor} style={{ marginLeft:'auto' as any }} />}
+                    </TouchableOpacity>
+                  : <View style={{ borderRadius:12, borderWidth:1, borderColor:learnColor+'44', backgroundColor:learnColor+'08', padding:14 }}>
+                      <Text style={{ color:learnColor, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:6 }}>↗ NEXT DIVE</Text>
+                      <Text style={{ color:'#FFFFFF', fontSize:15, fontWeight:'700', marginBottom:6 }}>{learnWhatNext.subjectName}</Text>
+                      <Text style={{ color:'#AAAACC', fontSize:12, fontStyle:'italic', lineHeight:18 }}>{learnWhatNext.reason}</Text>
+                      <TouchableOpacity onPress={() => setLearnWhatNext(null)} style={{ marginTop:10, alignSelf:'flex-end' }}><Text style={{ color:learnColor+'55', fontSize:10, fontFamily:mono }}>dismiss</Text></TouchableOpacity>
+                    </View>
+                }
+              </View>
+            )}
+            {learnProtegeLog.length > 0 && (
+              <View style={{ marginBottom:14 }}>
+                <TouchableOpacity onPress={() => setLearnProtegeCollapsed(v=>!v)}
+                  style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#9977DD' }} />
+                    <Text style={{ color:'#CCBBEE', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WHAT YOU'VE TAUGHT ME</Text>
+                    <Text style={{ color:'#9977DD88', fontSize:9, fontFamily:mono }}>{learnProtegeLog.length}</Text>
+                  </View>
+                  <Text style={{ color:'#333344', fontSize:10 }}>{learnProtegeCollapsed?'▶':'▼'}</Text>
+                </TouchableOpacity>
+                {!learnProtegeCollapsed && (
+                  <View style={{ borderRadius:10, borderWidth:1, borderColor:'#8866CC22', backgroundColor:'#8866CC06', padding:12, gap:8 }}>
+                    {learnProtegeLog.slice(0,8).map((entry,i) => (
+                      <View key={i} style={{ flexDirection:'row', gap:10 }}>
+                        <Text style={{ color:'#9977DD', fontSize:10, fontFamily:mono, marginTop:1 }}>·</Text>
+                        <View style={{ flex:1 }}>
+                          <Text style={{ color:'#CCBBEE', fontSize:12, lineHeight:17 }}>{entry.lesson}</Text>
+                          <Text style={{ color:'#554466', fontSize:9, fontFamily:mono, marginTop:2 }}>{entry.subject} · {entry.date}</Text>
+                        </View>
+                      </View>
+                    ))}
+                    {learnProtegeLog.length > 8 && <Text style={{ color:'#554466', fontSize:9, fontFamily:mono, textAlign:'center' }}>+{learnProtegeLog.length-8} more lessons</Text>}
+                  </View>
+                )}
+              </View>
+            )}
+            {(learnProtegeLog.length > 0 || learnRecentDives.length > 0) && (
+              <View style={{ marginBottom:14 }}>
+                <TouchableOpacity onPress={() => setLearnGrowthCollapsed(v=>!v)}
+                  style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:learnColor }} />
+                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WHAT SHAPED ME</Text>
+                  </View>
+                  <Text style={{ color:'#333344', fontSize:10 }}>{learnGrowthCollapsed?'▶':'▼'}</Text>
+                </TouchableOpacity>
+                {!learnGrowthCollapsed && (() => {
+                  const events: Array<{icon:string;text:string;date:string}> = [];
+                  if(learnProtegeLog.length>0) events.push({icon:'⟁',text:`Learned: ${learnProtegeLog[0].lesson}`,date:learnProtegeLog[0].date});
+                  learnRecentDives.slice(0,3).forEach(d=>events.push({icon:'◉',text:`Dived into ${d.subjectName}`,date:''}));
+                  if(learnProtegeLog.length>1) events.push({icon:'⟁',text:`Learned: ${learnProtegeLog[1].lesson}`,date:learnProtegeLog[1].date});
+                  const stageName=STAGES[stage]?.name;
+                  if(stageName) events.push({icon:'✦',text:`Stage: ${stageName}`,date:''});
+                  return (<View style={{ borderRadius:10, borderWidth:1, borderColor:learnColor+'22', backgroundColor:learnColor+'06', padding:12, gap:10 }}>
+                    {events.slice(0,5).map((e,i)=>(<View key={i} style={{ flexDirection:'row', gap:10, alignItems:'flex-start' }}>
+                      <Text style={{ color:learnColor+'88', fontSize:11, marginTop:1 }}>{e.icon}</Text>
+                      <Text style={{ color:'#CCCCDD', fontSize:12, flex:1, lineHeight:17 }}>{e.text}</Text>
+                      {!!e.date&&<Text style={{ color:'#444455', fontSize:9, fontFamily:mono }}>{e.date}</Text>}
+                    </View>))}
+                  </View>);
+                })()}
+              </View>
+            )}
+            {learnRecentDives.length > 0 && (
+              <View style={{ marginBottom:20 }}>
+                <TouchableOpacity onPress={() => setLearnConstCollapsed(v=>!v)}
+                  style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:8 }}>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
+                    <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#8866FF' }} />
+                    <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>CONSTELLATION</Text>
+                    <Text style={{ color:'#555566', fontSize:9, fontFamily:mono }}>{learnRecentDives.length} subjects</Text>
+                  </View>
+                  <Text style={{ color:'#333344', fontSize:10 }}>{learnConstCollapsed?'▶':'▼'}</Text>
+                </TouchableOpacity>
+                {!learnConstCollapsed && (
+                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, padding:12, borderRadius:10, borderWidth:1, borderColor:'#8866FF22', backgroundColor:'#8866FF06' }}>
+                    {learnRecentDives.map((d,i)=>(<View key={i} style={{ borderRadius:6, borderWidth:1, borderColor:'#8866FF', paddingHorizontal:8, paddingVertical:4, backgroundColor:'#8866FF0A' }}>
+                      <Text style={{ color:'#CCCCDD', fontSize:10, fontFamily:mono, opacity:i===0?1:i<3?0.75:i<6?0.5:0.3 }}>{d.subjectName}</Text>
+                    </View>))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        );
+      })()}
 
       {/* ── GEAR TAB ─────────────────────────────────────────────────────── */}
       {activeTab === 'gear' && !tabMinimized && (
