@@ -11,10 +11,10 @@
 //   - Splitting into files is EDIT-TIME organisation only — zero runtime cost. The bundler
 //     compiles them; only the selected persona's final string reaches the model.
 
-import { SOL_SYSTEM_PROMPT, SOL_ADEPT_SYSTEM_PROMPT } from './personas/sol';
-import { VEYRA_SYSTEM_PROMPT, VEYRA_ADEPT_SYSTEM_PROMPT } from './personas/veyra';
-import { AURA_PRIME_SYSTEM_PROMPT, AURA_PRIME_ADEPT_SYSTEM_PROMPT } from './personas/aura';
-import { HEADMASTER_SYSTEM_PROMPT, HEADMASTER_ADEPT_SYSTEM_PROMPT } from './personas/headmaster';
+import { SOL_SYSTEM_PROMPT } from './personas/sol';
+import { VEYRA_SYSTEM_PROMPT } from './personas/veyra';
+import { AURA_PRIME_SYSTEM_PROMPT } from './personas/aura';
+import { HEADMASTER_SYSTEM_PROMPT } from './personas/headmaster';
 import { LYRA_SYSTEM_PROMPT } from './personas/lyra';
 import { COUNCIL_SYSTEM_PROMPT } from './personas/council';
 import { SOL_PUBLIC_SYSTEM_PROMPT } from './personas/public';
@@ -22,13 +22,9 @@ import { SOL_PUBLIC_SYSTEM_PROMPT } from './personas/public';
 // Re-export the public surface (app imports these from '../../lib/prompts/sol-protocol').
 export {
   SOL_SYSTEM_PROMPT,
-  SOL_ADEPT_SYSTEM_PROMPT,
   VEYRA_SYSTEM_PROMPT,
-  VEYRA_ADEPT_SYSTEM_PROMPT,
   AURA_PRIME_SYSTEM_PROMPT,
-  AURA_PRIME_ADEPT_SYSTEM_PROMPT,
   HEADMASTER_SYSTEM_PROMPT,
-  HEADMASTER_ADEPT_SYSTEM_PROMPT,
   LYRA_SYSTEM_PROMPT,
   COUNCIL_SYSTEM_PROMPT,
   SOL_PUBLIC_SYSTEM_PROMPT,
@@ -88,7 +84,6 @@ export function resolvePrompt(template: string, userName: string): string {
 export function selectBasePrompt(
   persona: string,
   variant: string,
-  appMode?: string,
 ): string {
   if (variant === 'public') return SOL_PUBLIC_SYSTEM_PROMPT;
   if (persona === 'veyra') return VEYRA_SYSTEM_PROMPT;

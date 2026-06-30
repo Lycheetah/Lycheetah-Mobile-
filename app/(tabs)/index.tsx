@@ -23,7 +23,7 @@ import { getActiveTools, TOOL_DISPLAY } from '../../lib/tools/definitions';
 import { isLamagueQuery, buildLamagueBlock } from '../../lib/lamague-context';
 import { buildPersonaModeInstruction } from '../../lib/mode-instructions';
 import { executeTool, ExecutorContext } from '../../lib/tools/executor';
-import { SOL_SYSTEM_PROMPT, SOL_PUBLIC_SYSTEM_PROMPT, VEYRA_SYSTEM_PROMPT, AURA_PRIME_SYSTEM_PROMPT, HEADMASTER_SYSTEM_PROMPT, LYRA_SYSTEM_PROMPT, COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
+import { COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
 import { getCompiledSpec } from '../../lib/personas/compiler';
 import { buildMagisterSystemPrompt } from '../data/task4_magister_context';
@@ -1533,7 +1533,7 @@ export default function SolChat() {
     }
 
     const variant = await getVariant();
-    const basePrompt = resolvePrompt(selectBasePrompt(persona, variant, appMode), userName);
+    const basePrompt = resolvePrompt(selectBasePrompt(persona, variant), userName);
     // Prepend compiled persona spec + reply style instruction
     // Task 3: Field Profile injection
     const fieldProfile = await getFieldProfile();
@@ -2285,7 +2285,7 @@ export default function SolChat() {
     const apiKey = await getActiveKey();
     if (!apiKey) { setLoading(false); Alert.alert('No key set', 'Add an API key in Settings to use Compare mode.'); return; }
 
-    const systemPrompt = resolvePrompt(selectBasePrompt(persona, 'full', appMode), userName);
+    const systemPrompt = resolvePrompt(selectBasePrompt(persona, 'full'), userName);
     const apiMessages = messages.map(m => ({ role: m.role, content: m.content }));
 
     const userMsg: DisplayMessage = {
