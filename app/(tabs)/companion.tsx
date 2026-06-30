@@ -6590,20 +6590,82 @@ No other text.`;
       {/* ── LEARN TAB ────────────────────────────────────────────────────── */}
       {activeTab === 'learn' && !tabMinimized && (() => {
         const learnColor = '#C084FC';
-        const hasContent = learnRecentDives.length > 0 || learnProtegeLog.length > 0;
         return (
           <View style={{ paddingHorizontal:16, paddingTop:8, paddingBottom:40 }}>
             {/* header */}
-            <View style={{ marginBottom:16 }}>
+            <View style={{ marginBottom:14 }}>
               <Text style={{ color:learnColor, fontSize:11, fontFamily:mono, letterSpacing:3, fontWeight:'700' }}>◈ LEARN</Text>
-              <Text style={{ color:'#666677', fontSize:10, fontFamily:mono, marginTop:3 }}>{learnRecentDives.length} dives · {learnProtegeLog.length} lessons taught</Text>
+              <Text style={{ color:'#666677', fontSize:10, fontFamily:mono, marginTop:3 }}>
+                {learnRecentDives.length > 0 ? `${learnRecentDives.length} subjects studied · ${learnProtegeLog.length} lessons taught` : 'Dive in the School · your companion grows with you'}
+              </Text>
             </View>
-            {!hasContent && (
-              <View style={{ alignItems:'center', paddingTop:40, gap:12 }}>
-                <Text style={{ color:learnColor, fontSize:24 }}>◈</Text>
-                <Text style={{ color:'#555566', fontSize:13, textAlign:'center', lineHeight:20 }}>Dive in the School to start the loop.{'\n'}Your companion learns when you do.</Text>
+
+            {/* ── BONFIRE — always visible ── */}
+            <View style={{ marginBottom:20 }}>
+              <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:10 }}>◉ BONFIRE</Text>
+              <View style={{ gap:8 }}>
+                <TouchableOpacity onPress={() => enterCampfire('learn')} activeOpacity={0.8}
+                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C084FC44', backgroundColor:'#C084FC08' }}>
+                  <Text style={{ fontSize:20 }}>📖</Text>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:learnColor, fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>LEARN MODE</Text>
+                    <Text style={{ color:'#776688', fontSize:10, marginTop:2 }}>Socratic drill on your last dive</Text>
+                  </View>
+                  <Text style={{ color:learnColor+'88', fontSize:14 }}>→</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => enterCampfire('auto')} activeOpacity={0.8}
+                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#C49A3C44', backgroundColor:'#C49A3C08' }}>
+                  <Text style={{ fontSize:20 }}>🔥</Text>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:'#E8C76A', fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>CAMPFIRE</Text>
+                    <Text style={{ color:'#776644', fontSize:10, marginTop:2 }}>Your companion tells you a story</Text>
+                  </View>
+                  <Text style={{ color:'#C49A3C88', fontSize:14 }}>→</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => enterCampfire('exchange')} activeOpacity={0.8}
+                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#44AABB44', backgroundColor:'#44AABB08' }}>
+                  <Text style={{ fontSize:20 }}>💬</Text>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:'#55BBCC', fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>EXCHANGE</Text>
+                    <Text style={{ color:'#446677', fontSize:10, marginTop:2 }}>Two-way dialogue · your companion pushes back</Text>
+                  </View>
+                  <Text style={{ color:'#44AABB88', fontSize:14 }}>→</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => enterCampfire('lore')} activeOpacity={0.8}
+                  style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#88664444', backgroundColor:'#88664408' }}>
+                  <Text style={{ fontSize:20 }}>📜</Text>
+                  <View style={{ flex:1 }}>
+                    <Text style={{ color:'#BB9966', fontSize:11, fontFamily:mono, fontWeight:'700', letterSpacing:1 }}>LORE</Text>
+                    <Text style={{ color:'#665544', fontSize:10, marginTop:2 }}>Deep lore from your companion's world</Text>
+                  </View>
+                  <Text style={{ color:'#88664488', fontSize:14 }}>→</Text>
+                </TouchableOpacity>
               </View>
-            )}
+            </View>
+
+            {/* ── COMPANION GROWTH FROM LEARNING ── */}
+            <View style={{ marginBottom:16, padding:14, borderRadius:12, borderWidth:1, borderColor: learnColor+'22', backgroundColor: learnColor+'06' }}>
+              <Text style={{ color: learnColor+'88', fontSize:8, fontFamily:mono, letterSpacing:2, marginBottom:8 }}>◈ YOUR COMPANION GROWS WITH YOU</Text>
+              <View style={{ flexDirection:'row', gap:8 }}>
+                <View style={{ flex:1, alignItems:'center' }}>
+                  <Text style={{ color: learnColor, fontSize:18, fontWeight:'700', fontFamily:mono }}>{learnRecentDives.length}</Text>
+                  <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, marginTop:2 }}>SUBJECTS</Text>
+                </View>
+                <View style={{ width:1, backgroundColor:'#22223344' }} />
+                <View style={{ flex:1, alignItems:'center' }}>
+                  <Text style={{ color:'#9977DD', fontSize:18, fontWeight:'700', fontFamily:mono }}>{learnProtegeLog.length}</Text>
+                  <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, marginTop:2 }}>TAUGHT</Text>
+                </View>
+                <View style={{ width:1, backgroundColor:'#22223344' }} />
+                <View style={{ flex:1, alignItems:'center' }}>
+                  <Text style={{ color:'#44CC88', fontSize:18, fontWeight:'700', fontFamily:mono }}>{STAGES[stage as EvolutionStage]?.name?.split(' ')[0] ?? 'SEED'}</Text>
+                  <Text style={{ color:'#555566', fontSize:8, fontFamily:mono, marginTop:2 }}>STAGE</Text>
+                </View>
+              </View>
+              {learnRecentDives.length === 0 && (
+                <Text style={{ color:'#444455', fontSize:11, fontFamily:mono, textAlign:'center', marginTop:12, fontStyle:'italic' }}>Each dive in the School feeds your companion. Study = growth.</Text>
+              )}
+            </View>
             {learnRecallDue && (
               <TouchableOpacity onPress={() => enterCampfire('recall')} activeOpacity={0.85}
                 style={{ flexDirection:'row', alignItems:'center', gap:12, padding:14, borderRadius:12, borderWidth:1, borderColor:'#8866CC44', backgroundColor:'#8866CC0A', marginBottom:14 }}>
