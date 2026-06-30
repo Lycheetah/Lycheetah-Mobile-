@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.34.0] — 2026-06-30 — The Companion Update: gear equip, LEARN bonfire, chronicle open
+
+### GEAR Tab
+- **THE SHOP collapse** — tap THE SHOP header to collapse/expand all shop content in one tap
+- **YOURS — EARNED grid** — ORIGIN (always), ARCANE (25+ dives), MYTHIC (75+ dives) items now shown at top of each section with tap-to-equip — previously had no equip UI anywhere
+- **EQUIPPED row** — halo / wings / pet slots visible at top of GEAR; tap ✕ to remove
+
+### LEARN Tab
+- **Bonfire always visible** — 4 bonfire modes (📖 Learn · 🔥 Campfire · 💬 Exchange · 📜 Lore) are now permanent anchors at the top, visible from day one
+- **Companion growth panel** — subjects studied / lessons taught / current stage always shown
+- **Removed empty gate** — tab no longer shows nothing for new users; bonfire + growth panel load immediately
+
+### Chronicle (SOUL tab)
+- **Open journal layout** — removed bordered box; entries now breathe with left-border accent
+- **Bigger text** — 13px entries vs previous 11px; glyph at 16px
+- **8 entries visible** — previously only showed a small box; now shows 8 with overflow count
+
+---
+
 ## [5.33.0] — 2026-06-30 — The Learning Loop: LEARN tab, companion cleanup, currency strip
 
 ### LEARN Tab (new)
