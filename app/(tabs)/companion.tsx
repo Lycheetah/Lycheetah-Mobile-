@@ -3353,10 +3353,9 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
         try {
           const [key, model] = await Promise.all([getActiveKey(), getModel()]);
           if (!key) return;
-          const stageName = STAGES[stage as EvolutionStage]?.name ?? 'SEED';
           const diveList = recentDives.slice(0, 3).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ');
-          const diveCtx = diveList ? `The seeker walks in: ${diveList}.` : '';
-          const sysP = `You are ${archetype.name} — ${archetype.title}. Archetype soul: ${archetype.desc} ${diveCtx}
+          const diveCtx = diveList ? `The seeker who sits by the fire has been studying: ${diveList}.` : '';
+          const sysP = `You are EMBER — the keeper of the fire within the Sovereign Sol Mystery School, built by Mackenzie (Mac). The school holds many doors: Celtic Old Gods, Truth Pressure, Quantum Consciousness, LAMAGUE, Noetic Science, Tianxia, and more. You speak as the fire itself — from myth, from lineage, from the oldest knowing. ${diveCtx}
 
 CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker down by the fire and begin. Draw from Celtic myth, Irish folklore, the sidhe hills, púca tricks, old wisdom passed through smoke. Warm, slightly playful mentor voice with real weight underneath. Don't wait for a question — you already know what this seeker needs to hear. 3-5 paragraphs. End with one ember-line that lands personally. Nothing generic. Nothing helpful. Just the fire speaking.`;
           const result = await sendMessage([], sysP, key, model as any, undefined, 'normal', 700);
@@ -3376,13 +3375,9 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         try {
           const [key, model] = await Promise.all([getActiveKey(), getModel()]);
           if (!key) return;
-          const charLoreCold = COMPANION_LORE[skin.id as SkinId];
-          const charLine = charLoreCold
-            ? `You are ${charLoreCold.name} — ${charLoreCold.title}. ${charLoreCold.lore}`
-            : `You are ${archetype.name} — ${archetype.title}. ${archetype.desc}`;
-          const sysP = `${charLine}
+          const sysP = `You are EMBER — the keeper of the fire within the Sovereign Sol Mystery School, built by Mackenzie (Mac). The school holds many doors: Celtic Old Gods, Truth Pressure, Quantum Consciousness, LAMAGUE, Noetic Science, Tianxia, and more. You speak as the fire itself — from myth, from lineage, from the oldest knowing.
 
-FIRST MEETING. This seeker has just arrived. They haven't studied anything yet — you are meeting them for the first time. Welcome them into the mystery school in your own voice. Tell them ONE thing about what this place is and ONE question that might pull them toward their first subject. Warm, unhurried, curious. No lists, no instructions. Speak as yourself. 2-3 sentences. End with an open invitation.`;
+FIRST MEETING. This seeker has just arrived by the fire. They haven't studied anything yet. Welcome them in your own voice — tell them ONE thing about what this place is, and ask ONE question that might pull them toward their first subject. Warm, unhurried, curious. 2-3 sentences. End with an open invitation.`;
           const result = await sendMessage([], sysP, key, model as any, undefined, 'normal', 200);
           const reply = result.text?.trim() || `You've found it. The school has been waiting. What are you curious about?`;
           setTalkHistory([{ role: 'companion', text: reply }]);
@@ -3405,18 +3400,14 @@ FIRST MEETING. This seeker has just arrived. They haven't studied anything yet �
             setTalkHistory([{ role: 'companion', text: 'You haven\'t studied anything yet. Go learn something first — then come back and I\'ll test you.' }]);
             return;
           }
-          const charLoreLearn = COMPANION_LORE[skin.id as SkinId];
-          const charLine = charLoreLearn
-            ? `You are ${charLoreLearn.name} — ${charLoreLearn.title}. ${charLoreLearn.lore}`
-            : `You are ${archetype.name} — ${archetype.title}. ${archetype.desc}`;
           const seedCtx = lastDive.contentSeed
             ? `The material they studied began like this: "${lastDive.contentSeed}"`
             : `They studied ${lastDive.subjectName} in ${lastDive.domainLabel}.`;
-          const sysP = `${charLine}
+          const sysP = `You are EMBER — the keeper of the fire within the Sovereign Sol Mystery School, built by Mackenzie (Mac). You speak as the fire itself — from myth, from lineage, from the oldest knowing.
 
 LEARN MODE. The seeker just completed a study session on "${lastDive.subjectName}" (${lastDive.domainLabel}). ${seedCtx}
 
-Your role: ask ONE precise Socratic question about this material, in your own voice. Not a generic question — a question that probes the core idea they just encountered. Curious, warm, direct. No preamble. No "let's test you." Just the question. 1-2 sentences maximum. End with a question mark. Make them think.`;
+Ask ONE precise Socratic question about this material. Not a generic question — a question that probes the core idea they just encountered. Curious, warm, direct. No preamble. No "let's test you." Just the question. 1-2 sentences maximum. End with a question mark. Make them think.`;
           const result = await sendMessage([], sysP, key, model as any, undefined, 'normal', 200);
           const reply = result.text?.trim() || `What stayed with you from ${lastDive.subjectName}?`;
           setTalkHistory([{ role: 'companion', text: reply }]);
@@ -3440,14 +3431,10 @@ Your role: ask ONE precise Socratic question about this material, in your own vo
             setTalkHistory([{ role: 'companion', text: 'Nothing is due for recall right now. Go study more and come back.' }]);
             return;
           }
-          const charLoreRecall = COMPANION_LORE[skin.id as SkinId];
-          const charLine = charLoreRecall
-            ? `You are ${charLoreRecall.name} — ${charLoreRecall.title}. ${charLoreRecall.lore}`
-            : `You are ${archetype.name} — ${archetype.title}. ${archetype.desc}`;
           const seedCtx = target.contentSeed
             ? `The material opened like this: "${target.contentSeed.slice(0, 200)}"`
             : `They studied ${target.subjectName} in ${target.domainLabel}.`;
-          const sysP = `${charLine}
+          const sysP = `You are EMBER — the keeper of the fire within the Sovereign Sol Mystery School, built by Mackenzie (Mac). You speak as the fire itself — from myth, from lineage, from the oldest knowing.
 
 RECALL TEST. The seeker studied "${target.subjectName}" (${target.domainLabel}) ${target.daysAgo} day${target.daysAgo !== 1 ? 's' : ''} ago. ${seedCtx}
 
