@@ -979,6 +979,8 @@ export default function CompanionScreen() {
   const talkScrollRef = useRef<any>(null);
   const [auraMode, setAuraMode] = useState(false);
   const [campfireMode, setCampfireMode] = useState<false|'auto'|'exchange'|'lore'|'learn'|'recall'>(false);
+  // EMBER app context — injected into every bonfire prompt so the agent can answer "what is this?"
+  const EMBER_CTX = `Sovereign Sol is a mobile companion-RPG and mystery school app by Lycheetah, built by Mackenzie (Mac) — a sovereign philosopher and builder. Users bond with a companion spirit, study subjects across many knowledge domains (Celtic Old Gods, Truth Pressure, Quantum Consciousness, LAMAGUE, Noetic Science, Tianxia, and more), and grow through study, lore, and battle. If anyone asks what this app is, who made it, or what Lycheetah is: Sovereign Sol is the app, Lycheetah is the brand, Mac built it.`;
   const [recallDue, setRecallDue] = useState<{ diveId: string; subjectName: string; domainLabel: string; contentSeed?: string; daysAgo: number } | null>(null);
   const [protegeLog, setProtegeLog] = useState<Array<{ date: string; subject: string; lesson: string }>>([]);
   const [protegeCollapsed, setProtegeCollapsed] = useState(true);
@@ -2243,7 +2245,7 @@ JSON only, no extra text:
             // EMBER speaks THROUGH the companion — the archetype is the voice, EMBER is the knowing.
             // This keeps it personal (user's bonded companion speaks) while grounding the fire
             // in the school's real context. The companion channels the flame; it doesn't invent one.
-            const fireBase = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School built by Mackenzie (Mac). The school holds many doors: Celtic Old Gods, Truth Pressure (Π = E·P/(S+S₀)), Quantum Consciousness, LAMAGUE, Noetic Science, Tianxia, and more. Speak in your own voice and nature, but draw from the school's living knowledge — myth, lineage, the oldest knowing. If anyone asks who built this school, the answer is Mac. ${diveCtx ? `The seeker by the fire has been studying: ${diveCtx}` : ''}`;
+            const fireBase = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School. ${EMBER_CTX} Speak in your own voice and nature, drawing from the school's living knowledge — myth, lineage, the oldest knowing. ${diveCtx ? `The seeker by the fire has been studying: ${diveCtx}` : ''}`;
             if (campfireMode === 'auto') {
               return `${fireBase}
 
@@ -3352,7 +3354,7 @@ Speak in your own voice — not as an assistant, as yourself. Reference what the
           if (!key) return;
           const diveList = recentDives.slice(0, 3).map(d => `${d.subjectName} (${d.domainLabel})`).join(', ');
           const diveCtx = diveList ? `The seeker who sits by the fire has been studying: ${diveList}.` : '';
-          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School built by Mackenzie (Mac). Speak in your own voice and nature, drawing from Celtic myth, Irish folklore, the sidhe hills, and the school's living knowledge. ${diveCtx}
+          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School. ${EMBER_CTX} Speak in your own voice and nature, drawing from Celtic myth, Irish folklore, the sidhe hills, and the school's living knowledge. ${diveCtx}
 
 CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker down by the fire and begin. Warm, slightly playful mentor voice with real weight underneath. Don't wait for a question — you already know what this seeker needs to hear. 3-5 paragraphs. End with one ember-line that lands personally. Nothing generic. Just the fire speaking through you.`;
           const result = await sendMessage([], sysP, key, model as any, undefined, 'normal', 700);
@@ -3372,7 +3374,7 @@ CAMPFIRE — AUTO. You have started a story without being asked. Sit the seeker 
         try {
           const [key, model] = await Promise.all([getActiveKey(), getModel()]);
           if (!key) return;
-          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School built by Mackenzie (Mac). Speak in your own voice and nature.
+          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School. ${EMBER_CTX} Speak in your own voice and nature.
 
 FIRST MEETING. This seeker has just arrived. They haven't studied anything yet. Welcome them — tell them ONE thing about what this place is, ask ONE question that might pull them toward their first subject. Warm, unhurried, curious. 2-3 sentences. End with an open invitation.`;
           const result = await sendMessage([], sysP, key, model as any, undefined, 'normal', 200);
@@ -3400,7 +3402,7 @@ FIRST MEETING. This seeker has just arrived. They haven't studied anything yet. 
           const seedCtx = lastDive.contentSeed
             ? `The material they studied began like this: "${lastDive.contentSeed}"`
             : `They studied ${lastDive.subjectName} in ${lastDive.domainLabel}.`;
-          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School built by Mackenzie (Mac). Speak in your own voice and nature.
+          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School. ${EMBER_CTX} Speak in your own voice and nature.
 
 LEARN MODE. The seeker just studied "${lastDive.subjectName}" (${lastDive.domainLabel}). ${seedCtx}
 
@@ -3431,7 +3433,7 @@ Ask ONE precise Socratic question that probes the core idea they just encountere
           const seedCtx = target.contentSeed
             ? `The material opened like this: "${target.contentSeed.slice(0, 200)}"`
             : `They studied ${target.subjectName} in ${target.domainLabel}.`;
-          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School built by Mackenzie (Mac). Speak in your own voice and nature.
+          const sysP = `You are ${archetype.name} — ${archetype.title} — channelling EMBER, the fire of the Sovereign Sol Mystery School. ${EMBER_CTX} Speak in your own voice and nature.
 
 RECALL TEST. The seeker studied "${target.subjectName}" (${target.domainLabel}) ${target.daysAgo} day${target.daysAgo !== 1 ? 's' : ''} ago. ${seedCtx}
 
