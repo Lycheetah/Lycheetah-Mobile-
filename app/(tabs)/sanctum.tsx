@@ -213,6 +213,8 @@ export default function SanctumScreen() {
 
   // VOID-2 — presences fold. Sanctum opens empty; presences surface on tap.
   const [presencesOpen, setPresencesOpen] = useState(false);
+  // Section content starts collapsed — tap active tab or ⌄ bar to expand
+  const [sectionExpanded, setSectionExpanded] = useState(false);
 
   // Atmospheric
   const [shrineVisible, setShrineVisible] = useState(false);
@@ -755,7 +757,10 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
           return (
             <TouchableOpacity
               key={s}
-              onPress={() => setSection(s)}
+              onPress={() => {
+                if (s === section) { setSectionExpanded(e => !e); }
+                else { setSection(s); setSectionExpanded(false); }
+              }}
               style={{ flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', backgroundColor: active ? tabColor + '18' : 'transparent', borderWidth: 1, borderColor: active ? tabColor + '88' : tabColor + '18', gap: 2 }}
             >
               <Text style={{ fontSize: 11, color: active ? tabColor : SOL_THEME.textMuted }}>{GLYPHS[s]}</Text>
@@ -765,8 +770,21 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
         })}
       </View>
 
+      {/* Section expand/collapse bar — shown when collapsed */}
+      {!sectionExpanded && (
+        <TouchableOpacity
+          onPress={() => setSectionExpanded(true)}
+          activeOpacity={0.7}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, marginTop: 8, marginHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: accentColor + '22', backgroundColor: accentColor + '06' }}
+        >
+          <Text style={{ color: accentColor + '88', fontSize: 11, fontFamily: mono, letterSpacing: 2, fontWeight: '700' }}>
+            ⌄  OPEN {section.toUpperCase()}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* TODAY */}
-      {section === 'today' && (
+      {sectionExpanded && section === 'today' && (
         <>
           {/* THE WITNESS — the void turns to look at you, kindly. "Alone but not alone, never stranded." */}
           <TouchableOpacity
@@ -1151,7 +1169,7 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
       )}
 
       {/* JOURNAL — THE LIVING BOOK */}
-      {section === 'journal' && (
+      {sectionExpanded && section === 'journal' && (
         <>
           {/* Living Book header */}
           <View style={{ paddingHorizontal: 2, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: accentColor + '18', marginBottom: 16 }}>
@@ -1311,7 +1329,7 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
       )}
 
       {/* VAULT */}
-      {section === 'vault' && (
+      {sectionExpanded && section === 'vault' && (
         <>
           <Text style={[styles.label, { color: accentColor }]}>PERSONAL VAULT</Text>
           <Text style={styles.note}>Insights, truths, seeds. Things worth keeping.</Text>
@@ -1386,7 +1404,7 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
       )}
 
       {/* ARCHIVE — unified note store */}
-      {section === 'archive' && (() => {
+      {sectionExpanded && section === 'archive' && (() => {
         const mono = Platform.OS === 'ios' ? 'Courier New' : 'monospace';
         const kinds: (VaultKind | 'all')[] = ['all', 'memory', 'insight', 'scriptorium', 'intention', 'paradox', 'subject', 'chronicle'];
         const filtered = archiveKind === 'all' ? unifiedVault : unifiedVault.filter(e => e.kind === archiveKind);
@@ -1449,7 +1467,7 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
       })()}
 
       {/* FIELD */}
-      {section === 'field' && (() => {
+      {sectionExpanded && section === 'field' && (() => {
         const lq = getLQ(tes, vtr, pai);
         const stage = getStage(lq);
         const glyph = getStateGlyph(tes, vtr, pai);
@@ -2111,7 +2129,7 @@ Write 5–7 sentences that synthesise this Chronicle. Rules:
       {/* Zodiac content lives in the dedicated Zodiac tab */}
 
       {/* SCROLL — LIVING CHRONICLE */}
-      {section === 'chain' && (
+      {sectionExpanded && section === 'chain' && (
         <View style={{ paddingHorizontal: 16, paddingVertical: 8, paddingBottom: 60 }}>
 
           {/* Chronicle Voice — AI narrative synthesis */}

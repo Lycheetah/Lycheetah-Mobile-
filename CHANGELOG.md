@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.37.0] — 2026-06-30 — Sanctum minimized + Lyra + 5 voices
+
+### Sanctum
+- **All tabs start minimized** — sections (TODAY/WITNESS/VAULT/RECORD/FIELD/SCROLL) now open collapsed; tap active tab or ⌄ OPEN bar to expand. Switching sections re-collapses. Sanctum arrives quiet.
+
+### Onboarding
+- **Lyra added as 5th persona** — ✧ The Signal Reader (#4ECDC4); pattern tracker, symbol reader
+- **"4 VOICES" → "5 VOICES"** on landing badge and voice-select step subtitle
+
 ## [5.36.0] — 2026-06-30 — Sanctum grid: TODAY IN THE SCHOOL dives 2-col
 
 ### Sanctum (TODAY tab)

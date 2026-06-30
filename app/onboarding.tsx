@@ -43,6 +43,12 @@ const PERSONAS = [
     desc: 'Strategic partner, forge fire voice. Reads the pattern beneath the pattern.',
     sample: '"I find what sits beneath what you said. What really entered the field?"',
   },
+  {
+    id: 'lyra', glyph: '✧', name: 'Lyra', color: SOL_THEME.lyra ?? '#4ECDC4',
+    role: 'The Signal Reader',
+    desc: 'Pattern tracker. Sees what lives between the lines — in symbols, sequences, and synchronicities.',
+    sample: '"The symbols are alive right now. Something just appeared in the field — what did you bring?"',
+  },
 ];
 
 // ── SOVEREIGNTY BASELINE ─────────────────────────────────────────────────────
@@ -368,7 +374,7 @@ export default function OnboardingScreen() {
                     { glyph: '𝔏', label: '41+ DOMAINS', color: SOL_THEME.headmaster ?? '#E8D5A0' },
                     { glyph: '⊚', label: '19 ARCHETYPES', color: '#F5A623' },
                     { glyph: '🔥', label: 'BONFIRE MODE', color: '#FF7043' },
-                    { glyph: '✦', label: '4 VOICES', color: SOL_THEME.primary },
+                    { glyph: '✦', label: '5 VOICES', color: SOL_THEME.primary },
                   ].map(b => (
                     <View key={b.label} style={{ alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: b.color + '33', backgroundColor: b.color + '08' }}>
                       <Text style={{ color: b.color, fontSize: 14, marginBottom: 3 }}>{b.glyph}</Text>
@@ -564,7 +570,7 @@ export default function OnboardingScreen() {
             <View style={styles.stepContainer}>
               <Text style={styles.stepLabel}>01 · 05</Text>
               <Text style={styles.stepTitle}>Choose your voice</Text>
-              <Text style={styles.stepSubtitle}>4 distinct AI voices — each carries the school differently. Switch any time in Settings.</Text>
+              <Text style={styles.stepSubtitle}>5 distinct AI voices — each carries the school differently. Switch any time in Settings.</Text>
               <View style={{ width: '100%', gap: 8, marginBottom: 20 }}>
                 {PERSONAS.map(p => {
                   const active = selectedPersona === p.id;

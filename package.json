@@ -1,6 +1,6 @@
 {
   "name": "lycheetah-mobile",
-  "version": "5.36.0",
+  "version": "5.37.0",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
