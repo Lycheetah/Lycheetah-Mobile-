@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.38.0] — 2026-06-30 — Help modal + Library: Lyra wired everywhere
+
+### Help Modal (global)
+- **SOL entry**: "Sol, Aura, Veyra, or Magister" → adds Lyra as 5th
+- **SETTINGS entry**: adds Lyra to persona list
+- **SANCTUM entry**: rewritten to describe new minimized-tab behavior (all 6 tabs start collapsed, tap to open)
+
+### Library (Glossary)
+- **Lyra ✧** added as Persona entry: "The Signal Reader — pattern tracker, symbol follower, synchronicity finder"
+
 ## [5.37.0] — 2026-06-30 — Sanctum minimized + Lyra + 5 voices
 
 ### Sanctum
