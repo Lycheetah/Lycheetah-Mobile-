@@ -1281,6 +1281,15 @@ export default function CompanionScreen() {
           }
         }
       } catch {}
+      // Campfire signal from LEARN tab
+      try {
+        const pendingCampfire = await AsyncStorage.getItem('sol_pending_campfire');
+        if (pendingCampfire) {
+          await AsyncStorage.removeItem('sol_pending_campfire');
+          setTimeout(() => enterCampfire(pendingCampfire as any), 400);
+        }
+      } catch {}
+
       // Fresh dive signal from School — triggers live study-reaction on companion greeting (#245)
       const freshRaw = get('sol_fresh_dive');
       if (freshRaw) {
@@ -4086,6 +4095,12 @@ No other text.`;
                     <Text style={{ color:color+'88', fontSize:8, fontFamily:mono, letterSpacing:2 }}>{skin.name}</Text>
                   </View>
                   <Text style={{ color:'#555566', fontSize:10, fontStyle:'italic', marginTop:6, lineHeight:14 }}>{skin.desc}</Text>
+                  {/* Currency strip */}
+                  <View style={{ flexDirection:'row', gap:10, marginTop:8 }}>
+                    <Text style={{ color:'#C49A3C', fontSize:10, fontFamily:mono, fontWeight:'700' }}>⟡{coins}</Text>
+                    <Text style={{ color:'#AA77FF', fontSize:10, fontFamily:mono, fontWeight:'700' }}>✦{diveCoins}</Text>
+                    <Text style={{ color:'#7766CC', fontSize:10, fontFamily:mono, fontWeight:'700' }}>✧{veras}</Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -4149,203 +4164,15 @@ No other text.`;
             );
           })()}
 
-          {/* ── RECALL DUE (LEARN-14) ───────────────────────────────── */}
-          {recallDue && (
-            <TouchableOpacity
-              onPress={() => enterCampfire('recall')}
-              activeOpacity={0.85}
-              style={{ flexDirection:'row', alignItems:'center', gap:12, padding:12, borderRadius:10, borderWidth:1, borderColor:'#8866CC44', backgroundColor:'#8866CC0A', marginBottom:14 }}
-            >
-              <Text style={{ fontSize:16 }}>⟁</Text>
-              <View style={{ flex:1 }}>
-                <Text style={{ color:'#9977DD', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>RECALL DUE</Text>
-                <Text style={{ color:'#CCBBEE', fontSize:12, marginTop:2 }}>{recallDue.daysAgo}d ago · {recallDue.subjectName}</Text>
-              </View>
-              <Text style={{ color:'#8866CC88', fontSize:12 }}>→</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* ── SYNTHESIS TRIGGER (LEARN-7) ─────────────────────────── */}
-          {synthesisPending && (
-            <TouchableOpacity
-              onPress={() => { setSynthesisPending(null); enterCampfire('auto'); }}
-              activeOpacity={0.85}
-              style={{ flexDirection:'row', alignItems:'center', gap:12, padding:12, borderRadius:10, borderWidth:1, borderColor:'#44AABB44', backgroundColor:'#44AABB0A', marginBottom:14 }}
-            >
-              <Text style={{ fontSize:16 }}>⊗</Text>
-              <View style={{ flex:1 }}>
-                <Text style={{ color:'#55BBCC', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2 }}>A THREAD BETWEEN WORLDS</Text>
-                <Text style={{ color:'#AADDEE', fontSize:12, marginTop:2 }}>You've been in {synthesisPending.domains[0]} and {synthesisPending.domains[1]}. There's a connection. Want to pull it?</Text>
-              </View>
-              <Text style={{ color:'#44AABB88', fontSize:12 }}>→</Text>
-            </TouchableOpacity>
-          )}
-
           {/* ── STAGE TRANSITION RITUAL (LEARN-19) ──────────────────── */}
           {stageUpName && (
             <View style={{ marginBottom:14, borderRadius:10, borderWidth:1, borderColor:'#FFD70044', backgroundColor:'#FFD70008', padding:14 }}>
               <Text style={{ color:'#FFD700', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>✦ STAGE REACHED</Text>
               <Text style={{ color:'#FFFFFF', fontSize:14, fontWeight:'700', marginBottom:4 }}>{stageUpName}</Text>
-              <Text style={{ color:'#CCCCDD', fontSize:12, lineHeight:17, fontStyle:'italic' }}>You have crossed a threshold. The companion feels it. Go to TALK — your companion is waiting.</Text>
+              <Text style={{ color:'#CCCCDD', fontSize:12, lineHeight:17, fontStyle:'italic' }}>You have crossed a threshold. Your companion is waiting.</Text>
               <TouchableOpacity onPress={() => { setStageUpName(null); setCampfireMode('exchange'); }} style={{ marginTop:8 }}>
                 <Text style={{ color:'#FFD700', fontSize:11, fontFamily:mono }}>OPEN TALK →</Text>
               </TouchableOpacity>
-            </View>
-          )}
-
-          {/* ── WARM DECAY (LEARN-20) ────────────────────────────────── */}
-          {warmDecaySubject && !recallDue && (
-            <View style={{ marginBottom:14, borderRadius:10, borderWidth:1, borderColor:'#88667744', backgroundColor:'#88667708', padding:14 }}>
-              <Text style={{ color:'#AA88BB', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>◌ GONE QUIET</Text>
-              <Text style={{ color:'#CCCCDD', fontSize:13, marginBottom:4 }}>{warmDecaySubject.subjectName} has gone quiet in you.</Text>
-              <Text style={{ color:'#AAAACC', fontSize:11, fontStyle:'italic' }}>Want to wake it?</Text>
-              <View style={{ flexDirection:'row', gap:12, marginTop:8 }}>
-                <TouchableOpacity onPress={() => { setRecallDue({ diveId: `${warmDecaySubject.subjectName}__${warmDecaySubject.domainLabel}`, subjectName: warmDecaySubject.subjectName, domainLabel: warmDecaySubject.domainLabel, daysAgo: 30 }); setWarmDecaySubject(null); }}>
-                  <Text style={{ color:'#AA88BB', fontSize:11, fontFamily:mono }}>REVISIT →</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setWarmDecaySubject(null)}>
-                  <Text style={{ color:'#444455', fontSize:11, fontFamily:mono }}>not now</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {/* ── WEEKLY SYNTHESIS (LEARN-8) ───────────────────────────── */}
-          {(weeklySynth || weeklySynthLoading) && (
-            <View style={{ marginBottom:14, borderRadius:10, borderWidth:1, borderColor:'#4488CC44', backgroundColor:'#4488CC08', padding:14 }}>
-              <Text style={{ color:'#4488CC', fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:6 }}>⊕ THIS WEEK</Text>
-              {weeklySynthLoading && !weeklySynth ? (
-                <View style={{ flexDirection:'row', gap:8, alignItems:'center' }}>
-                  <ActivityIndicator size="small" color="#4488CC" />
-                  <Text style={{ color:'#4488CC88', fontSize:11, fontFamily:mono }}>weaving synthesis…</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={{ color:'#CCCCDD', fontSize:12, lineHeight:18, fontStyle:'italic' }}>{weeklySynth}</Text>
-                  <TouchableOpacity onPress={() => setWeeklySynth(null)} style={{ marginTop:8, alignSelf:'flex-end' }}>
-                    <Text style={{ color:'#333355', fontSize:10, fontFamily:mono }}>dismiss</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          )}
-
-          {/* ── WHAT NEXT (LEARN-4) ─────────────────────────────────── */}
-          {recentDives.length > 0 && (
-            <View style={{ marginBottom:14 }}>
-              {!whatNextRec ? (
-                <TouchableOpacity onPress={getWhatNext} disabled={whatNextLoading} activeOpacity={0.8}
-                  style={{ flexDirection:'row', alignItems:'center', gap:10, padding:12, borderRadius:10, borderWidth:1, borderColor:color+'33', backgroundColor:color+'08' }}>
-                  <Text style={{ color:color, fontSize:14 }}>↗</Text>
-                  <Text style={{ color:color+'AA', fontSize:11, fontFamily:mono, letterSpacing:1 }}>{whatNextLoading ? 'THINKING...' : 'WHAT NEXT?'}</Text>
-                  {whatNextLoading && <ActivityIndicator size="small" color={color} style={{ marginLeft:'auto' }} />}
-                </TouchableOpacity>
-              ) : (
-                <View style={{ borderRadius:10, borderWidth:1, borderColor:color+'44', backgroundColor:color+'08', padding:14 }}>
-                  <Text style={{ color:color, fontSize:9, fontFamily:mono, fontWeight:'700', letterSpacing:2, marginBottom:4 }}>↗ NEXT DIVE</Text>
-                  <Text style={{ color:'#FFFFFF', fontSize:14, fontWeight:'700', marginBottom:4 }}>{whatNextRec.subjectName}</Text>
-                  <Text style={{ color:'#AAAACC', fontSize:12, fontStyle:'italic', lineHeight:17 }}>{whatNextRec.reason}</Text>
-                  <TouchableOpacity onPress={() => setWhatNextRec(null)} style={{ marginTop:8, alignSelf:'flex-end' }}>
-                    <Text style={{ color:color+'66', fontSize:10, fontFamily:mono }}>dismiss</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* ── WHAT YOU'VE TAUGHT ME (LEARN-16) ───────────────────── */}
-          {protegeLog.length > 0 && (
-            <View style={{ marginBottom:14 }}>
-              <TouchableOpacity onPress={() => setProtegeCollapsed(v => !v)}
-                style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6 }}>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                  <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#9977DD' }} />
-                  <Text style={{ color:'#CCBBEE', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WHAT YOU'VE TAUGHT ME</Text>
-                  <Text style={{ color:'#9977DD88', fontSize:9, fontFamily:mono }}>{protegeLog.length}</Text>
-                </View>
-                <Text style={{ color:'#333344', fontSize:10 }}>{protegeCollapsed ? '▶' : '▼'}</Text>
-              </TouchableOpacity>
-              {!protegeCollapsed && (
-                <View style={{ borderRadius:10, borderWidth:1, borderColor:'#8866CC22', backgroundColor:'#8866CC06', padding:12, gap:8 }}>
-                  {protegeLog.slice(0, 8).map((entry, i) => (
-                    <View key={i} style={{ flexDirection:'row', gap:10 }}>
-                      <Text style={{ color:'#9977DD', fontSize:10, fontFamily:mono, marginTop:1, minWidth:8 }}>·</Text>
-                      <View style={{ flex:1 }}>
-                        <Text style={{ color:'#CCBBEE', fontSize:12, lineHeight:17 }}>{entry.lesson}</Text>
-                        <Text style={{ color:'#554466', fontSize:9, fontFamily:mono, marginTop:2 }}>{entry.subject} · {entry.date}</Text>
-                      </View>
-                    </View>
-                  ))}
-                  {protegeLog.length > 8 && (
-                    <Text style={{ color:'#554466', fontSize:9, fontFamily:mono, textAlign:'center' }}>+{protegeLog.length - 8} more lessons</Text>
-                  )}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* ── WHAT SHAPED ME (LEARN-12) ───────────────────────────── */}
-          {(protegeLog.length > 0 || recentDives.length > 0) && (
-            <View style={{ marginBottom:14 }}>
-              <TouchableOpacity onPress={() => setGrowthLogCollapsed(v => !v)}
-                style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6 }}>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                  <View style={{ width:3, height:14, borderRadius:2, backgroundColor:color }} />
-                  <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>WHAT SHAPED ME</Text>
-                </View>
-                <Text style={{ color:'#333344', fontSize:10 }}>{growthLogCollapsed ? '▶' : '▼'}</Text>
-              </TouchableOpacity>
-              {!growthLogCollapsed && (() => {
-                const events: Array<{ icon: string; text: string; date: string }> = [];
-                if (protegeLog.length > 0) events.push({ icon:'⟁', text:`Learned: ${protegeLog[0].lesson}`, date: protegeLog[0].date });
-                if (recentDives.length > 0) events.push({ icon:'◉', text:`Dived into ${recentDives[0].subjectName}`, date: '' });
-                if (recentDives.length >= 2) events.push({ icon:'◉', text:`Explored ${recentDives[1].subjectName}`, date: '' });
-                if (protegeLog.length > 1) events.push({ icon:'⟁', text:`Learned: ${protegeLog[1].lesson}`, date: protegeLog[1].date });
-                const stageName = STAGES[stage as EvolutionStage]?.name;
-                if (stageName) events.push({ icon:'✦', text:`Reached stage: ${stageName}`, date: '' });
-                return (
-                  <View style={{ borderRadius:10, borderWidth:1, borderColor:color+'22', backgroundColor:color+'06', padding:12, gap:8 }}>
-                    {events.slice(0,5).map((e,i) => (
-                      <View key={i} style={{ flexDirection:'row', gap:10, alignItems:'flex-start' }}>
-                        <Text style={{ color:color+'88', fontSize:11, marginTop:1 }}>{e.icon}</Text>
-                        <Text style={{ color:'#CCCCDD', fontSize:12, flex:1, lineHeight:17 }}>{e.text}</Text>
-                        {!!e.date && <Text style={{ color:'#444455', fontSize:9, fontFamily:mono }}>{e.date}</Text>}
-                      </View>
-                    ))}
-                  </View>
-                );
-              })()}
-            </View>
-          )}
-
-          {/* ── KNOWLEDGE CONSTELLATION (LEARN-18) ──────────────────── */}
-          {recentDives.length > 0 && (
-            <View style={{ marginBottom:14 }}>
-              <TouchableOpacity onPress={() => setConstCollapsed(v => !v)}
-                style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingVertical:6 }}>
-                <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-                  <View style={{ width:3, height:14, borderRadius:2, backgroundColor:'#8866FF' }} />
-                  <Text style={{ color:'#CCCCDD', fontSize:11, letterSpacing:2, fontFamily:mono, fontWeight:'700' }}>CONSTELLATION</Text>
-                </View>
-                <Text style={{ color:'#333344', fontSize:10 }}>{constCollapsed ? '▶' : '▼'}</Text>
-              </TouchableOpacity>
-              {!constCollapsed && (() => {
-                const studied = Array.from(new Map(
-                  [...recentDives].map(d => [`${d.subjectName}__${d.domainLabel}`, d])
-                ).values()).slice(0, 12);
-                return (
-                  <View style={{ flexDirection:'row', flexWrap:'wrap', gap:8, padding:12, borderRadius:10, borderWidth:1, borderColor:'#8866FF22', backgroundColor:'#8866FF06' }}>
-                    {studied.map((d, i) => {
-                      const brightness = i === 0 ? 'FF' : i < 3 ? 'CC' : i < 6 ? '88' : '44';
-                      return (
-                        <View key={i} style={{ backgroundColor:`#8866FF${brightness}18`, borderRadius:6, borderWidth:1, borderColor:`#8866FF${brightness}`, paddingHorizontal:8, paddingVertical:4 }}>
-                          <Text style={{ color:`#CCCCDD`, fontSize:10, fontFamily:mono, opacity: i === 0 ? 1 : i < 3 ? 0.8 : i < 6 ? 0.55 : 0.3 }}>{d.subjectName}</Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                );
-              })()}
             </View>
           )}
 

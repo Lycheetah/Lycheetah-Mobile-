@@ -36,6 +36,7 @@ const HOT = {
   school:    '#C44BFF',  // hot amethyst — the mystic
   sol:       '#FFB000',  // hot solar gold — the warm anchor
   companion: '#FF2D78',  // HOT PINK — the Lycheetah signature, the mythic cat
+  learn:     '#C084FC',  // soft violet — the learning mind
   sanctum:   '#FF3D6E',  // crimson-rose — the intimate, the blood
   settings:  '#8B7BFF',  // cool periwinkle — the quiet edge
 };
@@ -227,6 +228,7 @@ export default function TabLayout() {
         <Tabs.Screen name="index"     options={{ title: 'SOL',             tabBarLabel: 'Sol',       tabBarActiveTintColor: HOT.sol,       tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊚" color={color} focused={focused} hot={HOT.sol} />,       listeners: { focus: () => trackTabEnter('sol'),       blur: () => trackTabLeave('sol')       } }} />
         <Tabs.Screen name="library"   options={{ href: null, title: 'LIBRARY' }} />
         <Tabs.Screen name="companion" options={{ title: 'COMPANION',       tabBarLabel: 'Companion', tabBarActiveTintColor: HOT.companion, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="✦" color={color} focused={focused} hot={HOT.companion} />, listeners: { focus: () => trackTabEnter('companion'), blur: () => trackTabLeave('companion') } }} />
+        <Tabs.Screen name="learn"     options={{ title: 'LEARN',           tabBarLabel: 'Learn',     tabBarActiveTintColor: HOT.learn,     tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="◈" color={color} focused={focused} hot={HOT.learn} />,     listeners: { focus: () => trackTabEnter('learn'),     blur: () => trackTabLeave('learn')     } }} />
         <Tabs.Screen name="sanctum"   options={{ title: t('THE SANCTUM'),  tabBarLabel: t('Sanctum'),tabBarActiveTintColor: HOT.sanctum,  tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⊼" color={color} focused={focused} hot={HOT.sanctum} />,  listeners: { focus: () => trackTabEnter('sanctum'),   blur: () => trackTabLeave('sanctum')   } }} />
         <Tabs.Screen name="settings"  options={{ title: 'SETTINGS',        tabBarLabel: 'Settings',  tabBarActiveTintColor: HOT.settings, tabBarIcon: ({ color, focused }: IconProps) => <TabIcon glyph="⚙" color={color} focused={focused} hot={HOT.settings} />,  listeners: { focus: () => trackTabEnter('settings'),  blur: () => trackTabLeave('settings')  } }} />
         <Tabs.Screen name="codex" options={{ href: null, title: 'CODEX' }} />
