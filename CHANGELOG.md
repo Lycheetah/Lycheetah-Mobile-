@@ -1,5 +1,30 @@
 # Changelog
 
+## [5.33.0] — 2026-06-30 — The Learning Loop: LEARN tab, companion cleanup, currency strip
+
+### LEARN Tab (new)
+- **New ◈ LEARN tab** — all learning mechanics moved out of companion into dedicated tab
+- **Recall Due** — spaced recall card (⟁), 1/3/7/16 day intervals, tap → campfire recall mode in companion
+- **Synthesis Trigger** — cross-domain connection card, tap → auto campfire in companion
+- **Warm Decay** — surfaces subjects gone quiet 30+ days, prompt to revisit
+- **Weekly Synthesis** — AI-generated paragraph connecting what you studied this week, companion voice
+- **What Next?** — AI recommends next unstudied subject in companion's voice
+- **What You've Taught Me** — protégé log, expandable, all lessons the companion has learned from you
+- **What Shaped Me** — growth log, last 5 events (dives, lessons, stages)
+- **Constellation** — all studied subjects as fading nodes, most recent brightest
+- **Campfire signal** — tapping Recall/Synthesis writes `sol_pending_campfire` to AsyncStorage; companion picks it up on focus and auto-enters the correct mode
+
+### Companion Tab — stripped and cleaned
+- Removed 8 learning sections that were overloading the tab
+- Kept: Hero · Encounter · Whisper · Stage Transition · Companions · Loadout · Cosmetics
+- **Currency strip** (⟡ Lumens · ✦ dive credits · ✧ Veras) now always visible in companion hero card — no longer buried in Shop
+
+### Learning Loop — all 23 tasks shipped
+- LEARN-0 through LEARN-22 complete
+- The companion grows because you study. That is now structurally true.
+
+---
+
 ## [5.32.0] — 2026-06-29 — The Deepening: settings, encounter, PSI LOG, safe area
 
 ### Settings
