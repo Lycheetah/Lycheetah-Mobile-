@@ -1,18 +1,20 @@
-## v6.0.3 — Dual Persona Definition Removed (root cause fix)
+## v6.0.5 — Mode System Overhaul (complete fix)
 
-Removed the compiled persona spec (`enrichedSpec`) from the system prompt entirely. It was prepended to the full natural language persona prompt, creating two competing persona definitions per message. Models tried to satisfy both — the bracket-format `[DIFFERENTIATION]` block caused multi-voice/council-style output even in normal chat. Now only the persona's own prompt runs. Headmaster still gets companion + subject context appended cleanly. No module-level state contamination found (Grok sweep confirmed).
+Tonight's full set of fixes, consolidated:
 
----
+**Root cause:** A compiled persona spec was being prepended to the full natural language persona prompt on every message — two competing persona definitions fighting for control. Models tried to satisfy both simultaneously, producing chimeric 429-line garbage. Fixed: compiled spec removed entirely, personas speak clean.
 
-## v6.0.2 — Mode-Aware Personas + LAMAGUE Trigger Fix
+**Mode persistence bug:** `sol_talk_mode` was persisting LAMAGUE across builds. A stale value from a previous test session silently injected a 3000-token context block into every message. Fixed: talk modes reset to WAYFARER on every launch.
 
-Each persona now interprets talk modes in their own voice — Sol in LAMAGUE speaks alchemically, Veyra precisely, Aura through felt sense, the Magister pedagogically, Lyra rhythmically. Same for SKEPTIC mode. Also killed the `isLamagueQuery` auto-trigger: LAMAGUE context now only injects when the chip is explicitly on, not whenever a user mentions the word "lamague" in any message (which was causing the mode to fire mid-conversation and spiral).
+**Auto-trigger bug:** `isLamagueQuery` fired the LAMAGUE injection whenever the word "lamague" appeared in any message — including users asking about it. Talking about the bug made it worse. Fixed: LAMAGUE only activates via the chip, never from keyword detection.
 
----
+**Mode awareness:** All five personas now know what conversation mode they're in (WAYFARER / LAMAGUE / SKEPTIC / COUNCIL) — it's in their context block every message. Each persona interprets LAMAGUE and SKEPTIC in their own voice. Seeker/Adept distinction removed — Sol is full or nothing.
 
-## v6.0.1 — Talk Mode Hotfix
+**Mode switching:** Switching modes mid-conversation now prompts a fresh start. Prior responses bleed into the new mode — this is honest, and the fix is one tap.
 
-LAMAGUE mode no longer persists across sessions. A stale `sol_talk_mode` storage value from a previous build was injecting a 3000-token context block into every message, producing chimeric garbage responses in all personas. Talk modes now reset to WAYFARER on every launch. Tap an active mode to toggle it off. Also fixed fallback model for no-key users.
+**Prompt leakage:** Mode instructions were too self-referential, causing models to explain their own machinery. Tightened to minimal labels.
+
+Sorry for the chaos. The system is cleaner than it's ever been.
 
 ---
 
