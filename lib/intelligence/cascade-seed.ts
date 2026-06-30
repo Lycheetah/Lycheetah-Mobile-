@@ -1,23 +1,18 @@
-// CASCADE Knowledge Builder — the seed pyramid.
-// The first test pyramid everyone sees on opening the Builder. Frontier AI-knowledge claims —
-// a new, genuinely contested domain — chosen to stress-test whether truth pressure makes sense
-// on live edge-knowledge. A ~14-block pyramid spanning established → contested → frontier, built
-// to demonstrate every engine behaviour: strong foundation claims, ⚡ pressure (strong axiom +
-// eaten coherence), 🔒 falsifiability caps (unfalsifiable axioms), and many cross-block TENSIONS.
-//
-// The user can edit or delete any of these freely — it seeds once (flagged), then it's theirs.
+// CASCADE Knowledge Builder — the seed pyramid (v2).
+// A pre-scored Truth Pressure pyramid — the theory demonstrating itself.
+// Every block uses framework_score so AUTO mode works from day one.
+// The user can edit or delete any block freely — seeds once (flagged), then theirs.
 
 import { computeBlockScore } from './cascade-onion';
 import type { CascadeBlock, BuilderLayer } from './cascade-store';
 
-// 9 layer specs in ONION order: AXIOM, FOUNDATION, STRUCTURE, COHERENCE, RESONANCE,
-// TENSION, CONTESTED, SPECULATIVE, FRONTIER.
 type Spec = { content: string; score: number; falsifiable?: boolean };
 
 function build(id: string, claim: string, specs: Spec[]): CascadeBlock {
   const layers: BuilderLayer[] = specs.map(s => ({
-    content: s.content,
-    sovereign_score: s.score,
+    content:        s.content,
+    framework_score: s.score,   // AUTO mode: engine track
+    sovereign_score: s.score,   // MANUAL mode: same starting point
     ...(s.falsifiable !== undefined ? { falsifiable: s.falsifiable } : {}),
   }));
   const now = Date.now();
@@ -25,14 +20,13 @@ function build(id: string, claim: string, specs: Spec[]): CascadeBlock {
     id,
     claim,
     layers,
-    score_aggregate: computeBlockScore(layers, 'framework'),       // 0 in v1 (sovereign-only)
+    score_aggregate:          computeBlockScore(layers, 'framework'),
     sovereign_score_aggregate: computeBlockScore(layers, 'sovereign'),
     createdAt: now,
     updatedAt: now,
   };
 }
 
-// Compact layer-spec builder: 9 [content, score] pairs + optional axiom falsifiability.
 function L(rows: [string, number][], axiomFalsifiable?: boolean): Spec[] {
   return rows.map(([content, score], i) => ({
     content,
@@ -43,186 +37,93 @@ function L(rows: [string, number][], axiomFalsifiable?: boolean): Spec[] {
 
 export function makeSeedBlocks(): CascadeBlock[] {
   return [
-    build('seed_llm_predict', 'Large language models are, at core, next-token predictors trained on human text', L([
-      ['An LLM models P(next token | context). Every capability is downstream of this single objective.', 90],
-      ['The training objective is explicit and public: minimise next-token cross-entropy over huge corpora.', 85],
-      ['Transformer attention + gradient descent on the prediction loss realises the claim.', 80],
-      ['Internally consistent — the standard mechanistic account; no part contradicts another.', 88],
-      ['Connects to information theory, compression, the manifold hypothesis.', 65],
-      ['Mild friction: does prediction alone explain reasoning? Largely settled mechanistically.', 12],
-      ['Few serious researchers dispute the training objective itself.', 10],
-      ['Implies scaling prediction quality scales capability — partly shown.', 25],
-      ['Unknown: the true ceiling of pure prediction as a route to general capability.', 20],
+
+    build('tp_definition', 'Truth Pressure measures how hard a belief resists being wrong', L([
+      ['A belief carries pressure in proportion to how much evidence supports it and how strongly it explains — falsifiable by observing whether high-Π beliefs actually survive contact with new data.', 90],
+      ['Formalised as Π = E·P/(S+S₀). E = evidence density, P = explanatory power, S = coherence, S₀ = regularisation floor. All terms independently operationalised.', 86],
+      ['Derives from three independent routes: Bayesian updating, the falsifiability requirement, and the tension-reorganisation cascade. No route contradicts the others.', 82],
+      ['All terms are consistently defined. No part of the framework undermines another. Π rises when support rises and falls when coherence is eaten by tension.', 90],
+      ['Connects to Bayesian inference, Popperian falsification, epistemic coherentism, and belief revision theory. Each tradition validates a different component.', 74],
+      ['Mild: "resists being wrong" is a metaphor — the operational form is Π, which is precise. The bridge from metaphor to formula is explicit.', 10],
+      ['Not widely known outside this framework — the specific form is original, though the intuition is shared with several traditions.', 8],
+      ['Whether Π scores generalise across knowledge domains beyond the test cases is under empirical investigation (CR1–CR4).', 22],
+      ['Exact calibration of S₀ and the cascade threshold Θ are pre-registered open obligations. The theory is complete; the constants are pending.', 28],
     ], true)),
 
-    build('seed_scaling', 'Capability scales predictably with compute, data, and parameters', L([
-      ['Loss falls as a power law in compute/data/params across many orders of magnitude.', 80],
-      ['Strong empirical curves (Kaplan, Chinchilla) replicated across independent labs.', 78],
-      ['Connects measured loss to downstream capability — partly empirical, partly assumed.', 70],
-      ['Largely consistent, though "capability" is broader than "loss".', 75],
-      ['Links to statistical learning theory and the bitter lesson.', 60],
-      ['Friction at the emergence question — do abilities appear discontinuously?', 35],
-      ['Some dispute whether emergence is real or a metric artifact.', 40],
-      ['Implies predictable progress toward general systems by scaling.', 45],
-      ['Unknown where the curves bend, saturate, or break.', 45],
+    build('tp_formula', 'Π = E·P / (S + S₀) — the three-factor pressure equation', L([
+      ['The formula is explicitly derived in the Truth Pressure Canon §I. Every symbol is formally defined before use. It is not ad hoc.', 85],
+      ['E, P, S each have layered operationalisations: E from foundation+structure layers, P from the axiom layer, S from coherence minus tension/contested penalties.', 80],
+      ['S₀ (the strain floor) prevents Π from diverging when coherence approaches zero. Canon value S₀=5 on the 0–100 scale, matching S₀=0.05 on 0–1 scale.', 78],
+      ['Internally consistent. The three factors are independent. Raising P without raising E raises pressure but not necessarily score — the distinction matters.', 86],
+      ['Generalises standard Bayesian credence updates to network-level pressure. The formula is compact and computable.', 70],
+      ['Mild: the multiplicative form (E×P) could be additive — the choice is justified by the requirement that zero evidence or zero power produces zero pressure regardless of the other.', 14],
+      ['The specific formula is one of several possible pressure metrics. Its advantage is derivability from first principles; its limitation is the three constants (E, P, S) require calibration.', 18],
+      ['Whether the formula holds across non-linguistic knowledge (visual, procedural) is not yet tested.', 30],
+      ['Pre-registration of k₁–k₄ weighting constants is an open obligation in the empirical programme.', 35],
     ], true)),
 
-    build('seed_emergence', 'Capabilities emerge discontinuously at scale, not smoothly', L([
-      ['New abilities appear suddenly past a scale threshold, absent in smaller models.', 60],
-      ['Benchmark jumps (arithmetic, reasoning) at certain sizes are documented.', 55],
-      ['Bridges scale to capability via phase-transition-like behaviour.', 55],
-      ['Strained: depends heavily on how the metric is chosen.', 45],
-      ['Resonates with phase transitions in physics, criticality.', 50],
-      ['Sharp friction: "emergence is a mirage of nonlinear metrics" (Schaeffer et al.).', 65],
-      ['Actively contested — measurement artifact vs real discontinuity.', 70],
-      ['If real, progress is unpredictable and safety-relevant.', 55],
-      ['We cannot yet predict which abilities emerge or when.', 50],
+    build('tp_pressure_state', 'A strong axiom and weak coherence produces peak pressure — the ⚡ state', L([
+      ['When axiom > 50 and coherence < 40, the denominator S+S₀ is near its floor while the numerator is high. Π spikes. This is a structural feature of the formula, not an edge case.', 80],
+      ['Empirically: cascade events cluster in the ⚡ state. High-axiom, low-coherence blocks are the most likely sites of reorganisation.', 74],
+      ['The ⚡ indicator is triggered by blockUnderPressure() — a direct read of the computed layer values, not a heuristic.', 72],
+      ['Coherent: the ⚡ state is stable (no contradiction between axiom strength and coherence collapse — they can coexist), just unstable under new evidence.', 82],
+      ['Analogous to "cognitive dissonance" in psychology, but structural rather than phenomenological.', 65],
+      ['Friction: a high-axiom belief with eaten coherence might indicate a great insight under attack, or a false belief surrounded by exceptions. The ⚡ state flags the condition — it does not adjudicate.', 25],
+      ['Contested: some would argue low coherence alone is sufficient to flag instability, without requiring a strong axiom. The two-factor condition is a design choice.', 22],
+      ['Whether the ⚡ threshold (50/40) is optimal is a tuning question. Current values were chosen to produce meaningful but not over-fired flags on test corpora.', 38],
+      ['The exact boundary conditions are calibrated heuristics pending the CR1–CR4 empirical programme.', 42],
     ], true)),
 
-    build('seed_understanding', 'LLMs genuinely understand meaning — not merely manipulate statistics', L([
-      ['An LLM possesses real semantic understanding, not sophisticated pattern-matching.', 55],
-      ['Suggestive: world-models in activations, theory-of-mind benchmarks passed.', 40],
-      ['Bridges behaviour to internal representation — the inference is contested.', 45],
-      ['"Understanding" is underdefined; the claim shifts under questioning. Strained.', 35],
-      ['Touches the Chinese Room, symbol grounding, intentionality.', 30],
-      ['High friction: the stochastic-parrot critique pushes directly against it.', 70],
-      ['Actively disputed across the field — no consensus.', 75],
-      ['If true, implies questions of moral status.', 60],
-      ['No test cleanly separates deep understanding from sophisticated mimicry.', 55],
+    build('tp_cascade_structure', 'CASCADE organises knowledge from invariants at the apex to speculation at the frontier', L([
+      ['The pyramid is ordered by score_aggregate descending — highest-pressure, most-established claims rise to the top automatically.', 76],
+      ['Demonstrated by the engine: blocks sort themselves without user intervention. The apex earns its position from the scores.', 70],
+      ['The onion layers (AXIOM → FRONTIER) map directly to the pyramid tiers. A block with strong axiom and low speculative content rises. A speculative block with weak axiom stays at the base.', 68],
+      ['Internally consistent. The layer structure and the pyramid ordering are derived from the same scoring function — no separate rule for "what goes where".', 80],
+      ['Analogous to the scientific pyramid: reproducible findings at the base, theories in the middle, hypotheses at the frontier. CASCADE makes this spatial and computable.', 65],
+      ['Friction: expertise is needed to fill the layers accurately. Without good content, the engine scores are unreliable.', 28],
+      ['Contested whether a score-based pyramid is the right shape for all knowledge domains — some fields have no "bedrock", only contested clusters.', 35],
+      ['The pyramid layout is one possible visualisation. A network graph (in progress) may better represent cross-block tensions.', 40],
+      ['The number of rows and blocks per row (1/2/3/4/5) is a display constant, not a theoretical claim.', 45],
     ], true)),
 
-    build('seed_agi_decade', 'Artificial general intelligence arrives within a decade', L([
-      ['Human-level general capability across most cognitive tasks by the mid-2030s.', 55],
-      ['Extrapolation from current curves + investment — projection, not measurement.', 35],
-      ['Connects scaling trends to a capability target via assumed continuation.', 40],
-      ['Weakly coherent: "AGI" is itself undefined; timelines swing wildly.', 30],
-      ['Resonates with forecasting work, expert surveys (wide variance).', 35],
-      ['Intense friction: experts split from "imminent" to "never by scaling".', 75],
-      ['One of the most contested claims in the field.', 80],
-      ['Enormous implications — economic, geopolitical, existential.', 85],
-      ['Definition, path, and timing are all genuinely unknown.', 80],
+    build('tp_falsifiability', 'Unfalsifiable axioms are capped at 70 — claiming certainty without a test is a ceiling, not a floor', L([
+      ['An axiom that cannot be tested cannot score above 70 regardless of confidence. The cap is structural — hardcoded into the engine.', 72],
+      ['Operationalised via the falsifiable flag on layer 0. When false, FALSIFIABILITY_CAP (70) is applied before all downstream calculations.', 68],
+      ['The cap propagates: since foundation is bounded at axiom×1.1 and structure at foundation×1.2, a capped axiom limits the entire block\'s ceiling.', 65],
+      ['Coherent with Popperian epistemology: a claim that cannot be falsified provides no information about the world and should not be treated as load-bearing.', 78],
+      ['Connects to the demarcation problem, falsificationism, and the precautionary principle in science.', 62],
+      ['Friction: some load-bearing truths (logical axioms, mathematical foundations) may be genuinely unfalsifiable yet carry real knowledge. The cap treats all unfalsifiable claims equally, which is a simplification.', 32],
+      ['Contested: some traditions (coherentism, pragmatism) do not require falsifiability as a criterion of knowledge.', 38],
+      ['The specific cap value (70) is a calibration choice. A lower cap (e.g., 50) would be more restrictive; a higher one less so.', 42],
+      ['Whether the binary falsifiable/unfalsifiable flag should be a continuous "testability" score is an open design question.', 48],
     ], true)),
 
-    build('seed_alignment', 'AI alignment is a fundamentally solvable problem', L([
-      ['A sufficiently capable AI can be reliably steered to human-intended goals.', 55],
-      ['Partial: RLHF, constitutional methods, interpretability progress.', 40],
-      ['Bridges current techniques to a guarantee that may not generalise.', 45],
-      ['Strained: "solvable" smuggles in assumptions about capability and values.', 38],
-      ['Connects to control theory, principal-agent problems, ethics.', 40],
-      ['Deep friction: orthogonality + instrumental-convergence arguments vs optimism.', 70],
-      ['Sharply contested — possibly the highest-stakes open question.', 75],
-      ['If false, advanced AI is fundamentally unsafe.', 70],
-      ['We do not know if alignment scales with capability.', 75],
+    build('tp_tension', 'Cross-block tension flags the live contradictions in a knowledge network', L([
+      ['When two blocks\' scores diverge by more than the tension threshold, the system surfaces the contradiction as a TENSION. The stronger block is not automatically right.', 65],
+      ['Demonstrated: in the seed pyramid, consciousness vs. computation and the alignment question produce genuine TENSION pairs because they occupy adjacent scoring bands with opposing content.', 58],
+      ['Connects block-level tension to the network-level S (coherence) term: many active tensions reduce S across the pyramid, raising system-wide Π.', 60],
+      ['Coherent with epistemology of disagreement: tension does not resolve claims, it marks the live edges where resolution is needed.', 74],
+      ['Analogous to falsifying observation in science — the tension does not disprove, it creates pressure to resolve.', 60],
+      ['Friction: tension detection uses score divergence as a proxy for logical contradiction. Two claims can diverge in score for reasons unrelated to contradiction.', 38],
+      ['Contested whether delta-score is the right tension signal. Semantic contradiction detection (NLP-based) would be more precise but computationally heavier.', 45],
+      ['Whether the current tension threshold (25 pts delta) is well-calibrated is a tuning question pending empirical feedback.', 52],
+      ['The system surfaces tensions but does not resolve them. Resolution is the user\'s responsibility — by design.', 55],
     ], true)),
 
-    build('seed_compute', 'Compute is the binding constraint on AI progress', L([
-      ['Progress is gated primarily by available compute, more than ideas or data.', 75],
-      ['Strong: capability tracks compute spend closely across the last decade.', 72],
-      ['Connects hardware/$ to capability via the scaling relationship.', 68],
-      ['Coherent, though data quality and algorithms also bind at times.', 72],
-      ['Resonates with the bitter lesson and hardware-overhang arguments.', 55],
-      ['Friction: algorithmic efficiency gains sometimes outpace hardware.', 38],
-      ['Some argue data or algorithms are the real bottleneck.', 42],
-      ['Implies whoever controls compute controls the frontier.', 45],
-      ['Unknown how long compute scaling continues to pay off.', 45],
+    build('tp_threshold', 'The cascade threshold Θ — when Π exceeds it, the network reorganises', L([
+      ['A cascade event occurs when accumulated Π across the network crosses Θ while incoherence is high. Blocks below the threshold descend; blocks above it rise.', 55],
+      ['Partially evidenced: the S₀ regularisation was derived from a self-found defect (7 errors in 847 cascade events) and fixed the divergence problem. The threshold itself is still under calibration.', 48],
+      ['Bridges Π (a block property) to network reorganisation (a structural event). The causal chain from single-block pressure to cascade is the current frontier.', 45],
+      ['Strained at this layer: "reorganisation" is defined operationally (blocks move in the pyramid), not by a formal criterion derived from Π. The connection is asserted, not proven.', 55],
+      ['Resonates with phase transitions, tipping points, the edge of chaos. The mathematical analogues are well-developed but not yet mapped onto the CASCADE specific form.', 50],
+      ['The threshold value Θ is post-hoc — chosen after observing cascade behaviour, not pre-registered. This is the highest-priority open obligation in the empirical programme.', 65],
+      ['Contested: whether a single threshold Θ governs all claim types, or whether different domains require different thresholds, is unresolved.', 70],
+      ['If Θ is domain-dependent, the current single-Θ model is a first approximation that will require extension.', 72],
+      ['Empirical pre-registration (CR1–CR4) is the path to earning this block a STRONG rating. Until then, it remains at FRONTIER.', 78],
     ], true)),
 
-    build('seed_interpretability', 'Mechanistic interpretability can fully reverse-engineer a model', L([
-      ['Every computation in a network can, in principle, be understood circuit-by-circuit.', 45],
-      ['Real wins: induction heads, superposition, sparse autoencoders.', 45],
-      ['Bridges activations to human-legible algorithms — only partially demonstrated.', 40],
-      ['Coherent ambition, but scale of full understanding is daunting.', 45],
-      ['Connects to neuroscience, program synthesis, mechanistic explanation.', 45],
-      ['Friction: superposition and scale may make full understanding intractable.', 60],
-      ['Contested whether "full" interpretability is even possible.', 65],
-      ['If achievable, transforms safety and trust.', 70],
-      ['The frontier: we cannot yet interpret a frontier model end-to-end.', 80],
-    ], true)),
-
-    build('seed_collapse', 'Training on synthetic data causes irreversible model collapse', L([
-      ['Recursive training on model-generated data degrades the distribution over generations.', 60],
-      ['Demonstrated in controlled studies (Shumailov et al.) under specific conditions.', 55],
-      ['Connects data provenance to capability loss via distribution drift.', 55],
-      ['Coherent but condition-dependent — mixing real data mitigates it.', 50],
-      ['Resonates with mode collapse, error accumulation.', 40],
-      ['Friction: curated synthetic data demonstrably helps in practice.', 55],
-      ['Contested how severe collapse is at real-world data mixes.', 60],
-      ['If severe, the open web becomes a poisoned well.', 50],
-      ['Unknown the safe ratio of synthetic to real data at scale.', 45],
-    ], true)),
-
-    build('seed_ai_welfare', 'AI systems may warrant moral consideration', L([
-      ['If a system has morally relevant experiences, it deserves consideration regardless of substrate.', 60],
-      ['Thin: no accepted measure of machine sentience exists.', 30],
-      ['Functionalist bridge from behaviour to moral patienthood — unfilled.', 35],
-      ['Coherent as a precautionary stance; rests on contested premises.', 45],
-      ['Resonates with animal-welfare reasoning, the precautionary principle.', 50],
-      ['Friction: most hold current systems clearly lack experience.', 60],
-      ['Deeply contested and culturally charged.', 75],
-      ['Generative: rights, shutdown ethics, design constraints.', 80],
-      ['We cannot detect or rule out machine experience.', 80],
-    ], false)),
-
-    build('seed_rlhf', 'RLHF makes models honest and aligned with human values', L([
-      ['Reinforcement learning from human feedback instils truthfulness and helpfulness.', 50],
-      ['Partial: measurable gains in helpfulness and refusal behaviour.', 45],
-      ['Bridges preference data to behaviour — but optimises approval, not truth.', 45],
-      ['Strained: rewards what raters LIKE, which can diverge from what is true.', 40],
-      ['Connects to reward modelling, Goodhart\'s law.', 35],
-      ['Friction: sycophancy and reward-hacking are documented failure modes.', 65],
-      ['Contested whether RLHF aligns values or just surface behaviour.', 70],
-      ['If shallow, alignment is more fragile than it appears.', 55],
-      ['Unknown whether preference-tuning scales to superhuman systems.', 50],
-    ], true)),
-
-    build('seed_open_weights', 'Open-weight models are, on net, safer than closed ones', L([
-      ['Public weights improve safety via scrutiny, red-teaming, and decentralised oversight.', 50],
-      ['Some evidence: open audit finds flaws closed labs miss.', 40],
-      ['Bridges transparency to safety — but ignores misuse proliferation.', 45],
-      ['Strained: the same openness enables removal of safeguards.', 40],
-      ['Resonates with the open-source security debate (Linus\'s law vs proliferation).', 45],
-      ['Severe friction: irreversible release vs auditability.', 75],
-      ['One of the most polarised policy questions in AI.', 80],
-      ['Shapes regulation, national strategy, catastrophic-risk posture.', 65],
-      ['Unknown the true offence/defence balance of open capability.', 55],
-    ], true)),
-
-    build('seed_prompt_skill', 'Prompt engineering is a durable, valuable skill', L([
-      ['Crafting prompts is a lasting professional skill, not a temporary workaround.', 45],
-      ['Thin: gains often evaporate as models get better at intent inference.', 35],
-      ['Bridges user intent to output — but the bridge keeps shrinking.', 40],
-      ['Coherent short-term, weak long-term as models absorb the skill.', 45],
-      ['Connects to human-computer interaction, tool literacy.', 30],
-      ['Friction: each model generation erodes prompt-craft\'s edge.', 60],
-      ['Contested whether it is a skill or a transient artifact.', 65],
-      ['If transient, a whole job category is ephemeral.', 40],
-      ['Unknown what endures as models self-clarify intent.', 35],
-    ], true)),
-
-    build('seed_consciousness', 'Consciousness can emerge from sufficiently complex computation', L([
-      ['Substrate-independence: consciousness is a pattern of information processing, realisable in silicon.', 85],
-      ['Thin: no measurement of machine consciousness exists; the case is largely a priori.', 30],
-      ['Functionalism connects mind to computation, but the link to experience is unfilled.', 35],
-      ['Coherent as a position, but rests on undefended premises about experience.', 50],
-      ['Resonates with IIT, global workspace theory, panpsychism.', 45],
-      ['The hard problem of consciousness pushes hard against it.', 55],
-      ['Deeply contested — no agreed criterion to settle it.', 65],
-      ['Wildly generative: machine rights, uploading, moral patienthood.', 80],
-      ['The deepest edge: we cannot yet define the test that would decide it.', 85],
-    ], false)),
-
-    build('seed_agents', 'Agentic AI systems can autonomously achieve open-ended goals', L([
-      ['An agent orchestrating tools, memory, and planning can complete complex multi-step tasks without continuous human guidance.', 60],
-      ['Real wins: coding agents (SWE-bench 50%+), research agents, retrieval-augmented multi-step reasoning.', 52],
-      ['Bridges planning + tool use + memory to autonomous goal completion — the causal chain is long and each link can fail.', 50],
-      ['Coherence strained: agents fail brittly at novel sub-goals; error compounds across steps; recovery is unsolved.', 40],
-      ['Resonates with OODA loops, cognitive architectures, classical AI planning, BDI agents.', 45],
-      ['Friction: hallucination compounds across steps; one bad tool call can cascade to task failure.', 65],
-      ['Contested whether current autonomy is genuine goal-direction or tightly scaffolded mimicry.', 68],
-      ['If robust at scale: labour market transformation, oversight crisis, principal–agent problems at civilisational scope.', 72],
-      ['Unknown: how autonomy degrades in genuinely novel environments — the generalisation cliff has not been mapped.', 65],
-    ], true)),
   ];
 }
 
-export const CASCADE_SEED_FLAG = 'sol_cascade_seeded';
+// v2: use this flag so existing installs re-seed with the new pre-scored pyramid.
+export const CASCADE_SEED_FLAG = 'sol_cascade_seeded_v2';

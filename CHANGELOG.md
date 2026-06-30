@@ -1,3 +1,14 @@
+## v5.41.0 — CASCADE seed pyramid rebuilt
+
+### CASCADE
+- New seed pyramid: Truth Pressure theory demonstrating itself (7 blocks)
+- All blocks pre-scored with framework_score — AUTO mode works from day one
+- Both AUTO and MANUAL modes read the same seed scores
+- New seed flag (`sol_cascade_seeded_v2`) forces re-seed on existing installs
+- Old AI-knowledge seed (14 blocks, sovereign-only) removed
+
+---
+
 ## v5.40.0 — Natal chart persistent anchor
 
 ### Zodiac
