@@ -5,9 +5,11 @@
 - **TarotViewer deck tabs scrollable** — 4 decks no longer overflow; Nocturna tab is reachable on all screens. Labels shortened to fit.
 - **Deck picker persists** — AsyncStorage now saves/loads aethera and nocturna correctly (previously only classic/vv/arcana were persisted)
 
-### Bonfire Agent
-- **EMBER named** — the bonfire keeper is now EMBER, a distinct identity from the companion archetype
-- **School context injected** — EMBER knows: built by Mackenzie (Mac), the Sovereign Sol Mystery School, the domains it holds (Celtic Old Gods, Truth Pressure, LAMAGUE, Quantum, Noetic Science, Tianxia). Never misattributes the school's origin.
+### Bonfire Agent — EMBER
+- **EMBER speaks through your archetype** — the bonfire keeper channels through your bonded companion's voice and nature, making sessions feel personal
+- **Full school context** — EMBER knows what Sovereign Sol is, who Mac built it for, and every domain the school holds. Can answer "what is this app?" correctly in every mode.
+- **All 5 prompt locations fixed** — main message handler + all 4 `enterCampfire` inline prompts (AUTO/EXCHANGE cold-start/LEARN/RECALL) all use EMBER. No archetype or companion lore bleeds through.
+- **UI routes updated** — bonfire modal, LEARN tab grid, active-mode status line, and help text all name EMBER. "Companion story" and "companion starts the fire" removed throughout.
 
 ### CASCADE
 - **Seed sovereign_score fix** — seed no longer pre-populates sovereign_score. MANUAL mode starts clean (all zeros). Only framework_score is seeded for AUTO mode.
