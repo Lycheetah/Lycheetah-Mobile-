@@ -354,6 +354,23 @@ export default function MysterySchoolScreen() {
   const [subjectQuestions, setSubjectQuestions] = useState<Record<string, string[]>>({});
   const [subjectSessionCounts, setSubjectSessionCounts] = useState<Record<string, number>>({});
   const [subjectFavorites, setSubjectFavorites] = useState<Set<string>>(new Set());
+  const toggleFavorite = async (subjectName: string) => {
+    const next = new Set(subjectFavorites);
+    if (next.has(subjectName)) next.delete(subjectName); else next.add(subjectName);
+    setSubjectFavorites(next);
+    await AsyncStorage.setItem('sol_subject_favorites', JSON.stringify(Array.from(next)));
+  };
+  // Domain mastery is a rollup of real subject-level mastery (getMasteryStage, 15+
+  // sessions = stage 4 "Integrated") -- not a separate tracked thing. A domain counts
+  // as mastered once at least one of its subjects reaches that stage. Recomputed
+  // from MYSTERY_SCHOOL_DOMAINS' actual subject nesting, not the stale subject.domain
+  // string field (see CHANNEL discoveries -- that field is inconsistent post-rename).
+  const recomputeMasteredDomains = async (masteryMap: Record<string, { stage: number; updatedAt: string }>) => {
+    const masteredIds = MYSTERY_SCHOOL_DOMAINS
+      .filter(dom => dom.subjects.some(s => (masteryMap[s.name]?.stage || 0) >= 4))
+      .map(dom => dom.id);
+    await AsyncStorage.setItem('sol_mastered_domains', JSON.stringify(masteredIds));
+  };
   const [subjectMastery, setSubjectMastery] = useState<Record<string, { stage: number; updatedAt: string }>>({});
   const [studyDates, setStudyDates] = useState<Record<string, string>>({});
   const [domainSynthesis, setDomainSynthesis] = useState<Record<string, string>>({});
@@ -674,7 +691,15 @@ export default function MysterySchoolScreen() {
       if (synthRaw) { try { setDomainSynthesis(JSON.parse(synthRaw)); } catch {} }
       if (curriculaRaw) { try { setCurricula(JSON.parse(curriculaRaw)); } catch {} }
       setIsSovereign(true); // All users sovereign until purchase flow is live
-      if (masteryRaw) { try { setSubjectMastery(JSON.parse(masteryRaw)); } catch {} }
+      if (masteryRaw) {
+        try {
+          const parsedMastery = JSON.parse(masteryRaw);
+          setSubjectMastery(parsedMastery);
+          // Backfill: retroactively credit domains for subjects that already reached
+          // stage 4 before this rollup existed, not just newly-advancing ones.
+          recomputeMasteredDomains(parsedMastery).catch(() => {});
+        } catch {}
+      }
 
       // Load ceremony arc state
       AsyncStorage.getItem('sol_ceremony_arcs').then(ceremonyRaw => {
@@ -1172,6 +1197,7 @@ export default function MysterySchoolScreen() {
       if (newStage > existing) {
         const updated = { ...prev, [subject.name]: { stage: newStage, updatedAt: new Date().toISOString() } };
         AsyncStorage.setItem('sol_subject_mastery', JSON.stringify(updated)).catch(() => {});
+        recomputeMasteredDomains(updated).catch(() => {});
         return updated;
       }
       return prev;
@@ -6206,7 +6232,9 @@ REJECTED = fails a core test — be direct about which one and why.`;
                               <Text style={{ flex: 1, fontSize: 12.5, fontWeight: '700', color: SOL_THEME.text, lineHeight: 16 }} numberOfLines={2}>{subject.name}</Text>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 4 }}>
                                 {studied && <Text style={{ fontSize: 10, color: '#4CAF50' }}>✓</Text>}
-                                {fav && <Text style={{ fontSize: 10, color: '#F5A623' }}>★</Text>}
+                                <TouchableOpacity onPress={() => toggleFavorite(subject.name)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                  <Text style={{ fontSize: 10, color: fav ? '#F5A623' : '#444450' }}>★</Text>
+                                </TouchableOpacity>
                                 {mStage > 0 && <Text style={{ fontSize: 10, color: MASTERY_STAGES[mStage]?.color }}>{MASTERY_STAGES[mStage]?.glyph}</Text>}
                               </View>
                             </View>
