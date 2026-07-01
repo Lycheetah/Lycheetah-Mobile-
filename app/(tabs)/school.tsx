@@ -5815,8 +5815,8 @@ REJECTED = fails a core test — be direct about which one and why.`;
             {domainsOpen && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingBottom: 2, paddingRight: 16 }} style={{ marginBottom: 12 }}>
               {([
                 { id: 'all',           label: 'ALL',       glyph: '◬', accent: SOL_THEME.headmaster },
-                { id: 'contemplative', label: 'TEMPLE',    glyph: '☽', accent: '#9B7FD4' },
-                { id: 'secular',       label: 'COURT',     glyph: '⟁', accent: '#4A9EFF' },
+                { id: 'contemplative', label: 'INNER',     glyph: '☽', accent: '#9B7FD4' },
+                { id: 'secular',       label: 'OUTER',     glyph: '⟁', accent: '#4A9EFF' },
                 { id: 'lycheetah',     label: 'THRESHOLD', glyph: '⧟', accent: '#7B68EE' },
                 { id: 'void',          label: 'VOID',      glyph: '◌', accent: '#8B00CC' },
               ] as const).map(({ id, label, glyph, accent }) => {
