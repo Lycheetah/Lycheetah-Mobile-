@@ -1,3 +1,26 @@
+## v6.0.10 — Help Audit + Two Real Feature Fixes
+
+**The help menus told the truth about the wrong app.** Full audit of every help entry found the
+Codex screen's AI help system describing an entirely different, older version of Sol: 22 domains
+instead of the actual 42, a Library described as a FORGE/SCORE/PROBE/CEMENT tool pipeline (Library
+is a term glossary now), a three-tier paywall that was never built (the real system is a simple
+free = 3 dives/day, Sovereign = unlimited), and an old 5-stage CASCADE model contradicting the real
+9-layer engine. That screen is reachable via real buttons from Library and School, so a real user
+could land there and get badly wrong information. Fixed, along with two stale numbers in the main
+help modal (domain/subject counts, "Aura" → "Aura Prime") and a "Learning Quotient" typo that
+should have said "Light Quotient" everywhere else in the app.
+
+**Favorites and domain mastery were both ghosts.** Favorites loaded from storage and displayed a
+star on subject cards, but nothing anywhere let you actually tap it — no user has ever been able
+to favorite a subject. Domain mastery was read in five places, including gating the ASCENDANT
+achievement (25 domains mastered), but written nowhere — the counter always showed 0 and that
+achievement could never be earned by anyone. Both fixed: favorites now has a real toggle, and
+domain mastery is derived from the per-subject mastery system that already works (15+ sessions on
+one subject reaches "Integrated" — the "kept coming back to the same class" signal), rolled up to
+the domain level and backfilled retroactively for anyone who already qualified before the fix.
+
+---
+
 ## v6.0.9 — The Warm Landing
 
 **The door never just closes.** When someone backs away from a heavy subject at the Magister's
