@@ -1,3 +1,16 @@
+## v6.0.9 — The Warm Landing
+
+**The door never just closes.** When someone backs away from a heavy subject at the Magister's
+care gate ("Not now"), the app used to just close the modal and drop them back where they were.
+Now the door stays open and offers presence instead: *"You don't have to talk about anything
+heavy right now. Come sit by the fire with me a while."* Choosing "Stay here with me" opens
+EMBER at the bonfire — no subject, no dive, just company. Choosing "I'm alright — thank you"
+closes gently, no follow-up. Wired to the same care gate that fires for crisis-adjacent and
+elevated subjects. Never guilts, never forces — the Companion Clause, made real in the one
+place someone is most likely to need it.
+
+---
+
 ## v6.0.8 — Safety Coverage + Cleanup
 
 **The warning now always has a catch behind it.** Audit found that subjects flagged `elevated`
