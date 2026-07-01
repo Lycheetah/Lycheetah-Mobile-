@@ -25,7 +25,6 @@ import { buildPersonaModeInstruction } from '../../lib/mode-instructions';
 import { executeTool, ExecutorContext } from '../../lib/tools/executor';
 import { COUNCIL_SYSTEM_PROMPT, resolvePrompt, selectBasePrompt, buildContextBlock } from '../../lib/prompts/sol-protocol';
 import { useAppMode } from '../../lib/app-mode';
-import { getCompiledSpec } from '../../lib/personas/compiler';
 import { buildMagisterSystemPrompt } from '../data/task4_magister_context';
 import { CareEvents } from '../../lib/care-events';
 import { openEmergencyBeacon } from '../../components/EmergencyBeacon';

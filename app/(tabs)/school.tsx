@@ -1033,9 +1033,12 @@ export default function MysterySchoolScreen() {
         setVoidGateStep(0);
         return;
       }
-      // Magister invitation gate — crisis-adjacent subjects get a gentle fork:
+      // Magister invitation gate — crisis-adjacent AND elevated subjects get a gentle fork:
       // "Study with 𝔏 Magister" or "Continue alone". Never blocks. Always a choice.
-      if (subject.care === 'crisis-adjacent') {
+      // Audit fix (July 1): 'elevated' was documented as "Magister reads emotional register
+      // before diving" but only crisis-adjacent ever gated — so every ⚠️ CARE subject showed
+      // the badge and hit no check. Now badge coverage == gate coverage.
+      if (subject.care === 'crisis-adjacent' || subject.care === 'elevated') {
         setMagisterGatePending({ subject, domain, host: hostOverride, depth });
         return;
       }
@@ -1551,6 +1554,7 @@ export default function MysterySchoolScreen() {
     const sessionDuration = Date.now() - sessionStartTime.current;
     const isHeavySubject = activeStudySubject && (
       activeStudySubject.care === 'crisis-adjacent' ||
+      activeStudySubject.care === 'elevated' ||
       activeStudySubject.layer === 'VOID' ||
       (activeStudySubject.intensity ?? 0) >= 7
     );
