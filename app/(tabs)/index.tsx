@@ -38,7 +38,7 @@ import {
 } from '../../lib/conversation-manager';
 import {
   detectMode, detectEmotionalState, detectNRM, detectVeyraToggle, detectAuraPrimeToggle, detectLyraToggle,
-  detectHeadmasterToggle, buildFrameworkContext, EmotionalState,
+  detectHeadmasterToggle, EmotionalState,
 } from '../../lib/intelligence/mode-detector';
 import { scoreAURAFull, getPassRate, AURAMetrics } from '../../lib/intelligence/aura-engine';
 import { enforceAURA } from '../../lib/intelligence/enforcement';
@@ -1540,26 +1540,24 @@ export default function SolChat() {
     const fieldProfile = await getFieldProfile();
     const profileLine = formatProfileForContext(fieldProfile);
 
-    // Task 2: Field Insight — first message only, if echoes or mastery exist
-    let fieldInsightLine = '';
+    // Task 2: Field Insight — first message only. Drives the UI badge only; no longer
+    // injected into the prompt ("the field recalls…" was atmospheric cross-contamination).
     if (messages.length === 0) {
       try {
         const [echoesRaw, masteredRaw] = await Promise.all([
           AsyncStorage.getItem('sol_school_echoes'),
           AsyncStorage.getItem('sol_mastered_domains'),
         ]);
-        const insights: string[] = [];
+        let hasInsight = false;
         if (echoesRaw) {
           const echoes: Record<string, { id: string; date: string; text: string }[]> = JSON.parse(echoesRaw);
-          const allEchoes = Object.values(echoes).flat().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-          if (allEchoes.length > 0) insights.push(`recent breakthrough: "${allEchoes[0].text.slice(0, 80)}"`);
+          if (Object.values(echoes).flat().length > 0) hasInsight = true;
         }
         if (masteredRaw) {
           const mastered: string[] = JSON.parse(masteredRaw);
-          if (mastered.length > 0) insights.push(`mastered ${mastered[mastered.length - 1]}`);
+          if (mastered.length > 0) hasInsight = true;
         }
-        if (insights.length > 0) {
-          fieldInsightLine = `[Field Insight] The field recalls — ${insights.join(', ')}. Let this inform your response if relevant.`;
+        if (hasInsight) {
           setFieldInsightActive(true);
         }
       } catch {}
@@ -1609,7 +1607,6 @@ export default function SolChat() {
       sanctumField.trim() ? sanctumField.trim() : '',
       cementContext.trim() ? cementContext.trim() : '',
       profileLine ? profileLine : '',
-      fieldInsightLine ? fieldInsightLine : '',
       lastDiveLine,
       // Cross-session context — only on first message
       messages.length === 0 && priorFieldContext ? priorFieldContext : '',
@@ -1630,16 +1627,6 @@ export default function SolChat() {
     const skepticInstruction = talkMode === 'SKEPTIC' ? `\n\n${buildPersonaModeInstruction(persona, 'SKEPTIC')}` : '';
     const lang = await getLanguage();
     const langInstruction = lang !== 'English' ? `\n\nREPLY IN ${lang.toUpperCase()} — regardless of the language of the user's message.` : '';
-    const _hour = new Date().getHours();
-    const timeOfDayInstruction = _hour >= 0 && _hour < 5
-      ? '\n\n[The hour is late — past midnight. The user is in the deep hours. Honour the weight of that if it feels present.]'
-      : _hour < 9
-      ? '\n\n[Early morning. The day is new and the mind is often clearest here. Foundation work suits this hour.]'
-      : _hour < 17
-      ? ''
-      : _hour < 21
-      ? '\n\n[Evening. The day is winding down. Reflective and synthesising questions tend to arise now.]'
-      : '\n\n[Late evening, approaching night. The edge hours. Questions that arrive here often carry more weight than they let on.]';
     // Headmaster gets companion + subject context appended to the base prompt.
     // All other personas use basePrompt directly — the compiled spec was creating a
     // second conflicting persona definition that caused chimeric/council-style output.
@@ -1649,7 +1636,7 @@ export default function SolChat() {
     const isCouncil = councilMode || talkMode === 'COUNCIL';
     const systemPrompt = isCouncil
       ? `${styleInstruction}\n\n${lengthInstruction}\n\n${resolvePrompt(COUNCIL_SYSTEM_PROMPT, userName)}${contextBlock ? `\n\n${contextBlock}` : ''}${langInstruction}`
-      : `${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${activePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${talkMode === 'WAYFARER' ? `\n\nYou are in WAYFARER mode — open conversation. If asked what mode you are in, say: "Wayfarer mode — open conversation, no special frame."` : ''}${timeOfDayInstruction}${langInstruction}\n\nAt the very end of your response append exactly: [CONF:X] (X = confidence 0.0-1.0) then on the next line: [CHIPS:chip1|chip2|chip3] (3 short follow-up prompts). Output these silently — never reference or explain them.`;
+      : `${styleInstruction}\n\n${lengthInstruction}\n\n${contextBlock ? `${contextBlock}\n\n` : ''}${activePrompt}${chaosInstruction}${lamagueInstruction}${skepticInstruction}${talkMode === 'WAYFARER' ? `\n\nYou are in WAYFARER mode — open conversation. If asked what mode you are in, say: "Wayfarer mode — open conversation, no special frame."` : ''}${langInstruction}\n\nAt the very end of your response append exactly: [CONF:X] (X = confidence 0.0-1.0) then on the next line: [CHIPS:chip1|chip2|chip3] (3 short follow-up prompts). Output these silently — never reference or explain them.`;
 
     const detectedMode = detectMode(text);
     const detectedEWS = detectEmotionalState(text);
@@ -1686,8 +1673,6 @@ export default function SolChat() {
       }
     }
 
-    const frameworkContext = buildFrameworkContext(detectedMode, detectedEWS, nrmActive, persona);
-
     if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     const docBlock = pendingDoc
@@ -1718,7 +1703,11 @@ export default function SolChat() {
     const apiMessages: Message[] = updatedMessages.map((m, i) => {
       if (i === updatedMessages.length - 1 && m.role === 'user') {
         const toolPrefix = toolContext ? `${toolContext}\n\n` : '';
-        return { role: m.role, content: `${toolPrefix}${frameworkContext}\n\n${m.content}`, image: m.image };
+        // NRM is the one mode worth injecting — and only when the user explicitly
+        // triggered it. Everything else (mode/EWM/PGF) lives in the persona itself;
+        // injecting a regex's guess on every turn cross-contaminated the voice.
+        const nrmPrefix = nrmActive ? '[NRM — adversarial reviewer: treat all framework claims as unproven hypotheses; prioritise falsification.]\n\n' : '';
+        return { role: m.role, content: `${toolPrefix}${nrmPrefix}${m.content}`, image: m.image };
       }
       return { role: m.role, content: m.content, image: m.image };
     });
