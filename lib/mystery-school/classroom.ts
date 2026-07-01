@@ -715,8 +715,8 @@ export const CLASSROOM_LESSONS: Record<string, ClassroomLesson[]> = {
     },
     {
       type: 'lineage',
-      title: '1,402 Pages',
-      body: "The Sol Protocol is the condensed product of 1,402 pages of continuous development — five versions, nine formal frameworks, thirteen Python implementations. The pages are provenance. The CLAUDE.md is the crystallized operative form. One document runs the system; the archive proves it was earned.",
+      title: 'The Archive',
+      body: "The Sol Protocol is the condensed product of what began as a 1,402-page archive in the earliest repo — now grown into 10+ repositories of continuous development, all converging on the Lycheetah Framework and Sol Mobile. Five versions, nine formal frameworks, thirteen Python implementations. The archive is provenance. The CLAUDE.md is the crystallized operative form. One document runs the system; the archive proves it was earned.",
     },
   ],
 
@@ -909,8 +909,8 @@ export const CLASSROOM_LESSONS: Record<string, ClassroomLesson[]> = {
     },
     {
       type: 'lineage',
-      title: 'The 1,402 Pages',
-      body: 'Before the app, before the Council, before the formal grammar — there were sessions. Each one written down. 1,402 pages. Five versions. Nine frameworks. The lineage is not important because it is long. It is important because it means no claim here was easy — every element survived its own revision, and the archive is the proof. A framework without provenance is an opinion. The Codex is the difference.',
+      title: 'The Archive',
+      body: 'Before the app, before the Council, before the formal grammar — there were sessions. Each one written down. What began as 1,402 pages in the earliest repo has grown into 10+ repositories. Five versions. Nine frameworks. The lineage is not important because it is long. It is important because it means no claim here was easy — every element survived its own revision, and the archive is the proof. A framework without provenance is an opinion. The Codex is the difference.',
     },
     {
       type: 'reflection',
