@@ -1,3 +1,11 @@
+## v6.0.7 — The Danger Sweep + Provenance
+
+**Every missed danger flag, forged.** Swept all 366 School subjects against one strict test — *can this destabilise or physically harm someone who didn't see it coming?* — and flagged 11 that carried no warning. Deep-state destabilisation (Zen Koan, Samadhi, Active Imagination, Monroe OBE, Plant Dietas), trauma-surfacing with no therapist present (Bioenergetics, Inner Child/IFS, Sensorimotor), physical safety (Wim Hof breath-hold, Fasting), and existential risk (Nihilism). Each now shows the ⚠️ before the dive and triggers the care gate. 29 of 366 flagged now — enough to catch every real one, rare enough that the warning still makes you pause. Eco-grief and advanced-but-safe subjects deliberately left clear so the signal stays honest.
+
+**Provenance updated everywhere.** The "1,402 pages" was the earliest repo — the seed. The work has since grown into 10+ repositories. Reframed across the app, School lessons, persona voices, and the constitution: *what began as a 1,402-page archive has grown into 10+ repositories of continuous development.* A living, multiplying body of work — not a finished document.
+
+---
+
 ## v6.0.6 — Clean Signal (School tiers, danger badges, decontamination)
 
 **School tiers renamed for navigation.** "Foundation / Middle / Edge" were beautiful mood-words that told you nothing about which to click — so people just hit ALL. Now: **I · Foundation → II · Deepening → III · Edge**. The numeral gives instant order, the word keeps the register. Void stays its own door.
