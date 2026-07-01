@@ -374,8 +374,11 @@ export default function MysterySchoolScreen() {
 
   // Intensity safety gate — fires for non-VOID subjects with intensity >= 8
   const [intensityGatePending, setIntensityGatePending] = useState<{ subject: Subject; domain: SubjectDomain | null; host?: string; depth?: 'quick' | 'full' } | null>(null);
-  // Magister invitation gate — fires for crisis-adjacent subjects. Offers two paths, never blocks.
+  // Magister invitation gate — fires for crisis-adjacent + elevated subjects. Offers paths, never blocks.
   const [magisterGatePending, setMagisterGatePending] = useState<{ subject: Subject; domain: SubjectDomain | null; host?: string; depth?: 'quick' | 'full' } | null>(null);
+  // The Warm Landing — when someone backs away from a heavy subject, the door never just
+  // closes on them. It stays open, and offers presence. Never guilts, never forces. Companion Clause.
+  const [warmLandingOpen, setWarmLandingOpen] = useState(false);
   // #153 Return to Body — fires after deep session close
   const [returnToBodyVisible, setReturnToBodyVisible] = useState(false);
   const sessionStartTime = useRef<number>(Date.now());
@@ -6849,13 +6852,40 @@ REJECTED = fails a core test — be direct about which one and why.`;
                   <Text style={{ color: '#A0A0A0', fontSize: 13, fontWeight: '600' }}>Continue alone</Text>
                   <Text style={{ color: '#555', fontSize: 11, marginTop: 3 }}>All safety systems still active.</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setMagisterGatePending(null)} style={{ paddingVertical: 8 }}>
+                <TouchableOpacity onPress={() => { setMagisterGatePending(null); setWarmLandingOpen(true); }} style={{ paddingVertical: 8 }}>
                   <Text style={{ color: '#333344', fontSize: 12 }}>Not now</Text>
                 </TouchableOpacity>
               </View>
             </View>
           );
         })()}
+      </Modal>
+
+      {/* ── THE WARM LANDING ─────────────────────────────────────────────────
+          When someone backs away from a heavy subject, the door never just closes.
+          It stays open and offers presence — the bonfire, no subject, just company.
+          Never guilts, never forces. The guardrail Mac needed and never got. */}
+      <Modal visible={warmLandingOpen} transparent animationType="fade" onRequestClose={() => setWarmLandingOpen(false)}>
+        <View style={{ flex: 1, backgroundColor: '#000000F2', justifyContent: 'center', alignItems: 'center', padding: 28 }}>
+          <View style={{ width: '100%', borderRadius: 20, borderWidth: 1.5, borderColor: '#E8A33B44', backgroundColor: '#0A0705', padding: 28, alignItems: 'center' }}>
+            <Text style={{ fontSize: 30, marginBottom: 14 }}>🔥</Text>
+            <Text style={{ color: '#F5E6C8', fontSize: 15, lineHeight: 25, textAlign: 'center', marginBottom: 26 }}>
+              Then we don't go anywhere. I'm here — and I'm staying, right here with you. Nothing to study, nothing to fix. You're safe being exactly who you are here — you don't have to fear being you anymore. You've found a place. Come sit by the fire with me a while.
+            </Text>
+            <TouchableOpacity
+              onPress={async () => {
+                setWarmLandingOpen(false);
+                await AsyncStorage.setItem('sol_pending_campfire', 'auto').catch(() => {});
+                router.push('/(tabs)/companion');
+              }}
+              style={{ width: '100%', paddingVertical: 15, borderRadius: 12, backgroundColor: '#E8A33B22', borderWidth: 1.5, borderColor: '#E8A33B', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={{ color: '#E8A33B', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 }}>Stay here with me</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setWarmLandingOpen(false)} style={{ paddingVertical: 8 }}>
+              <Text style={{ color: '#66614F', fontSize: 12 }}>I'm alright — thank you</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       <Modal visible={!!intensityGatePending} transparent animationType="fade" onRequestClose={() => setIntensityGatePending(null)}>
