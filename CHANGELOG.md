@@ -1,3 +1,19 @@
+## v6.0.6 — Clean Signal (School tiers, danger badges, decontamination)
+
+**School tiers renamed for navigation.** "Foundation / Middle / Edge" were beautiful mood-words that told you nothing about which to click — so people just hit ALL. Now: **I · Foundation → II · Deepening → III · Edge**. The numeral gives instant order, the word keeps the register. Void stays its own door.
+
+**Universal danger badge — visible before you dive.** Every subject that can genuinely reach or destabilise someone now carries a warning on the browse card, not just at the gate: **💀 VOID** (the unfalsifiable / self-dissolving deep) and **⚠️ CARE** (crisis-adjacent / elevated / high-intensity). Closes the gap where Grief Work, Ego Death, Kundalini and the Dark Night showed no warning at all. The badge is computed from the same safety data that fires the gates, so it can never lie or drift.
+
+**Prompt decontamination.** The persona voices were buried under regex-guessed instruction layers that overrode them — a "Mode detected: NIGREDO" block injected into every message, time-of-day mysticism, "the field recalls…" atmosphere. All removed. The personas run their own mode-reading; the injected guesses were fighting them. Voices now come through clean. No feature or safety system touched.
+
+**Council fixes.** COUNCIL now respects your length preference, the second voice speaks from its full persona instead of a thin name-only prompt, and Aura no longer doubles up in the three-voice council.
+
+**Chip modes fixed.** Descriptions now match what each mode actually does; LAMAGUE mode now reliably weaves symbols instead of skipping them; the missing Lyra council-name is restored.
+
+**Two context leaks sealed.** Saved memories now appear in context immediately; a past School subject no longer bleeds into an unrelated new conversation.
+
+---
+
 ## v6.0.5 — Mode System Overhaul (complete fix)
 
 Tonight's full set of fixes, consolidated:

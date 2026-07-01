@@ -1,5 +1,5 @@
 # SOVEREIGN SOL — TASK LIST
-## June 29 2026 · pushed feee3cb · phone-tested ✓
+## July 1 2026 · v6.0.6 · school tiers + danger badges + prompt decontamination · phone-testing
 Run: `npx expo start` → QR → phone
 
 ---
