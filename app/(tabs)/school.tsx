@@ -17,7 +17,7 @@ import { canWatchAd, showRewardedAd } from '../../lib/ads';
 import { useAppMode } from '../../lib/app-mode';
 import {
   MYSTERY_SCHOOL_DOMAINS, SubjectDomain, Subject, SubjectLayer,
-  LAYER_COLORS, LAYER_LABELS,
+  LAYER_COLORS, LAYER_LABELS, subjectDanger,
 } from '../../lib/mystery-school/subjects';
 import {
   CEREMONY_ARCS, CeremonyArcType, CeremonyDuration,
@@ -2366,6 +2366,16 @@ export default function MysterySchoolScreen() {
                 <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: LAYER_COLORS[activeSubjectDetail.layer] + '44', borderWidth: 1, borderColor: LAYER_COLORS[activeSubjectDetail.layer] + '66' }}>
                   <Text style={{ color: LAYER_COLORS[activeSubjectDetail.layer], fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{LAYER_LABELS[activeSubjectDetail.layer].toUpperCase()}</Text>
                 </View>
+                {(() => {
+                  const danger = subjectDanger(activeSubjectDetail);
+                  if (!danger) return null;
+                  return (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, backgroundColor: danger.color + '22', borderWidth: 1, borderColor: danger.color + '66' }}>
+                      <Text style={{ fontSize: 10 }}>{danger.icon}</Text>
+                      <Text style={{ color: danger.color, fontSize: 10, fontWeight: '700', letterSpacing: 1 }}>{danger.label}</Text>
+                    </View>
+                  );
+                })()}
                 {activeSubjectDetail.traditions?.map(t => (
                   <View key={t} style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, backgroundColor: domainColor + '22', borderWidth: 1, borderColor: domainColor + '55' }}>
                     <Text style={{ color: domainColor, fontSize: 10, fontWeight: '600' }}>{t}</Text>
@@ -6199,11 +6209,20 @@ REJECTED = fails a core test — be direct about which one and why.`;
                             <Text style={{ fontSize: 8, color: lcol, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace', fontWeight: '700', letterSpacing: 0.5 }}>
                               {LAYER_LABELS[subject.layer].toUpperCase()}
                             </Text>
-                            {intensity >= 7 && (
-                              <View style={{ paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, backgroundColor: (intensity >= 9 ? '#FF4444' : '#FF6622') + '22' }}>
-                                <Text style={{ fontSize: 7, fontWeight: '700', color: intensity >= 9 ? '#FF4444' : '#FF6622', fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>⚠{intensity}</Text>
-                              </View>
-                            )}
+                            {(() => {
+                              // Unified danger badge — visible BEFORE the dive, on every dangerous
+                              // subject (crisis-adjacent / elevated / intensity≥7 / VOID), derived from
+                              // the same fields that fire the safety gates so it can never lie.
+                              const danger = subjectDanger(subject);
+                              if (!danger) return null;
+                              const label = subject.layer === 'VOID' ? 'VOID' : intensity >= 7 ? `${intensity}` : 'CARE';
+                              return (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3, backgroundColor: danger.color + '22' }}>
+                                  <Text style={{ fontSize: 8 }}>{danger.icon}</Text>
+                                  <Text style={{ fontSize: 7, fontWeight: '700', color: danger.color, fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace' }}>{label}</Text>
+                                </View>
+                              );
+                            })()}
                           </View>
                         </TouchableOpacity>
                       );

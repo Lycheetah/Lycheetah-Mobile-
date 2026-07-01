@@ -1157,10 +1157,32 @@ export const LAYER_COLORS: Record<SubjectLayer, string> = {
   VOID: '#4A0080',
 };
 
+// Tier labels — numeral gives instant orderability (which do I click?), the word
+// keeps the mystery-school register. "Middle" was meaningless for navigation and
+// is now "Deepening". Void keeps its name; its danger is carried by the 💀 badge.
 export const LAYER_LABELS: Record<SubjectLayer, string> = {
-  FOUNDATION: 'Foundation',
-  MIDDLE: 'Middle',
-  EDGE: 'Edge',
+  FOUNDATION: 'I · Foundation',
+  MIDDLE: 'II · Deepening',
+  EDGE: 'III · Edge',
   OPEN: 'Open',
   VOID: 'Void',
 };
+
+// ── DANGER BADGE ────────────────────────────────────────────────────────────
+// A universal warning shown on a subject BEFORE the student dives — so danger is
+// explicit at the door, not just discovered at the gate. Derived ENTIRELY from
+// the existing safety fields (care / intensity / VOID) so it can never drift out
+// of sync with the safety gates that fire on those same fields. Single source of
+// truth: one function, no hand-placed flag to rot.
+//   💀 VOID  — the unfalsifiable / self-dissolving deep. The framework will not
+//              walk you in; this makes sure you see the edge before you leap.
+//   ⚠️ CARE  — can reach someone already in pain, or destabilise a stable person
+//              (crisis-adjacent / elevated / intensity ≥ 7).
+export type SubjectDanger = { icon: string; label: string; color: string };
+export function subjectDanger(s: { layer: SubjectLayer; care?: string; intensity?: number }): SubjectDanger | null {
+  if (s.layer === 'VOID') return { icon: '💀', label: 'VOID', color: '#B23BE8' };
+  if (s.care === 'crisis-adjacent' || s.care === 'elevated' || (s.intensity ?? 0) >= 7) {
+    return { icon: '⚠️', label: 'CARE', color: '#E8A33B' };
+  }
+  return null;
+}
