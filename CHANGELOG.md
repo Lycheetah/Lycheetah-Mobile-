@@ -1,3 +1,18 @@
+## v6.0.8 — Safety Coverage + Cleanup
+
+**The warning now always has a catch behind it.** Audit found that subjects flagged `elevated`
+showed the ⚠️ danger badge but triggered no care gate — the wiring only ever gated crisis-adjacent
+subjects, despite the design calling for the Magister to read the room before any elevated dive. So
+every subject flagged in the danger sweep (Zen Koan, Samadhi, Bioenergetics, Kundalini, Shadow Work,
+and more) warned you and then caught no one. Fixed both ends: elevated subjects now route through the
+gentle Magister gate on entry, and the post-session grounding return fires on exit. Badge coverage now
+equals gate coverage — if it warns you, something holds you.
+
+**Lighter under the hood.** Removed the last of the old compiled-persona-spec system (dead since the
+v6.0.5 voice rewrite) — an unused import and four orphaned files, ~414 lines gone. Type-clean.
+
+---
+
 ## v6.0.7 — The Danger Sweep + Provenance
 
 **Every missed danger flag, forged.** Swept all 366 School subjects against one strict test — *can this destabilise or physically harm someone who didn't see it coming?* — and flagged 11 that carried no warning. Deep-state destabilisation (Zen Koan, Samadhi, Active Imagination, Monroe OBE, Plant Dietas), trauma-surfacing with no therapist present (Bioenergetics, Inner Child/IFS, Sensorimotor), physical safety (Wim Hof breath-hold, Fasting), and existential risk (Nihilism). Each now shows the ⚠️ before the dive and triggers the care gate. 29 of 366 flagged now — enough to catch every real one, rare enough that the warning still makes you pause. Eco-grief and advanced-but-safe subjects deliberately left clear so the signal stays honest.
