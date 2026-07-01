@@ -2178,7 +2178,8 @@ export default function SolChat() {
       }
 
       // Task 7: Council Mode — fire second persona when AURA 6+/7 (once per conversation)
-      if (!councilFired && auraMetrics.passed >= 6) {
+      // Skip in COUNCIL chip mode — 3 voices already fire; a 4th is redundant and Aura doubles up
+      if (!councilFired && auraMetrics.passed >= 6 && talkMode !== 'COUNCIL') {
         const shouldCouncil = true;
         if (shouldCouncil) {
           setCouncilFired(true);
