@@ -1291,6 +1291,7 @@ export default function SolChat() {
           setMessages([]);
           setCurrentMode('ALBEDO');
           setConversationPassRates([]);
+          setSchoolSubjectContext('');
         },
       },
     ]);
@@ -3098,6 +3099,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
           setCurrentMode('ALBEDO'); setConversationPassRates([]);
           setLastAura(null); setCoherenceStreak(0); setFieldInsightActive(false); setCouncilFired(false);
           setPriorFieldContext(''); aiTitledConvRef.current = null; setReflectCard(null);
+          setSchoolSubjectContext('');
           clearConversation(); setDrawerOpen(false);
           if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         }}
@@ -3272,6 +3274,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                           setCurrentMode('ALBEDO'); setConversationPassRates([]);
                           setLastAura(null); setCoherenceStreak(0); setFieldInsightActive(false); setCouncilFired(false);
                           setPriorFieldContext(''); aiTitledConvRef.current = null; setReflectCard(null);
+                          setSchoolSubjectContext('');
                           clearConversation();
                           if (hapticsOn) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         }},
@@ -4627,6 +4630,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                     if (mems.length >= 30) { Alert.alert('Memory full', 'Max 30 memories. Remove some in Settings.'); return; }
                     mems.unshift({ id: Date.now().toString(), text: content.slice(0, 280), date: new Date().toLocaleDateString() });
                     await AsyncStorage.setItem('sol_memory_v1', JSON.stringify(mems));
+                    setContextMemory(mems.map(m => m.text));
                   }} />
                   {isAssistant && (
                     <Row icon="✦" label="Mark Insightful" color={accentColor} onPress={async () => {
@@ -4641,6 +4645,7 @@ DISTILLATION VERDICT: [one sentence — what this conversation actually was abou
                       if (mems.length < 30) {
                         mems.unshift({ id: (Date.now() + 1).toString(), text: `[Insight] ${content.slice(0, 200)}`, date: new Date().toLocaleDateString() });
                         await AsyncStorage.setItem('sol_memory_v1', JSON.stringify(mems));
+                        setContextMemory(mems.map(m => m.text));
                       }
                       if (hapticsOn) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     }} />
